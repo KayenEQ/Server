@@ -245,9 +245,8 @@ void Client::SetEXP(uint32 set_exp, uint32 set_aaxp, bool isrezzexp) {
 	}
 	check_level--;
 
-
-	//see if we gained any AAs
-	if (set_aaxp >= max_AAXP) {
+	bool custom = true;
+	if (!custom && set_aaxp >= max_AAXP) {
 		/*
 			Note: AA exp is stored differently than normal exp.
 			Exp points are only stored in m_pp.expAA until you
@@ -282,6 +281,17 @@ void Client::SetEXP(uint32 set_exp, uint32 set_aaxp, bool isrezzexp) {
 		//Message(15, "You now have %d skill points available to spend.", m_pp.aapoints);
 	}
 
+	if (custom && set_aaxp >= max_AAXP) {
+
+		int amount_AA = set_aaxp/ max_AAXP; //C!Kayen DONT ADD ANY ACTUAL ADD
+		set_aaxp = set_aaxp - (max_AAXP * amount_AA);
+
+		char val1[20]={0};
+		//Message_StringID(MT_Experience, GAIN_ABILITY_POINT,ConvertArray(m_pp.aapoints, val1),m_pp.aapoints == 1 ? "" : "(s)");	//You have gained an ability point! You now have %1 ability point%2.
+		Message(MT_Experience, "You now have gained %i 'AA REWARD ITEM'.", amount_AA);
+		SummonItem(103000);
+	}
+    
 	uint8 maxlevel = RuleI(Character, MaxExpLevel) + 1;
 
 	if(maxlevel <= 1)

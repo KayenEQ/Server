@@ -1008,13 +1008,18 @@ void Client::BuyAA(AA_Action* action)
 	}
 	if(aa2 == nullptr)
 		return;	//invalid ability...
-
+	
 	if(aa2->special_category == 1 || aa2->special_category == 2)
 		return; // Not purchasable progression style AAs
 
 	if(aa2->special_category == 8 && aa2->cost == 0)
 		return; // Not purchasable racial AAs(set a cost to make them purchasable)
 
+	if (aa2->sof_type != 3){
+		Message(13,"You may only purchase class specific AA.");
+		return; //C!KAYEN - Only allow class AA to be purchased
+	}
+	
 	uint32 cur_level = GetAA(aa2->id);
 	if((aa2->id + cur_level) != action->ability) { //got invalid AA
 		mlog(AA__ERROR, "Unable to find or match AA %d (found %d + lvl %d)", action->ability, aa2->id, cur_level);
