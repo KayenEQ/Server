@@ -733,7 +733,7 @@ struct SPDat_Spell_Struct
 /* 213 */	bool NotOutofCombat; //Fail if cast out of combat
 /* 214 */   bool NotInCombat; //Fail if cast in combat
 /* 215 - 218 */
-/* 219 */	//int maxtargets; // is used for beam and ring spells for target # limits (not implemented)
+/* 219 */	int maxtargets; // is used for beam and ring spells for target # limits (not implemented)
 /* 220 - 223 */
 /* 224 */	bool persistdeath; // buff doesn't get stripped on death
 /* 225 - 236 */ // Not in DB

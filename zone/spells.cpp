@@ -2040,6 +2040,19 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 		case DirectionalAE:
 		{
+			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
+			int maxtargets = spells[spell_id].maxtargets;
+
+			bool taget_exclude_npc = false; //False by default!
+			
+			bool target_client_only = false;
+
+			if (IsBeneficialSpell(spell_id) && IsClient())
+				target_client_only = true;
+
+			if (!IsClient() && taget_exclude_npc)
+				target_client_only = true;
+
 			float angle_start = spells[spell_id].directional_start + (GetHeading() * 360.0f / 256.0f);
 			float angle_end = spells[spell_id].directional_end + (GetHeading() * 360.0f / 256.0f);
 
@@ -2050,12 +2063,20 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				angle_end -= 360.0f;
 
 			std::list<Mob*> targets_in_range;
+			std::list<Mob*> targets_in_cone; //C!Kayen - Get the targets within the cone
 			std::list<Mob*>::iterator iter;
+			std::list<Mob*>::iterator iter2; //C!Kayen
 
 			entity_list.GetTargetsForConeArea(this, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
 			iter = targets_in_range.begin();
+			
 			while(iter != targets_in_range.end())
 			{
+				if (!(*iter) || (target_client_only && (IsNPC() && !IsPet()))){
+				    ++iter;
+					continue;
+				}
+
 				float heading_to_target = (CalculateHeadingToTarget((*iter)->GetX(), (*iter)->GetY()) * 360.0f / 256.0f);
 				while(heading_to_target < 0.0f)
 					heading_to_target += 360.0f;
@@ -2068,20 +2089,67 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||
 						(heading_to_target >= 0.0f && heading_to_target <= angle_end))
 					{
-						if(CheckLosFN(spell_target))
-							SpellOnTarget(spell_id, spell_target, false, true, resist_adjust);
+						if(CheckLosFN(spell_target)){
+							if (maxtargets)
+								targets_in_cone.push_back(*iter);
+							else
+								SpellOnTarget(spell_id, spell_target, false, true, resist_adjust);
+						}
 					}
 				}
 				else
 				{
 					if(heading_to_target >= angle_start && heading_to_target <= angle_end)
 					{
-						if(CheckLosFN((*iter)))
-							SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+						if(CheckLosFN((*iter))) {
+							if (maxtargets) 
+								targets_in_cone.push_back(*iter);
+							else
+								SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+						}
 					}
 				}
 				++iter;
 			}
+
+			//C!Kayen - If maxtarget is set it will hit each of the closet targets up to max amount.
+			//Ie. If you set to 1, it will only hit the closest target in the beam.
+			if (maxtargets){
+				uint32 CurrentDistance, ClosestDistance = 4294967295u;
+				Mob *ClosestMob, *erase_value = nullptr;
+				
+				for (int i = 0; i < maxtargets; i++) {
+
+					ClosestMob = nullptr;
+					erase_value = nullptr;
+					CurrentDistance = 0; 
+					ClosestDistance = 4294967295u;
+					iter2 = targets_in_cone.begin();
+					
+					while(iter2 != targets_in_cone.end())
+					{
+						if (*iter2) {
+							
+							CurrentDistance = (((*iter2)->GetY() - GetY()) * ((*iter2)->GetY() - GetY())) +
+										(((*iter2)->GetX() - GetX()) * ((*iter2)->GetX() - GetX()));
+							
+							if (CurrentDistance < ClosestDistance) {
+								ClosestDistance = CurrentDistance;
+								ClosestMob = (*iter2);
+							}
+						}
+					
+						++iter2;
+					}
+
+					if (ClosestMob) {
+						targets_in_cone.remove(ClosestMob);
+						SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
+					}
+				}
+
+			}
+
 			break;
 		}
 	}
@@ -5344,4 +5412,5 @@ void NPC::UninitializeBuffSlots()
 {
 	safe_delete_array(buffs);
 }
+
 
