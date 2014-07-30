@@ -1118,7 +1118,7 @@ void Mob::AI_Process() {
 		StartEnrage();
 
 		bool is_combat_range = CombatRange(target);
-
+		
 		if (is_combat_range)
 		{
 			if (AImovement_timer->Check())
@@ -1127,7 +1127,7 @@ void Mob::AI_Process() {
 			}
 			if(IsMoving())
 			{
-				SetMoving(false);
+				SetMoving(false,true); //C!Kayen
 				moved=false;
 				SetHeading(CalculateHeadingToTarget(target->GetX(), target->GetY()));
 				SendPosition();
@@ -1374,6 +1374,11 @@ void Mob::AI_Process() {
 				{
 					if(!IsRooted()) {
 						mlog(AI__WAYPOINTS, "Pursuing %s while engaged.", target->GetName());
+						
+						Shout("rs %.2f M %.4f MS %.4f", runspeed, GetMomentum(), GetMomentumSpeed());
+						if (GetMomentum() < runspeed*1.0f) //C!Kayen (Momentum can not be more than 2x run speed. (change by adjusting multiplier)
+							SetMomentum(GetMomentum() + GetMomentumSpeed());
+
 						if(!RuleB(Pathing, Aggro) || !zone->pathing)
 							CalculateNewPosition2(target->GetX(), target->GetY(), target->GetZ(), GetRunspeed());
 						else

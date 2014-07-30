@@ -738,6 +738,8 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 {
 	Mob *curmob;
 
+	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
 	float dist = caster->GetAOERange(spell_id);
 	float dist2 = dist * dist;
 
@@ -792,11 +794,18 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 				caster->SpellOnTarget(spell_id, curmob, false, true, resist_adjust);
 			}
 		} else {
-			caster->SpellOnTarget(spell_id, curmob, false, true, resist_adjust);
+			if (maxtargets)
+				targets_in_ae.push_back(curmob); //C!Kayen - push all PBAE into vector
+			else
+				caster->SpellOnTarget(spell_id, curmob, false, true, resist_adjust);
 		}
 
 		if (!isnpc) //npcs are not target limited...
 			iCounter++;
+	}
+
+	if (maxtargets){ //C!Kayen - Max target PBAE
+		caster->CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_ae);
 	}
 }
 
@@ -916,5 +925,3 @@ void EntityList::AEAttack(Mob *attacker, float dist, int Hand, int count, bool I
 		}
 	}
 }
-
-

@@ -1740,6 +1740,8 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].AllowRest = atoi(row[212]) != 0;
 			sp[tempid].NotOutofCombat = atoi(row[213]) != 0;
 			sp[tempid].NotInCombat = atoi(row[214]) != 0;
+			sp[tempid].aemaxtargets = atoi(row[218]); //C!Kayen
+			sp[tempid].maxtargets = atoi(row[219]); //C!Kayen
 			sp[tempid].persistdeath = atoi(row[224]) != 0;
 			sp[tempid].DamageShieldType = 0;
 		}

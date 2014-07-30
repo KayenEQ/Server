@@ -732,9 +732,10 @@ struct SPDat_Spell_Struct
 /* 212 */	bool AllowRest;
 /* 213 */	bool NotOutofCombat; //Fail if cast out of combat
 /* 214 */   bool NotInCombat; //Fail if cast in combat
-/* 215 - 218 */
-/* 219 */	int maxtargets; // is used for beam and ring spells for target # limits (not implemented)
-/* 220 - 223 */
+/* 215 - 217 */
+/* 218 */	int aemaxtargets;  //C!Kayen - is used for various AE effects 
+/* 219 */	int maxtargets; //C!Kayen - is used for beam and ring spells for target # limits (not implemented)
+/* 220 - 223 */ 
 /* 224 */	bool persistdeath; // buff doesn't get stripped on death
 /* 225 - 236 */ // Not in DB
 			uint8 DamageShieldType; // This field does not exist in spells_us.txt

@@ -383,6 +383,9 @@ Mob::Mob(const char* in_name,
 	for (int i = 0; i < HIGHEST_RESIST+2; i++) { Vulnerability_Mod[i] = 0; }
 
 	emoteid = 0;
+	
+	//C!Kayen
+	momentum = 0; 
 }
 
 Mob::~Mob()
@@ -517,6 +520,8 @@ float Mob::_GetMovementSpeed(int mod) const
 		return 0.0f;
 
 	float speed_mod = runspeed;
+
+	speed_mod += GetMomentum(); //C!Kayen 
 
 	// These two cases ignore the cap, be wise in the DB for horses.
 	if (IsClient()) {
@@ -5174,3 +5179,104 @@ float Mob::HeadingAngleToMob(Mob *other)
 		return (90.0 - angle + 270.0) * 511.5 * 0.0027777778;
 }
 
+//!CKayen - Custom MOB functions
+
+void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtargets, std::list<Mob*> m_list)
+{
+	uint32 CurrentDistance, ClosestDistance = 4294967295u;
+	Mob *ClosestMob, *erase_value = nullptr;
+	std::list<Mob*>::iterator iter;
+
+	for (int i = 0; i < maxtargets; i++) {
+
+	ClosestMob = nullptr;
+	erase_value = nullptr;
+	CurrentDistance = 0; 
+	ClosestDistance = 4294967295u;
+	iter = m_list.begin();
+					
+		while(iter != m_list.end())
+		{
+			if (*iter) {
+							
+				CurrentDistance = (((*iter)->GetY() - GetY()) * ((*iter)->GetY() - GetY())) +
+				(((*iter)->GetX() - GetX()) * ((*iter)->GetX() - GetX()));
+							
+				if (CurrentDistance < ClosestDistance) {
+					ClosestDistance = CurrentDistance;
+					ClosestMob = (*iter);
+				}
+			}
+					
+			++iter;
+		}
+
+		if (ClosestMob) {
+			m_list.remove(ClosestMob);
+			SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
+		}
+	}
+}
+
+void Mob::MomentumDamage(Mob* defender, int32 &damage){
+	//Momentum = mass * velocity
+	//NPC special attack that lets you set Momentum Damage Mod , Size Modifier, Momentum value(rate), max momentum)
+	//float size_mod = defender->GetSize()/100.0f + 1.0f;
+	float momentum_mod = GetMomentum()*10;
+	float size_mod = defender->GetSize();
+
+	Shout("Sod [%.2f] Mmod [%.2f] Tmod [%.2f]", size_mod, momentum_mod, size_mod * momentum_mod);
+	Shout("Damage PRE %i ", damage);
+
+	
+	damage += static_cast<int>(damage*(momentum_mod)*(size_mod)/100);
+	
+	if (GetMomentum() > GetMomentumSpeed() * 100) {
+		entity_list.MessageClose(this, true, 200, MT_NPCFlurry, "%s slams into %s !", GetCleanName(), defender->GetCleanName());
+		defender->Stun(1000);
+	}
+	SetMomentum(0);
+	Shout("Damage POST %i ", damage);
+
+}
+
+void Mob::SetMoving(bool move, bool in_combat_range) 
+{ 
+	moving = move; 
+	delta_x = 0; delta_y = 0; delta_z = 0; delta_heading = 0; 
+	
+	if (!in_combat_range && !moving)
+		SetMomentum(0);
+}
+
+bool Mob::InAngleMob(Mob *other, float start_angle, float stop_angle) const
+{ 
+	if(!other || other == this)
+		return false;
+
+	float angle_start = start_angle + (other->GetHeading() * 360.0f / 256.0f);
+	float angle_end = stop_angle + (other->GetHeading() * 360.0f / 256.0f);
+
+	while(angle_start > 360.0f)
+		angle_start -= 360.0f;
+
+	while(angle_end > 360.0f)
+		angle_end -= 360.0f;
+
+	float heading_to_target = (other->CalculateHeadingToTarget(GetX(), GetY()) * 360.0f / 256.0f);
+
+	while(heading_to_target < 0.0f)
+		heading_to_target += 360.0f;
+
+	while(heading_to_target > 360.0f)
+		heading_to_target -= 360.0f;
+
+	if(angle_start > angle_end) {
+		if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||	(heading_to_target >= 0.0f && heading_to_target <= angle_end))
+			return true;
+	}
+	else if(heading_to_target >= angle_start && heading_to_target <= angle_end)
+		return true;
+
+	return false;
+}

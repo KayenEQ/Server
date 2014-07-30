@@ -1895,12 +1895,28 @@ bool NPC::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, bool
 				hate += opts->hate_flat;
 			}
 
-			if(!other->CheckHitChance(this, skillinuse, Hand)) {
+			//C!Kayen - If momentum built chance to hit 100% next attack
+			int16 hitchancebonus = 0;
+			bool HasMomentum = false;
+
+			if (GetMomentum()) {
+				hitchancebonus = 10000;
+			    HasMomentum = true;
+			}
+
+			if(!other->CheckHitChance(this, skillinuse, Hand, hitchancebonus)) {
 				damage = 0;	//miss
 			} else {	//hit, check for damage avoidance
-				other->AvoidDamage(this, damage);
+				
+				if (!HasMomentum)
+					other->AvoidDamage(this, damage);
+
 				other->MeleeMitigation(this, damage, min_dmg+eleBane, opts);
 				if(damage > 0) {
+					
+					if (HasMomentum)//C!Kayen
+						MomentumDamage(other, damage);
+
 					CommonOutgoingHitSuccess(other, damage, skillinuse);
 				}
 				mlog(COMBAT__HITS, "Generating hate %d towards %s", hate, GetName());
