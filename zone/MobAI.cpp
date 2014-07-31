@@ -1375,7 +1375,7 @@ void Mob::AI_Process() {
 					if(!IsRooted()) {
 						mlog(AI__WAYPOINTS, "Pursuing %s while engaged.", target->GetName());
 						
-						Shout("rs %.2f M %.4f MS %.4f", runspeed, GetMomentum(), GetMomentumSpeed());
+						//Shout("rs %.2f M %.4f MS %.4f", runspeed, GetMomentum(), GetMomentumSpeed());
 						if (GetMomentum() < runspeed*1.0f) //C!Kayen (Momentum can not be more than 2x run speed. (change by adjusting multiplier)
 							SetMomentum(GetMomentum() + GetMomentumSpeed());
 

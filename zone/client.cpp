@@ -7939,7 +7939,7 @@ void Client::TryItemTimer(int slot)
 		}
 	}
 }
-/*
+
 void Client::RefundAA() {
 	int cur = 0;
 	bool refunded = false;
@@ -7966,42 +7966,6 @@ void Client::RefundAA() {
 
 	if(refunded) {
 		Save();
-		Kick();
-	}
-}
-*/
-
-void Client::RefundAA() {
-	int cur = 0;
-	bool refunded = false;
-
-	for(int x = 0; x < aaHighestID; x++) {
-		cur = GetAA(x);
-		if(cur > 0){
-			SendAA_Struct* curaa = zone->FindAA(x);
-			//C!Kayen - Only refund CLASS AA
-			if (curaa->sof_type == 3) {
-				if(cur){
-					SetAA(x, 0);
-					for(int j = 0; j < cur; j++) {
-						m_pp.aapoints += curaa->cost + (curaa->cost_inc * j);
-						refunded = true;
-					}
-				}
-				else
-				{
-					m_pp.aapoints += cur;
-					SetAA(x, 0);
-					refunded = true;
-				}
-			}
-		}
-	}
-
-	if(refunded) {
-		Save();
-		//SpellFinished(1566, this);
-		//SpellFinished(531, this);
 		Kick();
 	}
 }

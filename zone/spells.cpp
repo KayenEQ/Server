@@ -2041,7 +2041,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		case DirectionalAE:
 		{
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
-			int maxtargets = spells[spell_id].maxtargets;
+			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+
 
 			bool taget_exclude_npc = false; //False by default!
 			
@@ -2114,41 +2115,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 			//C!Kayen - If maxtarget is set it will hit each of the closet targets up to max amount.
 			//Ie. If you set to 1, it will only hit the closest target in the beam.
-			if (maxtargets){
-				uint32 CurrentDistance, ClosestDistance = 4294967295u;
-				Mob *ClosestMob, *erase_value = nullptr;
-				
-				for (int i = 0; i < maxtargets; i++) {
-
-					ClosestMob = nullptr;
-					erase_value = nullptr;
-					CurrentDistance = 0; 
-					ClosestDistance = 4294967295u;
-					iter2 = targets_in_cone.begin();
-					
-					while(iter2 != targets_in_cone.end())
-					{
-						if (*iter2) {
-							
-							CurrentDistance = (((*iter2)->GetY() - GetY()) * ((*iter2)->GetY() - GetY())) +
-										(((*iter2)->GetX() - GetX()) * ((*iter2)->GetX() - GetX()));
-							
-							if (CurrentDistance < ClosestDistance) {
-								ClosestDistance = CurrentDistance;
-								ClosestMob = (*iter2);
-							}
-						}
-					
-						++iter2;
-					}
-
-					if (ClosestMob) {
-						targets_in_cone.remove(ClosestMob);
-						SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
-					}
-				}
-
-			}
+			if (maxtargets)
+				CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cone);
 
 			break;
 		}
@@ -4745,6 +4713,7 @@ void NPC::Stun(int duration) {
 	Mob::Stun(duration);
 	SetRunAnimSpeed(0);
 	SendPosition();
+	SetMomentum(0); //C!Kayen
 }
 
 void NPC::UnStun() {
@@ -4761,6 +4730,7 @@ void Mob::Mesmerize()
 		InterruptSpell();
 
 	SendPosition();
+	SetMomentum(0); //C!Kayen
 /* this stuns the client for max time, with no way to break it
 	if (this->IsClient()){
 		EQApplicationPacket* outapp = new EQApplicationPacket(OP_Stun, sizeof(Stun_Struct));

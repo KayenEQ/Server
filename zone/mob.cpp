@@ -5231,7 +5231,7 @@ void Mob::MomentumDamage(Mob* defender, int32 &damage){
 	
 	damage += static_cast<int>(damage*(momentum_mod)*(size_mod)/100);
 	
-	if (GetMomentum() > GetMomentumSpeed() * 100) {
+	if (GetMomentum() > GetMomentumSpeed() * (100/2)) {
 		entity_list.MessageClose(this, true, 200, MT_NPCFlurry, "%s slams into %s !", GetCleanName(), defender->GetCleanName());
 		defender->Stun(1000);
 	}
@@ -5279,4 +5279,202 @@ bool Mob::InAngleMob(Mob *other, float start_angle, float stop_angle) const
 		return true;
 
 	return false;
+}
+
+void Client::UnscribeSpellByGroup(uint16 spellid) {
+	
+	int spellgroup = spells[spellid].spellgroup;
+
+	if (!spellgroup)
+		return;
+
+	for(int i = 0; i < MAX_PP_SPELLBOOK; i++) {
+		if(IsValidSpell(m_pp.spell_book[i])){
+			if (spells[m_pp.spell_book[i]].spellgroup == spellgroup){
+				
+				UnscribeSpell(i, true);
+
+				for(int d = 0; d < MAX_PP_MEMSPELL; d++){
+					if(IsValidSpell(m_pp.mem_spells[d]) && (spells[m_pp.mem_spells[d]].spellgroup == spellgroup))
+						UnmemSpell(d, true);
+				}
+			}
+		}
+	}
+}
+
+void Client::UnscribeDiscByGroup(uint16 spellid) {
+
+	int spellgroup = spells[spellid].spellgroup;
+
+	if (!spellgroup)
+		return;
+
+	for(int i = 0; i < MAX_PP_DISCIPLINES; i++)
+	{
+		if(IsValidSpell(m_pp.disciplines.values[i])){
+			if (spells[m_pp.disciplines.values[i]].spellgroup == spellgroup) {
+				UntrainDisc(i, true);
+			}
+		}
+	}
+}
+
+bool Client::TrainDisciplineBySpellid(uint16 spell_id) {
+
+	int myclass = GetClass();
+
+	if(!IsValidSpell(spell_id)) 
+		return(false);
+	
+	const SPDat_Spell_Struct &spell = spells[spell_id];
+	uint8 level_to_use = spell.classes[myclass - 1];
+	if(level_to_use == 255) {
+		Message(13, "Your class cannot learn from this discipline.");
+		return(false);
+	}
+
+	if(level_to_use > GetLevel()) {
+		Message(13, "You must be at least level %d to learn this discipline.", level_to_use);
+		return(false);
+	}
+
+	//add it to PP.
+	int r;
+	for(r = 0; r < MAX_PP_DISCIPLINES; r++) {
+		if(m_pp.disciplines.values[r] == spell_id) {
+			Message(13, "You already know this discipline.");
+			return(false);
+		} else if(m_pp.disciplines.values[r] == 0) {
+			m_pp.disciplines.values[r] = spell_id;
+			SendDisciplineUpdate();
+			Message(0, "You have learned a new discipline!");
+			return(true);
+		}
+	}
+
+	Message(13, "You have learned too many disciplines and can learn no more.");
+	return(false);
+}
+
+void Client::RefundAAType(uint32 sof_type) {
+	int cur = 0;
+	bool refunded = false;
+
+	Message(13, "Refund Type %i.", sof_type);
+
+	for(int x = 0; x < aaHighestID; x++) {
+		cur = GetAA(x);
+
+		if(cur > 0){
+			SendAA_Struct* curaa = zone->FindAA(x);
+			if(cur){
+				if (!sof_type || curaa->sof_type == sof_type){
+					for(int j = 0; j < cur; j++) {
+						AddAlternateCurrencyValue(1,(curaa->cost + (curaa->cost_inc * j)));
+						m_pp.aapoints = 20; //Need to have real AA or client won't let you buy.
+						Message(13, "Refund AA %s amount %i.", curaa->name, (curaa->cost + (curaa->cost_inc * j)));
+						refunded = true;
+					}
+				}
+			}
+			else //C!Kayen - Not really sure why this code is here but will leave.
+			{
+				if (!sof_type || curaa->sof_type == sof_type){
+					AddAlternateCurrencyValue(1,cur);
+					m_pp.aapoints = 20; //Need to have real AA or client won't let you buy.
+					refunded = true;
+				}
+			}
+		}
+	}
+
+	if(refunded) {
+
+		//Need to reset player profile after or it will bug.
+		uint32 i;
+		for(i=0;i<MAX_PP_AA_ARRAY;i++){
+
+			if (aa[i]->AA) {
+				Message(13, "Attempt: Reset AA in PP %i value %i.", aa[i]->AA, aa[i]->value);
+				SendAA_Struct* curaa2 = zone->FindAA(aa[i]->AA - (aa[i]->value - 1));
+
+				if (curaa2->sof_type == sof_type){
+					aa[i]->AA = 0;
+					aa[i]->value = 0;
+					Message(13, "Reset AA in PP %s.", curaa2->name);
+				}
+			}
+		}
+		std::map<uint32,uint8>::iterator itr;
+		for(itr=aa_points.begin();itr!=aa_points.end();++itr){
+			
+			Message(13, "Attempt: Reset aa_point %i %i.", aa_points[itr->first], itr->first);
+			if (aa_points[itr->first]){
+			
+			SendAA_Struct* curaa3 = zone->FindAA(itr->first);
+
+				if (curaa3->sof_type == sof_type){
+				aa_points[itr->first] = 0;
+				Message(13, "Reset aa_point %s.", curaa3->name);
+				}
+			}
+		}
+
+		Save();
+		SpellFinished(1566, this); //Egress instead of Kick() to reset
+		//Kick();
+	}
+
+	Message(13, "No AA in %i to refund.", sof_type);
+}
+
+uint32 Client::GetAltCurrencyItemid(uint32 alt_currency_id) {
+	
+	std::list<AltCurrencyDefinition_Struct>::iterator iter = zone->AlternateCurrencies.begin();
+	while(iter != zone->AlternateCurrencies.end()) {
+
+	
+		if ((*iter).id == alt_currency_id)
+			return (*iter).item_id;
+
+		++iter;
+	}
+	/*
+	
+	if(GetClientVersion() >= EQClientSoF) {
+		uint32 count = zone->AlternateCurrencies.size();
+		if(count == 0) {
+			return;
+		}
+
+		EQApplicationPacket *outapp = new EQApplicationPacket(OP_AltCurrency,
+			sizeof(AltCurrencyPopulate_Struct) + sizeof(AltCurrencyPopulateEntry_Struct) * count);
+		AltCurrencyPopulate_Struct *altc = (AltCurrencyPopulate_Struct*)outapp->pBuffer;
+		altc->opcode = ALT_CURRENCY_OP_POPULATE;
+		altc->count = count;
+
+		uint32 i = 0;
+		std::list<AltCurrencyDefinition_Struct>::iterator iter = zone->AlternateCurrencies.begin();
+		while(iter != zone->AlternateCurrencies.end()) {
+			const Item_Struct* item = database.GetItem((*iter).item_id);
+			altc->entries[i].currency_number = (*iter).id;
+			altc->entries[i].unknown00 = 1;
+			altc->entries[i].currency_number2 = (*iter).id;
+			altc->entries[i].item_id = (*iter).item_id;
+			if(item) {
+				altc->entries[i].item_icon = item->Icon;
+				altc->entries[i].stack_size = item->StackSize;
+			} else {
+				altc->entries[i].item_icon = 1000;
+				altc->entries[i].stack_size = 1000;
+			}
+			i++;
+			++iter;
+		}
+
+		FastQueuePacket(&outapp);
+	}
+	*/
+	return 0;
 }

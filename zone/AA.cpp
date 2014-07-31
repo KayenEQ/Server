@@ -1015,10 +1015,12 @@ void Client::BuyAA(AA_Action* action)
 	if(aa2->special_category == 8 && aa2->cost == 0)
 		return; // Not purchasable racial AAs(set a cost to make them purchasable)
 
+	/*
 	if (aa2->sof_type != 3){
 		Message(13,"You may only purchase class specific AA.");
 		return; //C!KAYEN - Only allow class AA to be purchased
 	}
+	*/
 	
 	uint32 cur_level = GetAA(aa2->id);
 	if((aa2->id + cur_level) != action->ability) { //got invalid AA
@@ -1044,38 +1046,93 @@ void Client::BuyAA(AA_Action* action)
 	else
 		real_cost = aa2->cost + (aa2->cost_inc * cur_level);
 
-	if(m_pp.aapoints >= real_cost && cur_level < aa2->max_level) {
-		SetAA(aa2->id, cur_level+1);
+	uint32 alt_currency_type = 0;
 
-		mlog(AA__MESSAGE, "Set AA %d to level %d", aa2->id, cur_level+1);
-
-		m_pp.aapoints -= real_cost;
-
-		Save();
-		if ((RuleB(AA, Stacking) && (GetClientVersionBit() >= 4) && (aa2->hotkey_sid == 4294967295u))
-			&& ((aa2->max_level == (cur_level+1)) && aa2->sof_next_id)){
-			SendAA(aa2->id);
-			SendAA(aa2->sof_next_id);
-		}
-		else
-			SendAA(aa2->id);
-
-		SendAATable();
-
-		//we are building these messages ourself instead of using the stringID to work around patch discrepencies
-		//these are AA_GAIN_ABILITY	(410) & AA_IMPROVE (411), respectively, in both Titanium & SoF. not sure about 6.2
-		if(cur_level<1)
-			Message(15,"You have gained the ability \"%s\" at a cost of %d ability %s.", aa2->name, real_cost, (real_cost>1)?"points":"point");
-		else
-			Message(15,"You have improved %s %d at a cost of %d ability %s.", aa2->name, cur_level+1, real_cost, (real_cost>1)?"points":"point");
-
-
-		SendAAStats();
-
-		CalcBonuses();
-		if(title_manager.IsNewAATitleAvailable(m_pp.aapoints_spent, GetBaseClass()))
-			NotifyNewTitlesAvailable();
+	//C!Kayen - Subject to change. Set which AA Type will use which alt currency
+	switch(aa2->sof_type)
+	{
+		case 1: //General
+			alt_currency_type = 3;
+			break;
+		case 2: //Archetype
+			alt_currency_type = 2;
+			break;
+		case 3: //Class
+			alt_currency_type = 1;
+			break;
+		case 4: //Special
+			alt_currency_type = 4;
+			break;
 	}
+
+	Message(13,"ALT currenct type %i Amt %i Sof Type %i.",alt_currency_type, GetAlternateCurrencyValue(alt_currency_type), aa2->sof_type);
+	//if(m_pp.aapoints >= real_cost && cur_level < aa2->max_level) { //C!KAYEN - USe Alt currency test
+	if(alt_currency_type) {
+		
+		if (GetAlternateCurrencyValue(alt_currency_type) >= real_cost && cur_level < aa2->max_level) {
+			SetAA(aa2->id, cur_level+1);
+
+			mlog(AA__MESSAGE, "Set AA %d to level %d", aa2->id, cur_level+1);
+
+			//m_pp.aapoints -= real_cost;
+			SetAlternateCurrencyValue(1, (GetAlternateCurrencyValue(alt_currency_type) - real_cost) );  //C!KAYEN - Use Alt currency
+
+			Save();
+			if ((RuleB(AA, Stacking) && (GetClientVersionBit() >= 4) && (aa2->hotkey_sid == 4294967295u))
+				&& ((aa2->max_level == (cur_level+1)) && aa2->sof_next_id)){
+				SendAA(aa2->id);
+				SendAA(aa2->sof_next_id);
+			}
+			else
+				SendAA(aa2->id);
+
+			SendAATable();
+
+			//we are building these messages ourself instead of using the stringID to work around patch discrepencies
+			//these are AA_GAIN_ABILITY	(410) & AA_IMPROVE (411), respectively, in both Titanium & SoF. not sure about 6.2
+			if(cur_level<1)
+				Message(15,"You have gained the ability \"%s\" at a cost of %d ability %s.", aa2->name, real_cost, (real_cost>1)?"points":"point");
+			else
+				Message(15,"You have improved %s %d at a cost of %d ability %s.", aa2->name, cur_level+1, real_cost, (real_cost>1)?"points":"point");
+
+
+			SendAAStats();
+
+			CalcBonuses();
+			if(title_manager.IsNewAATitleAvailable(m_pp.aapoints_spent, GetBaseClass()))
+				NotifyNewTitlesAvailable();
+
+			//C!Kayen - Remove all spells in same spell group and scribe the new spell / disc.
+			Message(15,"1 TEST MSG Scribe spell %i", aa2->spellid);
+			if (aa2->spellid && aa2->spell_type == 0){
+				Message(15,"2 TEST MSG Scribe spell %i", aa2->spellid);
+				if (IsValidSpell(aa2->spellid)) {
+				
+					if (spells[aa2->spellid].IsDisciplineBuff){
+						UnscribeDiscByGroup(aa2->spellid);
+						TrainDisciplineBySpellid(aa2->spellid);
+					}
+
+					else{
+						UnscribeSpellByGroup(aa2->spellid);
+						ScribeSpell(aa2->spellid,GetNextAvailableSpellBookSlot(0), true);
+					}
+				}
+			}
+		}
+		else if (GetAlternateCurrencyValue(alt_currency_type) < real_cost){
+			const Item_Struct* item = database.GetItem((GetAltCurrencyItemid(alt_currency_type)));
+
+			if (item)
+				Message(13,"You do not have enough [%s] points to purchase this ability.", item->Name);
+			else
+				Message(13,"No alternate currency item id found.");
+		}
+	}
+	
+	else 
+		Message(13,"No alternate currency type found.");
+
 }
 
 void Client::SendAATimer(uint32 ability, uint32 begin, uint32 end) {

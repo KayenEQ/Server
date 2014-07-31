@@ -413,7 +413,7 @@ public:
 	//Movement
 	void Warp( float x, float y, float z );
 	inline bool IsMoving() const { return moving; }
-	virtual void SetMoving(bool move) { moving = move; delta_x = 0; delta_y = 0; delta_z = 0; delta_heading = 0; }
+	virtual void SetMoving(bool move, bool in_combat_range = false); //C!Kayen
 	virtual void GoToBind(uint8 bindnum = 0) { }
 	virtual void Gate();
 	float GetWalkspeed() const { return(_GetMovementSpeed(-47)); }
@@ -893,6 +893,15 @@ public:
 	void	mod_spell_cast(uint16 spell_id, Mob* spelltar, bool reflect, bool use_resist_adjust, int16 resist_adjust, bool isproc);
 	bool    mod_will_aggro(Mob *attacker, Mob *on);
 
+	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
+	inline float GetMomentum() const { return(momentum); }
+	void SetMomentum(float momentum_value) { momentum = momentum_value; }
+	inline float GetMomentumSpeed() const { return(0.005f); }
+	void MomentumDamage(Mob *defender, int32 &damage);
+	bool InAngleMob(Mob *other = nullptr, float start_angle = 0.0f, float stop_angle = 0.0f) const;
+	inline bool LeftMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 56.0f, 124.0f); }
+	inline bool RightMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 236.0f, 304.0f); }
+
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);
 	static uint16 GetProcID(uint16 spell_id, uint8 effect_index);
@@ -1228,6 +1237,9 @@ protected:
 	SpecialAbility SpecialAbilities[MAX_SPECIAL_ATTACK];
 	bool bEnraged;
 	bool destructibleobject;
+
+	//C!Kayen
+	float momentum;
 
 private:
 	void _StopSong(); //this is not what you think it is

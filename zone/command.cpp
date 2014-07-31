@@ -452,7 +452,8 @@ int command_init(void) {
 		command_add("merchant_open_shop", "Opens a merchants shop", 100, command_merchantopenshop) ||
 		command_add("open_shop", nullptr, 100, command_merchantopenshop) ||
 		command_add("merchant_close_shop", "Closes a merchant shop", 100, command_merchantcloseshop) ||
-		command_add("close_shop", nullptr, 100, command_merchantcloseshop)
+		command_add("close_shop", nullptr, 100, command_merchantcloseshop) ||
+		command_add("refundaatype", "- Refunds your target's AA points, will disconnect them in the process as well.", 100, command_refundaatype) 
 		)
 	{
 		command_deinit();
@@ -11543,4 +11544,32 @@ void command_merchantcloseshop(Client *c, const Seperator *sep)
 	}
 
 	merchant->CastToNPC()->MerchantCloseShop();
+}
+
+//C!Kayen - Custom Commands
+void command_refundaatype(Client *c, const Seperator *sep){
+	Client* refundee = nullptr;
+	if(c) {
+
+		c->Message(0, "TEST REFUND TYPE");
+
+		if(c->GetTarget()){
+			if(c->GetTarget()->IsClient())
+				refundee = c->GetTarget()->CastToClient();
+			else
+				c->Message(0, "Your target must be a client.");
+		}
+		else{
+			c->Message(0, "You must have a target selected.");
+		}
+
+		if(refundee) {
+			int num = atoi(sep->arg[1]);
+
+			if (num)
+				refundee->RefundAAType(num);
+			else
+				c->Message(0, "Invalid number, between 0 and 4 [0=Reset ALL]");
+		}
+	}
 }

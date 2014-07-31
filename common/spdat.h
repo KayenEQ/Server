@@ -697,7 +697,7 @@ struct SPDat_Spell_Struct
 /* 164 */	// for most spells this appears to mimic ResistDiff
 /* 166 */	int EndurCost;
 /* 167 */	int8 EndurTimerIndex;
-/* 168 */	//int IsDisciplineBuff; //Will goto the combat window when cast
+/* 168 */	bool IsDisciplineBuff; //Will goto the combat window when cast
 /* 169 */
 /* 173 */	int HateAdded;
 /* 174 */	int EndurUpkeep;
