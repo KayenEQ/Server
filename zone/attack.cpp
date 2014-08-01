@@ -3532,6 +3532,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 			mlog(COMBAT__HITS, "Melee Damage reduced to %d", damage);
 			ReduceAllDamage(damage);
 			TryTriggerThreshHold(damage, SE_TriggerMeleeThreshold, attacker);
+			SetWpnSkillDmgBonus(skill_used, damage);
 		} else {
 			int32 origdmg = damage;
 			damage = AffectMagicalDamage(damage, spell_id, iBuffTic, attacker);
@@ -3545,6 +3546,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 			}
 			ReduceAllDamage(damage);
 			TryTriggerThreshHold(damage, SE_TriggerSpellThreshold, attacker);
+			SetSpellResistTypeDmgBonus(spell_id, damage); //C!Kayen
 		}
 
 		if (skill_used)

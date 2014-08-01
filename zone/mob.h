@@ -893,6 +893,7 @@ public:
 	void	mod_spell_cast(uint16 spell_id, Mob* spelltar, bool reflect, bool use_resist_adjust, int16 resist_adjust, bool isproc);
 	bool    mod_will_aggro(Mob *attacker, Mob *on);
 
+	//C!Kayen - Custom Mob Functions
 	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
 	inline float GetMomentum() const { return(momentum); }
 	void SetMomentum(float momentum_value) { momentum = momentum_value; }
@@ -901,6 +902,12 @@ public:
 	bool InAngleMob(Mob *other = nullptr, float start_angle = 0.0f, float stop_angle = 0.0f) const;
 	inline bool LeftMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 56.0f, 124.0f); }
 	inline bool RightMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 236.0f, 304.0f); }
+	inline bool FlankMob(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
+		{ return (!other || other == this) ? true : (MobAngle(other, ourx, oury) > 56.0f && MobAngle(other, ourx, oury) > 124.0f); }
+	void SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage);
+	int GetWpnSkillDmgBonusAmt();
+	void SetSpellResistTypeDmgBonus(uint16 spell_id, int32 damage);
+	int GetSpellResistTypeDmgBonus();
 
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);
@@ -1240,6 +1247,8 @@ protected:
 
 	//C!Kayen
 	float momentum;
+	int32 WpnSkillDmgBonus[HIGHEST_SKILL+2];
+	int32 SpellResistTypeDmgBonus[HIGHEST_RESIST+2];
 
 private:
 	void _StopSong(); //this is not what you think it is

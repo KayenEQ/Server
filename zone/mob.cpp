@@ -386,6 +386,8 @@ Mob::Mob(const char* in_name,
 	
 	//C!Kayen
 	momentum = 0; 
+	for (int i = 0; i < HIGHEST_SKILL+2; i++) { WpnSkillDmgBonus[i] = 0; }
+	for (int i = 0; i < HIGHEST_RESIST+2; i++) { SpellResistTypeDmgBonus[i] = 0; }
 }
 
 Mob::~Mob()
@@ -3380,7 +3382,7 @@ void Mob::TryTwincast(Mob *caster, Mob *target, uint32 spell_id)
 }
 
 int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
-{
+{Shout("TEST");
 	if (!IsValidSpell(spell_id))
 		return 0;
 
@@ -3434,6 +3436,9 @@ int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
 		if (tmp_buffslot >= 0)
 			CheckNumHitsRemaining(NUMHIT_MatchingSpells, tmp_buffslot);
 	}
+	Shout("TEST TEST TEST %i", value);
+	value += GetSpellResistTypeDmgBonus(); //C!Kayen
+	Shout("TEST TEST TEST %i", value);
 	return value;
 }
 
@@ -3452,6 +3457,7 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 		skilldmg_mod += SkillDmgTaken_Mod[skill_used] + SkillDmgTaken_Mod[HIGHEST_SKILL+1];
 
 	skilldmg_mod += MeleeVuln;
+	skilldmg_mod += GetWpnSkillDmgBonusAmt(); //C!Kayen
 
 	if(skilldmg_mod < -100)
 		skilldmg_mod = -100;
@@ -5225,8 +5231,8 @@ void Mob::MomentumDamage(Mob* defender, int32 &damage){
 	float momentum_mod = GetMomentum()*10;
 	float size_mod = defender->GetSize();
 
-	Shout("Sod [%.2f] Mmod [%.2f] Tmod [%.2f]", size_mod, momentum_mod, size_mod * momentum_mod);
-	Shout("Damage PRE %i ", damage);
+	//Shout("Sod [%.2f] Mmod [%.2f] Tmod [%.2f]", size_mod, momentum_mod, size_mod * momentum_mod);
+	//Shout("Damage PRE %i ", damage);
 
 	
 	damage += static_cast<int>(damage*(momentum_mod)*(size_mod)/100);
@@ -5236,7 +5242,7 @@ void Mob::MomentumDamage(Mob* defender, int32 &damage){
 		defender->Stun(1000);
 	}
 	SetMomentum(0);
-	Shout("Damage POST %i ", damage);
+	//Shout("Damage POST %i ", damage);
 
 }
 
@@ -5440,41 +5446,111 @@ uint32 Client::GetAltCurrencyItemid(uint32 alt_currency_id) {
 
 		++iter;
 	}
-	/*
-	
-	if(GetClientVersion() >= EQClientSoF) {
-		uint32 count = zone->AlternateCurrencies.size();
-		if(count == 0) {
-			return;
-		}
-
-		EQApplicationPacket *outapp = new EQApplicationPacket(OP_AltCurrency,
-			sizeof(AltCurrencyPopulate_Struct) + sizeof(AltCurrencyPopulateEntry_Struct) * count);
-		AltCurrencyPopulate_Struct *altc = (AltCurrencyPopulate_Struct*)outapp->pBuffer;
-		altc->opcode = ALT_CURRENCY_OP_POPULATE;
-		altc->count = count;
-
-		uint32 i = 0;
-		std::list<AltCurrencyDefinition_Struct>::iterator iter = zone->AlternateCurrencies.begin();
-		while(iter != zone->AlternateCurrencies.end()) {
-			const Item_Struct* item = database.GetItem((*iter).item_id);
-			altc->entries[i].currency_number = (*iter).id;
-			altc->entries[i].unknown00 = 1;
-			altc->entries[i].currency_number2 = (*iter).id;
-			altc->entries[i].item_id = (*iter).item_id;
-			if(item) {
-				altc->entries[i].item_icon = item->Icon;
-				altc->entries[i].stack_size = item->StackSize;
-			} else {
-				altc->entries[i].item_icon = 1000;
-				altc->entries[i].stack_size = 1000;
-			}
-			i++;
-			++iter;
-		}
-
-		FastQueuePacket(&outapp);
-	}
-	*/
 	return 0;
+}
+
+void Mob::SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage)
+{
+	if (IsNPC()) {
+
+		int32 DmgAmt = GetMaxHP() * 5 / 100;
+
+		if (WpnSkillDmgBonus[skill_used] < (GetMaxHP() * 3 / 100)) {
+			WpnSkillDmgBonus[skill_used] += damage;
+			
+			if (WpnSkillDmgBonus[skill_used] >= DmgAmt){
+				WpnSkillDmgBonus[skill_used] = DmgAmt;
+
+				int pct = 24;
+				//NEED TO FINISH MESSAGES
+				if (Skill1HBlunt)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s defenses falter from overwhelming 'blade strikes' %s ! (%i / %i)", GetCleanName(), "flames", GetWpnSkillDmgBonusAmt(), pct);
+				else if (Skill2HBlunt)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "ice",GetWpnSkillDmgBonusAmt(), pct);
+				else if (Skill1HSlashing)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "magic",GetWpnSkillDmgBonusAmt(), pct);
+				else if (Skill2HSlashing)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "poison",GetWpnSkillDmgBonusAmt(), pct);
+				else if (Skill1HPiercing)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "disease",GetWpnSkillDmgBonusAmt(), pct);
+				else if (Skill1HPiercing)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "disease",GetWpnSkillDmgBonusAmt(), pct);
+				else if (SkillArchery)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "disease",GetWpnSkillDmgBonusAmt(), pct);
+				else if (SkillHandtoHand)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "disease",GetWpnSkillDmgBonusAmt(), pct);
+				else if (SkillThrowing)
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "disease",GetWpnSkillDmgBonusAmt(), pct);
+			}
+		}
+	}
+}
+
+int Mob::GetWpnSkillDmgBonusAmt()
+{
+	int _WpnSkillDmgBonus = 0;
+	if (IsNPC()) {
+		
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[Skill1HBlunt])/GetMaxHP();
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[Skill2HBlunt])/GetMaxHP();
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[Skill1HSlashing])/GetMaxHP();
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[Skill2HSlashing])/GetMaxHP();
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[Skill1HPiercing])/GetMaxHP();
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[SkillHandtoHand])/GetMaxHP();
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[SkillArchery])/GetMaxHP();
+		_WpnSkillDmgBonus += (100*WpnSkillDmgBonus[SkillThrowing])/GetMaxHP();
+	}
+
+	if (_WpnSkillDmgBonus == 24)
+		_WpnSkillDmgBonus += 6; //Bonus if ALL skills are met.
+
+	return _WpnSkillDmgBonus;
+}
+
+void Mob::SetSpellResistTypeDmgBonus(uint16 spell_id, int32 damage)
+{
+	if (IsNPC()) {
+
+		int32 resist_type = GetSpellResistType(spell_id);
+		int32 DmgAmt = GetMaxHP() * 5 / 100;
+		
+		if (SpellResistTypeDmgBonus[resist_type] < DmgAmt){
+			SpellResistTypeDmgBonus[resist_type] += damage;
+
+			if (SpellResistTypeDmgBonus[resist_type] >= DmgAmt){
+				SpellResistTypeDmgBonus[resist_type] = DmgAmt;
+
+				int pct = 25;
+				//NEED TO FINISH MESSAGES
+				if (RESIST_FIRE)
+					entity_list.MessageClose(this, true, 200, MT_SpellCrits, "%s spell resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "flames", GetSpellResistTypeDmgBonus(), pct);
+				else if (RESIST_COLD)
+					entity_list.MessageClose(this, true, 200, MT_SpellCrits, "%s spell resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "ice",GetSpellResistTypeDmgBonus(), pct);
+				else if (RESIST_MAGIC)
+					entity_list.MessageClose(this, true, 200, MT_SpellCrits, "%s spell resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "magic",GetSpellResistTypeDmgBonus(), pct);
+				else if (RESIST_POISON)
+					entity_list.MessageClose(this, true, 200, MT_SpellCrits, "%s spell resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "poison",GetSpellResistTypeDmgBonus(), pct);
+				else if (RESIST_DISEASE)
+					entity_list.MessageClose(this, true, 200, MT_SpellCrits, "%s spell resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "disease",GetSpellResistTypeDmgBonus(), pct);
+			}
+		}
+	}
+}
+
+int Mob::GetSpellResistTypeDmgBonus()
+{
+	int _SpellResistTypeDmgBonus = 0;
+	if (IsNPC()) {
+		
+		_SpellResistTypeDmgBonus += (100*SpellResistTypeDmgBonus[RESIST_MAGIC])/GetMaxHP();
+		_SpellResistTypeDmgBonus += (100*SpellResistTypeDmgBonus[RESIST_FIRE])/GetMaxHP();
+		_SpellResistTypeDmgBonus += (100*SpellResistTypeDmgBonus[RESIST_COLD])/GetMaxHP();
+		_SpellResistTypeDmgBonus += (100*SpellResistTypeDmgBonus[RESIST_DISEASE])/GetMaxHP();
+		_SpellResistTypeDmgBonus += (100*SpellResistTypeDmgBonus[RESIST_POISON])/GetMaxHP();
+	}
+
+	if (_SpellResistTypeDmgBonus == 25)
+		_SpellResistTypeDmgBonus += 5; //Bonus if ALL skills are met.
+
+	return _SpellResistTypeDmgBonus;
 }

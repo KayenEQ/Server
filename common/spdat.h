@@ -610,6 +610,9 @@ typedef enum {
 #define SE_FactionModPct				458 // implemented  Modifies faction gains and losses by percent.
 #define SE_DamageModifier2				459 // implemented - Modifies melee damage by skill type
 
+//C!Kayen - Custom
+#define SE_LearnSpellId					1001 // implemented 
+
 // LAST
 
 

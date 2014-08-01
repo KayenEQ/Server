@@ -1103,20 +1103,24 @@ void Client::BuyAA(AA_Action* action)
 				NotifyNewTitlesAvailable();
 
 			//C!Kayen - Remove all spells in same spell group and scribe the new spell / disc.
-			Message(15,"1 TEST MSG Scribe spell %i", aa2->spellid);
-			if (aa2->spellid && aa2->spell_type == 0){
-				Message(15,"2 TEST MSG Scribe spell %i", aa2->spellid);
-				if (IsValidSpell(aa2->spellid)) {
-				
-					if (spells[aa2->spellid].IsDisciplineBuff){
-						UnscribeDiscByGroup(aa2->spellid);
-						TrainDisciplineBySpellid(aa2->spellid);
-					}
 
-					else{
-						UnscribeSpellByGroup(aa2->spellid);
-						ScribeSpell(aa2->spellid,GetNextAvailableSpellBookSlot(0), true);
-					}
+			uint16 learn_spell_id = 0;
+			int32 new_aa_id = aa2->id + cur_level;
+			int32 aa_effect_id = GetAAEffectid(new_aa_id, 1);
+			
+			if (aa_effect_id == SE_LearnSpellId)
+				learn_spell_id = GetAABase1(new_aa_id,1);
+
+			Message(15,"1 TEST MSG Scribe spell %i [%i %i]", learn_spell_id, new_aa_id, aa_effect_id);
+			if (IsValidSpell(learn_spell_id)) {
+				Message(15,"2 TEST MSG Scribe spell %i", learn_spell_id);
+				if (spells[learn_spell_id].IsDisciplineBuff){
+					UnscribeDiscByGroup(learn_spell_id);
+					TrainDisciplineBySpellid(learn_spell_id);
+				}
+				else{
+					UnscribeSpellByGroup(learn_spell_id);
+					ScribeSpell(learn_spell_id,GetNextAvailableSpellBookSlot(0), true);
 				}
 			}
 		}
