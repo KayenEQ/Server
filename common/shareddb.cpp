@@ -1720,6 +1720,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].descnum = atoi(row[155]);
 			sp[tempid].effectdescnum = atoi(row[157]);
 
+			sp[tempid].npc_no_los = atoi(row[159]) != 0;
 			sp[tempid].reflectable = atoi(row[161]) != 0;
 			sp[tempid].bonushate=atoi(row[162]);
 
@@ -1745,15 +1746,22 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].directional_end = (float)atoi(row[195]);
 			sp[tempid].not_extendable = atoi(row[197]) != 0;
 			sp[tempid].suspendable = atoi(row[200]) != 0;
+			sp[tempid].viral_range = atoi(row[201]);
 			sp[tempid].spellgroup=atoi(row[207]);
+			sp[tempid].rank = atoi(row[208]);
 			sp[tempid].powerful_flag=atoi(row[209]);
 			sp[tempid].CastRestriction = atoi(row[211]);
 			sp[tempid].AllowRest = atoi(row[212]) != 0;
-			sp[tempid].NotOutofCombat = atoi(row[213]) != 0;
-			sp[tempid].NotInCombat = atoi(row[214]) != 0;
-			sp[tempid].aemaxtargets = atoi(row[218]); //C!Kayen
-			sp[tempid].maxtargets = atoi(row[219]); //C!Kayen
+			sp[tempid].InCombat = atoi(row[213]) != 0;
+			sp[tempid].OutofCombat = atoi(row[214]) != 0;
+			sp[tempid].aemaxtargets = atoi(row[218]);
+			sp[tempid].maxtargets = atoi(row[219]);
 			sp[tempid].persistdeath = atoi(row[224]) != 0;
+			sp[tempid].min_dist = atof(row[227]);
+			sp[tempid].min_dist_mod = atof(row[228]);
+			sp[tempid].max_dist = atof(row[229]);
+			sp[tempid].max_dist_mod = atof(row[230]);
+			sp[tempid].min_range = atoi(row[231]);
 			sp[tempid].DamageShieldType = 0;
 		}
 		mysql_free_result(result);

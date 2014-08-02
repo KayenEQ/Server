@@ -908,6 +908,8 @@ public:
 	int GetWpnSkillDmgBonusAmt();
 	void SetSpellResistTypeDmgBonus(uint16 spell_id, int32 damage);
 	int GetSpellResistTypeDmgBonus();
+	void LeapProjectileEffect();
+	void SetLeapEffect(uint16 spell_id);
 
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);
@@ -1249,6 +1251,13 @@ protected:
 	float momentum;
 	int32 WpnSkillDmgBonus[HIGHEST_SKILL+2];
 	int32 SpellResistTypeDmgBonus[HIGHEST_RESIST+2];
+	
+	int leap_increment;
+	uint16 leap_spell_id;
+	float leap_x;
+	float leap_y;
+	float leap_z;
+
 
 private:
 	void _StopSong(); //this is not what you think it is
