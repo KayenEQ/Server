@@ -2071,6 +2071,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				if(IsClient())
 					CastToClient()->FastQueuePacket(&outapp_push);
 
+				//C!Kayen - Foward Leap effect with trigger must have max set.
+				if (spells[spell_id].max[i] == 1)
+					SetLeapEffect(spell_id);
+				
 				break;
 			}
 

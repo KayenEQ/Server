@@ -611,7 +611,8 @@ typedef enum {
 #define SE_DamageModifier2				459 // implemented - Modifies melee damage by skill type
 
 //C!Kayen - Custom
-#define SE_LearnSpellId					1001 // implemented 
+#define SE_LearnSpellId					1001 // implemented
+#define SE_CastOnLeap					1002 // implemented 
 
 // LAST
 

@@ -388,6 +388,9 @@ Mob::Mob(const char* in_name,
 	momentum = 0; 
 	for (int i = 0; i < HIGHEST_SKILL+2; i++) { WpnSkillDmgBonus[i] = 0; }
 	for (int i = 0; i < HIGHEST_RESIST+2; i++) { SpellResistTypeDmgBonus[i] = 0; }
+	leap_increment = 0;
+	leap_spell_id = 0;
+	leap_x = 0;	leap_y = 0;	leap_z = 0;
 }
 
 Mob::~Mob()
@@ -3382,7 +3385,7 @@ void Mob::TryTwincast(Mob *caster, Mob *target, uint32 spell_id)
 }
 
 int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
-{Shout("TEST");
+{
 	if (!IsValidSpell(spell_id))
 		return 0;
 
@@ -3436,9 +3439,8 @@ int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
 		if (tmp_buffslot >= 0)
 			CheckNumHitsRemaining(NUMHIT_MatchingSpells, tmp_buffslot);
 	}
-	Shout("TEST TEST TEST %i", value);
+
 	value += GetSpellResistTypeDmgBonus(); //C!Kayen
-	Shout("TEST TEST TEST %i", value);
 	return value;
 }
 
@@ -5553,4 +5555,46 @@ int Mob::GetSpellResistTypeDmgBonus()
 		_SpellResistTypeDmgBonus += 5; //Bonus if ALL skills are met.
 
 	return _SpellResistTypeDmgBonus;
+}
+
+void Mob::SetLeapEffect(uint16 spell_id){
+	//Use in SE_TossUp (84) to set timer on client MAX value must be set to (1).
+	if(IsClient())
+	{
+		BuffFadeByEffect(SE_Levitate);
+		leap_spell_id = spell_id;
+		leap_x = GetX();
+		leap_y = GetY();
+		leap_z = GetZ();
+		leap_increment = 1;
+	}
+}
+
+void Mob::LeapProjectileEffect()
+{
+	if (leap_increment == 0)
+		return;
+	//Due to my inability to calculate the predicted distance - Hack job for this ability.
+	//Using 8 pushback and 30 pushup results in a distance ~ 56 which takes about 75 increments
+	
+	/*
+	float dist = caster->CalculateDistance(leap_x, leap_y,  leap_z);
+	//if (dist > 48.0f && dist < 66.0f) {
+	*/
+
+	if (leap_increment >= 75) {
+		if (IsValidSpell(leap_spell_id)){
+			for (int i=0; i < EFFECT_COUNT; i++){
+				if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
+					if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i]){
+						SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
+					}
+				}
+			}
+		}
+		leap_increment = 0;
+		return;
+	}
+	leap_increment++;
+	return;
 }
