@@ -182,6 +182,7 @@ Mob::Mob(const char* in_name,
 	has_numhits = false;
 	has_MGB = false;
 	has_ProjectIllusion = false;
+	SpellPowerDistanceMod = 0;
 
 	if(in_aa_title>0)
 		aa_title	= in_aa_title;
@@ -5466,9 +5467,9 @@ void Mob::SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage)
 				int pct = 24;
 				//NEED TO FINISH MESSAGES
 				if (Skill1HBlunt)
-					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s defenses falter from overwhelming 'blade strikes' %s ! (%i / %i)", GetCleanName(), "flames", GetWpnSkillDmgBonusAmt(), pct);
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s defenses weaken from the many successive blade strikes! (%i / %i)", GetCleanName(), GetWpnSkillDmgBonusAmt(), pct);
 				else if (Skill2HBlunt)
-					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "ice",GetWpnSkillDmgBonusAmt(), pct);
+					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s defenses falter under a relentless barrage of blade strikes %s ! (%i / %i)", GetCleanName(), "ice",GetWpnSkillDmgBonusAmt(), pct);
 				else if (Skill1HSlashing)
 					entity_list.MessageClose(this, true, 200, MT_CritMelee, "%s phyisical resilience succumbs to the power of %s ! (%i / %i)", GetCleanName(), "magic",GetWpnSkillDmgBonusAmt(), pct);
 				else if (Skill2HSlashing)

@@ -1915,8 +1915,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			Message_StringID(13, TARGET_OUT_OF_RANGE);
 			return(false);
 		}
-	}
 
+		spell_target->CalcSpellPowerDistanceMod(spell_id, dist2);
+	}
+	
 	//
 	// Switch #2 - execute the spell
 	//
@@ -2089,7 +2091,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
 			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 
-
 			bool taget_exclude_npc = false; //False by default!
 			
 			bool target_client_only = false;
@@ -2123,7 +2124,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				    ++iter;
 					continue;
 				}
-
+				
 				float heading_to_target = (CalculateHeadingToTarget((*iter)->GetX(), (*iter)->GetY()) * 360.0f / 256.0f);
 				while(heading_to_target < 0.0f)
 					heading_to_target += 360.0f;
@@ -2136,7 +2137,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||
 						(heading_to_target >= 0.0f && heading_to_target <= angle_end))
 					{
-						if(CheckLosFN(spell_target)){
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los){
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
 							if (maxtargets)
 								targets_in_cone.push_back(*iter);
 							else
@@ -2148,7 +2150,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				{
 					if(heading_to_target >= angle_start && heading_to_target <= angle_end)
 					{
-						if(CheckLosFN((*iter))) {
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
 							if (maxtargets) 
 								targets_in_cone.push_back(*iter);
 							else

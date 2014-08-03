@@ -702,7 +702,7 @@ struct SPDat_Spell_Struct
 /* 166 */	int EndurCost;
 /* 167 */	int8 EndurTimerIndex;
 /* 168 */	bool IsDisciplineBuff; //Will goto the combat window when cast
-/* 169 - 172*/ //C!Kayen These are zero for ALL spells - Can be repurposed
+/* 169 - 172*/ //These are zero for ALL spells
 /* 173 */	int HateAdded;
 /* 174 */	int EndurUpkeep;
 /* 175 */	int numhitstype; // defines which type of behavior will tick down the numhit counter.
@@ -725,7 +725,7 @@ struct SPDat_Spell_Struct
 /* 197 */	bool not_extendable;
 /* 198- 199 */
 /* 200 */	bool suspendable; // buff is suspended in suspended buff zones
-/* 201 */	int viral_range; //C!Kayen
+/* 201 */	int viral_range; 
 /* 202 */
 /* 203 */	//int songcap; // individual song cap (how live currently does it, not implemented)
 /* 204 - 206 */
@@ -849,6 +849,7 @@ bool IsPersistDeathSpell(uint16 spell_id);
 bool IsSuspendableSpell(uint16 spell_id);
 uint32 GetMorphTrigger(uint32 spell_id);
 bool IsCastonFadeDurationSpell(uint16 spell_id);
+bool IsPowerDistModSpell(uint16 spell_id);
 uint32 GetPartialMeleeRuneReduction(uint32 spell_id);
 uint32 GetPartialMagicRuneReduction(uint32 spell_id);
 uint32 GetPartialMeleeRuneAmount(uint32 spell_id);
