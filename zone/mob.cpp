@@ -5599,3 +5599,50 @@ void Mob::LeapProjectileEffect()
 	leap_increment++;
 	return;
 }
+
+void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
+{
+	if (!attacker) 
+		return;
+	//Base Penalty value is 100, meaning receives no change from base damage.
+
+	if (spellbonuses.PetLifeShare[1]){
+
+		int slot = -1;
+		int32 damage_to_reduce = 0;
+		int32 base_damage = damage;
+
+		if (!GetPet()){
+			BuffFadeByEffect(SE_PetLifeShare); //Fade if no pet and has buff.
+			return;
+		}
+
+		slot = spellbonuses.PetLifeShare[0];
+		if(slot >= 0)
+		{
+			int damage_to_reduce = damage * spellbonuses.PetLifeShare[1] / 100;
+
+			if(spellbonuses.MitigateMeleeRune[3] && (damage_to_reduce >= buffs[slot].melee_rune)){
+				damage -= buffs[slot].melee_rune;
+				if(!TryFadeEffect(slot))
+					BuffFadeBySlot(slot);
+			}
+			else{
+				if (spellbonuses.MitigateMeleeRune[3])
+					buffs[slot].melee_rune = (buffs[slot].melee_rune - damage_to_reduce);
+				
+				damage -= damage_to_reduce;
+			}
+		
+		
+			int32 damage_to_pet = base_damage - damage_to_reduce;
+
+			if (spellbonuses.PetLifeShare[2]){
+				if (GetPet()){
+					damage_to_pet = (damage_to_pet*spellbonuses.PetLifeShare[2])/100;
+					GetPet()->Damage(attacker, damage, SPELL_UNKNOWN, skill_used, false);
+				}
+			}
+		}
+	}
+}

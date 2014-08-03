@@ -612,7 +612,8 @@ typedef enum {
 
 //C!Kayen - Custom
 #define SE_LearnSpellId					1001 // implemented
-#define SE_CastOnLeap					1002 // implemented 
+#define SE_CastOnLeap					1002 // implemented
+#define SE_PetLifeShare					1003 // implemented - percent penalty to owner's pet.
 
 // LAST
 

@@ -2737,6 +2737,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			//C!Kayen - Custom Spell Efects
+			case SE_PetLifeShare:
+			{
+				buffs[buffslot].melee_rune = spells[spell_id].max[i];
+				break;
+			}
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:

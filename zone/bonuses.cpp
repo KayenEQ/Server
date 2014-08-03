@@ -2974,6 +2974,18 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 					ModVulnerability(base2, effect_value);
 				break;
 			}
+
+			//C!Kayen - Custom Spell/Item Bonuses
+			case SE_PetLifeShare:
+			{
+				if (newbon->PetLifeShare[1] < effect_value){
+					newbon->PetLifeShare[1] = effect_value; //Mitigation
+					newbon->PetLifeShare[0] = buffslot;
+					newbon->PetLifeShare[2] = base2; //Penalty
+					newbon->PetLifeShare[3] = max; //Rune Amt
+				}
+				break;
+			}
 		}
 	}
 }

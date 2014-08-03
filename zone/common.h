@@ -437,6 +437,9 @@ struct StatBonuses {
 	uint8	AssassinateLevel;					// Max Level Assassinate will be effective at.
 	int32	PetMeleeMitigation;					// Add AC to owner's pet.
 	bool	IllusionPersistence;				// Causes illusions not to fade.
+
+	//C!Kayen - Custom Bonuses
+	int16 PetLifeShare[4];						//0= Buff Slot 1=Mitigation Amt 2=Percent Penalty 3=RuneAmt
 };
 
 typedef struct
