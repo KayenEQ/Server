@@ -5587,9 +5587,14 @@ void Mob::LeapProjectileEffect()
 		if (IsValidSpell(leap_spell_id)){
 			for (int i=0; i < EFFECT_COUNT; i++){
 				if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
-					if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i]){
-						SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
+					
+					float dist = CalculateDistance(leap_x, leap_y,  leap_z);
+					if (dist > 40.0f && dist < 75.0f) {
+						if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i])
+							SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
 					}
+					else
+						Message(MT_SpellFailure, "Your leap failed to gather enough momentum.");
 				}
 			}
 		}
@@ -5642,6 +5647,33 @@ void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 					damage_to_pet = (damage_to_pet*spellbonuses.PetLifeShare[2])/100;
 					GetPet()->Damage(attacker, damage, SPELL_UNKNOWN, skill_used, false);
 				}
+			}
+		}
+	}
+}
+
+void Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
+	//'this' = target base = Max Distance limit = Max Modifer (Min dist = 0, Min Mod = 1)
+	if (!IsValidSpell(spell_id))
+		return;
+
+	for (int i = 0; i <= EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_SpellPowerHeightMod){
+
+			if (spells[spell_id].base[i]){
+
+				int distance = static_cast<int>(caster->GetZ()) - static_cast<int>(GetZ());
+				int16 max_distance = spells[spell_id].base[i];
+				int16 max_modifier = spells[spell_id].base2[i]*100;
+
+				if (distance > max_distance)
+					distance = max_distance;
+
+				int mod = 1 + ((distance * (max_modifier/max_distance))/100);
+			
+				if (mod)
+					damage = damage*mod;;
 			}
 		}
 	}

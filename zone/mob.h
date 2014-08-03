@@ -914,6 +914,7 @@ public:
 	void LeapProjectileEffect();
 	void SetLeapEffect(uint16 spell_id);
 	void PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
+	void CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
 
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);

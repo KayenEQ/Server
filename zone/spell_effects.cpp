@@ -186,10 +186,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		buffs[buffslot].numhits = numhit;
 	}
 
-	bool _IsPowerDistModSpell = false;
-	if (IsPowerDistModSpell(spell_id))
-		_IsPowerDistModSpell = true;
-	else
+
+	if (!IsPowerDistModSpell(spell_id))
 		SetSpellPowerDistanceMod(0);
 
 	// iterate through the effects in the spell
@@ -204,8 +202,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		if(spell_id == SPELL_LAY_ON_HANDS && caster && caster->GetAA(aaImprovedLayOnHands))
 			effect_value = GetMaxHP();
 
-		if (_IsPowerDistModSpell)
-			effect_value += (effect_value*(GetSpellPowerDistanceMod()/100)/100);
+		if (GetSpellPowerDistanceMod())
+			effect_value = effect_value*(GetSpellPowerDistanceMod()/100);
 
 #ifdef SPELL_EFFECT_SPAM
 		effect_desc[0] = 0;
@@ -224,6 +222,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				// for offensive spells check if we have a spell rune on
 				int32 dmg = effect_value;
+				CalcSpellPowerHeightMod(dmg, spell_id, caster);
+
 				if(dmg < 0)
 				{
 					if (!PassCastRestriction(false, spells[spell_id].base2[i], true))
