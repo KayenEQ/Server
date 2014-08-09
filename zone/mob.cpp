@@ -392,6 +392,12 @@ Mob::Mob(const char* in_name,
 	leap_increment = 0;
 	leap_spell_id = 0;
 	leap_x = 0;	leap_y = 0;	leap_z = 0;
+	targetring_x = 0; targetring_y; targetring_z = 0;
+
+	projectile_spell_id_ring = 0; 
+	projectile_target_id_ring = 0; 
+	projectile_increment_ring = 0;
+	projectile_hit_ring = 0;
 }
 
 Mob::~Mob()
@@ -5678,3 +5684,506 @@ void Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 		}
 	}
 }
+
+
+
+void Mob::LoSHit(Mob* caster, Mob *target, int dist)
+{
+	if (!caster || !target)
+		return;
+
+	float DEFENDER_X = target->GetX();
+	float DEFENDER_Y = target->GetY();
+	float ATTACKER_X = caster->GetX();
+	float ATTACKER_Y = caster->GetY();
+
+	int LoS_Target = 0;
+	float y_dif = DEFENDER_Y - ATTACKER_Y;
+	float x_dif = DEFENDER_X - ATTACKER_X;
+	//$Lowest_Value = 10000;
+
+	std::list<NPC*> npc_list;
+	entity_list.GetNPCList(npc_list);
+	
+	//#Find unit that is closest to LoS line AND closet to Attacker (Radius 4 from LoS line to hit for arrows)
+	if ((x_dif != 0) && (y_dif != 0)) 
+	{
+		Shout("TRY");
+		float x1 = ATTACKER_X;
+		float y1 = ATTACKER_Y;
+		float x2 = DEFENDER_X;
+		float y2 = DEFENDER_Y;
+
+		//# put it into the form y = mx + b
+		float m = (y2 - y1) / (x2 - x1);
+		float b = (y1 * x2 - y2 * x1) / (x2 - x1);
+ 
+ 		for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
+		{
+ 				
+ 			NPC* npc = *itr;
+
+				float Unit_X = npc->GetX();
+				float Unit_Y = npc->GetY();
+				
+				float y_dif2 = Unit_Y - ATTACKER_Y;
+	
+				//#Only target units in the quadrant of the attacker using y axis
+				if ( ((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0)))
+				{					
+					//# target point is (x0, y0)
+					float x0 = Unit_X;
+					float y0 = Unit_Y;
+					//# shortest distance from line to target point
+					float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
+					//npc->Shout("D: %.2f" ,d);
+					
+					if (d <= 10)
+					{
+						npc->Shout("Found 1" );
+						npc->Shout("D: %.2f" ,d);
+						/*
+						float d2 = caster->CalculateDistance(Unit_X, Unit_Y, target->GetZ()));
+						#$cur->Shout("$d2");
+						
+						if ($d2 < $Lowest_Value)
+						{
+						$Lowest_Value = $d2;
+						$LoS_Target = $cur->GetID();
+						}
+						*/
+					
+					}
+				}
+			}
+		return;
+		}
+	
+	
+		//#North/South LoS
+		if ((x_dif == 0) && (y_dif != 0)) 
+		{
+ 			for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
+			{
+ 				
+ 					NPC* npc = *itr;
+					float Unit_X = npc->GetX();
+					float Unit_Y = npc->GetY();
+					float y_dif2 = Unit_Y - ATTACKER_Y;
+					float x_dif2 = Unit_X - ATTACKER_X;
+
+					if ( (((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0))) && (x_dif2 == 0) )
+					{
+						/*my $d2 = int($ATTACKER->CalculateDistance($Unit_X, $Unit_Y, -43.1));
+								
+						if ($d2  < $Lowest_Value)
+						{
+						$Lowest_Value = $d2;
+						$LoS_Target = $cur->GetID();
+						}
+						*/
+						npc->Shout("Found 2" );
+					}
+				
+			}
+
+			return;
+		}
+	
+		//#East/West LoS
+		if ((x_dif != 0) && (y_dif == 0)) 
+		{
+ 			for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
+			{
+ 				
+ 				NPC* npc = *itr;
+					float Unit_X = npc->GetX();
+					float Unit_Y = npc->GetY();
+					float y_dif2 = Unit_Y - ATTACKER_Y;
+					float x_dif2 = Unit_X - ATTACKER_X;
+
+				if ( (((x_dif2 > 0) && (x_dif > 0)) || ((x_dif2 < 0) && (x_dif < 0))) && (y_dif2 == 0) )
+				{
+					/*
+					my $d2 = int($ATTACKER->CalculateDistance($Unit_X, $Unit_Y, -43.1));
+								
+					if ($d2  < $Lowest_Value)
+					{
+					$Lowest_Value = $d2;
+					$LoS_Target = $cur->GetID();
+					}
+					npc->Shout("Found 3" );
+					*/
+				}
+			}
+
+			return;
+		}
+			
+
+	return;
+}
+
+void Mob::CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ)
+{
+	if (!distance) { return; }
+	if (!MaxZDiff) { MaxZDiff = 5; }
+
+	float ReverseHeading = 256 - heading;
+	float ConvertAngle = ReverseHeading * 1.40625f;
+	if (ConvertAngle <= 270)
+		ConvertAngle = ConvertAngle + 90;
+	else
+		ConvertAngle = ConvertAngle - 270;
+
+	float Radian = ConvertAngle * (3.1415927 / 180);
+
+	float CircleX = distance * cos(Radian);
+	float CircleY = distance * sin(Radian);
+	dX = CircleX + StartX;
+	dY = CircleY + StartY;
+	dZ = FindGroundZ(dX, dY, MaxZDiff);
+	//CheckLoSToLoc   == CheckLosFN
+}
+
+/*
+bool Mob::FindDestFromHeadingLos(float heading, float distance, int MaxZDiff, float &dX, float &dY, float &dZ){
+
+	CalcDestFromHeading(heading, distance, -5, dX, dY, dZ);	
+		
+	if (CheckLosFN(dX,dY,dZ,GetSize()))
+		return true;
+
+	return false;
+}
+*/
+bool Mob::ProjectileNoTarget(uint16 spell_id)
+{return false;
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	//Distance = base, limit intereval, max heading
+	entity_list.DestroyTempPets(this);
+	float distance = 200;
+	float interval = 5;
+	float current_disance = interval;
+	float dX, dY, dZ = 0.0f;
+	float uX, uY, uZ = 0.0f;
+	bool LocationFound = false;
+
+	while (current_disance < distance) {
+
+		CalcDestFromHeading(GetHeading(), current_disance, 5, GetX(), GetY(), dX, dY, dZ);	
+		Shout("lOOP IINTERVAL %.2f XYZ %.2f %.2f %.2f",current_disance, dX, dY, dZ);
+		if (CheckLosFN(dX,dY,dZ,GetSize()))
+			LocationFound = true;
+		else
+			break;
+
+		if (dZ == -99999)
+			break;
+
+		current_disance = current_disance + interval;
+
+		uX = dX;
+		uY = dY;
+		uZ = dZ;
+	}
+	Shout("IINTERVAL %.2f XYZ %.2f %.2f %.2f",current_disance, dX, dY, dZ);
+
+	if (dZ == -99999){
+		Shout("Z Axis Fail NO SPAWN");
+		return false;
+	}
+
+	if (!LocationFound){
+		Shout("No location found");
+		return false;
+	}
+
+	TypesTemporaryPets(650, nullptr, "TEST",1000000, false);
+	Mob* temppet = nullptr;
+	temppet = GetTempPetByTypeID(650, true);
+	
+	if (temppet){
+		temppet->Shout("SPAWNED");
+		temppet->GMMove(uX, uY, uZ, 0, true);
+		//temppet->Kill();
+	}
+}
+Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
+{
+	std::list<NPC*> npc_list;
+	entity_list.GetNPCList(npc_list);
+
+ 	for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
+	{
+		NPC* n = *itr;
+		if (n->GetSwarmInfo()) {
+			if (n->GetSwarmInfo()->owner_id == GetID() && n->npctype_id == npc_typeid) {
+				if (SetVarTargetRing){
+					if (!n->EntityVariableExists("Projectile Ring")){
+						n->SetEntityVariable("Projectile Ring", "1");
+						return n;
+					}
+				}
+				else
+					return n;
+			}
+		}
+	}
+	return nullptr;
+}
+
+bool Mob::ProjectileTargetRing(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	TypesTemporaryPets(650, nullptr, "#",1000000, false);
+	Mob* temppet = nullptr;
+	temppet = GetTempPetByTypeID(650); //This needs to be defined
+	
+	if (temppet){
+		temppet->GMMove(GetTargetRingX(), GetTargetRingY(),GetTargetRingZ(), 0, true);
+		temppet->ChangeSize(GetSize()); //Seems to work well.
+		TrySpellProjectileTargetRing(temppet, spell_id);
+		return true;
+	}
+
+	return false;
+}
+
+bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
+	
+	if (!spell_target)
+		return false;
+	
+	uint8 anim = spells[spell_id].CastingAnim; 
+
+	if (projectile_increment_ring)
+		return false;
+
+	//Baseline 280 mod was calculated on how long it takes for projectile to hit target at 1 speed.
+	float projectile_speed_ring = MakeRandomFloat(1.5, 1.5); //THIS WILL BE IN SPELL FILE
+	float distance = CalculateDistance(spell_target->GetX(), spell_target->GetY(), spell_target->GetZ());
+	float hit = 0.0f;
+	float dist_mod = 280.0f;
+	float speed_mod = 0.0f;
+	
+	if (projectile_speed_ring > 0.5f && projectile_speed_ring < 1.0f)
+		speed_mod = 165.0f - ((projectile_speed_ring - 0.5f) * (165.0f - 100.0f));
+	else if (projectile_speed_ring > 1.0f && projectile_speed_ring < 2.0f)
+		speed_mod = 100.0f - ((projectile_speed_ring - 1.0f) * (100.0f - 75.0f));
+	else if (projectile_speed_ring > 2.0f && projectile_speed_ring < 3.0f)
+		speed_mod = 75.0f - ((projectile_speed_ring - 2.0f) * (75.0f - 65.0f));
+	else if (projectile_speed_ring > 3.0f && projectile_speed_ring < 4.0f)
+		speed_mod = 65.0f - ((projectile_speed_ring - 2.0f) * (65.0f - 55.0f));
+	else if (projectile_speed_ring > 4.0f && projectile_speed_ring <= 5.0f)
+		speed_mod = 55.0f - ((projectile_speed_ring - 4.0f) * (55.0f - 45.0f));
+
+	dist_mod = (dist_mod * speed_mod) / 100.0f;
+	hit = (distance * dist_mod) / 100; //#1
+
+	//Shout("Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
+
+	projectile_spell_id_ring = spell_id;
+	projectile_target_id_ring  = spell_target->GetID();
+	projectile_increment_ring  = 1;
+	projectile_hit_ring = static_cast<int>(hit);
+
+	//if (!spells[spell_id].player_1)
+		ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, "IT11506");
+	//else
+		//ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, spells[spell_id].player_1);
+	
+	if (spells[spell_id].CastingAnim == 64)
+		anim = 44; //Corrects for animation error.
+
+	DoAnim(anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); //Override the default projectile animation.
+	return true;
+}
+
+void Mob::SpellProjectileEffectTargetRing()
+{
+	if (!projectile_increment_ring)
+		return;
+	
+	//Shout("Inc %i Hit %i", projectile_increment_ring, projectile_hit_ring);
+	if (projectile_increment_ring > projectile_hit_ring){
+		//Shout("Completed %i Spell ID %i", projectile_hit_ring, projectile_spell_id_ring);
+		Mob* target = entity_list.GetMobID(projectile_target_id_ring);
+		if (target){
+			
+			if (IsValidSpell(projectile_spell_id_ring)){
+				if (spells[projectile_spell_id_ring].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
+						entity_list.AESpell(this, target, projectile_spell_id_ring, false, spells[projectile_spell_id_ring].ResistDiff);
+				}
+			}
+			target->Depop(); //Depop Temp Pet at Ring Location
+		}
+
+		//Reset Projectile Ring variables.
+		projectile_increment_ring = 0;
+		projectile_hit_ring = 0;
+		projectile_spell_id_ring = 0;
+		projectile_target_id_ring = 0;
+	}
+	else
+		projectile_increment_ring++;
+}
+
+void Mob::Cube(uint16 spell_id, int16 resist_adjust)
+{
+	float distance = spells[spell_id].range;
+	float radius = spells[spell_id].aoerange;
+	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+
+	Shout("Start Cube Distance %.2f AOE range %.2f min range %.2f", distance, radius, spells[spell_id].min_range);
+	
+	std::list<Mob*> targets_in_range;
+	std::list<Mob*> targets_in_cube; //C!Kayen - Get the targets within the cone
+	std::list<Mob*>::iterator iter;
+
+
+	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
+	iter = targets_in_range.begin();
+	
+	float dX = 0;
+	float dY = 0;
+	float dZ = 0;
+	
+	CalcDestFromHeading(GetHeading(), distance, 5, GetX(), GetY(), dX, dY,  dZ);
+	Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f", dX, dY, dZ, CalculateDistance(dX, dY, dZ));
+	dZ = GetZ();
+
+	float DEFENDER_X = dX;
+	float DEFENDER_Y = dY;
+	float ATTACKER_X = GetX();
+	float ATTACKER_Y = GetY();
+
+	float y_dif = DEFENDER_Y - ATTACKER_Y;
+	float x_dif = DEFENDER_X - ATTACKER_X;
+
+	float x1 = ATTACKER_X;
+	float y1 = ATTACKER_Y;
+	float x2 = DEFENDER_X;
+	float y2 = DEFENDER_Y;
+
+	//# put it into the form y = mx + b
+	float m = (y2 - y1) / (x2 - x1);
+	float b = (y1 * x2 - y2 * x1) / (x2 - x1);
+ 
+
+	while(iter != targets_in_range.end())
+	{
+		if (!(*iter)){
+		    ++iter;
+			continue;
+		}
+		(*iter)->Shout("In AOE range");
+		if ((x_dif != 0) && (y_dif != 0)) //PROB SHOULD GET RID OF THIS
+		{
+			//#Find unit that is closest to LoS line AND closet to Attacker (Radius 4 from LoS line to hit for arrows)
+			//(*iter)->Shout("1 Cube Attempt");
+			float Unit_X =(*iter)->GetX();
+			float Unit_Y =(*iter)->GetY();
+			float y_dif2 = Unit_Y - ATTACKER_Y;
+	
+			//#Only target units in the quadrant of the attacker using y axis
+			if ( ((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0)))
+			{					
+				//# target point is (x0, y0)
+				float x0 = Unit_X;
+				float y0 = Unit_Y;
+				//# shortest distance from line to target point
+				float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
+				//(*iter)->Shout("2 Attempt D: %.2f" ,d);
+					
+				if (d <= 20)
+				{
+					(*iter)->Shout("4 FoUND D: %.2f" ,d);
+					(*iter)->ChangeSize(10);
+
+					if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
+						(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+						if (maxtargets) 
+							targets_in_cube.push_back(*iter);
+						else
+							SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+					}
+				}
+			}
+		}
+		++iter;
+	}
+
+	if (maxtargets)
+		CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cube);
+	
+	return;
+}
+
+
+	/*
+bool Mob::LineWalk(float heading, float distance,  float interval, float size)
+{
+	//while (interval <= distance){
+		float dX = GetX();
+		float dY = GetY();
+		float dZ = GetZ();
+		CalcDestFromHeading(heading, distance, -5, dX, dY, dZ);	
+		
+		if (CheckLosFN(dX,dY,dZ,size)){
+			//distance += interval;
+			return true;
+			//quest::spawn2(402142,0,0,$cor[0],$cor[1],$cor[2], 0);
+			//SetLineOfIce();
+		}
+				
+		else
+			return false;
+	//}
+
+	return false;
+}
+*/
+		
+
+
+
+
+
+
+	/*
+	std::list<Mob*> targets_in_range;
+	//std::list<Mob*> targets_in_cone;
+	std::list<Mob*>::iterator iter;
+	//std::list<Mob*>::iterator iter2;
+
+	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
+
+	iter = targets_in_range.begin();
+			
+	while(iter != targets_in_range.end())
+	{
+
+		LineWalk(float heading, float distance, float max_distance, float interval, float size)
+
+
+	}
+	*/
+
+
+/*
+	public static Point PointFromEndOfLine(Point start, Point end, double distance)
+{
+    double x = end.X-start.X;   
+    double y = end.Y-start.Y;
+    double z = Math.Sqrt(x * x + y * y);  //Pathagrean Theorum for Hypotenuse
+    double ratio = distance / z;
+    double deltaX = x * ratio;
+    double deltaY = y * ratio;
+
+    return new Point(end.X-deltaX, end.Y-deltaY);
+}*/

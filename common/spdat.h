@@ -131,10 +131,26 @@ typedef enum {
 /* 41 */	ST_Group = 0x29,
 /* 42 */	ST_Directional = 0x2a, //ae around this target between two angles
 /* 43 */	ST_GroupClientAndPet = 0x2b,
-/* 44 */	ST_Beam = 0x2c, //like directional but facing in front of you always
-/* 45 */	//ST_Ring = 0x2d, // Like a mix of PB ae + rain spell(has ae duration)
+/* 44 */	//ST_Beam = 0x2c, //like directional but facing in front of you always
+/* 45 */	ST_Ring = 0x2d, // Like a mix of PB ae + rain spell(has ae duration) C!Kayen
 /* 46 */	ST_TargetsTarget = 0x2e, // uses the target of your target
-/* 47 */	//ST_PetMaster = 0x2e, // uses the master as target
+/* 47 */	//ST_PetMaster = 0x2f, // uses the master as target
+
+//C!Kayen - Custom Target Types [48 - 59 buffer]
+/* 48 */	//ST_BLANK1 = 0x30,
+/* 49 */	//ST_BLANK2 = 0x31,
+/* 50 */	//ST_BLANK3 = 0x32,
+/* 51 */	//ST_BLANK4 = 0x33,
+/* 52 */	//ST_BLANK5 = 0x34,
+/* 53 */	//ST_BLANK6 = 0x35,
+/* 54 */	//ST_BLANK7 = 0x36,
+/* 55 */	//ST_BLANK8 = 0x37,
+/* 56 */	//ST_BLANK9 = 0x38,
+/* 57 */	//ST_BLANK10 = 0x39,
+/* 58 */	//ST_BLANK11 = 0x3a,
+/* 59 */	//ST_BLANK11 = 0x3b,
+/* 60 */	ST_NoTarget = 0x3c, //Direction base projectile
+
 } SpellTargetType;
 
 typedef enum {

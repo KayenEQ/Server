@@ -4645,7 +4645,9 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 			InterruptSpell();
 			return;
 		}
-
+		targetring_x = castspell->y_pos; //C!Kayen switch X and Y!
+		targetring_y = castspell->x_pos; //C!Kayen
+		targetring_z = castspell->z_pos; //C!Kayen
 		CastSpell(spell_to_cast, castspell->target_id, castspell->slot);
 	}
 	return;
@@ -9106,8 +9108,10 @@ bool Client::FinishConnState2(DBAsyncWork* dbaw) {
 	}
 
 	for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i)
-		if(IsValidSpell(m_pp.mem_spells[i]))
+		if(IsValidSpell(m_pp.mem_spells[i])){
 			m_pp.spellSlotRefresh[i] = p_timers.GetRemainingTime(pTimerSpellStart + m_pp.mem_spells[i]) * 1000;
+			Shout("TEST RECAT", m_pp.spellSlotRefresh[i]);
+		}
 
 	if(m_pp.class_==SHADOWKNIGHT || m_pp.class_==PALADIN)
 	{

@@ -915,6 +915,19 @@ public:
 	void SetLeapEffect(uint16 spell_id);
 	void PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 	void CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
+	void LoSHit(Mob* caster, Mob *target, int dist);
+	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
+	bool FindDestFromHeadingLos(float heading, float distance, int MaxZDiff, float &dX, float &dY, float &dZ);
+	//bool LineWalk(float heading, float distance, float interval, float size = 1);
+	bool ProjectileNoTarget(uint16 spell_id);
+	Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false);
+	inline float GetTargetRingX() const { return targetring_x; }
+	inline float GetTargetRingY() const { return targetring_y; }
+	inline float GetTargetRingZ() const { return targetring_z; }
+	bool ProjectileTargetRing(uint16 spell_id);
+	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
+	void SpellProjectileEffectTargetRing();
+	void Cube(uint16 spell_id, int16 resist_adjust);
 
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);
@@ -1264,6 +1277,14 @@ protected:
 	float leap_y;
 	float leap_z;
 
+	float targetring_x;
+	float targetring_y;
+	float targetring_z;
+
+	uint32 projectile_spell_id_ring;
+	uint16 projectile_target_id_ring;
+	uint32 projectile_increment_ring;
+	uint32 projectile_hit_ring;
 
 private:
 	void _StopSong(); //this is not what you think it is

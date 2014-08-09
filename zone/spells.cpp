@@ -364,6 +364,8 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 	if((IsGroupSpell(spell_id) ||
 		spell.targettype == ST_Self ||
 		spell.targettype == ST_AECaster ||
+		spell.targettype == ST_Ring || //C!Kayen
+		spell.targettype == ST_NoTarget || //C!Kayen
 		spell.targettype == ST_TargetOptional) && target_id == 0)
 	{
 		mlog(SPELLS__CASTING, "Spell %d auto-targeted the caster. Group? %d, target type %d", spell_id, IsGroupSpell(spell_id), spell.targettype);
@@ -1034,7 +1036,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 
 			mlog(SPELLS__CASTING, "Checking Interruption: spell x: %f  spell y: %f  cur x: %f  cur y: %f channelchance %f channeling skill %d\n", GetSpellX(), GetSpellY(), GetX(), GetY(), channelchance, GetSkill(SkillChanneling));
 
-			if(MakeRandomFloat(0, 100) > channelchance) {
+			if(!spells[spell_id].uninterruptable && MakeRandomFloat(0, 100) > channelchance) {
 				mlog(SPELLS__CASTING_ERR, "Casting of %d canceled: interrupted.", spell_id);
 				InterruptSpell();
 				return;
@@ -1780,6 +1782,19 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 			break;
 		}
 
+		//C!Kayen 
+		case ST_NoTarget:
+			CastAction = NoTarget;
+			spell_target = nullptr;
+			ae_center = nullptr;
+			break;
+
+		case ST_Ring:
+			CastAction = TargetRing;
+			spell_target = nullptr;
+			ae_center = nullptr;
+			break;
+
 		default:
 		{
 			mlog(SPELLS__CASTING_ERR, "I dont know Target Type: %d   Spell: (%d) %s", spells[spell_id].targettype, spell_id, spells[spell_id].name);
@@ -1925,8 +1940,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 		spell_target->CalcSpellPowerDistanceMod(spell_id, dist2);
 	}
-	
-	//
+
 	// Switch #2 - execute the spell
 	//
 	switch(CastAction)
@@ -2120,7 +2134,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			std::list<Mob*> targets_in_range;
 			std::list<Mob*> targets_in_cone; //C!Kayen - Get the targets within the cone
 			std::list<Mob*>::iterator iter;
-			std::list<Mob*>::iterator iter2; //C!Kayen
 
 			entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
 			iter = targets_in_range.begin();
@@ -2176,6 +2189,22 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 			break;
 		}
+		//C!Kayen - Custom Target Type
+		case NoTarget:
+			Cube(spell_id,resist_adjust);
+		break;
+
+		case TargetRing:
+			Shout("Start TRING");
+			if (spells[spell_id].powerful_flag)
+				ProjectileTargetRing(spell_id);
+			else
+				entity_list.AESpell(this, nullptr, spell_id, false, resist_adjust);
+
+				
+			
+			Shout("end tring");
+		break;
 	}
 
 	DoAnim(spells[spell_id].CastingAnim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells);
@@ -4717,12 +4746,10 @@ void Mob::Stun(int duration)
 	if(stunned && stunned_timer.GetRemainingTime() > uint32(duration))
 		return;
 
-	if(casting_spell_id) {
-		int persistent_casting = spellbonuses.PersistantCasting + itembonuses.PersistantCasting;
-		if(IsClient())
-			persistent_casting += aabonuses.PersistantCasting;
+	if(IsValidSpell(casting_spell_id) && !spells[casting_spell_id].uninterruptable) {
+		int persistent_casting = spellbonuses.PersistantCasting + itembonuses.PersistantCasting + aabonuses.PersistantCasting;
 
-		if(MakeRandomInt(1,99) > persistent_casting)
+		if(MakeRandomInt(0,99) > persistent_casting)
 			InterruptSpell();
 	}
 

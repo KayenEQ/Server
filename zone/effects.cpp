@@ -737,7 +737,7 @@ void EntityList::AETaunt(Client* taunter, float range)
 void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster, int16 resist_adjust)
 {
 	Mob *curmob;
-
+	
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
 	float dist = caster->GetAOERange(spell_id);
@@ -760,7 +760,11 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
 		
-		dist_targ = center->DistNoRoot(*curmob);
+		if (spells[spell_id].targettype == ST_Ring && !spells[spell_id].powerful_flag) //C!Kayen pflag = Projectile
+			dist_targ = caster->DistNoRoot(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ());
+		else
+			dist_targ = center->DistNoRoot(*curmob);
+
 		if (dist_targ > dist2)	//make sure they are in range
 			continue;
 		if (dist_targ < min_range2)	//make sure they are in range
@@ -782,7 +786,9 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (bad) {
 			if (!caster->IsAttackAllowed(curmob, true))
 				continue;
-			if (!center->CheckLosFN(curmob))
+			if (center && !center->CheckLosFN(curmob))
+				continue;
+			if  (!center && !caster->CheckLosFN(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ(), curmob->GetSize()))
 				continue;
 		} else { // check to stop casting beneficial ae buffs (to wit: bard songs) on enemies...
 			// This does not check faction for beneficial AE buffs..only agro and attackable.
@@ -795,7 +801,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		}
 		
 		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);
-		
+
 		//if we get here... cast the spell.
 		if (IsTargetableAESpell(spell_id) && bad) {
 			if (iCounter < MAX_TARGETS_ALLOWED) {

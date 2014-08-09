@@ -2947,7 +2947,11 @@ DECODE(OP_CastSpell) {
 	IN(spell_id);
 	emu->inventoryslot = UnderfootToServerSlot(eq->inventoryslot);
 	IN(target_id);
-
+	IN(cs_unknown1);
+	IN(cs_unknown2);
+	IN(x_pos);
+	IN(y_pos);
+	IN(z_pos);
 	FINISH_DIRECT_DECODE();
 }
 

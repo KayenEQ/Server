@@ -573,6 +573,8 @@ bool Client::Process() {
 		if(projectile_timer.Check())
 			SpellProjectileEffect();
 
+		//C!Kayen
+		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
 					
 		if(spellbonuses.GravityEffect == 1) {
