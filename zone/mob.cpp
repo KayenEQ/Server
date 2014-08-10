@@ -6082,6 +6082,12 @@ void Mob::Cube(uint16 spell_id, int16 resist_adjust)
 			continue;
 		}
 		(*iter)->Shout("In AOE range");
+
+		if ((*iter)->BehindMob(this, (*iter)->GetX(),(*iter)->GetY())){
+			 ++iter;
+			continue;
+		}
+
 		if ((x_dif != 0) && (y_dif != 0)) //PROB SHOULD GET RID OF THIS
 		{
 			//#Find unit that is closest to LoS line AND closet to Attacker (Radius 4 from LoS line to hit for arrows)
