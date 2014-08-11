@@ -394,10 +394,11 @@ Mob::Mob(const char* in_name,
 	leap_x = 0;	leap_y = 0;	leap_z = 0;
 	targetring_x = 0; targetring_y; targetring_z = 0;
 
-	projectile_spell_id_ring = 0; 
-	projectile_target_id_ring = 0; 
-	projectile_increment_ring = 0;
-	projectile_hit_ring = 0;
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_spell_id_ring[i] = 0; }
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_increment_ring[i] = 0; }
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_hit_ring[i] = 0; }
+	ProjectileRing = false;
 }
 
 Mob::~Mob()
@@ -5961,7 +5962,17 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	
 	uint8 anim = spells[spell_id].CastingAnim; 
 
-	if (projectile_increment_ring)
+	int bolt_id = -1;
+
+	//Make sure there is an avialable projectile to be cast.
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+		if (projectile_increment_ring[i] == 0){
+			bolt_id = i;
+			break;
+		}
+	}
+
+	if (bolt_id < 0)
 		return false;
 
 	//Baseline 280 mod was calculated on how long it takes for projectile to hit target at 1 speed.
@@ -5985,12 +5996,13 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	dist_mod = (dist_mod * speed_mod) / 100.0f;
 	hit = (distance * dist_mod) / 100; //#1
 
-	//Shout("Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
+	Shout("Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
 
-	projectile_spell_id_ring = spell_id;
-	projectile_target_id_ring  = spell_target->GetID();
-	projectile_increment_ring  = 1;
-	projectile_hit_ring = static_cast<int>(hit);
+	projectile_spell_id_ring[bolt_id] = spell_id;
+	projectile_target_id_ring[bolt_id]  = spell_target->GetID();
+	projectile_increment_ring[bolt_id]  = 1;
+	projectile_hit_ring[bolt_id] = static_cast<int>(hit);
+	SetProjectileRing(true);
 
 	//if (!spells[spell_id].player_1)
 		ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, "IT11506");
@@ -6006,31 +6018,53 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 
 void Mob::SpellProjectileEffectTargetRing()
 {
-	if (!projectile_increment_ring)
-		return;
+	if (!HasProjectileRing())
+		return;;
+	Shout("BOOL TEST");
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
 	
-	//Shout("Inc %i Hit %i", projectile_increment_ring, projectile_hit_ring);
-	if (projectile_increment_ring > projectile_hit_ring){
-		//Shout("Completed %i Spell ID %i", projectile_hit_ring, projectile_spell_id_ring);
-		Mob* target = entity_list.GetMobID(projectile_target_id_ring);
-		if (target){
+		if (!projectile_increment_ring[i])
+			continue;
+	
+		Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
+		if (projectile_increment_ring[i] > projectile_hit_ring[i]){
+			//Shout("Completed %i Spell ID %i", projectile_hit_ring, projectile_spell_id_ring);
+			Mob* target = entity_list.GetMobID(projectile_target_id_ring[i]);
+			if (target){
 			
-			if (IsValidSpell(projectile_spell_id_ring)){
-				if (spells[projectile_spell_id_ring].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
-						entity_list.AESpell(this, target, projectile_spell_id_ring, false, spells[projectile_spell_id_ring].ResistDiff);
+				if (IsValidSpell(projectile_spell_id_ring[i])){
+					if (spells[projectile_spell_id_ring[i]].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
+							entity_list.AESpell(this, target, projectile_spell_id_ring[i], false, spells[projectile_spell_id_ring[i]].ResistDiff);
+					}
 				}
+				target->Depop(); //Depop Temp Pet at Ring Location
 			}
-			target->Depop(); //Depop Temp Pet at Ring Location
-		}
 
-		//Reset Projectile Ring variables.
-		projectile_increment_ring = 0;
-		projectile_hit_ring = 0;
-		projectile_spell_id_ring = 0;
-		projectile_target_id_ring = 0;
+			//Reset Projectile Ring variables.
+			projectile_increment_ring[i] = 0;
+			projectile_hit_ring[i] = 0;
+			projectile_spell_id_ring[i] = 0;
+			projectile_target_id_ring[i] = 0;
+			
+			if (!ExistsProjectileRing())
+				SetProjectileRing(false);
+
+		}
+		else
+			projectile_increment_ring[i]++;
 	}
-	else
-		projectile_increment_ring++;
+}
+
+bool Mob::ExistsProjectileRing()
+{
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+	
+		if (projectile_increment_ring[i])
+			return true;
+	}
+
+	return false;
+
 }
 
 void Mob::Cube(uint16 spell_id, int16 resist_adjust)

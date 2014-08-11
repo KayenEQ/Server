@@ -927,6 +927,9 @@ public:
 	bool ProjectileTargetRing(uint16 spell_id);
 	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
 	void SpellProjectileEffectTargetRing();
+	inline bool HasProjectileRing() const { return ProjectileRing; }
+	void SetProjectileRing(bool HasProjectileRing_value) { ProjectileRing = HasProjectileRing_value; }
+	bool ExistsProjectileRing();
 	void Cube(uint16 spell_id, int16 resist_adjust);
 
 protected:
@@ -1281,10 +1284,11 @@ protected:
 	float targetring_y;
 	float targetring_z;
 
-	uint32 projectile_spell_id_ring;
-	uint16 projectile_target_id_ring;
-	uint32 projectile_increment_ring;
-	uint32 projectile_hit_ring;
+	uint32 projectile_spell_id_ring[MAX_SPELL_PROJECTILE];
+	uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];
+	uint32 projectile_increment_ring[MAX_SPELL_PROJECTILE];
+	uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
+	bool ProjectileRing;
 
 private:
 	void _StopSong(); //this is not what you think it is
