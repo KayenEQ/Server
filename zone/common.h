@@ -492,7 +492,6 @@ typedef enum {
 	CAHateList,		// causes effect to all people on caster's hate list within some range
 	DirectionalAE,
 	TargetRing,
-	NoTarget,
 	CastActUnknown
 } CastAction_type;
 

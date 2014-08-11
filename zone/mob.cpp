@@ -6039,12 +6039,21 @@ void Mob::Cube(uint16 spell_id, int16 resist_adjust)
 	float radius = spells[spell_id].aoerange;
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 
+	bool taget_exclude_npc = false; //False by default!
+			
+	bool target_client_only = false;
+
+	if (IsBeneficialSpell(spell_id) && IsClient())
+		target_client_only = true;
+
+	if (!IsClient() && taget_exclude_npc)
+		target_client_only = true;
+
 	Shout("Start Cube Distance %.2f AOE range %.2f min range %.2f", distance, radius, spells[spell_id].min_range);
 	
 	std::list<Mob*> targets_in_range;
 	std::list<Mob*> targets_in_cube; //C!Kayen - Get the targets within the cone
 	std::list<Mob*>::iterator iter;
-
 
 	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
 	iter = targets_in_range.begin();
@@ -6074,50 +6083,39 @@ void Mob::Cube(uint16 spell_id, int16 resist_adjust)
 	float m = (y2 - y1) / (x2 - x1);
 	float b = (y1 * x2 - y2 * x1) / (x2 - x1);
  
-
 	while(iter != targets_in_range.end())
 	{
-		if (!(*iter)){
+		if (!(*iter) || (target_client_only && (IsNPC() && !IsPet())) 
+			|| (*iter)->BehindMob(this, (*iter)->GetX(),(*iter)->GetY())){
 		    ++iter;
 			continue;
 		}
+		
 		(*iter)->Shout("In AOE range");
 
-		if ((*iter)->BehindMob(this, (*iter)->GetX(),(*iter)->GetY())){
-			 ++iter;
-			continue;
-		}
-
-		if ((x_dif != 0) && (y_dif != 0)) //PROB SHOULD GET RID OF THIS
-		{
-			//#Find unit that is closest to LoS line AND closet to Attacker (Radius 4 from LoS line to hit for arrows)
-			//(*iter)->Shout("1 Cube Attempt");
-			float Unit_X =(*iter)->GetX();
-			float Unit_Y =(*iter)->GetY();
-			float y_dif2 = Unit_Y - ATTACKER_Y;
+		float Unit_X =(*iter)->GetX();
+		float Unit_Y =(*iter)->GetY();
+		float y_dif2 = Unit_Y - ATTACKER_Y;
 	
-			//#Only target units in the quadrant of the attacker using y axis
-			if ( ((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0)))
-			{					
-				//# target point is (x0, y0)
-				float x0 = Unit_X;
-				float y0 = Unit_Y;
-				//# shortest distance from line to target point
-				float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
-				//(*iter)->Shout("2 Attempt D: %.2f" ,d);
+		//#Only target units in the quadrant of the attacker using y axis
+		if ( ((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0)))
+		{					
+			//# target point is (x0, y0)
+			float x0 = Unit_X;
+			float y0 = Unit_Y;
+			//# shortest distance from line to target point
+			float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
 					
-				if (d <= 20)
-				{
-					(*iter)->Shout("4 FoUND D: %.2f" ,d);
-					(*iter)->ChangeSize(10);
+			if (d <= 20)
+			{
+				(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
 
-					if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
-						(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
-						if (maxtargets) 
-							targets_in_cube.push_back(*iter);
-						else
-							SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
-					}
+				if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
+					(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+					if (maxtargets) 
+						targets_in_cube.push_back(*iter);
+					else
+						SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
 				}
 			}
 		}

@@ -94,31 +94,31 @@ typedef enum {
 /* 04 */	ST_AECaster = 0x04,
 /* 05 */	ST_Target = 0x05,
 /* 06 */	ST_Self = 0x06,
-/* 07 */	// NOT USED
+/* 07 */	// NOT USED //Gives message 'You must hold the item to cast the spell upon'
 /* 08 */	ST_AETarget = 0x08,
 /* 09 */	ST_Animal = 0x09,
 /* 10 */	ST_Undead = 0x0a,
 /* 11 */	ST_Summoned = 0x0b,
-/* 12 */	// NOT USED
+/* 12 */	// NOT USED //Gives message 'This spell only works on things that are flying'
 /* 13 */	ST_Tap = 0x0d,
 /* 14 */	ST_Pet = 0x0e,
 /* 15 */	ST_Corpse = 0x0f,
 /* 16 */	ST_Plant = 0x10,
 /* 17 */	ST_Giant = 0x11, //special giant
 /* 18 */	ST_Dragon = 0x12, //special dragon
-/* 19 */	// NOT USED
+/* 19 */	// NOT USED //No msg - Auto Self Targets
 /* 20 */	ST_TargetAETap = 0x14,
-/* 21 */	// NOT USED
-/* 22 */	// NOT USED
-/* 23 */	// NOT USED
+/* 21 */	// NOT USED //No msg - 
+/* 22 */	// NOT USED //No msg - 'Teal Icon' of Target AOE
+/* 23 */	// NOT USED //No msg - 'Teal Icon' of Target AOE 
 /* 24 */	ST_UndeadAE = 0x18,
 /* 25 */	ST_SummonedAE = 0x19,
-/* 26 */	// NOT USED
-/* 27 */	// NOT USED
-/* 28 */	// NOT USED
-/* 29 */	// NOT USED
-/* 30 */	// NOT USED
-/* 31 */	// NOT USED
+/* 26 */	// NOT USED //No msg - 'Purple/Blue Icon' of PBAE AOE 
+/* 27 */	// NOT USED //Gives message 'This spell only works on insects'
+/* 28 */	// NOT USED //No msg 'Teal Icon' of Target AOE 
+/* 29 */	// NOT USED //No msg - 'Purple/Blue Icon' of PBAE AOE 
+/* 30 */	// NOT USED //No msg 'Teal Icon' of Target AOE 
+/* 31 */	// NOT USED //No msg - 'Purple/Blue Icon' of PBAE AOE 
 /* 32 */	ST_AECaster2 = 0x20, //ae caster hatelist maybe?
 /* 33 */	ST_HateList = 0x21,
 /* 34 */	ST_LDoNChest_Cursed = 0x22,
@@ -131,10 +131,10 @@ typedef enum {
 /* 41 */	ST_Group = 0x29,
 /* 42 */	ST_Directional = 0x2a, //ae around this target between two angles
 /* 43 */	ST_GroupClientAndPet = 0x2b,
-/* 44 */	//ST_Beam = 0x2c, //like directional but facing in front of you always
+/* 44 */	//ST_Beam = 0x2c, //like directional but facing in front of you always 'Light Blue'
 /* 45 */	ST_Ring = 0x2d, // Like a mix of PB ae + rain spell(has ae duration) C!Kayen
 /* 46 */	ST_TargetsTarget = 0x2e, // uses the target of your target
-/* 47 */	//ST_PetMaster = 0x2f, // uses the master as target
+/* 47 */	ST_PetMaster = 0x2f, // uses the master as target
 
 //C!Kayen - Custom Target Types [48 - 59 buffer]
 /* 48 */	//ST_BLANK1 = 0x30,
@@ -149,7 +149,7 @@ typedef enum {
 /* 57 */	//ST_BLANK10 = 0x39,
 /* 58 */	//ST_BLANK11 = 0x3a,
 /* 59 */	//ST_BLANK11 = 0x3b,
-/* 60 */	ST_NoTarget = 0x3c, //Direction base projectile
+/* 60 */	//ST_NoTarget = 0x3c, //Direction base projectile
 
 } SpellTargetType;
 

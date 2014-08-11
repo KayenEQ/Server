@@ -365,7 +365,7 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		spell.targettype == ST_Self ||
 		spell.targettype == ST_AECaster ||
 		spell.targettype == ST_Ring || //C!Kayen
-		spell.targettype == ST_NoTarget || //C!Kayen
+		spell.targettype == ST_Directional || //C!Kayen
 		spell.targettype == ST_TargetOptional) && target_id == 0)
 	{
 		mlog(SPELLS__CASTING, "Spell %d auto-targeted the caster. Group? %d, target type %d", spell_id, IsGroupSpell(spell_id), spell.targettype);
@@ -1782,13 +1782,26 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 			break;
 		}
 
-		//C!Kayen 
-		case ST_NoTarget:
-			CastAction = NoTarget;
-			spell_target = nullptr;
-			ae_center = nullptr;
-			break;
+		case ST_PetMaster:
+		{
+			
+			Mob *owner = nullptr;
+	
+			if (IsPet()) 
+				owner = GetOwner();
+			else if ((IsNPC() && CastToNPC()->GetSwarmOwner()))
+				owner = entity_list.GetMobID(CastToNPC()->GetSwarmOwner());
 
+			if (!owner)
+				return false;
+
+			spell_target = owner;
+			CastAction = SingleTarget;
+			break;
+		}
+			
+
+		//C!Kayen 
 		case ST_Ring:
 			CastAction = TargetRing;
 			spell_target = nullptr;
@@ -2109,6 +2122,12 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 		case DirectionalAE:
 		{
+			if (!spells[spell_id].directional_start && !spells[spell_id].directional_end){
+				Cube(spell_id,resist_adjust);
+				break;
+			}
+
+			Shout("Do true directional");
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
 			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 
@@ -2190,10 +2209,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			break;
 		}
 		//C!Kayen - Custom Target Type
-		case NoTarget:
-			Cube(spell_id,resist_adjust);
-		break;
-
 		case TargetRing:
 			Shout("Start TRING");
 			if (spells[spell_id].powerful_flag)
