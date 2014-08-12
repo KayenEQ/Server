@@ -738,6 +738,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 {
 	Mob *curmob;
 	
+	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
 	float dist = caster->GetAOERange(spell_id);
@@ -760,7 +761,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
 		
-		if (spells[spell_id].targettype == ST_Ring && !spells[spell_id].powerful_flag) //C!Kayen pflag = Projectile
+		if ((spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation) && !spells[spell_id].powerful_flag) //C!Kayen pflag = Projectile
 			dist_targ = caster->DistNoRoot(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ());
 		else
 			dist_targ = center->DistNoRoot(*curmob);
@@ -808,6 +809,10 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 				caster->SpellOnTarget(spell_id, curmob, false, true, resist_adjust);
 			}
 		} else {
+			//C!Kayen
+			if (spells[spell_id].targettype == ST_TargetLocation && caster->GetSpellTargetID() == curmob->GetID())
+				TL_TargetFound = true;
+
 			if (maxtargets)
 				targets_in_ae.push_back(curmob); //C!Kayen - push all PBAE into vector
 			else
@@ -821,6 +826,10 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	if (maxtargets){ //C!Kayen - Max target PBAE
 		caster->CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_ae);
 	}
+
+	//C!Kayen
+	if (!TL_TargetFound && spells[spell_id].targettype == ST_TargetLocation)
+		caster->CustomSpellMessages(caster->GetSpellTargetID(), spell_id, 2);
 }
 
 void EntityList::MassGroupBuff(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster)

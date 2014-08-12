@@ -386,13 +386,14 @@ Mob::Mob(const char* in_name,
 	emoteid = 0;
 	
 	//C!Kayen
-	momentum = 0; 
+	momentum = 0.0f; 
 	for (int i = 0; i < HIGHEST_SKILL+2; i++) { WpnSkillDmgBonus[i] = 0; }
 	for (int i = 0; i < HIGHEST_RESIST+2; i++) { SpellResistTypeDmgBonus[i] = 0; }
 	leap_increment = 0;
 	leap_spell_id = 0;
-	leap_x = 0;	leap_y = 0;	leap_z = 0;
-	targetring_x = 0; targetring_y; targetring_z = 0;
+	leap_x = 0.0f;	leap_y = 0.0f;	leap_z = 0.0f;
+	
+	targetring_x = 0.0f; targetring_y = 0.0f; targetring_z = 0.0f;
 
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_spell_id_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
@@ -5199,17 +5200,21 @@ float Mob::HeadingAngleToMob(Mob *other)
 
 void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtargets, std::list<Mob*> m_list)
 {
+	int hit_count = 0;
+	if (spells[spell_id].aemaxtargets && spells[spell_id].maxtargets)
+		hit_count = spells[spell_id].maxtargets; //Hijack this field if set WITH aemaxtargets, should equal or > aemaxtargets. 
+
 	uint32 CurrentDistance, ClosestDistance = 4294967295u;
 	Mob *ClosestMob, *erase_value = nullptr;
 	std::list<Mob*>::iterator iter;
 
 	for (int i = 0; i < maxtargets; i++) {
 
-	ClosestMob = nullptr;
-	erase_value = nullptr;
-	CurrentDistance = 0; 
-	ClosestDistance = 4294967295u;
-	iter = m_list.begin();
+		ClosestMob = nullptr;
+		erase_value = nullptr;
+		CurrentDistance = 0; 
+		ClosestDistance = 4294967295u;
+		iter = m_list.begin();
 					
 		while(iter != m_list.end())
 		{
@@ -5228,8 +5233,25 @@ void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtarget
 		}
 
 		if (ClosestMob) {
+			
+			if (!spells[spell_id].maxtargets)
+				SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
+			else{
+				//Hit target until hit count is depleted
+				int list_size = m_list.size();
+
+				if (list_size > hit_count){
+					SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
+					hit_count -= 1;
+				}
+				else {
+					while(list_size <= hit_count) {
+						SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
+						hit_count -= 1;
+					}
+				}
+			}
 			m_list.remove(ClosestMob);
-			SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
 		}
 	}
 }
@@ -5947,7 +5969,8 @@ bool Mob::ProjectileTargetRing(uint16 spell_id)
 	
 	if (temppet){
 		temppet->GMMove(GetTargetRingX(), GetTargetRingY(),GetTargetRingZ(), 0, true);
-		temppet->ChangeSize(GetSize()); //Seems to work well.
+		//temppet->ChangeSize(GetSize()); //Seems to work well.
+		temppet->ChangeSize(1); //Seems to work well.
 		TrySpellProjectileTargetRing(temppet, spell_id);
 		return true;
 	}
@@ -6013,6 +6036,7 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 		anim = 44; //Corrects for animation error.
 
 	DoAnim(anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); //Override the default projectile animation.
+	Shout("PRE CHECK CHHECK %i", HasProjectileRing());
 	return true;
 }
 
@@ -6020,7 +6044,7 @@ void Mob::SpellProjectileEffectTargetRing()
 {
 	if (!HasProjectileRing())
 		return;;
-	Shout("BOOL TEST");
+	Shout("CHHECK %i", HasProjectileRing());
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
 	
 		if (!projectile_increment_ring[i])
@@ -6028,7 +6052,7 @@ void Mob::SpellProjectileEffectTargetRing()
 	
 		Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
 		if (projectile_increment_ring[i] > projectile_hit_ring[i]){
-			//Shout("Completed %i Spell ID %i", projectile_hit_ring, projectile_spell_id_ring);
+			Shout("Completed");
 			Mob* target = entity_list.GetMobID(projectile_target_id_ring[i]);
 			if (target){
 			
@@ -6064,10 +6088,9 @@ bool Mob::ExistsProjectileRing()
 	}
 
 	return false;
-
 }
 
-void Mob::Cube(uint16 spell_id, int16 resist_adjust)
+void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 {
 	float distance = spells[spell_id].range;
 	float radius = spells[spell_id].aoerange;
@@ -6086,7 +6109,7 @@ void Mob::Cube(uint16 spell_id, int16 resist_adjust)
 	Shout("Start Cube Distance %.2f AOE range %.2f min range %.2f", distance, radius, spells[spell_id].min_range);
 	
 	std::list<Mob*> targets_in_range;
-	std::list<Mob*> targets_in_cube; //C!Kayen - Get the targets within the cone
+	std::list<Mob*> targets_in_rectangle;
 	std::list<Mob*>::iterator iter;
 
 	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
@@ -6147,7 +6170,7 @@ void Mob::Cube(uint16 spell_id, int16 resist_adjust)
 				if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
 					(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
 					if (maxtargets) 
-						targets_in_cube.push_back(*iter);
+						targets_in_rectangle.push_back(*iter);
 					else
 						SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
 				}
@@ -6157,11 +6180,43 @@ void Mob::Cube(uint16 spell_id, int16 resist_adjust)
 	}
 
 	if (maxtargets)
-		CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cube);
+		CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_rectangle);
 	
 	return;
 }
 
+void Mob::SetTargetLocationLoc(uint16 target_id, uint16 spell_id)
+{
+	if (spells[spell_id].targettype == ST_TargetLocation){
+		Mob* target = entity_list.GetMob(target_id);
+		if (target) {
+			targetring_x = target->GetX();
+			targetring_y = target->GetY();
+			targetring_z = target->GetZ();
+		}
+		else {
+			targetring_x = 0.0f;
+			targetring_y = 0.0f;
+			targetring_z = 0.0f;
+		}
+	}
+}
+
+void Mob::CustomSpellMessages(uint16 target_id, uint16 spell_id, int id){
+	
+	Mob* target = nullptr;
+
+	if (spells[spell_id].targettype == ST_TargetLocation) {
+		target = entity_list.GetMob(target_id);
+	
+		if (id == 1 && target) //Triggered on starting to cast spell.
+			entity_list.MessageClose(this, true, spells[spell_id].aoerange, 15, "The ground beneath you beings to tremble! (%s) (Caster: %s Target: %s AOE: %i : %i) ", spells[spell_id].name, GetCleanName(), target->GetCleanName(), static_cast<int>(spells[spell_id].aoerange), static_cast<int>(spells[spell_id].min_range) );
+		else if (id == 2 && target) //Triggered when spell casting is finished.
+			target->Message(15, "You avoided %s 's %s ! ",  GetCleanName(), spells[spell_id].name);
+		
+		return;
+	}
+}
 
 	/*
 bool Mob::LineWalk(float heading, float distance,  float interval, float size)
@@ -6188,7 +6243,13 @@ bool Mob::LineWalk(float heading, float distance,  float interval, float size)
 */
 		
 
-
+	
+	/*/C!Kayen*
+	if (*resist_adjust == 0 && spells[spell_id].ResistDiff != 0)
+		*resist_adjust = spells[spell_id].ResistDiff;
+	else
+		*resist_adjust = 0;
+	*/
 
 
 

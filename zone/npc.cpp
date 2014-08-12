@@ -669,6 +669,9 @@ bool NPC::Process()
 	if(projectile_timer.Check())
 		SpellProjectileEffect();
 
+	//C!Kayen
+	SpellProjectileEffectTargetRing();
+
 	if(spellbonuses.GravityEffect == 1) {
 		if(gravity_timer.Check())
 			DoGravityEffect();

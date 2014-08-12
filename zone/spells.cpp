@@ -486,6 +486,9 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		return false;
 	}
 
+	//C!Kayen
+	SetTargetLocationLoc(casting_spell_targetid, spell_id);
+	CustomSpellMessages(casting_spell_targetid, spell_id, 1);
 	return(true);
 }
 
@@ -1808,6 +1811,19 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 			ae_center = nullptr;
 			break;
 
+
+		case ST_TargetLocation:{
+			if (!spell_target)
+				return false;
+			else
+				Shout("Procede Target Location");
+
+			CastAction = TargetRing;
+			spell_target = nullptr;
+			ae_center = nullptr;
+			break;
+		}
+
 		default:
 		{
 			mlog(SPELLS__CASTING_ERR, "I dont know Target Type: %d   Spell: (%d) %s", spells[spell_id].targettype, spell_id, spells[spell_id].name);
@@ -1901,6 +1917,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		Beacon *beacon = new Beacon(beacon_loc, spells[spell_id].AEDuration);
 		entity_list.AddBeacon(beacon);
 		mlog(SPELLS__CASTING, "Spell %d: AE duration beacon created, entity id %d", spell_id, beacon->GetName());
+
+		if (spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation) //C!Kayen
+			beacon->GMMove(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), 0.0f);
+		
 		spell_target = nullptr;
 		ae_center = beacon;
 		CastAction = AECaster;
@@ -2122,12 +2142,13 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 		case DirectionalAE:
 		{
+			//C!Kayen - Do polygon area if no directional is set.
 			if (!spells[spell_id].directional_start && !spells[spell_id].directional_end){
-				Cube(spell_id,resist_adjust);
+				RectangleDirectional(spell_id,resist_adjust);
 				break;
 			}
 
-			Shout("Do true directional");
+			Shout("Do true directional: AEMax %i", spells[spell_id].aemaxtargets);
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
 			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 
@@ -2181,7 +2202,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 							if (maxtargets)
 								targets_in_cone.push_back(*iter);
 							else
-								SpellOnTarget(spell_id, spell_target, false, true, resist_adjust);
+								SpellOnTarget(spell_id,(*iter), false, true, resist_adjust);
 						}
 					}
 				}
@@ -2208,18 +2229,15 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 			break;
 		}
-		//C!Kayen - Custom Target Type
-		case TargetRing:
-			Shout("Start TRING");
-			if (spells[spell_id].powerful_flag)
+		//C!Kayen - Custom Target Type [Clients use ST_Ring / NPC use ST_TargetLocation]
+		case TargetRing:{
+			if (spells[spell_id].powerful_flag) //Denotes spell to use projectile
 				ProjectileTargetRing(spell_id);
 			else
 				entity_list.AESpell(this, nullptr, spell_id, false, resist_adjust);
 
-				
-			
-			Shout("end tring");
-		break;
+			break;
+		}
 	}
 
 	DoAnim(spells[spell_id].CastingAnim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells);

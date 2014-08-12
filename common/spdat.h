@@ -123,10 +123,10 @@ typedef enum {
 /* 33 */	ST_HateList = 0x21,
 /* 34 */	ST_LDoNChest_Cursed = 0x22,
 /* 35 */	ST_Muramite = 0x23, //only works on special muramites
-/* 36 */	ST_AreaClientOnly = 0x24,
-/* 37 */	ST_AreaNPCOnly = 0x25,
+/* 36 */	ST_AreaClientOnly = 0x24, //Not implemented
+/* 37 */	ST_AreaNPCOnly = 0x25, //Not implemented
 /* 38 */	ST_SummonedPet = 0x26,
-/* 39 */	ST_GroupNoPets = 0x27,
+/* 39 */	ST_GroupNoPets = 0x27, //Not implemented
 /* 40 */	ST_AEBard = 0x28,
 /* 41 */	ST_Group = 0x29,
 /* 42 */	ST_Directional = 0x2a, //ae around this target between two angles
@@ -149,7 +149,7 @@ typedef enum {
 /* 57 */	//ST_BLANK10 = 0x39,
 /* 58 */	//ST_BLANK11 = 0x3a,
 /* 59 */	//ST_BLANK11 = 0x3b,
-/* 60 */	//ST_NoTarget = 0x3c, //Direction base projectile
+/* 60 */	ST_TargetLocation = 0x3c, //NPC cast spells at targets initial location.
 
 } SpellTargetType;
 

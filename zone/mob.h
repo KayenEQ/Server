@@ -928,9 +928,12 @@ public:
 	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
 	void SpellProjectileEffectTargetRing();
 	inline bool HasProjectileRing() const { return ProjectileRing; }
-	void SetProjectileRing(bool HasProjectileRing_value) { ProjectileRing = HasProjectileRing_value; }
+	inline void SetProjectileRing(bool HasProjectileRing_value) { ProjectileRing = HasProjectileRing_value; }
 	bool ExistsProjectileRing();
-	void Cube(uint16 spell_id, int16 resist_adjust);
+	void RectangleDirectional(uint16 spell_id, int16 resist_adjust);
+	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
+	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
+	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
 
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);
