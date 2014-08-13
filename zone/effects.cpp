@@ -735,7 +735,7 @@ void EntityList::AETaunt(Client* taunter, float range)
 // spell_id.
 // NPC spells will only affect other NPCs with compatible faction
 void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster, int16 resist_adjust)
-{
+{ 
 	Mob *curmob;
 	
 	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
@@ -795,10 +795,18 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			// This does not check faction for beneficial AE buffs..only agro and attackable.
 			// I've tested for spells that I can find without problem, but a faction-based
 			// check may still be needed. Any changes here should also reflect in BardAEPulse() -U
-			if (caster->IsAttackAllowed(curmob, true))
-				continue;
-			if (caster->CheckAggro(curmob))
-				continue;
+
+				//C!Kayen - Not sure why we can't just use the Beneficial Check for the other two, will leave for now.
+				if ((spells[spell_id].AEDuration && spells[spell_id].goodEffect) && (!caster->IsBeneficialAllowed(curmob)))
+					continue;
+
+				if (!spells[spell_id].AEDuration) {
+
+					if (caster->IsAttackAllowed(curmob, true))
+						continue;
+					if (caster->CheckAggro(curmob))
+						continue;
+				}
 		}
 		
 		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);

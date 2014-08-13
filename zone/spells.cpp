@@ -1815,8 +1815,6 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 		case ST_TargetLocation:{
 			if (!spell_target)
 				return false;
-			else
-				Shout("Procede Target Location");
 
 			CastAction = TargetRing;
 			spell_target = nullptr;
@@ -2148,7 +2146,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				break;
 			}
 
-			Shout("Do true directional: AEMax %i", spells[spell_id].aemaxtargets);
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
 			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 

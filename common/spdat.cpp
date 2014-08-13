@@ -352,7 +352,8 @@ bool IsAEDurationSpell(uint16 spell_id)
 {
 	if (IsValidSpell(spell_id) &&
 			(spells[spell_id].targettype == ST_AETarget || spells[spell_id].targettype == ST_UndeadAE || 
-			spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation) && //C!Kayen
+			spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation 
+			|| spells[spell_id].targettype == ST_Self) && //C!Kayen
 			spells[spell_id].AEDuration != 0)
 		return true;
 
