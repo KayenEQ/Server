@@ -1802,7 +1802,6 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 			CastAction = SingleTarget;
 			break;
 		}
-			
 
 		//C!Kayen 
 		case ST_Ring:

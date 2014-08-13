@@ -150,7 +150,6 @@ typedef enum {
 /* 58 */	//ST_BLANK11 = 0x3a,
 /* 59 */	//ST_BLANK11 = 0x3b,
 /* 60 */	ST_TargetLocation = 0x3c, //NPC cast spells at targets initial location.
-
 } SpellTargetType;
 
 typedef enum {

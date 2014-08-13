@@ -1198,13 +1198,16 @@ public:
     int mod_food_value(const Item_Struct *item, int change);
     int mod_drink_value(const Item_Struct *item, int change);
 
+	void SetEngagedRaidTarget(bool value) { EngagedRaidTarget = value; }
+	bool GetEngagedRaidTarget() const { return EngagedRaidTarget; }
+
 	//C!Kayen
 	void UnscribeSpellByGroup(uint16 spellid);
 	void UnscribeDiscByGroup(uint16 spellid);
 	bool TrainDisciplineBySpellid(uint16 spell_id);
 	void RefundAAType(uint32 sof_type = 0);
 	uint32 GetAltCurrencyItemid(uint32 alt_currency_id);
-
+	
 protected:
 	friend class Mob;
 	void CalcItemBonuses(StatBonuses* newbon);
@@ -1449,6 +1452,9 @@ private:
 	unsigned int	RestRegenHP;
 	unsigned int	RestRegenMana;
 	unsigned int	RestRegenEndurance;
+	
+	bool EngagedRaidTarget;
+	uint32 SavedRaidRestTimer;
 
 	std::set<uint32> zone_flags;
 
