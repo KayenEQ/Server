@@ -925,16 +925,25 @@ public:
 	inline float GetTargetRingX() const { return targetring_x; }
 	inline float GetTargetRingY() const { return targetring_y; }
 	inline float GetTargetRingZ() const { return targetring_z; }
+	
 	bool ProjectileTargetRing(uint16 spell_id);
 	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
 	void SpellProjectileEffectTargetRing();
-	inline bool HasProjectileRing() const { return ProjectileRing; }
-	inline void SetProjectileRing(bool HasProjectileRing_value) { ProjectileRing = HasProjectileRing_value; }
+	inline bool HasProjectileRing() const { return ActiveProjectileRing; }
+	inline void SetProjectileRing(bool HasProjectileRing_value) { ActiveProjectileRing = HasProjectileRing_value; }
 	bool ExistsProjectileRing();
+
+	void SpellProjectileEffect2();
+	bool TrySpellProjectile2(Mob* spell_target,  uint16 spell_id);
+	inline bool HasProjectile() const { return ActiveProjectile; }
+	inline void SetProjectile(bool HasProjectile_value) { ActiveProjectile = HasProjectile_value; }
+	bool ExistsProjectile();
+
 	void RectangleDirectional(uint16 spell_id, int16 resist_adjust);
 	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
 	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
+
 
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);
@@ -1113,7 +1122,7 @@ protected:
 	Timer projectile_timer;
 	uint32 projectile_spell_id[MAX_SPELL_PROJECTILE];
 	uint16 projectile_target_id[MAX_SPELL_PROJECTILE];
-	uint8 projectile_increment[MAX_SPELL_PROJECTILE];
+	uint16 projectile_increment[MAX_SPELL_PROJECTILE];
 	float projectile_x[MAX_SPELL_PROJECTILE], projectile_y[MAX_SPELL_PROJECTILE], projectile_z[MAX_SPELL_PROJECTILE];
 
 	float rewind_x;
@@ -1292,7 +1301,8 @@ protected:
 	uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];
 	uint32 projectile_increment_ring[MAX_SPELL_PROJECTILE];
 	uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
-	bool ProjectileRing;
+	bool ActiveProjectileRing;
+	bool ActiveProjectile;
 
 private:
 	void _StopSong(); //this is not what you think it is

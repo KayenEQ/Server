@@ -399,7 +399,9 @@ Mob::Mob(const char* in_name,
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_increment_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_hit_ring[i] = 0; }
-	ProjectileRing = false;
+	ActiveProjectileRing = false;
+
+	ActiveProjectile = false;
 }
 
 Mob::~Mob()
@@ -5998,23 +6000,37 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	if (bolt_id < 0)
 		return false;
 
+	float tilt = 0.0;
+	float angle = 0.0;
+
+	if (tilt == 525){ //Straightens out most melee weapons.
+		angle = 1000.0f;
+
+		if ( (GetX() - spell_target->GetX()) > 10.0f)
+			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
+	}
+
+	//Note: Field209 / powerful_flag : Used as Speed Variable and to flag TargetType Ring/Location as a Projectile
+	//Note: pvpresistbase : Used to set tilt
 	//Baseline 280 mod was calculated on how long it takes for projectile to hit target at 1 speed.
-	float projectile_speed_ring = MakeRandomFloat(1.5, 1.5); //THIS WILL BE IN SPELL FILE
+	float projectile_speed_ring = static_cast<float>(spells[spell_id].powerful_flag) / 100.0f; 
 	float distance = CalculateDistance(spell_target->GetX(), spell_target->GetY(), spell_target->GetZ());
 	float hit = 0.0f;
-	float dist_mod = 280.0f;
+	float dist_mod = 270.0f;
 	float speed_mod = 0.0f;
 	
-	if (projectile_speed_ring > 0.5f && projectile_speed_ring < 1.0f)
-		speed_mod = 165.0f - ((projectile_speed_ring - 0.5f) * (165.0f - 100.0f));
-	else if (projectile_speed_ring > 1.0f && projectile_speed_ring < 2.0f)
-		speed_mod = 100.0f - ((projectile_speed_ring - 1.0f) * (100.0f - 75.0f));
-	else if (projectile_speed_ring > 2.0f && projectile_speed_ring < 3.0f)
-		speed_mod = 75.0f - ((projectile_speed_ring - 2.0f) * (75.0f - 65.0f));
-	else if (projectile_speed_ring > 3.0f && projectile_speed_ring < 4.0f)
-		speed_mod = 65.0f - ((projectile_speed_ring - 2.0f) * (65.0f - 55.0f));
-	else if (projectile_speed_ring > 4.0f && projectile_speed_ring <= 5.0f)
-		speed_mod = 55.0f - ((projectile_speed_ring - 4.0f) * (55.0f - 45.0f));
+	if (projectile_speed_ring >= 0.5f && projectile_speed_ring < 1.0f)
+		speed_mod = 175.0f - ((projectile_speed_ring - 0.5f) * (175.0f - 100.0f));
+	else if (projectile_speed_ring >= 1.0f && projectile_speed_ring < 2.0f)
+		speed_mod = 100.0f - ((projectile_speed_ring - 1.0f) * (100.0f - 70.0f));
+	else if (projectile_speed_ring >= 2.0f && projectile_speed_ring < 3.0f)
+		speed_mod = 70.0f - ((projectile_speed_ring - 2.0f) * (70.0f - 60.0f));
+	else if (projectile_speed_ring >= 3.0f && projectile_speed_ring < 4.0f)
+		speed_mod = 60.0f - ((projectile_speed_ring - 3.0f) * (60.0f - 50.0f));
+	else if (projectile_speed_ring >= 4.0f && projectile_speed_ring <= 5.0f)
+		speed_mod = 50.0f - ((projectile_speed_ring - 4.0f) * (50.0f - 40.0f));
+
+
 
 	dist_mod = (dist_mod * speed_mod) / 100.0f;
 	hit = (distance * dist_mod) / 100; //#1
@@ -6028,7 +6044,8 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	SetProjectileRing(true);
 
 	//if (!spells[spell_id].player_1)
-		ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, "IT11506");
+		//ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, "IT11506");
+		ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,100,0, "IT10959");
 	//else
 		//ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, spells[spell_id].player_1);
 	
@@ -6044,15 +6061,15 @@ void Mob::SpellProjectileEffectTargetRing()
 {
 	if (!HasProjectileRing())
 		return;;
-	Shout("CHHECK %i", HasProjectileRing());
+
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
 	
 		if (!projectile_increment_ring[i])
 			continue;
-	
-		Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
+		
 		if (projectile_increment_ring[i] > projectile_hit_ring[i]){
-			Shout("Completed");
+		Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
+
 			Mob* target = entity_list.GetMobID(projectile_target_id_ring[i]);
 			if (target){
 			
@@ -6079,6 +6096,114 @@ void Mob::SpellProjectileEffectTargetRing()
 	}
 }
 
+bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
+
+	if (!spell_target)
+		return false;
+	//Note: Field209 / powerful_flag : Used as Speed Variable and to flag TargetType Ring/Location as a Projectile
+	//Note: pvpresistbase : Used to set tilt
+
+	int bolt_id = -1;
+
+	//Make sure there is an avialable bolt to be cast.
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+		if (projectile_spell_id[i] == 0){
+			bolt_id = i;
+			break;
+		}
+	}
+
+	if (bolt_id < 0)
+		return false;
+
+	uint8 anim = spells[spell_id].CastingAnim; 
+	float speed = static_cast<float>(spells[spell_id].powerful_flag) / 100.0f;
+	float tilt = static_cast<float>(spells[spell_id].pvpresistbase);
+	float angle = 0.0;
+
+	if (tilt == 525){ //Straightens out most melee weapons.
+		angle = 1000.0f;
+
+		if ( (GetX() - spell_target->GetX()) > 10.0f)
+			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
+	}
+
+	if (CheckLosFN(spell_target)) {
+		
+		projectile_spell_id[bolt_id] = spell_id;
+		projectile_target_id[bolt_id] = spell_target->GetID();
+		projectile_x[bolt_id] = GetX(), projectile_y[bolt_id] = GetY(), projectile_z[bolt_id] = GetZ();
+		projectile_increment[bolt_id] = 1;
+		SetProjectile(true);
+	}
+
+	//ProjectileAnimation(spell_target,0, false, speed,0,0,0, spells[spell_id].player_1);
+	ProjectileAnimation(spell_target,0, false, speed,0,525,1000, "IT10959");
+	
+	if (spells[spell_id].CastingAnim == 64)
+		anim = 44; //Corrects for animation error.
+
+	DoAnim(anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); //Override the default projectile animation.
+	return true;
+}		
+
+void Mob::SpellProjectileEffect2()
+{
+	if (!HasProjectile())
+		return;;
+
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+
+		if (projectile_increment[i] == 0){
+			continue;
+		}
+		
+		Mob* target = entity_list.GetMobID(projectile_target_id[i]);
+		
+		float distance = 0.0f;
+		
+		if (target) 
+				distance = target->CalculateDistance(projectile_x[i], projectile_y[i],  projectile_z[i]);
+
+		float hit = 0.0f;
+		float dist_mod = 270.0f;
+		float speed_mod = 0.0f;
+		float projectile_speed_ring = static_cast<float>(spells[projectile_spell_id[i]].powerful_flag) / 100.0f;
+	
+		if (projectile_speed_ring >= 0.5f && projectile_speed_ring < 1.0f)
+			speed_mod = 175.0f - ((projectile_speed_ring - 0.5f) * (175.0f - 100.0f));
+		else if (projectile_speed_ring >= 1.0f && projectile_speed_ring < 2.0f)
+			speed_mod = 100.0f - ((projectile_speed_ring - 1.0f) * (100.0f - 70.0f));
+		else if (projectile_speed_ring >= 2.0f && projectile_speed_ring < 3.0f)
+			speed_mod = 70.0f - ((projectile_speed_ring - 2.0f) * (70.0f - 60.0f));
+		else if (projectile_speed_ring >= 3.0f && projectile_speed_ring < 4.0f)
+			speed_mod = 60.0f - ((projectile_speed_ring - 3.0f) * (60.0f - 50.0f));
+		else if (projectile_speed_ring >= 4.0f && projectile_speed_ring <= 5.0f)
+			speed_mod = 50.0f - ((projectile_speed_ring - 4.0f) * (50.0f - 40.0f));
+
+		dist_mod = (dist_mod * speed_mod) / 100.0f;
+		hit = (distance * dist_mod) / 100;
+		
+		uint16 increment = static_cast<int>(hit);
+
+		if (increment <= projectile_increment[i]){
+
+			if (target && IsValidSpell(projectile_spell_id[i]))
+				SpellOnTarget(projectile_spell_id[i], target, false, true, spells[projectile_spell_id[i]].ResistDiff, true);
+
+			projectile_spell_id[i] = 0;
+			projectile_target_id[i] = 0;
+			projectile_x[i] = 0, projectile_y[i] = 0, projectile_z[i] = 0;
+			projectile_increment[i] = 0;
+			SetProjectile(false);
+		}
+
+		else {
+			projectile_increment[i]++;
+		}
+	}
+}
+
 bool Mob::ExistsProjectileRing()
 {
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
@@ -6086,7 +6211,16 @@ bool Mob::ExistsProjectileRing()
 		if (projectile_increment_ring[i])
 			return true;
 	}
+	return false;
+}
 
+bool Mob::ExistsProjectile()
+{
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+	
+		if (projectile_increment[i])
+			return true;
+	}
 	return false;
 }
 
@@ -6217,6 +6351,7 @@ void Mob::CustomSpellMessages(uint16 target_id, uint16 spell_id, int id){
 		return;
 	}
 }
+
 
 	/*
 bool Mob::LineWalk(float heading, float distance,  float interval, float size)

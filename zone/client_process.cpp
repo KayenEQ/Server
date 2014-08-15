@@ -574,6 +574,7 @@ bool Client::Process() {
 			SpellProjectileEffect();
 
 		//C!Kayen
+		SpellProjectileEffect2();
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
 					

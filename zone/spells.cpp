@@ -1998,7 +1998,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, true);
 			} else {
 				if (spells[spell_id].targettype == ST_TargetOptional){
-					if (!TrySpellProjectile(spell_target, spell_id))
+					if (!TrySpellProjectile2(spell_target, spell_id)) //C!Kayen - Modified formula / Speed Changes
 						return false;
 				}
 				
