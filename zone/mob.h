@@ -942,7 +942,7 @@ public:
 	void RectangleDirectional(uint16 spell_id, int16 resist_adjust);
 	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
-	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
+	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; } 
 
 	void MeleeCharge();
 	//C!Kayen END
