@@ -402,6 +402,8 @@ Mob::Mob(const char* in_name,
 	ActiveProjectileRing = false;
 
 	ActiveProjectile = false;
+	IsMeleeChargeActive = false;
+	MeleeCharge_target_id = 0;
 }
 
 Mob::~Mob()
@@ -5926,7 +5928,7 @@ bool Mob::ProjectileNoTarget(uint16 spell_id)
 		return false;
 	}
 
-	TypesTemporaryPets(650, nullptr, "TEST",1000000, false);
+	TypesTemporaryPets(650, nullptr, "TEST",60000, false);
 	Mob* temppet = nullptr;
 	temppet = GetTempPetByTypeID(650, true);
 	
@@ -5960,12 +5962,12 @@ Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
 	return nullptr;
 }
 
-bool Mob::ProjectileTargetRing(uint16 spell_id)
+bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 {
 	if (!IsValidSpell(spell_id))
 		return false;
 
-	TypesTemporaryPets(650, nullptr, "#",1000000, false);
+	TypesTemporaryPets(650, nullptr, "#",60000, false);
 	Mob* temppet = nullptr;
 	temppet = GetTempPetByTypeID(650); //This needs to be defined
 	
@@ -5973,9 +5975,33 @@ bool Mob::ProjectileTargetRing(uint16 spell_id)
 		temppet->GMMove(GetTargetRingX(), GetTargetRingY(),GetTargetRingZ(), 0, true);
 		//temppet->ChangeSize(GetSize()); //Seems to work well.
 		temppet->ChangeSize(1); //Seems to work well.
-		TrySpellProjectileTargetRing(temppet, spell_id);
+		//InterruptSpell(spell_id);
+		//CastSpell(28027, temppet->GetID());
+		
+		if (IsMeleeCharge){
+
+			Mob *hate_top = GetHateMost();
+			if (hate_top) {
+				SetSpecialAbility(IMMUNE_TAUNT, 1);
+				AddToHateList(temppet, CastToNPC()->GetNPCHate(hate_top) + 10000);
+				SetSpecialAbility(IMMUNE_AGGRO, 1);
+				SetDisableMelee(1);
+				IsMeleeChargeActive = true;
+				MeleeCharge_target_id = temppet->GetID();
+			}
+			else{
+				temppet->Depop();
+				return false;
+			}
+		}
+
+		else
+			TrySpellProjectileTargetRing(temppet, spell_id);
+		
 		return true;
 	}
+	else
+		Shout("!Kayen: Critical error no temppet (650) Found");
 
 	return false;
 }
@@ -6222,6 +6248,29 @@ bool Mob::ExistsProjectile()
 			return true;
 	}
 	return false;
+}
+
+void Mob::MeleeCharge()
+{
+	if (!IsMeleeChargeActive)
+		return;
+
+	Shout("IS MOVING %i", IsMoving());
+
+	if (!IsMoving()){
+		Shout("Trigger MeleeChargeEffect");
+		SetSpecialAbility(IMMUNE_TAUNT, 0);
+		SetSpecialAbility(IMMUNE_AGGRO, 0);
+		SetDisableMelee(0);
+		IsMeleeChargeActive = false;
+		
+
+		Mob* target = entity_list.GetMobID(MeleeCharge_target_id);
+		if (target) {
+			target->Depop();
+			MeleeCharge_target_id = 0;
+		}
+	}
 }
 
 void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)

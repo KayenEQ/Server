@@ -671,6 +671,8 @@ bool NPC::Process()
 		SpellProjectileEffect();
 
 	//C!Kayen
+	MeleeCharge();
+	SpellProjectileEffect2();
 	SpellProjectileEffectTargetRing();
 
 	if(spellbonuses.GravityEffect == 1) {

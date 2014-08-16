@@ -920,13 +920,13 @@ public:
 	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
 	bool FindDestFromHeadingLos(float heading, float distance, int MaxZDiff, float &dX, float &dY, float &dZ);
 	//bool LineWalk(float heading, float distance, float interval, float size = 1);
-	bool ProjectileNoTarget(uint16 spell_id);
+	bool ProjectileNoTarget(uint16 spell_id);//not used
 	Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false);
 	inline float GetTargetRingX() const { return targetring_x; }
 	inline float GetTargetRingY() const { return targetring_y; }
 	inline float GetTargetRingZ() const { return targetring_z; }
 	
-	bool ProjectileTargetRing(uint16 spell_id);
+	bool ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge = false);
 	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
 	void SpellProjectileEffectTargetRing();
 	inline bool HasProjectileRing() const { return ActiveProjectileRing; }
@@ -944,6 +944,8 @@ public:
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
 	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
 
+	void MeleeCharge();
+	//C!Kayen END
 
 protected:
 	void CommonDamage(Mob* other, int32 &damage, const uint16 spell_id, const SkillUseTypes attack_skill, bool &avoidable, const int8 buffslot, const bool iBuffTic);
@@ -1303,6 +1305,9 @@ protected:
 	uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
 	bool ActiveProjectileRing;
 	bool ActiveProjectile;
+
+	bool IsMeleeChargeActive;
+	uint16 MeleeCharge_target_id;
 
 private:
 	void _StopSong(); //this is not what you think it is

@@ -630,6 +630,8 @@ typedef enum {
 #define SE_CastOnLeap					1002 // implemented
 #define SE_PetLifeShare					1003 // implemented - percent penalty to owner's pet.
 #define SE_SpellPowerHeightMod			1004 // implemented - base = Max Distance limit = Max Modifer
+#define SE_CastOnMeleeCharge			1005 // implemented - base = bool base2 = Trigger spellid when charge is completed
+#define SE_MeleeAttack					1006 // implemented - base = damage mod base2 = skill max = chance to hit, skill = skillinuse
 
 // LAST
 

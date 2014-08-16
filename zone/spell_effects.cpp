@@ -2743,6 +2743,18 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_MeleeAttack:{
+
+				if (caster->IsNPC()){
+					SkillUseTypes skillinuse = static_cast<SkillUseTypes>(CastToNPC()->GetPrimSkill());
+					int32 _max_dmg = caster->CastToNPC()->GetMaxDMG();
+					int32 _min_dmg = caster->CastToNPC()->GetMinDMG();
+					_max_dmg += _max_dmg*spells[spell_id].base[i] / 100;
+					caster->DoSpecialAttackDamage(this, skillinuse, _max_dmg, _min_dmg, 0,0,  false, false);
+				}
+				break;
+			}
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:
