@@ -2963,7 +2963,7 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 			BindWound(this, false, true);
 		}
 		else if (sa->parameter == ANIM_CROUCH) {
-			if(!UseBardSpellLogic())
+			if(!UseBardSpellLogic() && !CastFromCrouch()) //C!Kayen
 				InterruptSpell();
 			SetAppearance(eaCrouching);
 			playeraction = 2;

@@ -722,6 +722,12 @@ struct SPDat_Spell_Struct
 /* 167 */	int8 EndurTimerIndex;
 /* 168 */	bool IsDisciplineBuff; //Will goto the combat window when cast
 /* 169 - 172*/ //These are zero for ALL spells
+
+/* 169 */	bool cast_while_moving; //C!Kayen
+/* 170 */	int cast_from_crouch; //C!Kayen - Mod the modifer [Start - Remain Time / 100]... (Base 100)
+/* 171 */	//int customPH;
+/* 172 */	//int customPH;
+
 /* 173 */	int HateAdded;
 /* 174 */	int EndurUpkeep;
 /* 175 */	int numhitstype; // defines which type of behavior will tick down the numhit counter.

@@ -400,10 +400,11 @@ Mob::Mob(const char* in_name,
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_increment_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_hit_ring[i] = 0; }
 	ActiveProjectileRing = false;
-
 	ActiveProjectile = false;
+
 	IsMeleeChargeActive = false;
 	MeleeCharge_target_id = 0;
+	CastFromCrouchMod = 0;
 }
 
 Mob::~Mob()
@@ -5714,145 +5715,6 @@ void Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 	}
 }
 
-
-
-void Mob::LoSHit(Mob* caster, Mob *target, int dist)
-{
-	if (!caster || !target)
-		return;
-
-	float DEFENDER_X = target->GetX();
-	float DEFENDER_Y = target->GetY();
-	float ATTACKER_X = caster->GetX();
-	float ATTACKER_Y = caster->GetY();
-
-	int LoS_Target = 0;
-	float y_dif = DEFENDER_Y - ATTACKER_Y;
-	float x_dif = DEFENDER_X - ATTACKER_X;
-	//$Lowest_Value = 10000;
-
-	std::list<NPC*> npc_list;
-	entity_list.GetNPCList(npc_list);
-	
-	//#Find unit that is closest to LoS line AND closet to Attacker (Radius 4 from LoS line to hit for arrows)
-	if ((x_dif != 0) && (y_dif != 0)) 
-	{
-		Shout("TRY");
-		float x1 = ATTACKER_X;
-		float y1 = ATTACKER_Y;
-		float x2 = DEFENDER_X;
-		float y2 = DEFENDER_Y;
-
-		//# put it into the form y = mx + b
-		float m = (y2 - y1) / (x2 - x1);
-		float b = (y1 * x2 - y2 * x1) / (x2 - x1);
- 
- 		for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
-		{
- 				
- 			NPC* npc = *itr;
-
-				float Unit_X = npc->GetX();
-				float Unit_Y = npc->GetY();
-				
-				float y_dif2 = Unit_Y - ATTACKER_Y;
-	
-				//#Only target units in the quadrant of the attacker using y axis
-				if ( ((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0)))
-				{					
-					//# target point is (x0, y0)
-					float x0 = Unit_X;
-					float y0 = Unit_Y;
-					//# shortest distance from line to target point
-					float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
-					//npc->Shout("D: %.2f" ,d);
-					
-					if (d <= 10)
-					{
-						npc->Shout("Found 1" );
-						npc->Shout("D: %.2f" ,d);
-						/*
-						float d2 = caster->CalculateDistance(Unit_X, Unit_Y, target->GetZ()));
-						#$cur->Shout("$d2");
-						
-						if ($d2 < $Lowest_Value)
-						{
-						$Lowest_Value = $d2;
-						$LoS_Target = $cur->GetID();
-						}
-						*/
-					
-					}
-				}
-			}
-		return;
-		}
-	
-	
-		//#North/South LoS
-		if ((x_dif == 0) && (y_dif != 0)) 
-		{
- 			for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
-			{
- 				
- 					NPC* npc = *itr;
-					float Unit_X = npc->GetX();
-					float Unit_Y = npc->GetY();
-					float y_dif2 = Unit_Y - ATTACKER_Y;
-					float x_dif2 = Unit_X - ATTACKER_X;
-
-					if ( (((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0))) && (x_dif2 == 0) )
-					{
-						/*my $d2 = int($ATTACKER->CalculateDistance($Unit_X, $Unit_Y, -43.1));
-								
-						if ($d2  < $Lowest_Value)
-						{
-						$Lowest_Value = $d2;
-						$LoS_Target = $cur->GetID();
-						}
-						*/
-						npc->Shout("Found 2" );
-					}
-				
-			}
-
-			return;
-		}
-	
-		//#East/West LoS
-		if ((x_dif != 0) && (y_dif == 0)) 
-		{
- 			for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
-			{
- 				
- 				NPC* npc = *itr;
-					float Unit_X = npc->GetX();
-					float Unit_Y = npc->GetY();
-					float y_dif2 = Unit_Y - ATTACKER_Y;
-					float x_dif2 = Unit_X - ATTACKER_X;
-
-				if ( (((x_dif2 > 0) && (x_dif > 0)) || ((x_dif2 < 0) && (x_dif < 0))) && (y_dif2 == 0) )
-				{
-					/*
-					my $d2 = int($ATTACKER->CalculateDistance($Unit_X, $Unit_Y, -43.1));
-								
-					if ($d2  < $Lowest_Value)
-					{
-					$Lowest_Value = $d2;
-					$LoS_Target = $cur->GetID();
-					}
-					npc->Shout("Found 3" );
-					*/
-				}
-			}
-
-			return;
-		}
-			
-
-	return;
-}
-
 void Mob::CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ)
 {
 	if (!distance) { return; }
@@ -5875,71 +5737,6 @@ void Mob::CalcDestFromHeading(float heading, float distance, int MaxZDiff, float
 	//CheckLoSToLoc   == CheckLosFN
 }
 
-/*
-bool Mob::FindDestFromHeadingLos(float heading, float distance, int MaxZDiff, float &dX, float &dY, float &dZ){
-
-	CalcDestFromHeading(heading, distance, -5, dX, dY, dZ);	
-		
-	if (CheckLosFN(dX,dY,dZ,GetSize()))
-		return true;
-
-	return false;
-}
-*/
-bool Mob::ProjectileNoTarget(uint16 spell_id)
-{return false;
-	if (!IsValidSpell(spell_id))
-		return false;
-
-	//Distance = base, limit intereval, max heading
-	entity_list.DestroyTempPets(this);
-	float distance = 200;
-	float interval = 5;
-	float current_disance = interval;
-	float dX, dY, dZ = 0.0f;
-	float uX, uY, uZ = 0.0f;
-	bool LocationFound = false;
-
-	while (current_disance < distance) {
-
-		CalcDestFromHeading(GetHeading(), current_disance, 5, GetX(), GetY(), dX, dY, dZ);	
-		Shout("lOOP IINTERVAL %.2f XYZ %.2f %.2f %.2f",current_disance, dX, dY, dZ);
-		if (CheckLosFN(dX,dY,dZ,GetSize()))
-			LocationFound = true;
-		else
-			break;
-
-		if (dZ == -99999)
-			break;
-
-		current_disance = current_disance + interval;
-
-		uX = dX;
-		uY = dY;
-		uZ = dZ;
-	}
-	Shout("IINTERVAL %.2f XYZ %.2f %.2f %.2f",current_disance, dX, dY, dZ);
-
-	if (dZ == -99999){
-		Shout("Z Axis Fail NO SPAWN");
-		return false;
-	}
-
-	if (!LocationFound){
-		Shout("No location found");
-		return false;
-	}
-
-	TypesTemporaryPets(650, nullptr, "TEST",60000, false);
-	Mob* temppet = nullptr;
-	temppet = GetTempPetByTypeID(650, true);
-	
-	if (temppet){
-		temppet->Shout("SPAWNED");
-		temppet->GMMove(uX, uY, uZ, 0, true);
-		//temppet->Kill();
-	}
-}
 Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
 {
 	std::list<NPC*> npc_list;
@@ -6401,6 +6198,23 @@ void Mob::CustomSpellMessages(uint16 target_id, uint16 spell_id, int id){
 		
 		return;
 	}
+}
+
+bool Mob::CastFromCrouch(uint16 spell_id)
+{
+	if(spell_id == SPELL_UNKNOWN)
+		spell_id = casting_spell_id;
+
+	if (!IsValidSpell(spell_id) || !spells[spell_id].cast_from_crouch|| !IsCasting())
+		return false;
+
+	int32 t_start = GetActSpellCasttime(spell_id, spells[spell_id].cast_time);
+	int32 mod = (t_start - spellend_timer.GetRemainingTime())/100;
+	mod = mod*spells[spell_id].cast_from_crouch/100; //Mod Multiplier [Base 100]
+	SetCastFromCrouchMod(mod);
+	spellend_timer.Start(1);
+	return true;
+
 }
 
 

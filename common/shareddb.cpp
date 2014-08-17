@@ -1727,6 +1727,10 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].EndurCost=atoi(row[166]);
 			sp[tempid].EndurTimerIndex=atoi(row[167]);
 			sp[tempid].IsDisciplineBuff = atoi(row[168]) != 0;
+
+			sp[tempid].cast_while_moving = atoi(row[169]) != 0;
+			sp[tempid].cast_from_crouch = atoi(row[170]);
+
 			sp[tempid].HateAdded=atoi(row[173]);
 			sp[tempid].EndurUpkeep=atoi(row[174]);
 			sp[tempid].numhitstype = atoi(row[175]);

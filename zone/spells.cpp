@@ -944,8 +944,8 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 	Mob *spell_target = entity_list.GetMob(target_id);
 	// here we do different things if this is a bard casting a bard song from
 	// a spell bar slot
-	if(GetClass() == BARD) // bard's can move when casting any spell...
-	{
+	if(spells[spell_id].cast_while_moving || GetClass() == BARD) // bard's can move when casting any spell...
+	{//C!Kayen - Allow spell to be cast while moving
 		if (IsBardSong(spell_id)) {
 			if(spells[spell_id].buffduration == 0xFFFF || spells[spell_id].recast_time != 0) {
 				mlog(SPELLS__BARDS, "Bard song %d not applying bard logic because duration or recast is wrong: dur=%d, recast=%d", spells[spell_id].buffduration, spells[spell_id].recast_time);

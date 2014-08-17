@@ -916,11 +916,8 @@ public:
 	void SetLeapEffect(uint16 spell_id);
 	void PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 	void CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
-	void LoSHit(Mob* caster, Mob *target, int dist);
 	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
-	bool FindDestFromHeadingLos(float heading, float distance, int MaxZDiff, float &dX, float &dY, float &dZ);
 	//bool LineWalk(float heading, float distance, float interval, float size = 1);
-	bool ProjectileNoTarget(uint16 spell_id);//not used
 	Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false);
 	inline float GetTargetRingX() const { return targetring_x; }
 	inline float GetTargetRingY() const { return targetring_y; }
@@ -942,7 +939,11 @@ public:
 	void RectangleDirectional(uint16 spell_id, int16 resist_adjust);
 	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
-	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; } 
+	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
+	
+	bool CastFromCrouch(uint16 spell_id = 0xffff);
+	void SetCastFromCrouchMod(int32 value) { CastFromCrouchMod = value; }
+	inline int32 GetCastFromCrouchMod() const { return CastFromCrouchMod; }
 
 	void MeleeCharge();
 	//C!Kayen END
@@ -1308,6 +1309,8 @@ protected:
 
 	bool IsMeleeChargeActive;
 	uint16 MeleeCharge_target_id;
+
+	int32 CastFromCrouchMod;
 
 private:
 	void _StopSong(); //this is not what you think it is

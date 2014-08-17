@@ -221,7 +221,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				// for offensive spells check if we have a spell rune on
 				int32 dmg = effect_value;
-				CalcSpellPowerHeightMod(dmg, spell_id, caster);
+
+				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
+				CalcSpellPowerHeightMod(dmg, spell_id, caster); //C!Kayen coded narrowly for damage/heals.
+				dmg += dmg*caster->GetCastFromCrouchMod()/100;//C!Kayen - Cast Time multiplier from charged spells.
 
 				if(dmg < 0)
 				{
