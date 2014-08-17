@@ -402,7 +402,7 @@ Mob::Mob(const char* in_name,
 	ActiveProjectileRing = false;
 	ActiveProjectile = false;
 
-	IsMeleeChargeActive = false;
+	MeleeChargeActive = false;
 	MeleeCharge_target_id = 0;
 	CastFromCrouchMod = 0;
 }
@@ -5785,8 +5785,8 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 				AddToHateList(temppet, CastToNPC()->GetNPCHate(hate_top) + 10000);
 				SetSpecialAbility(IMMUNE_AGGRO, 1);
 				SetDisableMelee(1);
-				IsMeleeChargeActive = true;
-				MeleeCharge_target_id = temppet->GetID();
+				SetMeleeChargeActive(true);
+				SetMeleeChargeTargetID(temppet->GetID());
 			}
 			else{
 				temppet->Depop();
@@ -6051,23 +6051,22 @@ bool Mob::ExistsProjectile()
 
 void Mob::MeleeCharge()
 {
-	if (!IsMeleeChargeActive)
+	if (IsMeleeChargeActive())
 		return;
 
 	Shout("IS MOVING %i", IsMoving());
 
 	if (!IsMoving()){
-		Shout("Trigger MeleeChargeEffect");
+		Shout("TODO: Trigger MeleeChargeEffect");
 		SetSpecialAbility(IMMUNE_TAUNT, 0);
 		SetSpecialAbility(IMMUNE_AGGRO, 0);
 		SetDisableMelee(0);
-		IsMeleeChargeActive = false;
+		SetMeleeChargeActive(false);
 		
-
-		Mob* target = entity_list.GetMobID(MeleeCharge_target_id);
+		Mob* target = entity_list.GetMobID(GetMeleeChargeTargetID());
 		if (target) {
 			target->Depop();
-			MeleeCharge_target_id = 0;
+			SetMeleeChargeTargetID(0);
 		}
 	}
 }
@@ -6214,7 +6213,6 @@ bool Mob::CastFromCrouch(uint16 spell_id)
 	SetCastFromCrouchMod(mod);
 	spellend_timer.Start(1);
 	return true;
-
 }
 
 

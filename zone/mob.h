@@ -946,6 +946,10 @@ public:
 	inline int32 GetCastFromCrouchMod() const { return CastFromCrouchMod; }
 
 	void MeleeCharge();
+	inline bool IsMeleeChargeActive() const { return MeleeChargeActive; }
+	void SetMeleeChargeActive(bool value) { MeleeChargeActive = value; }
+	inline uint16 GetMeleeChargeTargetID() const { return MeleeCharge_target_id; }
+	void SetMeleeChargeTargetID(bool value) { MeleeCharge_target_id = value; }
 	//C!Kayen END
 
 protected:
@@ -1307,7 +1311,7 @@ protected:
 	bool ActiveProjectileRing;
 	bool ActiveProjectile;
 
-	bool IsMeleeChargeActive;
+	bool MeleeChargeActive;
 	uint16 MeleeCharge_target_id;
 
 	int32 CastFromCrouchMod;
