@@ -6201,6 +6201,28 @@ void Mob::CustomSpellMessages(uint16 target_id, uint16 spell_id, int id){
 
 bool Mob::CastFromCrouch(uint16 spell_id)
 {
+	/* 
+	Allow for 'charging' of effects where cast time is the charger and duck/jump is the release.
+	This function is checked in	Client::Handle_OP_SpawnAppearance when a duck/jump appearance packet is sent.
+	Field 170 repurposed customly to CastFromCrouch which flags a spell able to check this.
+	Value of CastFromCrouch field is an effect modifier.
+	
+	Method 1: Damage multiplied by Amount of Cast Time used.
+	When a setting a spell to use this, the base damage/heal is the MIN amount it can do.
+	The value is then increased base on the amount of cast time elapased. Where max damage % increase = Cast Time / 100
+	The value of CastFromCrouch field can then be used the modify this modifer.
+	
+	Method 2: Damage based on Cast Time %
+	When setting a spell to use this, the base damage/heal value is the MAX amount it can do.
+	This value is then decreased based on the percentage of cast time remaining.
+	The value of CastFromCrouch field can then be used to modify the cast time percent modifier
+	
+	spells[spell_id].cast_from_crouch //Value of 100 = No MOD
+
+	TODO: Need to likely increase the mod the longer the cast time to give incentive OR make recast times appropriately different.
+	*/
+
+
 	if(spell_id == SPELL_UNKNOWN)
 		spell_id = casting_spell_id;
 
@@ -6208,8 +6230,16 @@ bool Mob::CastFromCrouch(uint16 spell_id)
 		return false;
 
 	int32 t_start = GetActSpellCasttime(spell_id, spells[spell_id].cast_time);
+	
+	//Method 1
 	int32 mod = (t_start - spellend_timer.GetRemainingTime())/100;
-	mod = mod*spells[spell_id].cast_from_crouch/100; //Mod Multiplier [Base 100]
+	mod = mod*spells[spell_id].cast_from_crouch/100;
+	
+	/*Method 2
+	int32 mod = 100 - (spellend_timer.GetRemainingTime()*100/t_start);
+	mod = mod*spells[spell_id].cast_from_crouch/100;
+	*/
+
 	SetCastFromCrouchMod(mod);
 	spellend_timer.Start(1);
 	return true;
@@ -6227,7 +6257,7 @@ void Client::DoAdjustRecastTimer()
 			if (IsValidSpell(m_pp.mem_spells[i])){
 				uint32 RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
 				//Shout("DoAdjustRecastTimer(): RemainTime %i RecastEnd %i   [%s]", RemainTime,recast_mem_spells[i], spells[m_pp.mem_spells[i]].name);
-				//Shout("DoAdjustRecastTimer(): %i < %i", RemainTime, recast_mem_spells[i]);
+				Shout("DoAdjustRecastTimer(): %i < %i", RemainTime, recast_mem_spells[i]);
 				if (RemainTime <= recast_mem_spells[i]){
 					//Shout("DoAdjustRecastTimer::: Trigger (Adjust Time) [%i] NAME: %s", recast_mem_spells[i], spells[CastToClient()->m_pp.mem_spells[i]].name);
 					
@@ -6245,8 +6275,10 @@ void Client::DoAdjustRecastTimer()
 		}
 	}
 
-	if (Disable)
+	if (Disable){
 		SetAdjustRecastTimer(false);
+		adjustrecast_timer.Disable();
+	}
 }
 
 void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid, uint32 new_recast_time)
@@ -6270,7 +6302,7 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid, uint32 new_r
 	an array (that matches player profile for mem_spells) and activiates the timer(check in clientprocess DoAdjustRecastTimer()).
 	When the current remaining time matches the new remaining time a spell using SE_FcTimerRefresh (id stored in array) with
 	limits matching the specific spell used is triggered and thus the gem is restored. 
-	//TODO: Probably should pet the client process on a 1 sec timer instead of (100 ms)
+	//Interval timer for DoAdjustRecastTimer set at 1 second. (May need adjust but seems fine
 	*/
 
 	uint32 recast_adjust = 0;
@@ -6320,6 +6352,7 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid, uint32 new_r
 					refreshid_mem_spells[i] = spellid_refresh;
 					//Shout("EffectAdjustRecastTimer::: <Activiated %s > Recast ADjust %i [ %i ] Remain Time: %i ", spells[memspell_id].name,recast_adjust,recast_mem_spells[i], RemainTime);
 					SetAdjustRecastTimer(true);
+					adjustrecast_timer.Start(1000);
 				}
 			}
 		}

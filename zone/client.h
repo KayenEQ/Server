@@ -1251,6 +1251,7 @@ protected:
 
 	//C!Kayen
 	bool AdjustRecastTimer;
+	Timer adjustrecast_timer;
 	uint32 recast_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
 	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
 

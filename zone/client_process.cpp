@@ -573,11 +573,14 @@ bool Client::Process() {
 		if(projectile_timer.Check())
 			SpellProjectileEffect();
 
-		//C!Kayen
+		//C!Kayen START
 		SpellProjectileEffect2();
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
-		DoAdjustRecastTimer();
+
+		if (adjustrecast_timer.Check()) //1 second
+			DoAdjustRecastTimer();
+		//C!Kayen END
 					
 		if(spellbonuses.GravityEffect == 1) {
 			if(gravity_timer.Check())
