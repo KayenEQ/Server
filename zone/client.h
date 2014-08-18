@@ -1207,6 +1207,10 @@ public:
 	bool TrainDisciplineBySpellid(uint16 spell_id);
 	void RefundAAType(uint32 sof_type = 0);
 	uint32 GetAltCurrencyItemid(uint32 alt_currency_id);
+	inline bool HasAdjustRecastTimer() const { return AdjustRecastTimer; }
+	void SetAdjustRecastTimer(bool value) { AdjustRecastTimer = value; }
+	void DoAdjustRecastTimer();
+	void EffectAdjustRecastTimer(uint16 spell_id, int effectid, uint32 new_recast_time = 0);
 	
 protected:
 	friend class Mob;
@@ -1244,6 +1248,11 @@ protected:
 	char *adv_requested_data;
 	int adv_requested_member_count;
 	char *adv_data;
+
+	//C!Kayen
+	bool AdjustRecastTimer;
+	uint32 recast_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
+	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
 
 private:
 	eqFilterMode ClientFilters[_FilterCount];

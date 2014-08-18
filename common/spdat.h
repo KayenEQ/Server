@@ -632,6 +632,8 @@ typedef enum {
 #define SE_SpellPowerHeightMod			1004 // implemented - base = Max Distance limit = Max Modifer
 #define SE_CastOnMeleeCharge			1005 // implemented - base = bool base2 = Trigger spellid when charge is completed
 #define SE_MeleeAttack					1006 // implemented - base = damage mod base2 = skill max = chance to hit, skill = skillinuse
+#define SE_AdjustRecastTimer			1007 // implemented - Sets Recast Timer to end early for specified spells. (B: Time L: Refresh Spell M: Recast Spell ID)
+#define SE_AdjustRecastTimerCondition	1008 // implemented - Sets Recast Timer to end early based on conditions (B: Time L: Refresh Spell M: Condition Amt)
 
 // LAST
 

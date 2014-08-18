@@ -2758,6 +2758,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_AdjustRecastTimer:
+			case SE_AdjustRecastTimerCondition:
+			{
+				if (IsClient())
+					CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+				break;
+			}
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:

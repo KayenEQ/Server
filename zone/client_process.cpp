@@ -577,6 +577,7 @@ bool Client::Process() {
 		SpellProjectileEffect2();
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
+		DoAdjustRecastTimer();
 					
 		if(spellbonuses.GravityEffect == 1) {
 			if(gravity_timer.Check())

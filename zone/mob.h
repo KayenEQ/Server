@@ -1315,6 +1315,7 @@ protected:
 	uint16 MeleeCharge_target_id;
 
 	int32 CastFromCrouchMod;
+	
 
 private:
 	void _StopSong(); //this is not what you think it is
