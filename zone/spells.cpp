@@ -1326,6 +1326,8 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 		}
 	}
 
+	TryCastonSpellFinished(this, spell_id); //C!Kayen - Apply the recast timer adjustment spell at this point only.Must use SE (1009)
+
 	// there should be no casting going on now
 	ZeroCastingVars();
 

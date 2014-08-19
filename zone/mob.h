@@ -941,7 +941,6 @@ public:
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
 	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
 	
-	bool CastFromCrouch(uint16 spell_id = 0xffff);
 	void SetCastFromCrouchMod(int32 value) { CastFromCrouchMod = value; }
 	inline int32 GetCastFromCrouchMod() const { return CastFromCrouchMod; }
 
@@ -950,6 +949,10 @@ public:
 	void SetMeleeChargeActive(bool value) { MeleeChargeActive = value; }
 	inline uint16 GetMeleeChargeTargetID() const { return MeleeCharge_target_id; }
 	void SetMeleeChargeTargetID(bool value) { MeleeCharge_target_id = value; }
+
+	uint16 GetSpellGroupFromLimit(uint16 spell_id);
+	void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id);
+
 	//C!Kayen END
 
 protected:
@@ -1315,6 +1318,7 @@ protected:
 	uint16 MeleeCharge_target_id;
 
 	int32 CastFromCrouchMod;
+	int16 AdjustRecastParentSpell;
 	
 
 private:

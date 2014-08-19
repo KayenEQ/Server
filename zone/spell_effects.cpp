@@ -2759,10 +2759,30 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			}
 
 			case SE_AdjustRecastTimer:
-			case SE_AdjustRecastTimerCondition:
 			{
 				if (IsClient())
 					CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+				break;
+			}
+
+			case SE_AdjustRecastTimerCondition:
+			{
+				if (IsClient()){
+					int csttime = CastToClient()->GetChargeTimeCasting();
+					int contime = spells[spell_id].max[i];
+
+					//This is specific for the limits used if obtained from a 'Charge' Effect
+					if (csttime){
+						Shout("Cast Time %i Condition Time %i", csttime, contime);
+						if ((csttime >= contime) && (csttime < (contime + 1000))){
+
+							Shout("Found! %i", i);
+							CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+							break;
+						}
+					}
+				}
+
 				break;
 			}
 

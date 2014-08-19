@@ -6199,7 +6199,7 @@ void Mob::CustomSpellMessages(uint16 target_id, uint16 spell_id, int id){
 	}
 }
 
-bool Mob::CastFromCrouch(uint16 spell_id)
+bool Client::CastFromCrouch(uint16 spell_id)
 {
 	/* 
 	Allow for 'charging' of effects where cast time is the charger and duck/jump is the release.
@@ -6219,6 +6219,8 @@ bool Mob::CastFromCrouch(uint16 spell_id)
 	
 	spells[spell_id].cast_from_crouch //Value of 100 = No MOD
 
+	[IMPORTANT] case SE_CurrentHP: Final Modifier is check in this function to adjust base value.
+
 	TODO: Need to likely increase the mod the longer the cast time to give incentive OR make recast times appropriately different.
 	*/
 
@@ -6229,19 +6231,25 @@ bool Mob::CastFromCrouch(uint16 spell_id)
 	if (!IsValidSpell(spell_id) || !spells[spell_id].cast_from_crouch|| !IsCasting())
 		return false;
 
+	int32 mod = 0;
 	int32 t_start = GetActSpellCasttime(spell_id, spells[spell_id].cast_time);
-	
+	uint32 remain_time = spellend_timer.GetRemainingTime();
+	int32 time_casting = t_start - remain_time; //MS
+
 	//Method 1
-	int32 mod = (t_start - spellend_timer.GetRemainingTime())/100;
+	mod = (time_casting)/100;
 	mod = mod*spells[spell_id].cast_from_crouch/100;
 	
 	/*Method 2
-	int32 mod = 100 - (spellend_timer.GetRemainingTime()*100/t_start);
+	mod = 100 - (remain_time*100/t_start);
 	mod = mod*spells[spell_id].cast_from_crouch/100;
+	mod = mod * -1;
 	*/
 
+	SetChargeTimeCasting(time_casting);
 	SetCastFromCrouchMod(mod);
 	spellend_timer.Start(1);
+	
 	return true;
 }
 
@@ -6257,12 +6265,14 @@ void Client::DoAdjustRecastTimer()
 			if (IsValidSpell(m_pp.mem_spells[i])){
 				uint32 RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
 				//Shout("DoAdjustRecastTimer(): RemainTime %i RecastEnd %i   [%s]", RemainTime,recast_mem_spells[i], spells[m_pp.mem_spells[i]].name);
-				Shout("DoAdjustRecastTimer(): %i < %i", RemainTime, recast_mem_spells[i]);
+				Shout("DoAdjustRecastTimer(): <%s> %i < %i", spells[m_pp.mem_spells[i]].name, RemainTime, recast_mem_spells[i]);
 				if (RemainTime <= recast_mem_spells[i]){
 					//Shout("DoAdjustRecastTimer::: Trigger (Adjust Time) [%i] NAME: %s", recast_mem_spells[i], spells[CastToClient()->m_pp.mem_spells[i]].name);
 					
-					if (IsValidSpell(refreshid_mem_spells[i]))
+					if (IsValidSpell(refreshid_mem_spells[i])){
 						SpellFinished(refreshid_mem_spells[i],this);
+					}
+							
 					
 					recast_mem_spells[i] = 0;
 					refreshid_mem_spells[i] = 0;
@@ -6281,72 +6291,71 @@ void Client::DoAdjustRecastTimer()
 	}
 }
 
-void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid, uint32 new_recast_time)
+void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
 {
 	/*
-	Complete Hack way of adjusting a spells recast timer after spell has been cast.
+	Complete Hack way of adjusting a spells recast timer after spell has been cast. **WE ONLY LOOK FOR MATCHING 'SPELL GROUPS'
 	Use:	Spell Effect 1007 SE_AdjustRecastTimer (Can be primary)
 			Base = New Recast Time 
 			Limit = Refresher Spell ID
-			Max =  Spell ID to Adjust (also will check that spell group)
+			Max =  UNUSED
 			Ie. Set Recast Time to 2 seconds for Spell ID 1000 using Limit Spell ID 1001 to refresh gem.
 	
-	Use:	Spell Effect 1007 SE_AdjustRecastTimerCondition (Must be used with another effect ie Nuke) 
+	Use:	Spell Effect 1007 SE_AdjustRecastTimerCondition (Put with effect you want it to trigger on with using SE 1009) 
 			Base = New Recast Time 
 			Limit = Refresher Spell ID
 			Max = Condition to activiate [This is left open ended for specific uses]
 			Ie. Set Recast Time to 2 seconds for 'THIS' Spell ID using Limit Spell ID 1001 to refresh gem when condition X is met
 
-	When triggered it searches player profile for matching spell that has a recast time remaining
+	When triggered it searches player profile for matching spell [ONLY MATCHES BY SPELL GROUP] that has a recast time remaining
 	great than what the new time would be set to. If found it puts the new recast time value into
 	an array (that matches player profile for mem_spells) and activiates the timer(check in clientprocess DoAdjustRecastTimer()).
 	When the current remaining time matches the new remaining time a spell using SE_FcTimerRefresh (id stored in array) with
-	limits matching the specific spell used is triggered and thus the gem is restored. 
-	//Interval timer for DoAdjustRecastTimer set at 1 second. (May need adjust but seems fine
+	limits matching the specific SPELL GROUP used is triggered and thus the gem is restored. 
+	
+	Interval timer for DoAdjustRecastTimer set at 1 second. (May need adjust but seems fine
+
+	SE_TryCastonSpellFinished 1009 is the effect used to 'recourse' the conditional version so that it triggers off that base spell.
+	This is checked by TryCastonSpellFinished() function at the end of spellsfinsihed.
 	*/
 
 	uint32 recast_adjust = 0;
-	uint16 spellid_adjust = 0;
 	uint16 spellid_refresh = 0;
 	uint16 spellgroupadjust = 0;
 	uint16 memspell_id = 0;
 	uint32 RemainTime = 0;
 
 	bool SpellLimited = false;
+	bool SpellGroupLimited = false;
 
 	if(IsValidSpell(spell_id)){
 		
 		recast_adjust = spells[spell_id].base[effectid]/1000;
 		spellid_refresh = spells[spell_id].base2[effectid];
-		
-		if (spells[spell_id].effectid[effectid] == SE_AdjustRecastTimer)
-			spellid_adjust = spells[spell_id].max[effectid];
-		else if (spells[spell_id].effectid[effectid] == SE_AdjustRecastTimerCondition)
-			spellid_adjust = spell_id;
-		
-		if(IsValidSpell(spellid_adjust)){
-			SpellLimited = true;;
-			spellgroupadjust = spells[spellid_adjust].spellgroup;
-		}
 
 		if(!IsValidSpell(spellid_refresh))
 			return; //NO Refresher ID
+		
+		spellgroupadjust = GetSpellGroupFromLimit(spellid_refresh); //Obtains spell group from the refresh spell LIMIT
+		
+		if (spellgroupadjust)
+			SpellGroupLimited = true;
 	}
-	else
-		recast_adjust = new_recast_time;
 
-	//Shout("EffectAdjustRecastTimer::: Recast ADjust: %i Spell: TO Adjust %i SpellGroup: %i Limited %i", recast_adjust, spellid_adjust, spellgroupadjust,SpellLimited);
+	//Shout("EffectAdjustRecastTimer::: Recast ADjust: %i Spell: TO Adjust %i SpellGroup: %i Limis [%i / %i]", recast_adjust, -1, spellgroupadjust,SpellLimited, SpellGroupLimited);
 	if (recast_adjust){
 		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
 			memspell_id = m_pp.mem_spells[i];
 			RemainTime = 0;
 			if(IsValidSpell(memspell_id)) {
-				//Shout("	%i %i || %i %i",memspell_id ,spellid_adjust, spells[memspell_id].spellgroup, spellgroupadjust);
-				if (SpellLimited && (memspell_id == spellid_adjust) || (spellgroupadjust && (spells[memspell_id].spellgroup == spellgroupadjust)))
+			//	Shout("[%i]	pp.Group %i f.Group",i, spells[memspell_id].spellgroup, spellgroupadjust);
+
+				if (SpellGroupLimited && (spellgroupadjust && (spells[memspell_id].spellgroup == spellgroupadjust)))
 					RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
-				else if (!SpellLimited)
+				else if (!SpellGroupLimited)
 					RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
 
+				//Shout("RemainTime %i  > recast_adjust %i", RemainTime, recast_adjust);
 				if (RemainTime && (RemainTime > recast_adjust)){
 					recast_mem_spells[i] = recast_adjust;
 					refreshid_mem_spells[i] = spellid_refresh;
@@ -6357,10 +6366,45 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid, uint32 new_r
 			}
 		}
 	}
-		//Shout("%i SE_FcTimerRefresh:::: Remain %i", i, CastToClient()->GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]));
-		//Shout("%i SE_FcTimerRefresh:::: Expired %i",i,CastToClient()->GetPTimers().Expired(&database, pTimerSpellStart + spell_id, false));
+	
+	//Shout("%i SE_FcTimerRefresh:::: Remain %i", i, CastToClient()->GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]));
+	//Shout("%i SE_FcTimerRefresh:::: Expired %i",i,CastToClient()->GetPTimers().Expired(&database, pTimerSpellStart + spell_id, false));
 }
 
+uint16 Mob::GetSpellGroupFromLimit(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	for (int i = 0; i <= EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_LimitSpellGroup){
+
+			if (spells[spell_id].base[i])
+				return spells[spell_id].base[i];
+
+		}
+	}
+	return 0;
+}
+
+void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id)
+{
+	if(!IsClient() || target == nullptr || !IsValidSpell(spell_id))
+		return;
+
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_TryCastonSpellFinished)
+		{
+			if(MakeRandomInt(1, 100) <= spells[spell_id].base[i])
+			{
+				if(target)
+					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
+			}
+		}
+	}
+}
 
 	/*
 bool Mob::LineWalk(float heading, float distance,  float interval, float size)
