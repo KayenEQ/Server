@@ -405,6 +405,7 @@ Mob::Mob(const char* in_name,
 	MeleeChargeActive = false;
 	MeleeCharge_target_id = 0;
 	CastFromCrouchInterval = 0;
+	casting_z_diff = 0;
 }
 
 Mob::~Mob()
@@ -5690,7 +5691,7 @@ void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 
 void Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 	//'this' = target base = Max Distance limit = Max Modifer (Min dist = 0, Min Mod = 1)
-	if (!IsValidSpell(spell_id))
+	if (!IsValidSpell(spell_id) || !caster)
 		return;
 
 	for (int i = 0; i <= EFFECT_COUNT; i++)
@@ -5699,7 +5700,8 @@ void Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 
 			if (spells[spell_id].base[i]){
 
-				int distance = static_cast<int>(caster->GetZ()) - static_cast<int>(GetZ());
+				//int distance = static_cast<int>(caster->GetZ()) - static_cast<int>(GetZ());
+				int distance = caster->GetCastingZDiff();
 				int16 max_distance = spells[spell_id].base[i];
 				int16 max_modifier = spells[spell_id].base2[i]*100;
 
@@ -5707,12 +5709,13 @@ void Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 					distance = max_distance;
 
 				int mod = 1 + ((distance * (max_modifier/max_distance))/100);
-			
+				Shout("mod %i distance %i", mod, distance);
 				if (mod)
 					damage = damage*mod;;
 			}
 		}
 	}
+	SetCastingZDiff(0); //C!Kayen
 }
 
 void Mob::CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ)
@@ -5923,7 +5926,7 @@ void Mob::SpellProjectileEffectTargetRing()
 
 bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 
-	if (!spell_target || spell_target == this)
+	if (!spell_target)
 		return false;
 	//Note: Field209 / powerful_flag : Used as Speed Variable (in MS > 500) and to flag TargetType Ring/Location as a Projectile
 	//Note: pvpresistbase : Used to set tilt
@@ -5947,7 +5950,7 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	float angle = 0.0;
 
 	if (tilt == 525){ //Straightens out most melee weapons. [May need to re evaluate this]
-		angle = 1000.0f;
+		//angle = 1000.0f;
 
 		if ( (GetX() - spell_target->GetX()) > 10.0f)
 			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.

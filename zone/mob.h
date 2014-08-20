@@ -899,23 +899,32 @@ public:
 
 	//C!Kayen - Custom Mob Functions
 	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
+	
 	inline float GetMomentum() const { return(momentum); }
 	void SetMomentum(float momentum_value) { momentum = momentum_value; }
 	inline float GetMomentumSpeed() const { return(0.005f); }
 	void MomentumDamage(Mob *defender, int32 &damage);
+
 	bool InAngleMob(Mob *other = nullptr, float start_angle = 0.0f, float stop_angle = 0.0f) const;
 	inline bool LeftMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 56.0f, 124.0f); }
 	inline bool RightMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 236.0f, 304.0f); }
 	inline bool FlankMob(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
 		{ return (!other || other == this) ? true : (MobAngle(other, ourx, oury) > 56.0f && MobAngle(other, ourx, oury) > 124.0f); }
+	
 	void SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage);
 	int GetWpnSkillDmgBonusAmt();
 	void SetSpellResistTypeDmgBonus(uint16 spell_id, int32 damage);
 	int GetSpellResistTypeDmgBonus();
+	
 	void LeapProjectileEffect();
 	void SetLeapEffect(uint16 spell_id);
+	
 	void PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
+	
 	void CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
+	inline int32 GetCastingZDiff() const { return casting_z_diff; }
+	void SetCastingZDiff(int32 value) { casting_z_diff = value; }
+	
 	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
 	//bool LineWalk(float heading, float distance, float interval, float size = 1);
 	Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false);
@@ -1319,6 +1328,8 @@ protected:
 	uint16 MeleeCharge_target_id;
 
 	int8 CastFromCrouchInterval;
+
+	int32 casting_z_diff;
 
 
 private:

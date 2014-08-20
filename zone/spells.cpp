@@ -1899,6 +1899,9 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			return false;
 		}
 	}
+	
+	if (spell_target && IsEffectInSpell(spell_id, SE_SpellPowerHeightMod))//C!Kayen - (Need to check early for projectile use)
+		SetCastingZDiff((static_cast<int>(GetZ()) - static_cast<int>(spell_target->GetZ()))); 
 
 	//determine the type of spell target we have
 	CastAction_type CastAction;
