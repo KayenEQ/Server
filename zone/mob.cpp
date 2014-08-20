@@ -5838,7 +5838,7 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	//Note: Field209 / powerful_flag : Used as Speed Variable and to flag TargetType Ring/Location as a Projectile
 	//Note: pvpresistbase : Used to set tilt
 	//Baseline 280 mod was calculated on how long it takes for projectile to hit target at 1 speed.
-	float projectile_speed_ring = static_cast<float>(spells[spell_id].powerful_flag) / 100.0f; 
+	float projectile_speed_ring = static_cast<float>(spells[spell_id].powerful_flag) / 1000.0f; 
 	float distance = CalculateDistance(spell_target->GetX(), spell_target->GetY(), spell_target->GetZ());
 	float hit = 0.0f;
 	float dist_mod = 270.0f;
@@ -5923,9 +5923,9 @@ void Mob::SpellProjectileEffectTargetRing()
 
 bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 
-	if (!spell_target)
+	if (!spell_target || spell_target == this)
 		return false;
-	//Note: Field209 / powerful_flag : Used as Speed Variable and to flag TargetType Ring/Location as a Projectile
+	//Note: Field209 / powerful_flag : Used as Speed Variable (in MS > 500) and to flag TargetType Ring/Location as a Projectile
 	//Note: pvpresistbase : Used to set tilt
 
 	int bolt_id = -1;
@@ -5942,11 +5942,11 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 		return false;
 
 	uint8 anim = spells[spell_id].CastingAnim; 
-	float speed = static_cast<float>(spells[spell_id].powerful_flag) / 100.0f;
+	float speed = static_cast<float>(spells[spell_id].powerful_flag) / 1000.0f;
 	float tilt = static_cast<float>(spells[spell_id].pvpresistbase);
 	float angle = 0.0;
 
-	if (tilt == 525){ //Straightens out most melee weapons.
+	if (tilt == 525){ //Straightens out most melee weapons. [May need to re evaluate this]
 		angle = 1000.0f;
 
 		if ( (GetX() - spell_target->GetX()) > 10.0f)
@@ -5954,7 +5954,6 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	}
 
 	if (CheckLosFN(spell_target)) {
-		
 		projectile_spell_id[bolt_id] = spell_id;
 		projectile_target_id[bolt_id] = spell_target->GetID();
 		projectile_x[bolt_id] = GetX(), projectile_y[bolt_id] = GetY(), projectile_z[bolt_id] = GetZ();
@@ -5962,8 +5961,8 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 		SetProjectile(true);
 	}
 
-	//ProjectileAnimation(spell_target,0, false, speed,0,0,0, spells[spell_id].player_1);
-	ProjectileAnimation(spell_target,0, false, speed,0,525,1000, "IT10959");
+
+	ProjectileAnimation(spell_target,0, false, speed,angle,tilt,0, spells[spell_id].player_1);
 	
 	if (spells[spell_id].CastingAnim == 64)
 		anim = 44; //Corrects for animation error.
@@ -5993,7 +5992,7 @@ void Mob::SpellProjectileEffect2()
 		float hit = 0.0f;
 		float dist_mod = 270.0f;
 		float speed_mod = 0.0f;
-		float projectile_speed_ring = static_cast<float>(spells[projectile_spell_id[i]].powerful_flag) / 100.0f;
+		float projectile_speed_ring = static_cast<float>(spells[projectile_spell_id[i]].powerful_flag) / 1000.0f;
 	
 		if (projectile_speed_ring >= 0.5f && projectile_speed_ring < 1.0f)
 			speed_mod = 175.0f - ((projectile_speed_ring - 0.5f) * (175.0f - 100.0f));
@@ -6008,7 +6007,7 @@ void Mob::SpellProjectileEffect2()
 
 		dist_mod = (dist_mod * speed_mod) / 100.0f;
 		hit = (distance * dist_mod) / 100;
-		
+
 		uint16 increment = static_cast<int>(hit);
 
 		if (increment <= projectile_increment[i]){
@@ -6240,7 +6239,7 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	uint32 remain_time = spellend_timer.GetRemainingTime();
 	int32 time_casting = t_start - remain_time; //MS
 	int32 pct_casted = 100 - (remain_time*100/t_start);
-	int8 charge_interval = 0;
+	int8 charge_interval = 5;
 
 	/*Method 1
 	mod = (time_casting)/100;
@@ -6269,7 +6268,8 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	//SetChargeTimeCasting(time_casting);
 	SetCastFromCrouchInterval(charge_interval);
 	spellend_timer.Start(1);
-	
+	Stand();
+
 	return true;
 }
 
@@ -6279,9 +6279,6 @@ void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
 		return;
 
 	int32 interval = caster->GetCastFromCrouchInterval();
-
-	if (!interval)
-		interval = 5;
 
 	int32 modifier = (interval - 1)*100;
 	modifier = modifier*spells[spell_id].cast_from_crouch/100; //Base cast_from_crouch = 100;
