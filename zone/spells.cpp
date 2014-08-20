@@ -775,6 +775,7 @@ void Mob::ZeroCastingVars()
 	casting_spell_resist_adjust = 0;
 	casting_spell_checks = false;
 	delaytimer = false;
+	SetCastFromCrouchInterval(0); //C!Kayen
 }
 
 void Mob::InterruptSpell(uint16 spellid)

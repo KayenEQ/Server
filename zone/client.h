@@ -1212,8 +1212,6 @@ public:
 	void DoAdjustRecastTimer();
 	void EffectAdjustRecastTimer(uint16 spell_id, int effectid);
 	bool CastFromCrouch(uint16 spell_id = 0xffff);
-	inline uint32 GetChargeTimeCasting() const { return ChargeTimeCasting; }
-	void SetChargeTimeCasting(uint32 value) { ChargeTimeCasting = value; }
 	
 protected:
 	friend class Mob;
@@ -1256,8 +1254,7 @@ protected:
 	bool AdjustRecastTimer;
 	Timer adjustrecast_timer;
 	uint32 recast_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
-	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
-	uint32 ChargeTimeCasting; //Sent from a 'charged' spell.
+	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is spell id used to refresh the spell gem early.
 
 private:
 	eqFilterMode ClientFilters[_FilterCount];

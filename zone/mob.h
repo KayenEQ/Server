@@ -941,8 +941,9 @@ public:
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
 	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
 	
-	void SetCastFromCrouchMod(int32 value) { CastFromCrouchMod = value; }
-	inline int32 GetCastFromCrouchMod() const { return CastFromCrouchMod; }
+	void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
+	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
+	void CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster);
 
 	void MeleeCharge();
 	inline bool IsMeleeChargeActive() const { return MeleeChargeActive; }
@@ -1317,9 +1318,8 @@ protected:
 	bool MeleeChargeActive;
 	uint16 MeleeCharge_target_id;
 
-	int32 CastFromCrouchMod;
-	int16 AdjustRecastParentSpell;
-	
+	int8 CastFromCrouchInterval;
+
 
 private:
 	void _StopSong(); //this is not what you think it is

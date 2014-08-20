@@ -333,7 +333,6 @@ Client::Client(EQStreamInterface* ieqs)
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { recast_mem_spells[i] = 0; }
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { refreshid_mem_spells[i] = 0; }
 	adjustrecast_timer.Disable();
-	ChargeTimeCasting = 0;
 }
 
 Client::~Client() {

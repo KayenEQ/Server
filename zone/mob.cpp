@@ -404,7 +404,7 @@ Mob::Mob(const char* in_name,
 
 	MeleeChargeActive = false;
 	MeleeCharge_target_id = 0;
-	CastFromCrouchMod = 0;
+	CastFromCrouchInterval = 0;
 }
 
 Mob::~Mob()
@@ -6216,6 +6216,10 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	When setting a spell to use this, the base damage/heal value is the MAX amount it can do.
 	This value is then decreased based on the percentage of cast time remaining.
 	The value of CastFromCrouch field can then be used to modify the cast time percent modifier
+
+	Method 3: Modifier based on charge intervals 1-5 (each 20%)
+	You get a set modifier for ending charge for intervals of 20% on the cast bar with 5 being the highest.
+	This set as 1-5 in SetCastFromCrouchInterval() and used to correlate for conditionals
 	
 	spells[spell_id].cast_from_crouch //Value of 100 = No MOD
 
@@ -6235,22 +6239,55 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	int32 t_start = GetActSpellCasttime(spell_id, spells[spell_id].cast_time);
 	uint32 remain_time = spellend_timer.GetRemainingTime();
 	int32 time_casting = t_start - remain_time; //MS
+	int32 pct_casted = 100 - (remain_time*100/t_start);
+	int8 charge_interval = 0;
 
-	//Method 1
+	/*Method 1
 	mod = (time_casting)/100;
 	mod = mod*spells[spell_id].cast_from_crouch/100;
-	
+	*/
+
 	/*Method 2
-	mod = 100 - (remain_time*100/t_start);
+	mod = 100 - (remain_time*100/t_start); // % Cast Time Used
 	mod = mod*spells[spell_id].cast_from_crouch/100;
 	mod = mod * -1;
 	*/
+	if (pct_casted >= 0 && pct_casted <= 20)
+		charge_interval = 1;
+	else if (pct_casted > 20 && pct_casted <= 40)
+		charge_interval = 2;
+	else if (pct_casted > 40 && pct_casted <= 60)
+		charge_interval = 3;
+	else if (pct_casted > 60 && pct_casted <= 80)
+		charge_interval = 4;
+	else if (pct_casted > 80 && pct_casted <= 100)
+		charge_interval = 5;
 
-	SetChargeTimeCasting(time_casting);
-	SetCastFromCrouchMod(mod);
+	//mod = 100 - (remain_time*100/t_start); // % Cast Time Used
+	//mod = mod*spells[spell_id].cast_from_crouch/100;
+
+	//SetChargeTimeCasting(time_casting);
+	SetCastFromCrouchInterval(charge_interval);
 	spellend_timer.Start(1);
 	
 	return true;
+}
+
+void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
+
+	if (!caster || (IsValidSpell(spell_id) && !spells[spell_id].cast_from_crouch))
+		return;
+
+	int32 interval = caster->GetCastFromCrouchInterval();
+
+	if (!interval)
+		interval = 5;
+
+	int32 modifier = (interval - 1)*100;
+	modifier = modifier*spells[spell_id].cast_from_crouch/100; //Base cast_from_crouch = 100;
+
+	if (modifier)
+		damage += damage*modifier/100;
 }
 
 void Client::DoAdjustRecastTimer()
@@ -6296,13 +6333,13 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
 	/*
 	Complete Hack way of adjusting a spells recast timer after spell has been cast. **WE ONLY LOOK FOR MATCHING 'SPELL GROUPS'
 	Use:	Spell Effect 1007 SE_AdjustRecastTimer (Can be primary)
-			Base = New Recast Time 
+			Base = Flat Amt Recast Time decreased (Should be in 1000 MS intervals)
 			Limit = Refresher Spell ID
 			Max =  UNUSED
 			Ie. Set Recast Time to 2 seconds for Spell ID 1000 using Limit Spell ID 1001 to refresh gem.
 	
-	Use:	Spell Effect 1007 SE_AdjustRecastTimerCondition (Put with effect you want it to trigger on with using SE 1009) 
-			Base = New Recast Time 
+	Use:	Spell Effect 1008 SE_AdjustRecastTimerCondition (Put with effect you want it to trigger on with using SE 1009) 
+			Base = Flat Amt Recast Time decreased (Should be in 1000 MS intervals)
 			Limit = Refresher Spell ID
 			Max = Condition to activiate [This is left open ended for specific uses]
 			Ie. Set Recast Time to 2 seconds for 'THIS' Spell ID using Limit Spell ID 1001 to refresh gem when condition X is met
@@ -6379,10 +6416,8 @@ uint16 Mob::GetSpellGroupFromLimit(uint16 spell_id)
 	for (int i = 0; i <= EFFECT_COUNT; i++)
 	{
 		if (spells[spell_id].effectid[i] == SE_LimitSpellGroup){
-
 			if (spells[spell_id].base[i])
 				return spells[spell_id].base[i];
-
 		}
 	}
 	return 0;

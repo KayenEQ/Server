@@ -224,7 +224,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
 				CalcSpellPowerHeightMod(dmg, spell_id, caster); //C!Kayen coded narrowly for damage/heals.
-				dmg += dmg*caster->GetCastFromCrouchMod()/100;//C!Kayen - Cast Time multiplier from charged spells.
+				CalcFromCrouchMod(dmg, spell_id, caster);//C!Kayen - Cast Time multiplier from charged spells.
 
 				if(dmg < 0)
 				{
@@ -2768,6 +2768,21 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_AdjustRecastTimerCondition:
 			{
 				if (IsClient()){
+
+					int interval = GetCastFromCrouchInterval();
+					int condition = spells[spell_id].max[i];
+					
+					//This is specific for the limits used if obtained from a 'Charge' Effect
+					if (interval){
+						Shout("SE_CastonChargeCondition Interval %i Condition %i", interval, condition);
+						if (interval == condition) {
+							Shout("SE_CastonChargeCondition Found! %i", i);
+							CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+							break;
+						}
+					}
+				
+					/*
 					int csttime = CastToClient()->GetChargeTimeCasting();
 					int contime = spells[spell_id].max[i];
 
@@ -2775,15 +2790,35 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					if (csttime){
 						Shout("Cast Time %i Condition Time %i", csttime, contime);
 						if ((csttime >= contime) && (csttime < (contime + 1000))){
-
 							Shout("Found! %i", i);
 							CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+							//CastToClient()->SetChargeTimeCasting(0);
+							break;
+						}
+					}
+					*/
+				}
+
+				break;
+			}
+
+			case SE_CastonChargeCondition:
+			{
+				if (IsClient()){
+					int interval = GetCastFromCrouchInterval();
+					int condition = spells[spell_id].max[i];
+					
+					//This is specific for the limits used if obtained from a 'Charge' Effect
+					if (interval){
+						Shout("SE_CastonChargeCondition Interval %i Condition %i", interval, condition);
+						if (interval == condition) {
+							Shout("SE_CastonChargeCondition Found! %i", i);
+							caster->SpellFinished(spells[spell_id].base[i], this);
 							break;
 						}
 					}
 				}
 
-				break;
 			}
 
 			// Handled Elsewhere
