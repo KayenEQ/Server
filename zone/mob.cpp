@@ -6441,6 +6441,303 @@ void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id)
 	}
 }
 
+void Client::PopupUI()
+{	
+	if (!HasSpellAwareness())
+		return;
+
+	const char *WindowTitle = "Bot Tracking Window";
+
+	std::string WT;
+
+	// Define the types of page breaks we need
+	std::string indP = "&nbsp;";
+	std::string indS = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+	std::string indM = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+	std::string indL = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+	std::string div = " | ";
+
+	std::string color_red = "<c \"#993333\">";
+	std::string color_blue = "<c \"#9999FF\">";
+	std::string color_green = "<c \"#33FF99\">";
+	std::string bright_green = "<c \"#7CFC00\">";
+	std::string bright_red = "<c \"#FF0000\">";
+	std::string color_white = "<c \#FFFFFF\">"; 
+	std::string heroic_color = "<c \"#d6b228\"> +";
+	std::string color_yellow = "<c \#FFFF00\">"; 
+	
+	std::string color_casting = bright_red;
+
+	std::string		space = " ";
+
+	Shout("Max Targets %i",GetMaxXTargets());
+
+	WT = "Status: Enabled";
+	WT += "<br>";
+
+	for(int i = 0; i < GetMaxXTargets(); ++i){
+
+		if (XTargets[i].ID){
+
+			//WT += itoa(XTargets[i].Type); 
+			//WT += string0;
+			//WT +=	itoa(XTargets[i].ID); 
+			//WT += string0;
+			
+			//WT += "<c \"#33FF99\">"; //color_green
+			
+			Mob* target = entity_list.GetMobID(XTargets[i].ID);
+			if (target) {
+
+				bool Casting = false;
+				uint16 remain_time = 0;
+				if (target->IsCasting())
+					Casting = true;
+
+				std::string name_color = color_blue;
+				if (Casting){
+					name_color = color_casting;
+					remain_time = int(target->GetSpellEndTime().GetRemainingTime()/1000);
+				}
+
+				//Line 1
+				WT += name_color;
+				WT += target->GetCleanName();
+
+				WT += "</c>";
+				WT += " : ";
+				WT += "(";
+
+				if (remain_time > 0)
+					WT += itoa(remain_time);
+				else
+					WT += " ";
+
+				WT += ")";
+				WT += "<br>";
+
+				//Line 2
+				if (Casting) {
+					WT += "<";
+					WT += spells[target->GetSpellCastingSpellId()].name;
+					WT += ">";
+					WT += " ";
+					WT += "(";
+
+					if (remain_time > 0)
+						WT += itoa(remain_time);
+					else
+						WT += " ";
+
+					WT += ")";
+
+				}
+				WT += "<br>";
+			}
+			else
+				continue;
+		}
+	}
+		
+	//for(int i = 0; i < GetMaxXTargets(); ++i)
+	//	c->Message(0, "Xtarget Slot: %i, Type: %2i, ID: %4i, Name: %s", i, XTargets[i].Type, XTargets[i].ID, XTargets[i].Name);
+
+	SendPopupToClient("Spell Casting Awareness", WT.c_str() , POPUPID_SPELL_AWARENESS, 1, 6000); 
+
+}
+/*
+	const char *WindowTitle = "Bot Tracking Window";
+
+	std::string WindowText;
+	int LastCon = -1;
+	int CurrentCon = 0;
+	Mob* curMob = nullptr;
+
+	uint32 array_counter = 0;
+
+	auto it = mob_list.begin();
+
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+	curMob = it->second;
+		if (curMob && curMob->DistNoZ(*client)<=Distance) {
+			if(curMob->IsTrackable()) {
+				Mob* cur_entity = curMob;
+				int Extras = (cur_entity->IsBot() || cur_entity->IsPet() || cur_entity->IsFamiliar() || cur_entity->IsClient());
+				const char *const MyArray[] = {
+					"a_","an_","Innkeep_","Barkeep_",
+					"Guard_","Merchant_","Lieutenant_",
+					"Banker_","Centaur_","Aviak_","Baker_",
+					"Sir_","Armorer_","Deathfist_","Deputy_",
+					"Sentry_","Sentinel_","Leatherfoot_",
+					"Corporal_","goblin_","Bouncer_","Captain_",
+					"orc_","fire_","inferno_","young_","cinder_",
+					"flame_","gnomish_","CWG_","sonic_","greater_",
+					"ice_","dry_","Priest_","dark-boned_",
+					"Tentacle_","Basher_","Dar_","Greenblood_",
+					"clockwork_","guide_","rogue_","minotaur_",
+					"brownie_","Teir'","dark_","tormented_",
+					"mortuary_","lesser_","giant_","infected_",
+					"wharf_","Apprentice_","Scout_","Recruit_",
+					"Spiritist_","Pit_","Royal_","scalebone_",
+					"carrion_","Crusader_","Trooper_","hunter_",
+					"decaying_","iksar_","klok_","templar_","lord_",
+					"froglok_","war_","large_","charbone_","icebone_",
+					"Vicar_","Cavalier_","Heretic_","Reaver_","venomous_",
+					"Sheildbearer_","pond_","mountain_","plaguebone_","Brother_",
+					"great_","strathbone_","briarweb_","strathbone_","skeletal_",
+					"minion_","spectral_","myconid_","spurbone_","sabretooth_",
+					"Tin_","Iron_","Erollisi_","Petrifier_","Burynai_",
+					"undead_","decayed_","You_","smoldering_","gyrating_",
+					"lumpy_","Marshal_","Sheriff_","Chief_","Risen_",
+					"lascar_","tribal_","fungi_","Xi_","Legionnaire_",
+					"Centurion_","Zun_","Diabo_","Scribe_","Defender_","Capt_",
+					"blazing_","Solusek_","imp_","hexbone_","elementalbone_",
+					"stone_","lava_","_",""
+				};
+				unsigned int MyArraySize;
+				for ( MyArraySize = 0; true; MyArraySize++) { //Find empty string & get size
+					if (!(*(MyArray[MyArraySize]))) break; //Checks for null char in 1st pos
+				};
+				if (NamedOnly) {
+					bool ContinueFlag = false;
+					const char *CurEntityName = cur_entity->GetName(); //Call function once
+					for (int Index = 0; Index < MyArraySize; Index++) {
+						if (!strncasecmp(CurEntityName, MyArray[Index], strlen(MyArray[Index])) || (Extras)) {
+							ContinueFlag = true;
+							break; //From Index for
+						};
+					};
+					if (ContinueFlag) continue; //Moved here or would apply to Index for
+				};
+
+				CurrentCon = client->GetLevelCon(cur_entity->GetLevel());
+				if(CurrentCon != LastCon) {
+
+					if(LastCon != -1)
+						WindowText += "</c>";
+
+					LastCon = CurrentCon;
+
+					switch(CurrentCon) {
+
+						case CON_GREEN: {
+							WindowText += "<c \"#00FF00\">";
+							break;
+						}
+
+						case CON_LIGHTBLUE: {
+							WindowText += "<c \"#8080FF\">";
+							break;
+						}
+						case CON_BLUE: {
+							WindowText += "<c \"#2020FF\">";
+							break;
+						}
+
+						case CON_YELLOW: {
+							WindowText += "<c \"#FFFF00\">";
+							break;
+						}
+						case CON_RED: {
+							WindowText += "<c \"#FF0000\">";
+							break;
+						}
+						default: {
+							WindowText += "<c \"#FFFFFF\">";
+							break;
+						}
+					}
+				}
+
+				WindowText += cur_entity->GetCleanName();
+				WindowText += "<br>";
+
+				if(strlen(WindowText.c_str()) > 4000) {
+					// Popup window is limited to 4096 characters.
+					WindowText += "</c><br><br>List truncated ... too many mobs to display";
+					break;
+				}
+			}
+		}
+	}
+	WindowText += "</c>";
+
+	client->SendPopupToClient(WindowTitle, WindowText.c_str());
+
+	return;
+*/
+
+void Client::MarkNPCTest(Mob* Target, int Number)
+{
+	// Send a packet to all group members in this zone causing the client to prefix the Target mob's name
+	// with the specified Number.
+	//
+	Shout("Number %i", Number);
+	if(!Target || Target->IsClient())
+		return;
+	uint16	MarkedNPCs[MAX_MARKED_NPCS];
+	if((Number < 1) || (Number > MAX_MARKED_NPCS))
+		return;
+
+	bool AlreadyMarked = false;
+
+	uint16 EntityID = Target->GetID();
+
+	for(int i = 0; i < MAX_MARKED_NPCS; ++i)
+		if(MarkedNPCs[i] == EntityID)
+		{
+			if(i == (Number - 1))
+				return;
+
+			//UpdateXTargetMarkedNPC(i+1, nullptr);
+			MarkedNPCs[i] = 0;
+
+			AlreadyMarked = true;
+
+			break;
+		}
+
+	if(!AlreadyMarked)
+	{
+		if(MarkedNPCs[Number - 1])
+		{
+			Mob* m = entity_list.GetMob(MarkedNPCs[Number-1]);
+			if(m)
+				m->IsTargeted(-1);
+
+			//UpdateXTargetMarkedNPC(Number, nullptr);
+		}
+
+		if(EntityID)
+		{
+			Mob* m = entity_list.GetMob(Target->GetID());
+			if(m)
+				m->IsTargeted(1);
+		}
+	}
+
+	MarkedNPCs[Number - 1] = EntityID;
+
+	EQApplicationPacket *outapp = new EQApplicationPacket(OP_MarkNPC, sizeof(MarkNPC_Struct));
+
+	MarkNPC_Struct* mnpcs = (MarkNPC_Struct *)outapp->pBuffer;
+
+	mnpcs->TargetID = EntityID;
+
+	mnpcs->Number = Number;
+
+	Mob *m = entity_list.GetMob(EntityID);
+
+	if(m)
+		sprintf(mnpcs->Name, "%s", m->GetCleanName());
+
+	QueuePacket(outapp);
+
+	safe_delete(outapp);
+
+	//UpdateXTargetMarkedNPC(Number, m);
+}
+
 	/*
 bool Mob::LineWalk(float heading, float distance,  float interval, float size)
 {

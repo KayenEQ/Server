@@ -636,6 +636,7 @@ typedef enum {
 #define SE_AdjustRecastTimerCondition	1008 // implemented - Sets Recast Timer to end early based on conditions (B: Amt Time Reducedime L: Refresh Spell M: Condition Amt)
 #define SE_TryCastonSpellFinished		1009 // implemented - Trys to trigger spell after casting completed, base= chance limit=spellid
 #define SE_CastonChargeCondition		1010 // implemented - Trigger spell if charge time exists, base= spellid limit=interval check = chance condition
+#define SE_SpellAwareness				1011 //
 // LAST
 
 

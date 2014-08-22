@@ -1689,7 +1689,7 @@ void Client::Handle_OP_Shielding(const EQApplicationPacket *app)
 
 void Client::Handle_OP_Jump(const EQApplicationPacket *app)
 {
-	SetEndurance(GetEndurance() - (GetLevel()<20?(225*GetLevel()/100):50));
+	//SetEndurance(GetEndurance() - (GetLevel()<20?(225*GetLevel()/100):50)); //C!Kayen - Just disable this for now.
 	return;
 }
 
@@ -7665,7 +7665,7 @@ void Client::Handle_OP_Mend(const EQApplicationPacket *app)
 }
 
 void Client::Handle_OP_EnvDamage(const EQApplicationPacket *app)
-{
+{Shout("KAYEN NEED TO ADJUST THIS");
 	if(!ClientFinishedLoading())
 	{
 		SetHP(GetHP()-1);
@@ -10588,6 +10588,10 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app) {
 				GetTarget()->CastToClient()->SendStatsWindow(this, true);
 			else
 				SendStatsWindow(this, true);
+			return;
+
+		case POPUPID_SPELL_AWARENESS:
+			Shout("TEST TEST");
 			return;
 
 		default:

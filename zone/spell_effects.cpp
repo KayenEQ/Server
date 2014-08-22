@@ -221,7 +221,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				// for offensive spells check if we have a spell rune on
 				int32 dmg = effect_value;
-
+				
 				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
 				CalcSpellPowerHeightMod(dmg, spell_id, caster); //C!Kayen coded narrowly for damage/heals.
 				CalcFromCrouchMod(dmg, spell_id, caster);//C!Kayen - Cast Time multiplier from charged spells.
@@ -2821,6 +2821,23 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 			}
 
+			case SE_SpellAwareness:{
+
+				if (IsClient()){
+					if (!CastToClient()->HasSpellAwareness()){
+						CastToClient()->spell_awareness_popup.Start(1000);
+						CastToClient()->SetSpellAwareness(true);
+						Message(15, "Spell Awareness : Enabled");
+					}
+					else {
+						CastToClient()->spell_awareness_popup.Disable();
+						CastToClient()->SetSpellAwareness(false);
+						Message(15, "Spell Awareness : Disabled");
+					}
+				}
+				break;
+			}
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:
@@ -5184,7 +5201,7 @@ int16 Client::GetSympatheticFocusEffect(focusType type, uint16 spell_id) {
 
 						if (IsValidSpell(proc_spellid)){
 	
-							ProcChance = GetSympatheticProcChances(spell_id, spells[TempItem->Focus.Effect].base[0], TempItemAug->ProcRate);
+							ProcChance = GetSympatheticProcChances(spell_id, spells[TempItemAug->Focus.Effect].base[0], TempItemAug->ProcRate);
 					
 							if(MakeRandomFloat(0, 1) <= ProcChance) 
 								SympatheticProcList.push_back(proc_spellid);

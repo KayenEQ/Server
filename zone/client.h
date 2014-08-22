@@ -190,6 +190,7 @@ struct RespawnOption
 
 
 const uint32 POPUPID_UPDATE_SHOWSTATSWINDOW = 1000000;
+const uint32 POPUPID_SPELL_AWARENESS = 1000001; //C!Kayen
 
 struct ClientReward
 {
@@ -1212,6 +1213,10 @@ public:
 	void DoAdjustRecastTimer();
 	void EffectAdjustRecastTimer(uint16 spell_id, int effectid);
 	bool CastFromCrouch(uint16 spell_id = 0xffff);
+	void MarkNPCTest(Mob* Target, int Number);
+	void PopupUI();
+	inline bool HasSpellAwareness() const { return spell_awareness_enabled; }
+	void SetSpellAwareness(bool value) { spell_awareness_enabled = value; }
 	
 protected:
 	friend class Mob;
@@ -1255,6 +1260,8 @@ protected:
 	Timer adjustrecast_timer;
 	uint32 recast_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
 	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is spell id used to refresh the spell gem early.
+	bool spell_awareness_enabled;
+	Timer spell_awareness_popup; //Need to addd < Spell Name> to npc casted spells.
 
 private:
 	eqFilterMode ClientFilters[_FilterCount];

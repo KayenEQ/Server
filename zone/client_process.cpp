@@ -580,6 +580,10 @@ bool Client::Process() {
 
 		if (adjustrecast_timer.Check()) //1 second
 			DoAdjustRecastTimer();
+
+		if (spell_awareness_popup.Check())
+			PopupUI();
+
 		//C!Kayen END
 					
 		if(spellbonuses.GravityEffect == 1) {
