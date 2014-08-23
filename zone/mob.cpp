@@ -183,6 +183,7 @@ Mob::Mob(const char* in_name,
 	has_MGB = false;
 	has_ProjectIllusion = false;
 	SpellPowerDistanceMod = 0;
+	last_los_check = false;
 
 	if(in_aa_title>0)
 		aa_title	= in_aa_title;
@@ -341,6 +342,7 @@ Mob::Mob(const char* in_name,
 		viral_spells[i] = 0;
 	}
 	pStandingPetOrder = SPO_Follow;
+	pseudo_rooted = false;
 
 	see_invis = in_see_invis;
 	see_invis_undead = in_see_invis_undead != 0;
@@ -538,6 +540,8 @@ float Mob::_GetMovementSpeed(int mod) const
 	// http://everquest.allakhazam.com/db/item.html?item=1721;page=1;howmany=50#m10822246245352
 	if (IsRooted())
 		return 0.0f;
+	if (IsPseudoRooted())
+		return 0.000001f;
 
 	float speed_mod = runspeed;
 

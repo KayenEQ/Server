@@ -464,6 +464,8 @@ public:
 	bool CheckLosFN(float posX, float posY, float posZ, float mobSize);
 	inline void SetChanged() { pLastChange = Timer::GetCurrentTime(); }
 	inline const uint32 LastChange() const { return pLastChange; }
+	inline void SetLastLosState(bool value) { last_los_check = value; }
+	inline bool CheckLastLosState() const { return last_los_check; }
 
 	//Quest
 	void QuestReward(Client *c = nullptr, uint32 silver = 0, uint32 gold = 0, uint32 platinum = 0);
@@ -752,6 +754,8 @@ public:
 	inline const bool IsRooted() const { return rooted || permarooted; }
 	inline const bool HasVirus() const { return has_virus; }
 	int GetSnaredAmount();
+	inline const bool IsPseudoRooted() const { return pseudo_rooted; }
+	inline void SetPseudoRoot(bool prState) { pseudo_rooted = prState; }
 
 
 	int GetCurWp() { return cur_wp; }
@@ -1190,6 +1194,8 @@ protected:
 	bool has_MGB;
 	bool has_ProjectIllusion;
 	int16 SpellPowerDistanceMod;
+	bool last_los_check;
+	bool pseudo_rooted;
 
 	// Bind wound
 	Timer bindwound_timer;
@@ -1333,7 +1339,6 @@ protected:
 	int8 CastFromCrouchInterval;
 
 	int32 casting_z_diff;
-
 
 private:
 	void _StopSong(); //this is not what you think it is
