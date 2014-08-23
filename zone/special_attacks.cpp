@@ -23,8 +23,8 @@
 #include <math.h>
 
 #include "masterentity.h"
-#include "StringIDs.h"
-#include "../common/MiscFunctions.h"
+#include "string_ids.h"
+#include "../common/misc_functions.h"
 #include "../common/rulesys.h"
 
 
@@ -979,7 +979,7 @@ void NPC::RangedAttack(Mob* other)
 		return;
 
 	int attacks = GetSpecialAbilityParam(SPECATK_RANGED_ATK, 0);
-		
+
 	attacks = attacks > 0 ? attacks : 1;
 	for(int i = 0; i < attacks; ++i) {
 
