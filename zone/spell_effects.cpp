@@ -2825,7 +2825,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				if (IsClient()){
 					if (!CastToClient()->HasSpellAwareness()){
-						CastToClient()->spell_awareness_popup.Start(1000);
+						CastToClient()->SendPopupToClient("Spell Casting Awareness","Loading", POPUPID_SPELL_AWARENESS, 1, 6000);
+						CastToClient()->spell_awareness_popup.Start(100);
 						CastToClient()->SetSpellAwareness(true);
 						Message(15, "Spell Awareness : Enabled");
 					}

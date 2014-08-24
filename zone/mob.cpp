@@ -6427,7 +6427,9 @@ void Client::PopupUI()
 	if (!HasSpellAwareness())
 		return;
 
-	const char *WindowTitle = "Bot Tracking Window";
+	//Shout("Check interval ");
+
+	//const char *WindowTitle = "Bot Tracking Window";
 
 	std::string WT;
 
@@ -6444,86 +6446,266 @@ void Client::PopupUI()
 	std::string bright_green = "<c \"#7CFC00\">";
 	std::string bright_red = "<c \"#FF0000\">";
 	std::string color_white = "<c \#FFFFFF\">"; 
-	std::string heroic_color = "<c \"#d6b228\"> +";
+	std::string heroic_color = "<c \"#d6b228\">";
 	std::string color_yellow = "<c \#FFFF00\">"; 
+
+	/*
+	$Text=~ s/\{y\}/<c \"#CCFF33\">/g;
+	$Text=~ s/\{lb\}/<c \"#00FFFF\">/g;
+	$Text=~ s/\{r}/<c \"#FF0000\">/g;
+	$Text=~ s/\{g}/<c \"#00FF00\">/g;
+	$Text=~ s/\{gold}/<c \"#FFFF66\">/g;
+	$Text=~ s/\{orange}/<c \"#FFA500\">/g;
+	$Text=~ s/\{gray}/<c \"#808080\">/g;
+	$Text=~ s/\{tan}/<c \"#daa520\">/g;
+	*/
 	
 	std::string color_casting = bright_red;
 
-	std::string		space = " ";
-
-	Shout("Max Targets %i",GetMaxXTargets());
-
-	WT = "Status: Enabled";
+	WT = "&nbsp;"; //Space at top
 	WT += "<br>";
+	
+	//bool SendPacket = false;
+	bool IsCastingFound = false;
 
 	for(int i = 0; i < GetMaxXTargets(); ++i){
 
 		if (XTargets[i].ID){
-
-			//WT += itoa(XTargets[i].Type); 
-			//WT += string0;
-			//WT +=	itoa(XTargets[i].ID); 
-			//WT += string0;
-			
-			//WT += "<c \"#33FF99\">"; //color_green
 			
 			Mob* target = entity_list.GetMobID(XTargets[i].ID);
 			if (target) {
+				
+				//SendPacket = true;
+				
+				bool Casting = target->IsCasting();
+				bool IsTargetedAE = false;
+				bool IsTargetsTarget = false;
 
-				bool Casting = false;
+				Mob* targetstarget = nullptr;
+				targetstarget = target->GetTarget();
+
+				if (targetstarget && targetstarget->GetID() == GetID())
+					IsTargetsTarget = true;
+				
 				uint16 remain_time = 0;
-				if (target->IsCasting())
-					Casting = true;
+				
+				float distance = 0.0f;
+				float tae_distance = 0.0f;
+				float range = 0.0f;
+				
+				int target_type = 0;
+				int cast_time_pct = 0;
+				uint16 spell_id = SPELL_UNKNOWN;
 
-				std::string name_color = color_blue;
+				std::string name_color = bright_green;
+				std::string range_color = bright_green;
+				std::string tae_range_color = bright_green;
+
 				if (Casting){
+					IsCastingFound = true;
 					name_color = color_casting;
-					remain_time = int(target->GetSpellEndTime().GetRemainingTime()/1000);
+					name_color = color_casting;
+					spell_id = target->GetSpellCastingSpellId();
+					cast_time_pct = (target->GetSpellEndTime().GetRemainingTime()*100 / spells[spell_id].cast_time);
+					//Shout("TEST %i %i %i %i", target->GetSpellEndTime().GetRemainingTime(), spells[spell_id ].cast_time, cast_time_pct, GetActSpellCasttime(spell_id,spells[spell_id ].cast_time));
+					remain_time = static_cast<int>((target->GetSpellEndTime().GetRemainingTime() + 500)/1000);
+					target_type = spells[spell_id ].targettype;
+
+					//Get Range Type for NPC cast spells
+					switch(target_type) {
+
+						case ST_Target:
+						case ST_TargetOptional:
+						case ST_Tap:
+							range = spells[spell_id].range;
+							break;
+
+						case ST_AECaster:
+						case ST_HateList:
+							range = spells[spell_id].aoerange;
+							break;
+
+						case ST_TargetAETap:
+						case ST_AETarget:
+							range = spells[spell_id].range;
+							IsTargetedAE = true;
+							
+							if (targetstarget)
+								tae_distance = CalculateDistance(targetstarget->GetX(), targetstarget->GetY(), targetstarget->GetZ());
+
+							break;
+
+						case ST_Directional:
+							range = spells[spell_id].aoerange;
+							//Need to check if in directional
+							break;
+
+						case ST_TargetLocation:
+							range = spells[spell_id].aoerange;
+							break;
+					}
+						
+					if (target_type == ST_TargetLocation)
+						distance = CalculateDistance(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ());
+					else
+						distance = CalculateDistance(target->GetX(), target->GetY(), target->GetZ());
+
+					if (distance <= range && distance >= spells[spell_id].min_range)
+						range_color = bright_red;
+
+					if (tae_distance <= spells[spell_id].aoerange && distance >= spells[spell_id].min_range)
+						tae_range_color = bright_red;
+				}
+		
+				//START OF LINE
+
+				//Are you the target's target, ! = true
+				if (IsTargetsTarget){
+					WT += bright_green;
+					WT += "[";
+					WT += "&nbsp;";
+					WT += "!";
+					WT += "&nbsp;";
+					WT += "]";
+					WT += "</c>";
+				}
+				else{
+					WT += "[";
+					WT += "&nbsp;&nbsp;&nbsp;";
+					WT += "]";
 				}
 
-				//Line 1
-				WT += name_color;
-				WT += target->GetCleanName();
 
-				WT += "</c>";
-				WT += " : ";
-				WT += "(";
+				WT += "&nbsp;&nbsp;";	
 
-				if (remain_time > 0)
-					WT += itoa(remain_time);
-				else
-					WT += " ";
+				if (Casting && spell_id != SPELL_UNKNOWN){
 
-				WT += ")";
-				WT += "<br>";
+					WT += name_color;
+					WT += target->GetCleanName();
+					WT += "</c>";
 
-				//Line 2
-				if (Casting) {
+					WT += "&nbsp;&nbsp;&nbsp;";	
+					
+					//SPELL NAME
+					WT += color_blue; //This is type of spell define by target type
 					WT += "<";
-					WT += spells[target->GetSpellCastingSpellId()].name;
+					WT += spells[spell_id].name;
 					WT += ">";
-					WT += " ";
-					WT += "(";
+					WT += "</c>";
 
-					if (remain_time > 0)
+					WT += "&nbsp;&nbsp;&nbsp;";
+					
+					/*
+					//CAST TIME COUNT DOWN
+					WT += heroic_color;
+					WT += "(";
+					if (remain_time >= 0)
 						WT += itoa(remain_time);
 					else
-						WT += " ";
-
+						WT += "0";
 					WT += ")";
+					WT += "</c>";
+					
+					WT += "&nbsp;&nbsp;&nbsp;";
+					*/
 
+					//RANGE CHECK {Max YOU Min}
+					WT += "{";
+					WT += itoa(spells[spell_id].range);
+					WT += "&nbsp;";
+					WT += "::";
+					WT += "&nbsp;";
+					WT += range_color;
+					WT += itoa(distance);
+					WT += "</c>";
+					WT += "&nbsp;";
+					WT += "::";
+					WT += "&nbsp;";
+					WT += itoa(spells[spell_id].min_range);
+					WT += "}";
+
+					//Targeted AE range
+					if(IsTargetedAE){
+						WT += "&nbsp;&nbsp;&nbsp;";
+						WT += tae_range_color;
+						WT += "(";
+						WT += "&nbsp;";
+						
+						
+						if (IsTargetsTarget)
+							WT += "!";
+						else
+							WT += itoa(tae_distance);
+
+						WT += "&nbsp;";
+						WT += ")";
+						WT += "</c>";
+					}
+
+					WT += "<br>";
+
+
+					bool gold_set = true;
+					bool white_set = true;
+					for(int i = 0; i < 100; ++i){
+					
+						if (cast_time_pct > i){
+
+							if (gold_set){
+								WT += "<c \"#FFFF66\">";
+								gold_set = false;
+							}
+							WT += "|";
+						
+						}
+						else {
+							if (white_set){
+								WT += "</c>";
+								WT += color_white;
+								white_set = false;
+							}
+							WT += "|";
+						}
+					}
+					WT += "</c>";
+
+					//End Casting
 				}
-				WT += "<br>";
+				else {
+					//NOT CASTING
+					WT += "<c \"#808080\">"; //Grey
+					WT += target->GetCleanName();
+					WT += "</c>";
+					WT += "<br>";
+					WT += color_white;
+					for(int i = 0; i < 100; ++i){
+					WT += "|";
+					}
+					WT += "</c>";
+				}
+				
 			}
-			else
+			else{
+				WT += "Error: XTarget ID exists BUT NO TARGET Found.";
 				continue;
+			}
+	
+		}//XTarget ID does not exists show blank slot.
+		else {
+			WT += "[";
+			WT += "&nbsp;&nbsp;&nbsp;";
+			WT += "]";
 		}
+
+		WT += "<br><br>";
 	}
 		
-	//for(int i = 0; i < GetMaxXTargets(); ++i)
-	//	c->Message(0, "Xtarget Slot: %i, Type: %2i, ID: %4i, Name: %s", i, XTargets[i].Type, XTargets[i].ID, XTargets[i].Name);
-
-	SendPopupToClient("Spell Casting Awareness", WT.c_str() , POPUPID_SPELL_AWARENESS, 1, 6000); 
+	SendPopupToClient("Spell Casting Awareness", WT.c_str() , POPUPID_SPELL_AWARENESS, 1, 6000);
+		
+	if (IsCastingFound)
+		spell_awareness_popup.Start(100);
+	else
+		spell_awareness_popup.Start(1000);
 
 }
 /*
