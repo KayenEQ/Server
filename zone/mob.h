@@ -757,7 +757,6 @@ public:
 	inline const bool IsPseudoRooted() const { return pseudo_rooted; }
 	inline void SetPseudoRoot(bool prState) { pseudo_rooted = prState; }
 
-
 	int GetCurWp() { return cur_wp; }
 
 	//old fear function
