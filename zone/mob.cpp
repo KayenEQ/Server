@@ -6422,6 +6422,44 @@ void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id)
 	}
 }
 
+bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target)
+{
+	//Checks if target is within a spells directioanl cone.
+
+	if (!target)
+		return false;
+
+	float angle_start = spells[spell_id].directional_start + (GetHeading() * 360.0f / 256.0f);
+	float angle_end = spells[spell_id].directional_end + (GetHeading() * 360.0f / 256.0f);
+
+	while(angle_start > 360.0f)
+		angle_start -= 360.0f;
+
+	while(angle_end > 360.0f)
+		angle_end -= 360.0f;
+
+	
+	float heading_to_target = (CalculateHeadingToTarget(target->GetX(),target->GetY()) * 360.0f / 256.0f);
+	
+	while(heading_to_target < 0.0f)
+		heading_to_target += 360.0f;
+
+	while(heading_to_target > 360.0f)
+		heading_to_target -= 360.0f;
+
+	if(angle_start > angle_end)
+	{
+		if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||
+			(heading_to_target >= 0.0f && heading_to_target <= angle_end))
+				return true;
+		
+		else if(heading_to_target >= angle_start && heading_to_target <= angle_end)
+				return true;
+	}
+
+	return false;
+}
+
 void Client::PopupUI()
 {	
 	if (!HasSpellAwareness())
@@ -6441,13 +6479,18 @@ void Client::PopupUI()
 	std::string div = " | ";
 
 	std::string color_red = "<c \"#993333\">";
-	std::string color_blue = "<c \"#9999FF\">";
 	std::string color_green = "<c \"#33FF99\">";
-	std::string bright_green = "<c \"#7CFC00\">";
-	std::string bright_red = "<c \"#FF0000\">";
-	std::string color_white = "<c \#FFFFFF\">"; 
 	std::string heroic_color = "<c \"#d6b228\">";
 	std::string color_yellow = "<c \#FFFF00\">"; 
+
+
+	//Used colors
+	std::string bright_green = "<c \"#7CFC00\">";
+	std::string bright_red = "<c \"#FF0000\">";
+	std::string color_gold = "<c \"#FFFF66\">";
+	std::string color_grey = "<c \"#808080\">"; 
+	std::string color_white = "<c \#FFFFFF\">"; 
+	std::string color_blue = "<c \"#9999FF\">";
 
 	/*
 	$Text=~ s/\{y\}/<c \"#CCFF33\">/g;
@@ -6460,7 +6503,7 @@ void Client::PopupUI()
 	$Text=~ s/\{tan}/<c \"#daa520\">/g;
 	*/
 	
-	std::string color_casting = bright_red;
+	
 
 	WT = "&nbsp;"; //Space at top
 	WT += "<br>";
@@ -6479,6 +6522,7 @@ void Client::PopupUI()
 				
 				bool Casting = target->IsCasting();
 				bool IsTargetedAE = false;
+				bool IsInDirectionalAE = false;
 				bool IsTargetsTarget = false;
 
 				Mob* targetstarget = nullptr;
@@ -6487,7 +6531,7 @@ void Client::PopupUI()
 				if (targetstarget && targetstarget->GetID() == GetID())
 					IsTargetsTarget = true;
 				
-				uint16 remain_time = 0;
+				//uint16 remain_time = 0;
 				
 				float distance = 0.0f;
 				float tae_distance = 0.0f;
@@ -6497,18 +6541,17 @@ void Client::PopupUI()
 				int cast_time_pct = 0;
 				uint16 spell_id = SPELL_UNKNOWN;
 
-				std::string name_color = bright_green;
+				//Dynamic text colors
 				std::string range_color = bright_green;
 				std::string tae_range_color = bright_green;
+				std::string spell_color = color_blue;
 
 				if (Casting){
 					IsCastingFound = true;
-					name_color = color_casting;
-					name_color = color_casting;
 					spell_id = target->GetSpellCastingSpellId();
 					cast_time_pct = (target->GetSpellEndTime().GetRemainingTime()*100 / spells[spell_id].cast_time);
 					//Shout("TEST %i %i %i %i", target->GetSpellEndTime().GetRemainingTime(), spells[spell_id ].cast_time, cast_time_pct, GetActSpellCasttime(spell_id,spells[spell_id ].cast_time));
-					remain_time = static_cast<int>((target->GetSpellEndTime().GetRemainingTime() + 500)/1000);
+					//remain_time = static_cast<int>((target->GetSpellEndTime().GetRemainingTime() + 500)/1000);
 					target_type = spells[spell_id ].targettype;
 
 					//Get Range Type for NPC cast spells
@@ -6518,17 +6561,20 @@ void Client::PopupUI()
 						case ST_TargetOptional:
 						case ST_Tap:
 							range = spells[spell_id].range;
+							spell_color = bright_red;
 							break;
 
 						case ST_AECaster:
 						case ST_HateList:
 							range = spells[spell_id].aoerange;
+							spell_color = "<c \"#6A5ACD\">";
 							break;
 
 						case ST_TargetAETap:
 						case ST_AETarget:
 							range = spells[spell_id].range;
 							IsTargetedAE = true;
+							spell_color = "<c \"#2EFE64\">";
 							
 							if (targetstarget)
 								tae_distance = CalculateDistance(targetstarget->GetX(), targetstarget->GetY(), targetstarget->GetZ());
@@ -6538,10 +6584,14 @@ void Client::PopupUI()
 						case ST_Directional:
 							range = spells[spell_id].aoerange;
 							//Need to check if in directional
+							spell_color = "<c \"#008080\">";
+							if (target->SpellDirectionalTarget(spell_id, this))
+								IsInDirectionalAE = true;
 							break;
 
 						case ST_TargetLocation:
 							range = spells[spell_id].aoerange;
+							spell_color = "<c \"#FFA500\">";
 							break;
 					}
 						
@@ -6555,6 +6605,9 @@ void Client::PopupUI()
 
 					if (tae_distance <= spells[spell_id].aoerange && distance >= spells[spell_id].min_range)
 						tae_range_color = bright_red;
+
+					if (target_type == ST_Directional && (!IsInDirectionalAE))
+						range_color = bright_green; //If not in directional overide: TURN GREEN
 				}
 		
 				//START OF LINE
@@ -6580,14 +6633,14 @@ void Client::PopupUI()
 
 				if (Casting && spell_id != SPELL_UNKNOWN){
 
-					WT += name_color;
+					WT += color_gold;
 					WT += target->GetCleanName();
 					WT += "</c>";
 
 					WT += "&nbsp;&nbsp;&nbsp;";	
 					
 					//SPELL NAME
-					WT += color_blue; //This is type of spell define by target type
+					WT += spell_color; //This is type of spell define by target type
 					WT += "<";
 					WT += spells[spell_id].name;
 					WT += ">";
@@ -6596,7 +6649,7 @@ void Client::PopupUI()
 					WT += "&nbsp;&nbsp;&nbsp;";
 					
 					/*
-					//CAST TIME COUNT DOWN
+					//CAST TIME COUNT DOWN - NOW USES BAR
 					WT += heroic_color;
 					WT += "(";
 					if (remain_time >= 0)
@@ -6652,7 +6705,7 @@ void Client::PopupUI()
 						if (cast_time_pct > i){
 
 							if (gold_set){
-								WT += "<c \"#FFFF66\">";
+								WT += color_gold;
 								gold_set = false;
 							}
 							WT += "|";
@@ -6673,7 +6726,7 @@ void Client::PopupUI()
 				}
 				else {
 					//NOT CASTING
-					WT += "<c \"#808080\">"; //Grey
+					WT += color_grey;
 					WT += target->GetCleanName();
 					WT += "</c>";
 					WT += "<br>";
@@ -6699,6 +6752,8 @@ void Client::PopupUI()
 
 		WT += "<br><br>";
 	}
+	
+	//if(strlen(WT.c_str()) < 4090) //Don't send if too mana chara [Should not every come close to max limit chara]
 		
 	SendPopupToClient("Spell Casting Awareness", WT.c_str() , POPUPID_SPELL_AWARENESS, 1, 6000);
 		

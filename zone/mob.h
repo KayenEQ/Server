@@ -970,6 +970,8 @@ public:
 	uint16 GetSpellGroupFromLimit(uint16 spell_id);
 	void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id);
 
+	bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target);
+
 	//C!Kayen END
 
 protected:
