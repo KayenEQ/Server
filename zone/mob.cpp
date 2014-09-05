@@ -408,6 +408,7 @@ Mob::Mob(const char* in_name,
 	MeleeCharge_target_id = 0;
 	CastFromCrouchInterval = 0;
 	casting_z_diff = 0;
+
 }
 
 Mob::~Mob()
@@ -6056,8 +6057,8 @@ void Mob::MeleeCharge()
 
 void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 {
-	float distance = spells[spell_id].range;
-	float radius = spells[spell_id].aoerange;
+	float ae_width = spells[spell_id].range; //This is the width of the AE that will hit targets.
+	float radius = spells[spell_id].aoerange; //This is total area checked for targets.
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 
 	bool taget_exclude_npc = false; //False by default!
@@ -6070,7 +6071,7 @@ void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 	if (!IsClient() && taget_exclude_npc)
 		target_client_only = true;
 
-	Shout("Start Cube Distance %.2f AOE range %.2f min range %.2f", distance, radius, spells[spell_id].min_range);
+	//Shout("Start Cube ae_width %.2f AOE range %.2f min range %.2f", ae_width, radius, spells[spell_id].min_range);
 	
 	std::list<Mob*> targets_in_range;
 	std::list<Mob*> targets_in_rectangle;
@@ -6083,9 +6084,11 @@ void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 	float dY = 0;
 	float dZ = 0;
 	
-	CalcDestFromHeading(GetHeading(), distance, 5, GetX(), GetY(), dX, dY,  dZ);
-	Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f", dX, dY, dZ, CalculateDistance(dX, dY, dZ));
+	CalcDestFromHeading(GetHeading(), radius, 5, GetX(), GetY(), dX, dY,  dZ);
+	//Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
 	dZ = GetZ();
+
+	//'DEFENDER' is the virtual end point of the line being drawn based on range from which slope is derived. 
 
 	float DEFENDER_X = dX;
 	float DEFENDER_Y = dY;
@@ -6100,7 +6103,7 @@ void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 	float x2 = DEFENDER_X;
 	float y2 = DEFENDER_Y;
 
-	//# put it into the form y = mx + b
+	//FIND SLOPE: Put it into the form y = mx + b
 	float m = (y2 - y1) / (x2 - x1);
 	float b = (y1 * x2 - y2 * x1) / (x2 - x1);
  
@@ -6112,7 +6115,7 @@ void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 			continue;
 		}
 		
-		(*iter)->Shout("In AOE range");
+		//(*iter)->Shout("In AOE range");
 
 		float Unit_X =(*iter)->GetX();
 		float Unit_Y =(*iter)->GetY();
@@ -6127,9 +6130,9 @@ void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 			//# shortest distance from line to target point
 			float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
 					
-			if (d <= 20)
+			if (d <= ae_width)
 			{
-				(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
+				//(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
 
 				if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
 					(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
@@ -6267,6 +6270,8 @@ void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
 	int32 modifier = (interval - 1)*100;
 	modifier = modifier*spells[spell_id].cast_from_crouch/100; //Base cast_from_crouch = 100;
 
+	Shout("modifier %i", modifier);
+
 	if (modifier)
 		damage += damage*modifier/100;
 }
@@ -6283,15 +6288,16 @@ void Client::DoAdjustRecastTimer()
 			if (IsValidSpell(m_pp.mem_spells[i])){
 				uint32 RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
 				//Shout("DoAdjustRecastTimer(): RemainTime %i RecastEnd %i   [%s]", RemainTime,recast_mem_spells[i], spells[m_pp.mem_spells[i]].name);
-				Shout("DoAdjustRecastTimer(): <%s> %i < %i", spells[m_pp.mem_spells[i]].name, RemainTime, recast_mem_spells[i]);
+				//Shout("DoAdjustRecastTimer(): <%s> %i < %i", spells[m_pp.mem_spells[i]].name, RemainTime, recast_mem_spells[i]);
 				if (RemainTime <= recast_mem_spells[i]){
 					//Shout("DoAdjustRecastTimer::: Trigger (Adjust Time) [%i] NAME: %s", recast_mem_spells[i], spells[CastToClient()->m_pp.mem_spells[i]].name);
 					
+					//Cast the Refresh Spell specified in the array.
 					if (IsValidSpell(refreshid_mem_spells[i])){
+						//Shout("refreshid_mem_spells[i] = %i", refreshid_mem_spells[i]);
 						SpellFinished(refreshid_mem_spells[i],this);
 					}
-							
-					
+				
 					recast_mem_spells[i] = 0;
 					refreshid_mem_spells[i] = 0;
 					Disable = true;
@@ -6342,14 +6348,12 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
 	uint16 spellgroupadjust = 0;
 	uint16 memspell_id = 0;
 	uint32 RemainTime = 0;
-
-	bool SpellLimited = false;
 	bool SpellGroupLimited = false;
 
 	if(IsValidSpell(spell_id)){
 		
-		recast_adjust = spells[spell_id].base[effectid]/1000;
-		spellid_refresh = spells[spell_id].base2[effectid];
+		recast_adjust = spells[spell_id].base[effectid]/1000; //Time amount subtracted
+		spellid_refresh = spells[spell_id].base2[effectid];  //Spell ID that does the refresh effect.
 
 		if(!IsValidSpell(spellid_refresh))
 			return; //NO Refresher ID
@@ -6360,13 +6364,13 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
 			SpellGroupLimited = true;
 	}
 
-	//Shout("EffectAdjustRecastTimer::: Recast ADjust: %i Spell: TO Adjust %i SpellGroup: %i Limis [%i / %i]", recast_adjust, -1, spellgroupadjust,SpellLimited, SpellGroupLimited);
+	//Shout("EffectAdjustRecastTimer::: Recast Adjust:[ %i] SpellRefresh ID: [%i] SpellGroup: [%i] Spell Group Limit Bool [%i]", recast_adjust, spellid_refresh, spellgroupadjust,SpellGroupLimited);
 	if (recast_adjust){
 		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
 			memspell_id = m_pp.mem_spells[i];
 			RemainTime = 0;
 			if(IsValidSpell(memspell_id)) {
-			//	Shout("[%i]	pp.Group %i f.Group",i, spells[memspell_id].spellgroup, spellgroupadjust);
+			//Shout("[%i]	pp.Group [%i] SpelltoAdjust.Group",i, spells[memspell_id].spellgroup, spellgroupadjust);
 
 				if (SpellGroupLimited && (spellgroupadjust && (spells[memspell_id].spellgroup == spellgroupadjust)))
 					RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
@@ -6460,6 +6464,59 @@ bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target)
 	return false;
 }
 
+void Mob::ChangeNPCLastName(const char* in_lastname) {
+
+	EQApplicationPacket* outapp = new EQApplicationPacket(OP_GMLastName, sizeof(GMLastName_Struct));
+	GMLastName_Struct* gmn = (GMLastName_Struct*)outapp->pBuffer;
+	strcpy(gmn->name, GetName());
+	strcpy(gmn->gmname, GetName());
+	strcpy(gmn->lastname, in_lastname);
+	gmn->unknown[0]=1;
+	gmn->unknown[1]=1;
+	gmn->unknown[2]=1;
+	gmn->unknown[3]=1;
+	entity_list.QueueClients(this, outapp, false);
+	safe_delete(outapp);
+}
+
+void Mob::SpellCastingTimerDisplay(){
+
+	/*Will display a cast time count down in 1 second interval which accurate to actual cast time.
+	Packet is only sent once per second max
+	To do potentially start a 1 second timer to sync with the count down start time, unsure if neccessary.
+	*/
+	if (IsCasting() && IsEngaged()){
+		
+		uint32 remain_time = GetSpellEndTime().GetRemainingTime(); 
+		int flat_time = remain_time / 1000;
+		int flat_time_cmp =  (flat_time * 1000) + 30;
+		//Shout("remain %i < flat_time_cmp %i", remain_time, flat_time_cmp);
+		if (remain_time < flat_time_cmp) {
+
+			std::string WT;
+
+			//Build string to send if cast is not completed.
+			if (remain_time > 35){
+
+				WT = spells[CastingSpellID()].name;
+				WT += " ";
+				WT += "< ";
+				WT += itoa(flat_time);
+				WT += " >";
+				//Shout("Remain Time %i :: %s", GetSpellEndTime().GetRemainingTime(), WT);
+			
+				if (strlen(WT.c_str()) >= 64)
+					WT = '\0'; //Prevent buff overflow
+			}
+
+			else
+				WT = '\0'; //Clear Last Name
+
+			ChangeNPCLastName( WT.c_str());
+		}
+	}
+}
+
 void Client::PopupUI()
 {	
 	if (!HasSpellAwareness())
@@ -6544,11 +6601,11 @@ void Client::PopupUI()
 				//Dynamic text colors
 				std::string range_color = bright_green;
 				std::string tae_range_color = bright_green;
-				std::string spell_color = color_blue;
+				std::string spell_color = color_blue; //This will likely need to be revised.
 
 				if (Casting){
 					IsCastingFound = true;
-					spell_id = target->GetSpellCastingSpellId();
+					spell_id = target->CastingSpellID();
 					cast_time_pct = (target->GetSpellEndTime().GetRemainingTime()*100 / spells[spell_id].cast_time);
 					//Shout("TEST %i %i %i %i", target->GetSpellEndTime().GetRemainingTime(), spells[spell_id ].cast_time, cast_time_pct, GetActSpellCasttime(spell_id,spells[spell_id ].cast_time));
 					//remain_time = static_cast<int>((target->GetSpellEndTime().GetRemainingTime() + 500)/1000);
@@ -6556,6 +6613,11 @@ void Client::PopupUI()
 
 					//Get Range Type for NPC cast spells
 					switch(target_type) {
+
+						case ST_Self:
+							range = 0;
+							spell_color = color_gold;
+							break;
 
 						case ST_Target:
 						case ST_TargetOptional:

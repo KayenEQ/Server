@@ -674,6 +674,7 @@ bool NPC::Process()
 	MeleeCharge();
 	SpellProjectileEffect2();
 	SpellProjectileEffectTargetRing();
+	SpellCastingTimerDisplay();
 
 	if(spellbonuses.GravityEffect == 1) {
 		if(gravity_timer.Check())

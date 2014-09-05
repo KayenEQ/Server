@@ -954,7 +954,6 @@ public:
 
 	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
 	inline Timer GetSpellEndTime() const { return spellend_timer; }
-	inline uint16 GetSpellCastingSpellId() const { return casting_spell_id; }
 	
 	void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
@@ -970,6 +969,9 @@ public:
 	void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id);
 
 	bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target);
+
+	void ChangeNPCLastName(const char* in_lastname);
+	void SpellCastingTimerDisplay();
 
 	//C!Kayen END
 

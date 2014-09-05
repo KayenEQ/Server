@@ -760,16 +760,18 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			continue;
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
-		
-		if ((spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation) && !spells[spell_id].powerful_flag) //C!Kayen pflag = Projectile
-			dist_targ = caster->DistNoRoot(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ());
-		else
+		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
+		if ((spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation) && !spells[spell_id].powerful_flag){ //C!Kayen pflag = Projectile
+			dist_targ = curmob->DistNoRoot(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ());
+		}
+		else{
 			dist_targ = center->DistNoRoot(*curmob);
-
+		}
 		if (dist_targ > dist2)	//make sure they are in range
 			continue;
 		if (dist_targ < min_range2)	//make sure they are in range
 			continue;
+
 		if (isnpc && curmob->IsNPC()) {	//check npc->npc casting
 			FACTION_VALUE f = curmob->GetReverseFactionCon(caster);
 			if (bad) {
@@ -808,7 +810,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 						continue;
 				}
 		}
-		
+		curmob->Shout("3 TEST AE");
 		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);
 
 		//if we get here... cast the spell.
