@@ -325,6 +325,7 @@ void command_showspellslist(Client *c, const Seperator *sep);
 void command_npctype_cache(Client *c, const Seperator *sep);
 void command_merchantopenshop(Client *c, const Seperator *sep);
 void command_merchantcloseshop(Client *c, const Seperator *sep);
+void command_shownumhits(Client *c, const Seperator *sep);
 
 //C!Kayen
 void  command_refundaatype(Client *c, const Seperator *sep);

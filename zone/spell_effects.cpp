@@ -139,7 +139,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 	if(IsNPC())
 	{
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(&buffslot);
 		int i = parse->EventSpell(EVENT_SPELL_EFFECT_NPC, CastToNPC(), nullptr, spell_id, caster ? caster->GetID() : 0, &args);
 		if(i != 0){
@@ -149,7 +149,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 	}
 	else if(IsClient())
 	{
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(&buffslot);
 		int i = parse->EventSpell(EVENT_SPELL_EFFECT_CLIENT, nullptr, CastToClient(), spell_id, caster ? caster->GetID() : 0, &args);
 		if(i != 0){
@@ -3402,7 +3402,7 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 
 	if(IsNPC())
 	{
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(&ticsremaining);
 		args.push_back(&caster_level);
 		args.push_back(&slot);
@@ -3413,7 +3413,7 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 	}
 	else
 	{
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(&ticsremaining);
 		args.push_back(&caster_level);
 		args.push_back(&slot);
@@ -3763,12 +3763,12 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 	}
 
 	if(IsClient()) {
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(&buffs[slot].casterid);
 
 		parse->EventSpell(EVENT_SPELL_FADE, nullptr, CastToClient(), buffs[slot].spellid, slot, &args);
 	} else if(IsNPC()) {
-		std::vector<void*> args;
+		std::vector<EQEmu::Any> args;
 		args.push_back(&buffs[slot].casterid);
 
 		parse->EventSpell(EVENT_SPELL_FADE, CastToNPC(), nullptr, buffs[slot].spellid, slot, &args);
