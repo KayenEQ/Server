@@ -2774,9 +2774,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					
 					//This is specific for the limits used if obtained from a 'Charge' Effect
 					if (interval){
-						Shout("SE_CastonChargeCondition Interval %i Condition %i", interval, condition);
+						//Shout("SE_CastonChargeCondition Interval %i Condition %i", interval, condition);
 						if (interval == condition) {
-							Shout("SE_CastonChargeCondition Found! %i", i);
+							//Shout("SE_CastonChargeCondition Found! Effect ID %i", i);
 							CastToClient()->EffectAdjustRecastTimer(spell_id, i);
 							break;
 						}
