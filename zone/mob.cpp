@@ -5926,15 +5926,15 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	if (bolt_id < 0)
 		return false;
 
-	uint8 anim = spells[spell_id].CastingAnim; 
 	float speed = static_cast<float>(spells[spell_id].powerful_flag) / 1000.0f;
 	float tilt = static_cast<float>(spells[spell_id].pvpresistbase);
+	int caster_anim = spells[spell_id].pvpresistcalc;
 	float angle = 0.0;
 
 	if (tilt == 525){ //Straightens out most melee weapons. [May need to re evaluate this]
 		//angle = 1000.0f;
 
-		if ( (GetX() - spell_target->GetX()) > 10.0f)
+		if ( (GetX() - spell_target->GetX()) > 10.0f) //This may need adjustment
 			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
 	}
 
@@ -5946,13 +5946,19 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 		SetProjectile(true);
 	}
 
+	SkillUseTypes skillinuse;
 
-	ProjectileAnimation(spell_target,0, false, speed,angle,tilt,0, spells[spell_id].player_1);
+	if (caster_anim != 44) //44 is standard 'nuke' spell animation.
+		skillinuse = static_cast<SkillUseTypes>(caster_anim);
+	else
+		skillinuse = SkillArchery;
+
+	ProjectileAnimation(spell_target,0, false, speed,angle,tilt,0, spells[spell_id].player_1,skillinuse);
 	
-	if (spells[spell_id].CastingAnim == 64)
-		anim = 44; //Corrects for animation error.
+	//Override the default projectile animation which is based on item type.
+	if (caster_anim == 44)
+		DoAnim(caster_anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); 
 
-	DoAnim(anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); //Override the default projectile animation.
 	return true;
 }		
 
@@ -6267,10 +6273,11 @@ void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
 
 	int32 interval = caster->GetCastFromCrouchInterval();
 
+	if (!interval)
+		interval = 5; //Indicates that casting time completely finished.
+
 	int32 modifier = (interval - 1)*100;
 	modifier = modifier*spells[spell_id].cast_from_crouch/100; //Base cast_from_crouch = 100;
-
-	Shout("modifier %i", modifier);
 
 	if (modifier)
 		damage += damage*modifier/100;
