@@ -2179,6 +2179,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 			entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
 			iter = targets_in_range.begin();
+
+			//C!Kayen - If beneficial always hit caster.
+			if (IsBeneficialSpell(spell_id))
+				SpellOnTarget(spell_id,this, false, true, resist_adjust);
 			
 			while(iter != targets_in_range.end())
 			{
