@@ -974,6 +974,9 @@ public:
 	void ChangeNPCLastName(const char* in_lastname);
 	void SpellCastingTimerDisplay();
 
+	inline bool GetSendTargetSpellAnimation() const { return SendTargetSpellAnimation; }
+	inline void SetSendTargetSpellAnimation(bool value) { SendTargetSpellAnimation = value; }
+
 	//C!Kayen END
 
 protected:
@@ -1343,6 +1346,7 @@ protected:
 	int8 CastFromCrouchInterval;
 
 	int32 casting_z_diff;
+	bool SendTargetSpellAnimation;
 
 private:
 	void _StopSong(); //this is not what you think it is

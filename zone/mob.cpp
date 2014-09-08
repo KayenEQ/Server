@@ -409,6 +409,8 @@ Mob::Mob(const char* in_name,
 	CastFromCrouchInterval = 0;
 	casting_z_diff = 0;
 
+	SendTargetSpellAnimation = true;
+
 }
 
 Mob::~Mob()
@@ -6832,6 +6834,25 @@ void Client::PopupUI()
 		spell_awareness_popup.Start(1000);
 
 }
+/*
+void Client::ExpeditionInfo()
+{
+
+	const char *ExpName = "Expedition Test";
+	const char *leadername = "Sorvani";
+	
+    EQApplicationPacket *outapp = new EQApplicationPacket(OP_DzExpeditionInfo, sizeof(ExpeditionInfo_Struct));
+    ExpeditionInfo_Struct* ei = (ExpeditionInfo_Struct*)outapp->pBuffer;
+
+    //This will turn into a SQL Query
+    strcpy(ei->expedition_name, ExpName );
+    strcpy(ei->leader_name, leadername);
+    ei->max_players = 69;
+    ei->clientid = this->character_id;
+    QueuePacket(outapp);
+    safe_delete(outapp);
+}
+*/
 /*
 	const char *WindowTitle = "Bot Tracking Window";
 

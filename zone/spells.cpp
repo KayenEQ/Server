@@ -3835,7 +3835,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 		if (spelltar)
 			spelltar->CheckNumHitsRemaining(NUMHIT_IncomingSpells);
 	}
-
+	
 	// send the action packet again now that the spell is successful
 	// NOTE: this is what causes the buff icon to appear on the client, if
 	// this is a buff - but it sortof relies on the first packet.
@@ -3904,9 +3904,8 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	// send to people in the area, ignoring caster and target
 	//live dosent send this to anybody but the caster
 	//entity_list.QueueCloseClients(spelltar, action_packet, true, 200, this, true, spelltar->IsClient() ? FILTER_PCSPELLS : FILTER_NPCSPELLS);
-
 	// TEMPORARY - this is the message for the spell.
-	// double message on effects that use ChangeHP - working on this
+	// double message on effects that use ChangeHP - working on this //C! KayenFIX - This is where target does animation.
 	message_packet = new EQApplicationPacket(OP_Damage, sizeof(CombatDamage_Struct));
 	CombatDamage_Struct *cd = (CombatDamage_Struct *)message_packet->pBuffer;
 	cd->target = action->target;
@@ -3915,7 +3914,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	cd->spellid = action->spell;
 	cd->sequence = action->sequence;
 	cd->damage = 0;
-	if(!IsEffectInSpell(spell_id, SE_BindAffinity))
+	if(GetSendTargetSpellAnimation() && !IsEffectInSpell(spell_id, SE_BindAffinity)) //C!Kayen - Use to prevents spell animation on target
 	{
 		entity_list.QueueCloseClients(spelltar, message_packet, false, 200, 0, true, spelltar->IsClient() ? FilterPCSpells : FilterNPCSpells);
 	}

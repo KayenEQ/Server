@@ -8136,6 +8136,82 @@ XS(XS_Mob_GetFlurryChance)
 	}
 	XSRETURN(1);
 }
+//C!Kayen Perl Functions
+XS(XS_Mob_EnableTargetSpellAnim);
+XS(XS_Mob_EnableTargetSpellAnim)
+{
+	dXSARGS;
+	if (items != 2)
+		Perl_croak(aTHX_ "Usage: Mob::SetSendTargetSpellAnimation((THIS, value)");
+	{
+		Mob *	THIS;
+		bool value = (bool)SvTRUE(ST(1));
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->SetSendTargetSpellAnimation(value);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Mob_GetTargetSpellAnim); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_GetTargetSpellAnim)
+{
+	dXSARGS;
+	if (items != 1)
+		Perl_croak(aTHX_ "Usage: Mob::GetSendTargetSpellAnimation()");
+	{
+		Mob *		THIS;
+		bool		RETVAL;
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetSendTargetSpellAnimation();
+		ST(0) = boolSV(RETVAL);
+		sv_2mortal(ST(0));
+	}
+	XSRETURN(1);
+}
+
+XS(XS_Mob_NPCLastName); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_NPCLastName)
+{
+	dXSARGS;
+	if (items < 1 || items > 2)
+		Perl_croak(aTHX_ "Usage: Mob::TempName(THIS, name)");
+	{
+		Mob *		THIS;
+		char *		name = nullptr;
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		if (items > 1)	{	name = (char *)SvPV_nolen(ST(1));	}
+
+		THIS->ChangeNPCLastName(name);
+	}
+	XSRETURN_EMPTY;
+}
 
 #ifdef __cplusplus
 extern "C"
@@ -8436,6 +8512,10 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "IsMeleeDisabled"), XS_Mob_IsMeleeDisabled, file, "$$");
 		newXSproto(strcpy(buf, "SetFlurryChance"), XS_Mob_SetFlurryChance, file, "$$");
 		newXSproto(strcpy(buf, "GetFlurryChance"), XS_Mob_GetFlurryChance, file, "$");
+		//C!Kayyen
+		newXSproto(strcpy(buf, "EnableTargetSpellAnim"), XS_Mob_SetDisableMelee, file, "$$");
+		newXSproto(strcpy(buf, "GetTargetSpellAnim"), XS_Mob_IsMeleeDisabled, file, "$$");
+		newXSproto(strcpy(buf, "NPCLastName"), XS_Mob_TempName, file, "$:$");
 
 	XSRETURN_YES;
 }
