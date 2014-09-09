@@ -410,6 +410,7 @@ Mob::Mob(const char* in_name,
 	casting_z_diff = 0;
 
 	SendTargetSpellAnimation = true;
+	SpellPowerAmtHits = 0;
 
 }
 
@@ -5193,6 +5194,8 @@ float Mob::HeadingAngleToMob(Mob *other)
 void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtargets, std::list<Mob*> m_list)
 {
 	int hit_count = 0;
+	int32 AmtHit_mod = GetSpellPowerAmtHitsEffect(spell_id);
+
 	if (spells[spell_id].aemaxtargets && spells[spell_id].maxtargets)
 		hit_count = spells[spell_id].maxtargets; //Hijack this field if set WITH aemaxtargets, should equal or > aemaxtargets. 
 
@@ -5226,6 +5229,9 @@ void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtarget
 
 		if (ClosestMob) {
 			
+			if (AmtHit_mod)
+				ClosestMob->SetSpellPowerAmtHits((i * AmtHit_mod));
+
 			if (!spells[spell_id].maxtargets)
 				SpellOnTarget(spell_id, ClosestMob, false, true, resist_adjust);
 			else{
@@ -5693,13 +5699,27 @@ void Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 					distance = max_distance;
 
 				int mod = 1 + ((distance * (max_modifier/max_distance))/100);
-				Shout("mod %i distance %i", mod, distance);
+				//Shout("mod %i distance %i", mod, distance);
 				if (mod)
 					damage = damage*mod;;
 			}
 		}
 	}
 	SetCastingZDiff(0); //C!Kayen
+}
+
+int32 Mob::GetSpellPowerAmtHitsEffect(uint16 spell_id)
+{
+	if(!IsValidSpell(spell_id))
+		return 0;
+
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_SpellPowerAmtHits)
+			return spells[spell_id].base[i];
+	}
+
+	return 0;
 }
 
 void Mob::CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ)
@@ -6525,6 +6545,7 @@ void Mob::SpellCastingTimerDisplay(){
 		}
 	}
 }
+
 
 void Client::PopupUI()
 {	

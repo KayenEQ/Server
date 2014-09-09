@@ -497,7 +497,7 @@ typedef enum {
 #define SE_CriticalDamageMob			330	// implemented
 #define SE_Salvage						331 // implemented - chance to recover items that would be destroyed in failed tradeskill combine
 //#define SE_SummonToCorpse				332 // *not implemented AA - Call of the Wild (Druid/Shaman Res spell with no exp)
-#define SE_CastOnRuneFadeEffect					333 // implemented
+#define SE_CastOnRuneFadeEffect			333 // implemented
 #define SE_BardAEDot					334	// implemented
 #define SE_BlockNextSpellFocus			335	// implemented - base1 chance to block next spell ie Puratus (8494)
 //#define SE_IllusionaryTarget			336	// not used
@@ -636,7 +636,8 @@ typedef enum {
 #define SE_AdjustRecastTimerCondition	1008 // implemented - Sets Recast Timer to end early based on conditions (B: Amt Time Reducedime L: Refresh Spell M: Condition Amt)
 #define SE_TryCastonSpellFinished		1009 // implemented - Trys to trigger spell after casting completed, base= chance limit=spellid
 #define SE_CastonChargeCondition		1010 // implemented - Trigger spell if charge time exists, base= spellid limit=interval check = chance condition
-#define SE_SpellAwareness				1011 //
+#define SE_SpellAwareness				1011 // implemented - Enable / Disable spell awareness popup window.
+#define SE_SpellPowerAmtHits			1012 // implemented - Increase spell damage on next target for each target hit in AOE, base = modifier 
 // LAST
 
 

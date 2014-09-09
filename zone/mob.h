@@ -925,6 +925,10 @@ public:
 	
 	void PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 	
+	int32 GetSpellPowerAmtHitsEffect(uint16 spell_id);
+	inline int32 GetSpellPowerAmtHits() const { return SpellPowerAmtHits; }
+	void SetSpellPowerAmtHits(int32 value) { SpellPowerAmtHits = value; }
+
 	void CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
 	inline int32 GetCastingZDiff() const { return casting_z_diff; }
 	void SetCastingZDiff(int32 value) { casting_z_diff = value; }
@@ -1347,6 +1351,8 @@ protected:
 
 	int32 casting_z_diff;
 	bool SendTargetSpellAnimation;
+	int32 SpellPowerAmtHits;
+
 
 private:
 	void _StopSong(); //this is not what you think it is
