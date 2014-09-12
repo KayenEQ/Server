@@ -953,7 +953,7 @@ public:
 	inline void SetProjectile(bool HasProjectile_value) { ActiveProjectile = HasProjectile_value; }
 	bool ExistsProjectile();
 
-	void RectangleDirectional(uint16 spell_id, int16 resist_adjust);
+	bool RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr);
 	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
 
@@ -980,6 +980,8 @@ public:
 
 	inline bool GetSendTargetSpellAnimation() const { return SendTargetSpellAnimation; }
 	inline void SetSendTargetSpellAnimation(bool value) { SendTargetSpellAnimation = value; }
+
+	bool TryTargetRingEffects(uint16 spell_id);
 
 	//C!Kayen END
 

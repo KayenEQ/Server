@@ -1900,7 +1900,14 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 	}
 	
-	if (spell_target && IsEffectInSpell(spell_id, SE_SpellPowerHeightMod))//C!Kayen - (Need to check early for projectile use)
+	//C!Kayen - If cast from crouch spells finish casting without triggering fizzle.
+	if (spells[spell_id].cast_from_crouch && !GetCastFromCrouchInterval()){
+		Message_StringID(13, SPELL_FIZZLE);
+		return false;
+	}
+
+	//C!Kayen - (Need to check early for projectile use)
+	if (spell_target && IsEffectInSpell(spell_id, SE_SpellPowerHeightMod))
 		SetCastingZDiff((static_cast<int>(GetZ()) - static_cast<int>(spell_target->GetZ()))); 
 
 	//determine the type of spell target we have
@@ -1977,6 +1984,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		spell_target->CalcSpellPowerDistanceMod(spell_id, dist2);
 	}
 
+	//C!Kayen - Special Target ring related code
+	if (!TryTargetRingEffects(spell_id))
+		return false;
+
 	// Switch #2 - execute the spell
 	//
 	switch(CastAction)
@@ -2005,6 +2016,11 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			} else {
 				if (spells[spell_id].targettype == ST_TargetOptional){
 					if (!TrySpellProjectile2(spell_target, spell_id)) //C!Kayen - Modified formula / Speed Changes
+						return false;
+				}
+				//C!Kayen - Beam Type spells that hit everything in a straight line to target.
+				if (spells[spell_id].targettype == ST_Target && spells[spell_id].aoerange){
+					if (!RectangleDirectional(spell_id, resist_adjust, true, spell_target))
 						return false;
 				}
 

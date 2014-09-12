@@ -638,6 +638,9 @@ typedef enum {
 #define SE_CastonChargeCondition		1010 // implemented - Trigger spell if charge time exists, base= spellid limit=interval check = chance condition
 #define SE_SpellAwareness				1011 // implemented - Enable / Disable spell awareness popup window.
 #define SE_SpellPowerAmtHits			1012 // implemented - Increase spell damage on next target for each target hit in AOE, base = modifier 
+#define	SE_CastOnFadeEffectSF			1013 // implemented - Fade effect using spell finished to cast the spell.
+#define	SE_CastBenficialAEFadeEffect	1014 // implemented - 
+#define	SE_TeleportLocation				1015 // implemented - 
 // LAST
 
 
@@ -707,7 +710,7 @@ struct SPDat_Spell_Struct
 /* 142 */						// 142: between 0 & 100
 								// 143: always set to 0
 /* 144 */	//int16 new_icon	// Spell icon used by the client in uifiles/default/spells??.tga, both for spell gems & buff window. Looks to depreciate icon & memicon
-/* 145 */	//int16 spellanim; // Doesn't look like it's the same as #doanim, so not sure what this is
+/* 145 */	int16 spellanim; //C!Kayen
 /* 146 */	int8 uninterruptable;	// Looks like anything != 0 is uninterruptable. Values are mostly -1, 0, & 1 (Fetid Breath = 90?)
 /* 147 */	int16 ResistDiff;
 /* 148 */	int8 dot_stacking_exempt; // If 1 doesn't stack with self cast by others. If -1 (not implemented) doesn't stack with same effect (???)

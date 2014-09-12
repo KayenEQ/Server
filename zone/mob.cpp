@@ -6081,10 +6081,16 @@ void Mob::MeleeCharge()
 	}
 }
 
-void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
+bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget, Mob *target)
 {
+	/*
 	float ae_width = spells[spell_id].range; //This is the width of the AE that will hit targets.
 	float radius = spells[spell_id].aoerange; //This is total area checked for targets.
+	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+	*/
+
+	float ae_width = spells[spell_id].aoerange; //This is the width of the AE that will hit targets.
+	float radius = spells[spell_id].range; //This is total area checked for targets.
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 
 	bool taget_exclude_npc = false; //False by default!
@@ -6103,17 +6109,29 @@ void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 	std::list<Mob*> targets_in_rectangle;
 	std::list<Mob*>::iterator iter;
 
-	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
+	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, radius, radius / 2, targets_in_range);
 	iter = targets_in_range.begin();
 	
 	float dX = 0;
 	float dY = 0;
 	float dZ = 0;
 	
-	CalcDestFromHeading(GetHeading(), radius, 5, GetX(), GetY(), dX, dY,  dZ);
-	//Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
-	dZ = GetZ();
+	if (!FromTarget){
+		CalcDestFromHeading(GetHeading(), radius, 5, GetX(), GetY(), dX, dY,  dZ);
+		dZ = GetZ();
+	}
+	else {
+		if (target){
+			dX = target->GetX();
+			dY = target->GetY();
+			dZ = target->GetZ();
+		}
+		else
+			return false;
+	}
 
+	
+	//Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
 	//'DEFENDER' is the virtual end point of the line being drawn based on range from which slope is derived. 
 
 	float DEFENDER_X = dX;
@@ -6175,7 +6193,7 @@ void Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust)
 	if (maxtargets)
 		CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_rectangle);
 	
-	return;
+	return true;
 }
 
 void Mob::SetTargetLocationLoc(uint16 target_id, uint16 spell_id)
@@ -6293,8 +6311,9 @@ void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
 
 	int32 interval = caster->GetCastFromCrouchInterval();
 
-	if (!interval)
-		interval = 5; //Indicates that casting time completely finished.
+	//Spell will fizzel if allowed to go full duration.
+	//if (!interval)
+		//interval = 5; //Indicates that casting time completely finished.
 
 	int32 modifier = (interval - 1)*100;
 	modifier = modifier*spells[spell_id].cast_from_crouch/100; //Base cast_from_crouch = 100;
@@ -6544,6 +6563,73 @@ void Mob::SpellCastingTimerDisplay(){
 	}
 }
 
+void EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id)
+{ 
+	/*
+	Special Function to trigger a beneficial AE spell that hits clients at the location of NPC when its buff fades.
+	The spell receives bonus from the caster
+	*/
+
+	if (!center || !caster)
+		return;
+
+	if (!IsBeneficialSpell(spell_id))
+		return;
+
+	Mob *curmob;
+	float dist = caster->GetAOERange(spell_id);
+	float dist2 = dist * dist;
+	float dist_targ = 0;
+
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+		if (curmob->IsClient() && !curmob->CastToClient()->ClientFinishedLoading())
+			continue;
+		if (curmob == center)	//do not affect center
+			continue;
+		if (curmob->IsNPC() && !curmob->IsPet())
+			continue;
+
+		dist_targ = center->DistNoRoot(*curmob);
+
+		if (dist_targ > dist2)	//make sure they are in range
+			continue;
+
+		if (curmob)
+			caster->SpellOnTarget(spell_id, curmob, false, true, 0);
+	}
+}
+
+bool Mob::TryTargetRingEffects(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	if (spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation){
+	
+		for (int i = 0; i <= EFFECT_COUNT; i++) {
+			if (spells[spell_id].effectid[i] == SE_TeleportLocation){
+				if(IsClient()){
+					
+					/* Min Distance required to use spell. - Disabled makes it clunky to use atm due to inability to make target ring red.
+					if (CalculateDistance(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ()) < 50){
+						Message(MT_SpellFailure, "You portal is too unstable, and collapses.");
+						return false;
+					}
+					*/
+
+					CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), GetHeading()*2);
+					Message(MT_Spells, "You enter a temporal rift.");
+					SendSpellEffect(spells[spell_id].spellanim, 4000, 0,true, false);
+				}
+				else
+					GMMove(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), GetHeading());
+			}
+		}
+	}
+
+	return true;
+}
 
 void Client::PopupUI()
 {	

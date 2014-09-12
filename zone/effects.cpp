@@ -810,7 +810,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 						continue;
 				}
 		}
-		curmob->Shout("3 TEST AE");
+
 		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);
 
 		//if we get here... cast the spell.

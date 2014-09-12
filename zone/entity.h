@@ -415,6 +415,9 @@ public:
 	void RefreshAutoXTargets(Client *c);
 	void RefreshClientXTargets(Client *c);
 
+	//C!Kayen
+	void	TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id);
+
 protected:
 	friend class Zone;
 	void	Depop(bool StartSpawnTimer = false);

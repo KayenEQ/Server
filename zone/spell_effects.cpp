@@ -3675,6 +3675,29 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				}
 				break;
 			}
+
+			//C!Kayen
+			case SE_CastOnFadeEffectSF:
+			{
+				if (ticsremaining == 1)
+				{
+					SpellFinished(spells[spell_id].base[i], this, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+				}
+
+				break;
+			}
+
+			//C!Kayen
+			case SE_CastBenficialAEFadeEffect:
+			{
+				if (ticsremaining == 1)
+				{
+					entity_list.TriggeredBeneficialAESpell(caster, this, spells[spell_id].base[i]);
+				}
+
+				break;
+			}
+
 			case SE_LocateCorpse:
 			{
 				// This is handled by the client prior to SoD.
