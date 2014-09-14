@@ -986,6 +986,9 @@ public:
 	int16 GetBaseSpellPowerWizard();
 
 	bool AACastSpell(uint16 spell_id, uint16 target_id);
+	inline bool IsWizardInnateActive() const { return WizardInnateActive; }
+	inline void SetWizardInnateActive(bool value) { WizardInnateActive = value; }
+	void DoCustomResourceDrain();
 
 	//C!Kayen END
 
@@ -1358,6 +1361,7 @@ protected:
 	int32 casting_z_diff;
 	bool SendTargetSpellAnimation;
 	int32 SpellPowerAmtHits;
+	bool WizardInnateActive;
 
 
 private:

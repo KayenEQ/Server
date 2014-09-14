@@ -4158,7 +4158,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 	}
 
 	//C!Kayen
-	if (spells[buffs[slot].spellid].NimbusEffect)
+	if (spells[buffs[slot].spellid].NimbusEffect > 0)
 		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
 
 	buffs[slot].spellid = SPELL_UNKNOWN;

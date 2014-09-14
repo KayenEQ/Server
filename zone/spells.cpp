@@ -2285,6 +2285,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			TryTriggerOnValueAmount(false, true);
 	}
 
+	DoCustomResourceDrain(); //C!Kayen
+
 	//set our reuse timer on long ass reuse_time spells...
 	if(IsClient())
 	{

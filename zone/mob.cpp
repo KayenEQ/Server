@@ -411,6 +411,7 @@ Mob::Mob(const char* in_name,
 
 	SendTargetSpellAnimation = true;
 	SpellPowerAmtHits = 0;
+	WizardInnateActive = false;
 
 }
 
@@ -4558,6 +4559,16 @@ void Mob::SpreadVirus(uint16 spell_id, uint16 casterID)
 
 void Mob::RemoveNimbusEffect(int effectid)
 {
+	//C!Kayen - Clear Nimbus effects if set.
+	if (effectid == nimbus_effect1)
+		nimbus_effect1 = 0;
+
+	else if (effectid == nimbus_effect2)
+		nimbus_effect2 = 0;
+
+	else if (effectid == nimbus_effect3)
+		nimbus_effect3 = 0;
+
 	EQApplicationPacket* outapp = new EQApplicationPacket(OP_RemoveNimbusEffect, sizeof(RemoveNimbusEffect_Struct));
 	RemoveNimbusEffect_Struct* rne = (RemoveNimbusEffect_Struct*)outapp->pBuffer;
 	rne->spawnid = GetID();
@@ -6709,19 +6720,28 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 }
 
 int16 Mob::GetBaseSpellPowerWizard()
-{Shout("TEST");
+{
 	int16 wizard_bonus = spellbonuses.BaseSpellPowerWizard + itembonuses.BaseSpellPowerWizard + aabonuses.BaseSpellPowerWizard;
 	if (wizard_bonus && IsClient()){
 		if (GetEndurancePercent() >= 20){
-			Shout("TEST2 %i", GetEndurancePercent());
-			CastToClient()->SetEndurance(CastToClient()->GetEndurance() - CastToClient()->GetMaxEndurance()/5);
+			SetWizardInnateActive(true);
 			return wizard_bonus;
 		}
-		else
+		else {
 			Message(11, "You are too fatigued to use this skill right now.");
+			SetWizardInnateActive(false);
+		}
 	}
 
 	return 0;
+}
+
+void Mob::DoCustomResourceDrain()
+{
+	if (IsWizardInnateActive() && IsClient()){ //Wizard innate 'weave of power'
+		CastToClient()->SetEndurance(CastToClient()->GetEndurance() - CastToClient()->GetMaxEndurance()/5);
+		SetWizardInnateActive(false);
+	}
 }
 
 bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
@@ -6730,7 +6750,6 @@ bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
 		return false;
 
 	//Wizard Innate Weave of Power AA Toggle
-	//Cast Restriction set to 999 = Toggle
 	if (IsAAToggleSpell(spell_id)){
 		if (FindBuff(spell_id)){
 			BuffFadeBySpellID(spell_id);

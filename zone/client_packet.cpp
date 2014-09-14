@@ -9583,6 +9583,18 @@ void Client::CompleteConnect() {
 
 		const SPDat_Spell_Struct &spell = spells[buffs[j1].spellid];
 
+		//C!Kayen - Reapply nimbus effects on zoning.
+		//C!Kayen - More stringent valid spell check.
+		if (!IsValidSpell(buffs[j1].spellid))
+			continue;
+
+		// Set and send the nimbus effect if this spell has one
+		int NimbusEffect = GetNimbusEffect(buffs[j1].spellid);
+		if(NimbusEffect) {
+			if(!IsNimbusEffectActive(NimbusEffect))
+				SendSpellEffect(NimbusEffect, 500, 0, 1, 3000, true);
+		}
+
 		for (int x1 = 0; x1 < EFFECT_COUNT; x1++) {
 			switch (spell.effectid[x1]) {
 			case SE_IllusionCopy:
