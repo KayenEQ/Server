@@ -416,7 +416,8 @@ public:
 	void RefreshClientXTargets(Client *c);
 
 	//C!Kayen
-	void	TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id);
+	void TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id);
+	void ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id);
 
 protected:
 	friend class Zone;

@@ -971,9 +971,9 @@ public:
 	void SetMeleeChargeTargetID(bool value) { MeleeCharge_target_id = value; }
 
 	uint16 GetSpellGroupFromLimit(uint16 spell_id);
-	void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id);
+	void TryCastonSpellFinished(Mob *target, uint32 spell_id);
 
-	bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target);
+	bool SpellDirectionalTarget(uint16 spell_id, Mob *target);
 
 	void ChangeNPCLastName(const char* in_lastname);
 	void SpellCastingTimerDisplay();
@@ -982,6 +982,10 @@ public:
 	inline void SetSendTargetSpellAnimation(bool value) { SendTargetSpellAnimation = value; }
 
 	bool TryTargetRingEffects(uint16 spell_id);
+	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false);
+	int16 GetBaseSpellPowerWizard();
+
+	bool AACastSpell(uint16 spell_id, uint16 target_id);
 
 	//C!Kayen END
 

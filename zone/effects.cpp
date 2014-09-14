@@ -46,6 +46,7 @@ int32 NPC::GetActSpellDamage(uint16 spell_id, int32 value,  Mob* target) {
 	//DoT Damage - Mob::DoBuffTic [spell_effects.cpp] / Direct Damage Mob::SpellEffect [spell_effects.cpp]
 
 	int32 dmg = value;
+	dmg = GetBaseSpellPower(dmg,spell_id, true); //C!Kayen
 
 	 if (target) {
 		value += dmg*target->GetVulnerability(this, spell_id, 0)/100; 
@@ -97,13 +98,14 @@ int32 Client::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 	int32 value_BaseEffect = 0;
 
 	value_BaseEffect = value + (value*GetFocusEffect(focusFcBaseEffects, spell_id)/100);
+	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id, true); //C!Kayen
 
 	// Need to scale HT damage differently after level 40! It no longer scales by the constant value in the spell file. It scales differently, instead of 10 more damage per level, it does 30 more damage per level. So we multiply the level minus 40 times 20 if they are over level 40.
 	if ( (spell_id == SPELL_HARM_TOUCH || spell_id == SPELL_HARM_TOUCH2 || spell_id == SPELL_IMP_HARM_TOUCH ) && GetLevel() > 40)
 		value -= (GetLevel() - 40) * 20;
 
 	//This adds the extra damage from the AA Unholy Touch, 450 per level to the AA Improved Harm TOuch.
-	if (spell_id == SPELL_IMP_HARM_TOUCH) //Improved Harm Touch
+	if (spell_id == SPELL_IMP_HARM_TOUCH) //Improved Harm,  Touch
 		value -= GetAA(aaUnholyTouch) * 450; //Unholy Touch
 
 	int chance = RuleI(Spells, BaseCritChance); //Wizard base critical chance is 2% (Does not scale with level)
@@ -195,6 +197,7 @@ int32 Client::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target) {
 			chance += GetDecayEffectValue(spell_id, SE_CriticalDotDecay);
 	
 	value_BaseEffect = value + (value*GetFocusEffect(focusFcBaseEffects, spell_id)/100);
+	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id, true); //C!Kayen
 
 	if (chance > 0 && (MakeRandomInt(1, 100) <= chance)) {
 	
@@ -274,7 +277,7 @@ int32 Mob::GetExtraSpellAmt(uint16 spell_id, int32 extra_spell_amt, int32 base_s
 int32 NPC::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 
 	//Scale all NPC spell healing via SetSpellFocusHeal(value)
-
+	value = GetBaseSpellPower(value,spell_id, false, true); //C!Kayen
 	value += value*SpellFocusHeal/100; 
 
 	 if (target) {
@@ -311,6 +314,7 @@ int32 Client::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 	bool Critical = false;
 
 	value_BaseEffect = value + (value*GetFocusEffect(focusFcBaseEffects, spell_id)/100);
+	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id,false,true); //C!Kayen
 
 	value = value_BaseEffect;
 

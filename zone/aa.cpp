@@ -311,7 +311,11 @@ void Client::ActivateAA(aaID activate){
 		}
 		else
 		{
+			/* C!Kayen - Allow for special cases when casting
 			if(!CastSpell(caa->spell_id, target_id))
+				return;
+			*/
+			if (!AACastSpell(caa->spell_id,target_id))
 				return;
 		}
 	}

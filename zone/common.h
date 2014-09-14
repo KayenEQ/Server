@@ -441,6 +441,10 @@ struct StatBonuses {
 
 	//C!Kayen - Custom Bonuses
 	int16 PetLifeShare[4];						//0= Buff Slot 1=Mitigation Amt 2=Percent Penalty 3=RuneAmt
+	int16 BaseSpellPower;						//Modifies all spells base effect by percent - non focus stackable
+	int16 BaseSpellPowerDmg[HIGHEST_RESIST+1];	//Modifies dmg spells base effect by percent - non focus stackable
+	int16 BaseSpellPowerHeal;					//Modifies heal spells base effect by percent - non focus stackable
+	int16 BaseSpellPowerWizard;					//Modifies all spells base effect by percent - non focus stackable
 };
 
 typedef struct

@@ -2986,6 +2986,23 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				}
 				break;
 			}
+					
+			case SE_BaseSpellPower:
+				newbon->BaseSpellPower += effect_value; 
+				break;
+
+			case SE_BaseSpellPowerDmg:
+				newbon->BaseSpellPowerDmg[base2] += effect_value; //Base2 is resist type
+				break;
+
+			case SE_BaseSpellPowerHeal:
+				newbon->BaseSpellPowerHeal += effect_value; 
+				break;
+
+			case SE_BaseSpellPowerWizard:
+				newbon->BaseSpellPowerWizard += effect_value; 
+				break;
+
 		}
 	}
 }

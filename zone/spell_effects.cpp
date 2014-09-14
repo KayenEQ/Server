@@ -2823,6 +2823,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 			}
 
+			case SE_AuraCustom:
+			{
+				entity_list.ApplyAuraCustom(caster, caster, spell_id, spells[spell_id].base[i]);
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){
@@ -3087,7 +3093,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Unknown Effect ID %d", effect);
 #else
-				Message(0, "Unknown spell effect %d in spell %s (id %d)", effect, spell.name, spell_id);
+				//Message(0, "Unknown spell effect %d in spell %s (id %d)", effect, spell.name, spell_id); //C!Kayen
 #endif
 			}
 		}
@@ -3676,28 +3682,6 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				break;
 			}
 
-			//C!Kayen
-			case SE_CastOnFadeEffectSF:
-			{
-				if (ticsremaining == 1)
-				{
-					SpellFinished(spells[spell_id].base[i], this, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
-				}
-
-				break;
-			}
-
-			//C!Kayen
-			case SE_CastBenficialAEFadeEffect:
-			{
-				if (ticsremaining == 1)
-				{
-					entity_list.TriggeredBeneficialAESpell(caster, this, spells[spell_id].base[i]);
-				}
-
-				break;
-			}
-
 			case SE_LocateCorpse:
 			{
 				// This is handled by the client prior to SoD.
@@ -3747,6 +3731,28 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				break;
 			}
 
+			//C!Kayen - Custom Buff Ticks
+			case SE_CastOnFadeEffectSF:
+			{
+				if (ticsremaining == 1)
+					SpellFinished(spells[spell_id].base[i], this, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+
+				break;
+			}
+
+			case SE_CastBenficialAEFadeEffect:
+			{
+				if (ticsremaining == 1)
+					entity_list.TriggeredBeneficialAESpell(caster, this, spells[spell_id].base[i]);
+
+				break;
+			}
+
+			case SE_AuraCustom:
+			{
+				entity_list.ApplyAuraCustom(caster, caster, spell_id, spells[spell_id].base[i]);
+				break;
+			}
 
 			default:
 			{
@@ -4123,7 +4129,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 	// notify caster (or their master) of buff that it's worn off
 	Mob *p = entity_list.GetMob(buffs[slot].casterid);
-	if (p && p != this && !IsBardSong(buffs[slot].spellid))
+	if (p && p != this && !IsBardSong(buffs[slot].spellid) && !IsAuraCustomSpell(buffs[slot].spellid)) //C!Kayen
 	{
 		Mob *notify = p;
 		if(p->IsPet())
@@ -4150,6 +4156,10 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 		if (!found_numhits)
 			Numhits(false);
 	}
+
+	//C!Kayen
+	if (spells[buffs[slot].spellid].NimbusEffect)
+		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
 
 	buffs[slot].spellid = SPELL_UNKNOWN;
 	if(IsPet() && GetOwner() && GetOwner()->IsClient()) {

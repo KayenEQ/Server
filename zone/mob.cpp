@@ -6573,7 +6573,7 @@ void EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spe
 	if (!center || !caster)
 		return;
 
-	if (!IsBeneficialSpell(spell_id))
+	if (!IsValidSpell(spell_id) || !IsBeneficialSpell(spell_id))
 		return;
 
 	Mob *curmob;
@@ -6587,6 +6587,40 @@ void EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spe
 			continue;
 		if (curmob == center)	//do not affect center
 			continue;
+		if (curmob->IsNPC() && !curmob->IsPet())
+			continue;
+
+		dist_targ = center->DistNoRoot(*curmob);
+
+		if (dist_targ > dist2)	//make sure they are in range
+			continue;
+
+		if (curmob)
+			caster->SpellOnTarget(spell_id, curmob, false, true, 0);
+	}
+}
+
+void EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id)
+{ 
+	//The buff cast by the aura has spell effect 1016 set to -1 in the spell data as the last effect. This should return an invalid spell.
+	//Aura range is determined by AOE range on primary aura spell.
+	if (!IsValidSpell(spell_id) || !IsValidSpell(aura_spell_id))
+		return;
+	
+	if (!center || !caster)
+		return;
+
+	Mob *curmob;
+	float dist = caster->GetAOERange(aura_spell_id);
+	float dist2 = dist * dist;
+	float dist_targ = 0;
+
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+		if (curmob->IsClient() && !curmob->CastToClient()->ClientFinishedLoading())
+			continue;
+		//if (curmob == center)	//do not affect center
+			//continue;
 		if (curmob->IsNPC() && !curmob->IsPet())
 			continue;
 
@@ -6627,6 +6661,86 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 			}
 		}
 	}
+
+	return true;
+}
+
+int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool IsHeal)
+{
+	/*
+	Non focus % based stackable spell modifiers. - Works on NPC and Clients
+	*Order of custom multipliers*
+	PRE FOCUS BASE MODIFIERS
+	--------------------------------------------------------------
+	1. Distance Modifier
+	------- Typically will not have more than one of these ------- 
+	2. GetSpellPowerAmtHits() - More damage based on how many prior targets are acquired
+	3. CalcSpellPowerHeightMod(dmg, spell_id, caster) - Z axis distance mod
+	4. CalcFromCrouchMod(dmg, spell_id, caster) - Cast Time multiplier from charged spells
+	------------------------------------------------------------
+	5. Wizard Innate Buff
+	6. Stackable BaseSpellPower
+	------------------------------------------------------------
+	7. Regular Focus / Damage Adders / Vulnerability
+	*/
+
+	if (!IsValidSpell(spell_id))
+		return 0;
+	
+	int16 mod = 0;
+
+	value += value*GetBaseSpellPowerWizard()/100;
+
+	mod = spellbonuses.BaseSpellPower + itembonuses.BaseSpellPower + aabonuses.BaseSpellPower; //All effects
+	
+	//Heal
+	if (IsHeal)
+		mod += spellbonuses.BaseSpellPowerHeal + itembonuses.BaseSpellPowerHeal + aabonuses.BaseSpellPowerHeal;
+	//Dmg
+	if (IsDamage){
+		mod +=	spellbonuses.BaseSpellPowerDmg[spells[spell_id].resisttype] + 
+				itembonuses.BaseSpellPowerDmg[spells[spell_id].resisttype] + 
+				aabonuses.BaseSpellPowerDmg[spells[spell_id].resisttype];
+	}
+
+	value += value*mod/100;
+
+	return value;
+}
+
+int16 Mob::GetBaseSpellPowerWizard()
+{Shout("TEST");
+	int16 wizard_bonus = spellbonuses.BaseSpellPowerWizard + itembonuses.BaseSpellPowerWizard + aabonuses.BaseSpellPowerWizard;
+	if (wizard_bonus && IsClient()){
+		if (GetEndurancePercent() >= 20){
+			Shout("TEST2 %i", GetEndurancePercent());
+			CastToClient()->SetEndurance(CastToClient()->GetEndurance() - CastToClient()->GetMaxEndurance()/5);
+			return wizard_bonus;
+		}
+		else
+			Message(11, "You are too fatigued to use this skill right now.");
+	}
+
+	return 0;
+}
+
+bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	//Wizard Innate Weave of Power AA Toggle
+	//Cast Restriction set to 999 = Toggle
+	if (IsAAToggleSpell(spell_id)){
+		if (FindBuff(spell_id)){
+			BuffFadeBySpellID(spell_id);
+			Message(11, "%s disabled.", spells[spell_id].name);
+			return true;
+		}
+	}
+
+	if(!CastSpell(spell_id, target_id))
+		return false;
 
 	return true;
 }

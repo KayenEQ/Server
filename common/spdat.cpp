@@ -1148,3 +1148,18 @@ const char* GetSpellName(int16 spell_id)
     return spells[spell_id].name;
 }
 
+//C!Kayen - Custom Spell Functions
+bool IsAuraCustomSpell(uint16 spell_id)
+{
+	if (IsValidSpell(spell_id) && spells[spell_id].pvpresistbase == 998)
+		return true;
+
+	return false;
+}
+bool IsAAToggleSpell(uint16 spell_id)
+{
+	if (IsValidSpell(spell_id) && spells[spell_id].pvpresistbase == 999)
+		return true;
+
+	return false;
+}

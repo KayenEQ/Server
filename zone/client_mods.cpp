@@ -1882,7 +1882,7 @@ uint16 Mob::GetInstrumentMod(uint16 spell_id) const
 
 void Client::CalcMaxEndurance()
 {
-	max_end = CalcBaseEndurance() + spellbonuses.Endurance + itembonuses.Endurance;
+	max_end = CalcBaseEndurance() + spellbonuses.Endurance + itembonuses.Endurance + aabonuses.Endurance; //C!Kayen
 
 	if (max_end < 0) {
 		max_end = 0;
@@ -1955,10 +1955,21 @@ int32 Client::CalcBaseEndurance()
 }
 
 int32 Client::CalcEnduranceRegen() {
+	/*
 	int32 regen = int32(GetLevel() * 4 / 10) + 2;
 	regen += aabonuses.EnduranceRegen + spellbonuses.EnduranceRegen + itembonuses.EnduranceRegen;
 
 	return (regen * RuleI(Character, EnduranceRegenMultiplier) / 100);
+	*/
+	//C!Kayen
+	int32 regen = int32(GetLevel() * 4 / 10) + 2;
+	regen += aabonuses.EnduranceRegen + spellbonuses.EnduranceRegen + itembonuses.EnduranceRegen;
+	regen = regen * RuleI(Character, EnduranceRegenMultiplier) / 100;
+
+	if (GetClass() == WIZARD)
+		regen = GetMaxEndurance()*2/100;
+	Shout("Regen %i (%i / %i)", regen, GetEndurance(), GetMaxEndurance(), int(GetEndurance()*100/GetMaxEndurance()));
+	return (regen);
 }
 
 int32 Client::CalcEnduranceRegenCap() {

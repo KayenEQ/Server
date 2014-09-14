@@ -641,6 +641,11 @@ typedef enum {
 #define	SE_CastOnFadeEffectSF			1013 // implemented - Fade effect using spell finished to cast the spell.
 #define	SE_CastBenficialAEFadeEffect	1014 // implemented - 
 #define	SE_TeleportLocation				1015 // implemented - 
+#define	SE_AuraCustom					1016 // implemented - 
+#define	SE_BaseSpellPower				1017 // implemented - Non focused stackable spell modifier 
+#define	SE_BaseSpellPowerDmg			1018 // implemented - Non focused stackable spell modifier by resist type
+#define	SE_BaseSpellPowerHeal			1019 // implemented - Non focused stackable spell modifier
+#define	SE_BaseSpellPowerWizard			1020 // implemented - Non focused stackable spell modifier [Wizard innate]
 // LAST
 
 
@@ -900,5 +905,9 @@ int32 GetFuriousBash(uint16 spell_id);
 bool IsShortDurationBuff(uint16 spell_id);
 bool IsSpellUsableThisZoneType(uint16 spell_id, uint8 zone_type);
 const char *GetSpellName(int16 spell_id);
+
+//C!Kayen - Custom Spell functions
+bool IsAuraCustomSpell(uint16 spell_id);
+bool IsAAToggleSpell(uint16 spell_id);
 
 #endif

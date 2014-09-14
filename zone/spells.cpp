@@ -2019,7 +2019,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 						return false;
 				}
 				//C!Kayen - Beam Type spells that hit everything in a straight line to target.
-				if (spells[spell_id].targettype == ST_Target && spells[spell_id].aoerange){
+				else if (spells[spell_id].targettype == ST_Target && spells[spell_id].aoerange){
 					if (!RectangleDirectional(spell_id, resist_adjust, true, spell_target))
 						return false;
 				}
@@ -2043,6 +2043,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			else{
 				mlog(AA__MESSAGE, "Effect Project Illusion for %s on spell id: %d was OFF", GetName(), spell_id);
 			}
+
 			break;
 		}
 
