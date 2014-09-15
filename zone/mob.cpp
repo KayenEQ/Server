@@ -6665,9 +6665,9 @@ bool Mob::TriggerStunResilience(uint16 spell_id)
 	if (!IsNPC() || (GetMaxStunResilience() <= 1) || !IsValidSpell(spell_id))
 		return false;
 
-	Shout("1: Stun Resilience ( %i / %i )", GetStunResilience(), GetMaxStunResilience());
-
-	if (GetStunResilience() > 0){
+	//Regen 100 pt in every 12 seconds - All values are in intervals of 100 for STA and Neg SR
+	int SR = int(GetStunResilience()/100) * 100;
+	if (SR > 0){
 		
 		int effect_value = 0;
 		for(int i = 0; i < EFFECT_COUNT; i++){
@@ -6675,18 +6675,18 @@ bool Mob::TriggerStunResilience(uint16 spell_id)
 					effect_value += spells[spell_id].base[i];
 		}
 
-		int new_value = GetStunResilience() + effect_value;
+		int new_value = SR + effect_value;
 
-		if (new_value <= 0){
+		if (new_value <= 99){
 			new_value = 0;
 			entity_list.MessageClose(this, false, 200, MT_Stun, "%s stun resilience falters!", GetCleanName());
 		}
 
 		SetStunResilience(new_value);
-		Shout("2: Stun Resilience ( %i / %i )", GetStunResilience(), GetMaxStunResilience());
 		return true;
 	}
-	
+
+	SetStunResilience(GetMaxStunResilience()); //If stunned restore 'Stun Resilience' to MAX
 	return false;
 }
 

@@ -570,6 +570,7 @@ bool NPC::Process()
 		this->stunned = false;
 		this->stunned_timer.Disable();
 		this->spun_timer.Disable();
+		OpportunityFromStunClear(); //C!Kayen
 	}
 
 	if (p_depop)
@@ -626,8 +627,9 @@ bool NPC::Process()
 
 		//C!Kayen - Stun Resilience Regen
 		if (GetStunResilience() < GetMaxStunResilience())
-			SetStunResilience(GetStunResilience()+0);
-
+			SetStunResilience(GetStunResilience()+34);
+		else
+			SetStunResilience(GetMaxStunResilience());
 
 		if(zone->adv_data && !p_depop)
 		{

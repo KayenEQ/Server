@@ -721,10 +721,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 							effect_value += effect_value*caster->CastToClient()->GetFocusEffect(focusFcStunTimeMod, spell_id)/100;
 
 						//C!Kayen
-						if (!TriggerStunResilience(spell_id))
+						if (GetOpportunityMitigation())
+							caster->Message(MT_SpellFailure, "Your target is already stunned");
+						else if (!TriggerStunResilience(spell_id))
 							Stun(effect_value);
 						else
-							entity_list.MessageClose(this, false, 200, MT_Stun, "%s shakes off the stun effect. (%i / %i)", GetCleanName(), GetStunResilience(), GetMaxStunResilience());
+							entity_list.MessageClose(this, false, 200, MT_Stun, "%s shakes off the stun effect. (%i / %i)", GetCleanName(), int(GetStunResilience()/100) * 100, GetMaxStunResilience());
 
 					} else {
 						if (IsClient())
