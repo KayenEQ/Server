@@ -989,6 +989,12 @@ public:
 	inline bool IsWizardInnateActive() const { return WizardInnateActive; }
 	inline void SetWizardInnateActive(bool value) { WizardInnateActive = value; }
 	void DoCustomResourceDrain();
+	
+	int GetCuredCount() const { return cured_count; }
+	inline void SetCuredCount(int value) { cured_count = value; }
+	void CuredEffect();
+	void CastOnCurerFromCure(uint16 spell_id);
+	void CastOnCureFromCure(uint16 spell_id);
 
 	//C!Kayen END
 
@@ -1362,6 +1368,7 @@ protected:
 	bool SendTargetSpellAnimation;
 	int32 SpellPowerAmtHits;
 	bool WizardInnateActive;
+	int cured_count;
 
 
 private:

@@ -1887,18 +1887,20 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					effect_value = 0 - effect_value;
 					uint32 buff_count = GetMaxTotalSlots();
 					for (int j=0; j < buff_count; j++) {
-						if (buffs[j].spellid >= (uint16)SPDAT_RECORDS)
+						if (!IsValidSpell(buffs[j].spellid))
 							continue;
 						if (CalculatePoisonCounters(buffs[j].spellid) == 0)
 							continue;
 						if (effect_value >= buffs[j].counters) {
-							if (caster)
+							if (caster){
+								CuredEffect(); //C!Kayen
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-							effect_value -= buffs[j].counters;
-							buffs[j].counters = 0;
-							BuffFadeBySlot(j);
+								effect_value -= buffs[j].counters;
+								buffs[j].counters = 0;
+								BuffFadeBySlot(j);
+							}
 						} else {
 							buffs[j].counters -= effect_value;
 							effect_value = 0;
@@ -1919,19 +1921,21 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					effect_value = 0 - effect_value;
 					uint32 buff_count = GetMaxTotalSlots();
 					for (int j=0; j < buff_count; j++) {
-						if (buffs[j].spellid >= (uint16)SPDAT_RECORDS)
+						if (!IsValidSpell(buffs[j].spellid))
 							continue;
 						if (CalculateDiseaseCounters(buffs[j].spellid) == 0)
 							continue;
 						if (effect_value >= buffs[j].counters)
 						{
-							if (caster)
+							if (caster){
+								CuredEffect(); //C!Kayen
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-							effect_value -= buffs[j].counters;
-							buffs[j].counters = 0;
-							BuffFadeBySlot(j);
+								effect_value -= buffs[j].counters;
+								buffs[j].counters = 0;
+								BuffFadeBySlot(j);
+							}
 						}
 						else
 						{
@@ -1954,19 +1958,21 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					effect_value = 0 - effect_value;
 					uint32 buff_count = GetMaxTotalSlots();
 					for (int j=0; j < buff_count; j++) {
-						if (buffs[j].spellid >= (uint16)SPDAT_RECORDS)
+						if (!IsValidSpell(buffs[j].spellid))
 							continue;
 						if (CalculateCurseCounters(buffs[j].spellid) == 0)
 							continue;
 						if (effect_value >= buffs[j].counters)
 						{
-							if (caster)
+							if (caster){
+								CuredEffect(); //C!Kayen
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-							effect_value -= buffs[j].counters;
-							buffs[j].counters = 0;
-							BuffFadeBySlot(j);
+								effect_value -= buffs[j].counters;
+								buffs[j].counters = 0;
+								BuffFadeBySlot(j);
+							}
 						}
 						else
 						{
@@ -1989,18 +1995,20 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					effect_value = -effect_value;
 					uint32 buff_count = GetMaxTotalSlots();
 					for (int j=0; j < buff_count; j++) {
-						if (buffs[j].spellid >= (uint16)SPDAT_RECORDS)
+						if (!IsValidSpell(buffs[j].spellid))
 							continue;
 						if (CalculateCorruptionCounters(buffs[j].spellid) == 0)
 							continue;
 						if (effect_value >= buffs[j].counters) {
-							if (caster)
+							if (caster){
+								CuredEffect(); //C!Kayen
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-							effect_value -= buffs[j].counters;
-							buffs[j].counters = 0;
-							BuffFadeBySlot(j);
+								effect_value -= buffs[j].counters;
+								buffs[j].counters = 0;
+								BuffFadeBySlot(j);
+							}
 						} else {
 							buffs[j].counters -= effect_value;
 							effect_value = 0;
@@ -3100,6 +3108,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 #ifdef SPELL_EFFECT_SPAM
 		Message(0, ". . . Effect #%i: %s", i + 1, (effect_desc && effect_desc[0]) ? effect_desc : "Unknown");
 #endif
+	}
+	
+	//C!Kayen - Used to proc off a cure from a cure spell on caster or target.
+	if (GetCuredCount()){
+		CastOnCurerFromCure(spell_id);
+		if (caster)
+			caster->CastOnCurerFromCure(spell_id);
 	}
 
 	CalcBonuses();

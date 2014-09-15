@@ -412,6 +412,7 @@ Mob::Mob(const char* in_name,
 	SendTargetSpellAnimation = true;
 	SpellPowerAmtHits = 0;
 	WizardInnateActive = false;
+	cured_count = 0;
 
 }
 
@@ -6742,6 +6743,41 @@ void Mob::DoCustomResourceDrain()
 		CastToClient()->SetEndurance(CastToClient()->GetEndurance() - CastToClient()->GetMaxEndurance()/5);
 		SetWizardInnateActive(false);
 	}
+}
+
+void Mob::CuredEffect()
+{
+	SetCuredCount((GetCuredCount() + 2));
+}
+
+void Mob::CastOnCurerFromCure(uint16 spell_id)
+{  
+	//When 'CastonCurer' is placed on the Cure spell, this is CURER
+	uint16 trigger_spell = SPELL_UNKNOWN;
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_CastOnCurerFromCure){
+			if (spells[spell_id].base2[i] <= GetCuredCount())
+				trigger_spell = spells[spell_id].base[i];
+		}
+	}
+
+	if (IsValidSpell(trigger_spell))
+		SpellFinished(trigger_spell, this, 10, 0, -1, spells[spell_id].ResistDiff);
+}
+
+void Mob::CastOnCureFromCure(uint16 spell_id)
+{  
+	//When 'CastonCure' is placed on the Cure spell, this is target being cured
+	uint16 trigger_spell = SPELL_UNKNOWN;
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_CastOnCureFromCure){
+			if (spells[spell_id].base2[i] <= GetCuredCount())
+				trigger_spell = spells[spell_id].base[i];
+		}
+	}
+
+	if (IsValidSpell(trigger_spell))
+		SpellFinished(trigger_spell, this, 10, 0, -1, spells[spell_id].ResistDiff);
 }
 
 bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
