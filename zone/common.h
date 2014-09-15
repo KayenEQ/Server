@@ -445,6 +445,7 @@ struct StatBonuses {
 	int16 BaseSpellPowerDmg[HIGHEST_RESIST+1];	//Modifies dmg spells base effect by percent - non focus stackable
 	int16 BaseSpellPowerHeal;					//Modifies heal spells base effect by percent - non focus stackable
 	int16 BaseSpellPowerWizard;					//Modifies all spells base effect by percent - non focus stackable
+	int16 MitigateAllDamage;
 };
 
 typedef struct

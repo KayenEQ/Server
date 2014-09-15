@@ -646,8 +646,11 @@ typedef enum {
 #define	SE_BaseSpellPowerDmg			1018 // implemented - Non focused stackable spell modifier by resist type
 #define	SE_BaseSpellPowerHeal			1019 // implemented - Non focused stackable spell modifier
 #define	SE_BaseSpellPowerWizard			1020 // implemented - Non focused stackable spell modifier [Wizard innate]
-#define SE_CastOnCurerFromCure			1021 // implemented - Casts a spell on the person curing FROM cure spell
-#define SE_CastOnCureFromCure			1022 // implemented - Casts a spell on the cured person FROM cure spell
+#define SE_CastOnCurerFromCure			1021 // implemented - Casts a spell on the person curing FROM cure spell - Limit = amount cured by spell
+#define SE_CastOnCureFromCure			1022 // implemented - Casts a spell on the cured person FROM cure spell - Limit = amount cured by spell
+#define SE_StunResilience				1023 // implemented -
+#define SE_MitigateAllDamage			1024 // implemented - Increase/Decrease ALL spell and melee damage
+
 // LAST
 
 

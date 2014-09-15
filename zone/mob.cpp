@@ -413,6 +413,8 @@ Mob::Mob(const char* in_name,
 	SpellPowerAmtHits = 0;
 	WizardInnateActive = false;
 	cured_count = 0;
+	stun_resilience = 0;
+	hard_MitigateAllDamage = 0;
 
 }
 
@@ -4560,7 +4562,6 @@ void Mob::SpreadVirus(uint16 spell_id, uint16 casterID)
 
 void Mob::RemoveNimbusEffect(int effectid)
 {
-	//C!Kayen - Clear Nimbus effects if set.
 	if (effectid == nimbus_effect1)
 		nimbus_effect1 = 0;
 
@@ -6522,7 +6523,8 @@ bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target)
 	return false;
 }
 
-void Mob::ChangeNPCLastName(const char* in_lastname) {
+void Mob::ChangeNPCLastName(const char* in_lastname) 
+{
 
 	EQApplicationPacket* outapp = new EQApplicationPacket(OP_GMLastName, sizeof(GMLastName_Struct));
 	GMLastName_Struct* gmn = (GMLastName_Struct*)outapp->pBuffer;
@@ -6537,7 +6539,15 @@ void Mob::ChangeNPCLastName(const char* in_lastname) {
 	safe_delete(outapp);
 }
 
-void Mob::SpellCastingTimerDisplay(){
+void Mob::ClearNPCLastName()
+{
+	std::string WT;
+	WT = '\0'; //Clear Last Name
+	ChangeNPCLastName( WT.c_str());
+}
+
+void Mob::SpellCastingTimerDisplay()
+{
 
 	/*Will display a cast time count down in 1 second interval which accurate to actual cast time.
 	Packet is only sent once per second max
@@ -6752,7 +6762,7 @@ void Mob::CuredEffect()
 
 void Mob::CastOnCurerFromCure(uint16 spell_id)
 {  
-	//When 'CastonCurer' is placed on the Cure spell, this is CURER
+	//When 'CastonCurer' is placed on the Cure spell, 'this' is CURER
 	uint16 trigger_spell = SPELL_UNKNOWN;
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_CastOnCurerFromCure){
@@ -6767,7 +6777,7 @@ void Mob::CastOnCurerFromCure(uint16 spell_id)
 
 void Mob::CastOnCureFromCure(uint16 spell_id)
 {  
-	//When 'CastonCure' is placed on the Cure spell, this is target being cured
+	//When 'CastonCure' is placed on the Cure spell, 'this' is target being cured
 	uint16 trigger_spell = SPELL_UNKNOWN;
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_CastOnCureFromCure){
@@ -6798,6 +6808,55 @@ bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
 		return false;
 
 	return true;
+}
+
+bool Mob::TriggerStunResilience(uint16 spell_id)
+{
+	if (!IsNPC() || (GetMaxStunResilience() <= 1) || !IsValidSpell(spell_id))
+		return false;
+
+	Shout("1: Stun Resilience ( %i / %i )", GetStunResilience(), GetMaxStunResilience());
+
+	if (GetStunResilience() > 0){
+		
+		int effect_value = 0;
+		for(int i = 0; i < EFFECT_COUNT; i++){
+			if (spells[spell_id].effectid[i] == SE_StunResilience)
+					effect_value += spells[spell_id].base[i];
+		}
+
+		int new_value = GetStunResilience() + effect_value;
+
+		if (new_value <= 0){
+			new_value = 0;
+			entity_list.MessageClose(this, false, 200, MT_Stun, "%s stun resilience falters!", GetCleanName());
+		}
+
+		SetStunResilience(new_value);
+		Shout("2: Stun Resilience ( %i / %i )", GetStunResilience(), GetMaxStunResilience());
+		return true;
+	}
+	
+	return false;
+}
+
+void Mob::OpportunityFromStunCheck()
+{
+	if (IsCasting()){
+		SetOpportunityMitigation(50);
+		entity_list.MessageClose(this, false, 200, MT_Stun, "%s MESSAGE FOR MOMENT OF OPPORTUNTY!", GetCleanName());
+		SetSendTargetSpellAnimation(false);
+		SetAppearance(eaDead);
+	}
+}
+
+void Mob::OpportunityFromStunClear()
+{
+	if (GetOpportunityMitigation()) {
+		SetSendTargetSpellAnimation(true);
+		SetOpportunityMitigation(0);
+		SetAppearance(eaStanding);
+	}
 }
 
 void Client::PopupUI()

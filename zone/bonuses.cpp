@@ -3003,6 +3003,10 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				newbon->BaseSpellPowerWizard += effect_value; 
 				break;
 
+			case SE_MitigateAllDamage:
+				newbon->MitigateAllDamage += effect_value; 
+				break;
+
 		}
 	}
 }

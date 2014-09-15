@@ -976,6 +976,7 @@ public:
 	bool SpellDirectionalTarget(uint16 spell_id, Mob *target);
 
 	void ChangeNPCLastName(const char* in_lastname);
+	void ClearNPCLastName();
 	void SpellCastingTimerDisplay();
 
 	inline bool GetSendTargetSpellAnimation() const { return SendTargetSpellAnimation; }
@@ -995,6 +996,16 @@ public:
 	void CuredEffect();
 	void CastOnCurerFromCure(uint16 spell_id);
 	void CastOnCureFromCure(uint16 spell_id);
+
+	int GetStunResilience() const { return stun_resilience; }
+	inline void SetStunResilience(int value) { stun_resilience = value; }
+	int GetMaxStunResilience() const { return max_stun_resilience; }
+	inline void SetMaxStunResilience(int value) { max_stun_resilience = value; }
+	int GetOpportunityMitigation() const { return hard_MitigateAllDamage; }
+	inline void SetOpportunityMitigation(int value) { hard_MitigateAllDamage = value; }
+	bool TriggerStunResilience(uint16 spell_id);
+	void OpportunityFromStunCheck();
+	void OpportunityFromStunClear();
 
 	//C!Kayen END
 
@@ -1369,6 +1380,9 @@ protected:
 	int32 SpellPowerAmtHits;
 	bool WizardInnateActive;
 	int cured_count;
+	int stun_resilience;
+	int max_stun_resilience;
+	int hard_MitigateAllDamage;
 
 
 private:

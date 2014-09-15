@@ -777,6 +777,7 @@ void Mob::ZeroCastingVars()
 	delaytimer = false;
 	SetCastFromCrouchInterval(0); //C!Kayen
 	SetCuredCount(0); //C!Kayen
+	ClearNPCLastName(); //C!Kayen
 }
 
 void Mob::InterruptSpell(uint16 spellid)
@@ -4807,8 +4808,10 @@ void Mob::Stun(int duration)
 	if(IsValidSpell(casting_spell_id) && !spells[casting_spell_id].uninterruptable) {
 		int persistent_casting = spellbonuses.PersistantCasting + itembonuses.PersistantCasting + aabonuses.PersistantCasting;
 
-		if(MakeRandomInt(0,99) > persistent_casting)
+		if(!persistent_casting || MakeRandomInt(0,99) > persistent_casting){ //C!Kayen
+			OpportunityFromStunCheck();//C!Kayen
 			InterruptSpell();
+		}
 	}
 
 	if(duration > 0)
@@ -4822,6 +4825,7 @@ void Mob::Stun(int duration)
 void Mob::UnStun() {
 	if(stunned && stunned_timer.Enabled()) {
 		stunned = false;
+		OpportunityFromStunClear(); //C!Kayen
 		stunned_timer.Disable();
 	}
 }

@@ -720,7 +720,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						if (caster->IsClient())
 							effect_value += effect_value*caster->CastToClient()->GetFocusEffect(focusFcStunTimeMod, spell_id)/100;
 
-						Stun(effect_value);
+						//C!Kayen
+						if (!TriggerStunResilience(spell_id))
+							Stun(effect_value);
+						else
+							entity_list.MessageClose(this, false, 200, MT_Stun, "%s shakes off the stun effect. (%i / %i)", GetCleanName(), GetStunResilience(), GetMaxStunResilience());
+
 					} else {
 						if (IsClient())
 							Message_StringID(MT_Stun, SHAKE_OFF_STUN);
@@ -4172,7 +4177,6 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 			Numhits(false);
 	}
 
-	//C!Kayen
 	if (spells[buffs[slot].spellid].NimbusEffect > 0)
 		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
 
