@@ -4178,6 +4178,9 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 		if (!found_numhits)
 			Numhits(false);
 	}
+	
+	if (spells[buffs[slot].spellid].NimbusEffect > 0)
+		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
 
 	if (spells[buffs[slot].spellid].NimbusEffect > 0)
 		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
