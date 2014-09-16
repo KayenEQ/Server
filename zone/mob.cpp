@@ -5605,6 +5605,7 @@ void Mob::CalcDestFromHeading(float heading, float distance, int MaxZDiff, float
 	//CheckLoSToLoc   == CheckLosFN
 }
 
+
 Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
 {
 	std::list<NPC*> npc_list;
@@ -5629,6 +5630,28 @@ Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
 	return nullptr;
 }
 
+/*Crashes!
+Mob* EntityList::GetTempPetByTypeID(uint32 npc_typeid, uint16 ownerid, bool SetVarTargetRing)
+{ 
+	NPC *n;
+	for (auto it = npc_list.begin(); it != npc_list.end(); ++it) {
+		if (n->GetSwarmInfo()) {
+			if (n->GetSwarmInfo()->owner_id == ownerid && n->npctype_id == npc_typeid) {
+				if (SetVarTargetRing){
+					if (!n->EntityVariableExists("Projectile Ring")){
+						n->SetEntityVariable("Projectile Ring", "1");
+						return n;
+					}
+				}
+				else
+					return n;
+			}
+		}
+	}
+	return nullptr;
+}
+*/
+
 bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 {
 	if (!IsValidSpell(spell_id))
@@ -5637,11 +5660,12 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 	TypesTemporaryPets(650, nullptr, "#",60000, false);
 	Mob* temppet = nullptr;
 	temppet = GetTempPetByTypeID(650); //This needs to be defined
+	//temppet = entity_list.GetTempPetByTypeID(650, GetID(), true);
 	
 	if (temppet){
 		temppet->GMMove(GetTargetRingX(), GetTargetRingY(),GetTargetRingZ(), 0, true);
-		//temppet->ChangeSize(GetSize()); //Seems to work well.
-		temppet->ChangeSize(1); //Seems to work well.
+		temppet->ChangeSize(GetSize()); //Seems to work well.
+		//temppet->ChangeSize(1); //Seems to work well.
 		//InterruptSpell(spell_id);
 		//CastSpell(28027, temppet->GetID());
 		
@@ -5693,13 +5717,14 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	if (bolt_id < 0)
 		return false;
 
-	float tilt = 0.0;
+	float tilt = static_cast<float>(spells[spell_id].pvpresistbase);
+	int caster_anim = spells[spell_id].pvpresistcalc;
 	float angle = 0.0;
 
 	if (tilt == 525){ //Straightens out most melee weapons.
 		angle = 1000.0f;
-
-		if ( (GetX() - spell_target->GetX()) > 10.0f)
+		Shout("Projectile TILT %.2f", (GetX() - spell_target->GetX()));
+		if ( (GetZ() - spell_target->GetZ()) > 10.0f)
 			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
 	}
 
@@ -5736,17 +5761,19 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	projectile_hit_ring[bolt_id] = static_cast<int>(hit);
 	SetProjectileRing(true);
 
-	//if (!spells[spell_id].player_1)
-		//ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, "IT11506");
-		ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,100,0, "IT10959");
-	//else
-		//ProjectileAnimation(spell_target,0, false, projectile_speed_ring,0,0,0, spells[spell_id].player_1);
-	
-	if (spells[spell_id].CastingAnim == 64)
-		anim = 44; //Corrects for animation error.
+	SkillUseTypes skillinuse;
 
-	DoAnim(anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); //Override the default projectile animation.
-	Shout("PRE CHECK CHHECK %i", HasProjectileRing());
+	if (caster_anim != 44) //44 is standard 'nuke' spell animation.
+		skillinuse = static_cast<SkillUseTypes>(caster_anim);
+	else
+		skillinuse = SkillArchery;
+
+	ProjectileAnimation(spell_target,0, false, projectile_speed_ring,angle,tilt,0, spells[spell_id].player_1,skillinuse);
+	
+	//Override the default projectile animation which is based on item type.
+	if (caster_anim == 44)
+		DoAnim(caster_anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); 
+	
 	return true;
 }
 
@@ -5817,7 +5844,7 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	if (tilt == 525){ //Straightens out most melee weapons. [May need to re evaluate this]
 		//angle = 1000.0f;
 
-		if ( (GetX() - spell_target->GetX()) > 10.0f) //This may need adjustment
+		if ( (GetZ() - spell_target->GetZ()) > 10.0f) //This may need adjustment
 			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
 	}
 
@@ -6694,7 +6721,7 @@ void Mob::OpportunityFromStunCheck()
 {
 	if (IsCasting()){
 		SetOpportunityMitigation(50);
-		entity_list.MessageClose(this, false, 200, MT_Stun, "%s MESSAGE FOR MOMENT OF OPPORTUNTY!", GetCleanName());
+		entity_list.MessageClose(this, false, 200, MT_Stun, "%s collapses to the ground, completely exhausted!", GetCleanName());
 		SetSendTargetSpellAnimation(false);
 		SetAppearance(eaDead);
 	}

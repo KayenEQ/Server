@@ -1973,7 +1973,6 @@ int32 Client::CalcEnduranceRegen() {
 			regen = GetMaxEndurance()*20/100;
 	}
 
-	Shout("Regen %i (%i / %i)", regen, GetEndurance(), GetMaxEndurance(), int(GetEndurance()*100/GetMaxEndurance()));
 	return (regen);
 }
 

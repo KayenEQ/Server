@@ -416,6 +416,7 @@ public:
 	void RefreshClientXTargets(Client *c);
 
 	//C!Kayen
+	Mob* GetTempPetByTypeID(uint32 npc_typeid, uint16 ownerid, bool SetVarTargetRing);
 	void TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id);
 	void ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id);
 

@@ -639,9 +639,9 @@ typedef enum {
 #define SE_SpellAwareness				1011 // implemented - Enable / Disable spell awareness popup window.
 #define SE_SpellPowerAmtHits			1012 // implemented - Increase spell damage on next target for each target hit in AOE, base = modifier 
 #define	SE_CastOnFadeEffectSF			1013 // implemented - Fade effect using spell finished to cast the spell.
-#define	SE_CastBenficialAEFadeEffect	1014 // implemented - 
-#define	SE_TeleportLocation				1015 // implemented - 
-#define	SE_AuraCustom					1016 // implemented - 
+#define	SE_CastBenficialAEFadeEffect	1014 // implemented - Do a beneficial AE at an NPC location using the casters modifiers.
+#define	SE_TeleportLocation				1015 // implemented - Teleport using ring target.
+#define	SE_AuraCustom					1016 // implemented - Aura effect
 #define	SE_BaseSpellPower				1017 // implemented - Non focused stackable spell modifier 
 #define	SE_BaseSpellPowerDmg			1018 // implemented - Non focused stackable spell modifier by resist type
 #define	SE_BaseSpellPowerHeal			1019 // implemented - Non focused stackable spell modifier
