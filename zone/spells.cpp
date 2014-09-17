@@ -436,6 +436,9 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		}
 	}
 
+	if (!TryEnchanterManaFocusSpell(spell_id)) //C!Kayen
+		return false;
+
 	if(mana_cost > GetMana())
 		mana_cost = GetMana();
 
@@ -2282,9 +2285,11 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 	if(slot != USE_ITEM_SPELL_SLOT && slot != POTION_BELT_SPELL_SLOT && mana_used > 0)
 	{
 		mlog(SPELLS__CASTING, "Spell %d: consuming %d mana", spell_id, mana_used);
-		if (!DoHPToManaCovert(mana_used))
+		EnchanterManaFocusConsume(spell_id); //C!Kayen
+		if (!DoHPToManaCovert(mana_used)){
 			SetMana(GetMana() - mana_used);
 			TryTriggerOnValueAmount(false, true);
+		}
 	}
 
 	DoCustomResourceDrain(); //C!Kayen

@@ -404,6 +404,7 @@ Mob::Mob(const char* in_name,
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_hit_ring[i] = 0; }
 	ActiveProjectileRing = false;
 	ActiveProjectile = false;
+	ProjectilePet = false;
 
 	MeleeChargeActive = false;
 	MeleeCharge_target_id = 0;
@@ -4241,6 +4242,8 @@ void Mob::MeleeLifeTap(int32 damage) {
 		else
 			Damage(this, -lifetap_amt,0, SkillEvocation,false); //Dmg self for modified damage amount.
 	}
+
+	MeleeManaTap(damage); //C!Kayen
 }
 
 bool Mob::TryReflectSpell(uint32 spell_id)
@@ -5617,8 +5620,8 @@ Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
 		if (n->GetSwarmInfo()) {
 			if (n->GetSwarmInfo()->owner_id == GetID() && n->npctype_id == npc_typeid) {
 				if (SetVarTargetRing){
-					if (!n->EntityVariableExists("Projectile Ring")){
-						n->SetEntityVariable("Projectile Ring", "1");
+					if (!n->IsProjectilePet()){
+						n->SetProjectilePet(true);
 						return n;
 					}
 				}
@@ -5652,14 +5655,34 @@ Mob* EntityList::GetTempPetByTypeID(uint32 npc_typeid, uint16 ownerid, bool SetV
 }
 */
 
+bool Client::IsSpectralBladeEquiped()
+{
+	if (GetClass() != ENCHANTER)
+		return false;
+
+	ItemInst* inst = m_inv.GetItem(MainPrimary);
+	
+	if (inst && inst->GetItem()->Light == 1 && inst->GetItem()->ItemType ==  ItemType1HPiercing)
+		return true;
+
+	else {
+		Message(MT_SpellFailure, "You must have a spectral blade equiped to use this ability!");
+		return false;
+	}
+}
+
 bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 {
 	if (!IsValidSpell(spell_id))
 		return false;
 
-	TypesTemporaryPets(650, nullptr, "#",60000, false);
+	uint32 duration = 60000;
+	if (!IsMeleeCharge)
+		duration = 10;
+
+	TypesTemporaryPets(650, nullptr, "#",duration, false);
 	Mob* temppet = nullptr;
-	temppet = GetTempPetByTypeID(650); //This needs to be defined
+	temppet = GetTempPetByTypeID(650, true); //This needs to be defined
 	//temppet = entity_list.GetTempPetByTypeID(650, GetID(), true);
 	
 	if (temppet){
@@ -5686,8 +5709,12 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 			}
 		}
 
-		else
-			TrySpellProjectileTargetRing(temppet, spell_id);
+		else {
+			if (!TrySpellProjectileTargetRing(temppet, spell_id)){
+				temppet->Depop();
+				return false;
+			}
+		}
 		
 		return true;
 	}
@@ -5717,13 +5744,25 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	if (bolt_id < 0)
 		return false;
 
+	const char *item_IDFile = spells[spell_id].player_1;
+
+	//Coded narrowly for Enchanter effect.
+	if ((strcmp(item_IDFile, "PROJECTILE_WPN")) == 0){
+		if (IsClient()) {
+			ItemInst* inst = CastToClient()->m_inv.GetItem(MainPrimary);
+			if (inst && CastToClient()->IsSpectralBladeEquiped()) 
+				 item_IDFile = inst->GetItem()->IDFile;
+			else 
+				return false;
+		}
+	}
+
 	float tilt = static_cast<float>(spells[spell_id].pvpresistbase);
 	int caster_anim = spells[spell_id].pvpresistcalc;
 	float angle = 0.0;
 
 	if (tilt == 525){ //Straightens out most melee weapons.
 		angle = 1000.0f;
-		Shout("Projectile TILT %.2f", (GetX() - spell_target->GetX()));
 		if ( (GetZ() - spell_target->GetZ()) > 10.0f)
 			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
 	}
@@ -5748,13 +5787,16 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	else if (projectile_speed_ring >= 4.0f && projectile_speed_ring <= 5.0f)
 		speed_mod = 50.0f - ((projectile_speed_ring - 4.0f) * (50.0f - 40.0f));
 
-
-
 	dist_mod = (dist_mod * speed_mod) / 100.0f;
 	hit = (distance * dist_mod) / 100; //#1
 
-	Shout("Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
+	Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
 
+	if (distance < 25)
+		hit += 75;
+
+	Shout("B Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
+	
 	projectile_spell_id_ring[bolt_id] = spell_id;
 	projectile_target_id_ring[bolt_id]  = spell_target->GetID();
 	projectile_increment_ring[bolt_id]  = 1;
@@ -5762,17 +5804,22 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	SetProjectileRing(true);
 
 	SkillUseTypes skillinuse;
-
+	
 	if (caster_anim != 44) //44 is standard 'nuke' spell animation.
 		skillinuse = static_cast<SkillUseTypes>(caster_anim);
 	else
 		skillinuse = SkillArchery;
-
-	ProjectileAnimation(spell_target,0, false, projectile_speed_ring,angle,tilt,0, spells[spell_id].player_1,skillinuse);
+	
+	if (IsClient())
+		ClientFaceTarget(spell_target);
+	else
+		FaceTarget(spell_target);
+	
+	ProjectileAnimation(spell_target,0, false, projectile_speed_ring,angle,tilt,0, item_IDFile,skillinuse);
 	
 	//Override the default projectile animation which is based on item type.
 	if (caster_anim == 44)
-		DoAnim(caster_anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells); 
+		DoAnim(caster_anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells);
 	
 	return true;
 }
@@ -5798,7 +5845,7 @@ void Mob::SpellProjectileEffectTargetRing()
 							entity_list.AESpell(this, target, projectile_spell_id_ring[i], false, spells[projectile_spell_id_ring[i]].ResistDiff);
 					}
 				}
-				target->Depop(); //Depop Temp Pet at Ring Location
+				//target->Depop(); //Depop Temp Pet at Ring Location
 			}
 
 			//Reset Projectile Ring variables.
@@ -6577,7 +6624,7 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 	3. CalcSpellPowerHeightMod(dmg, spell_id, caster) - Z axis distance mod
 	4. CalcFromCrouchMod(dmg, spell_id, caster) - Cast Time multiplier from charged spells
 	------------------------------------------------------------
-	5. Wizard Innate Buff
+	5. Wizard Innate Buff / Enchanter Mana Modifier
 	6. Stackable BaseSpellPower
 	------------------------------------------------------------
 	7. Regular Focus / Damage Adders / Vulnerability
@@ -6588,7 +6635,8 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 	
 	int16 mod = 0;
 
-	value += value*GetBaseSpellPowerWizard()/100;
+	value += value*GetBaseSpellPowerWizard()/100; //Wizard Special
+	value += value*GetSpellPowerManaMod(spell_id)/100;//Enchanter Special
 
 	mod = spellbonuses.BaseSpellPower + itembonuses.BaseSpellPower + aabonuses.BaseSpellPower; //All effects
 	
@@ -6733,6 +6781,85 @@ void Mob::OpportunityFromStunClear()
 		SetSendTargetSpellAnimation(true);
 		SetOpportunityMitigation(0);
 		SetAppearance(eaStanding);
+	}
+}
+
+void Mob::ClientFaceTarget(Mob* MobToFace)
+{
+	Mob* facemob = MobToFace;
+	if(!IsClient() || !facemob) 
+		return;
+
+	float oldheading = GetHeading();
+	float newheading = CalculateHeadingToTarget(facemob->GetX(), facemob->GetY());
+	if(oldheading != newheading) {
+		CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), newheading*2);
+	}
+}
+
+void Mob::MeleeManaTap(int32 damage)
+{
+	int16 manatap_amt = 0;
+	manatap_amt = spellbonuses.MeleeManaTap + itembonuses.MeleeManaTap + aabonuses.MeleeManaTap;
+
+	if(manatap_amt && damage > 0){
+		manatap_amt = damage * manatap_amt / 100;
+		SetMana(GetMana() + manatap_amt);
+	}
+}
+
+int32 Mob::GetSpellPowerManaMod(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	int32 effect_mod = GetSpellPowerManaModValue(spell_id); //Percent increase of base damage.
+
+	if (!effect_mod)
+		return 0;
+
+	uint8 pct_mana = GetManaPercent();
+	int focus_mod = 0;
+
+	if (pct_mana >= 20 && pct_mana  < 40)
+		focus_mod = 0;
+	else if (pct_mana >= 40 && pct_mana < 60)
+		focus_mod = 1;
+	else if (pct_mana >= 60 && pct_mana < 80)
+		focus_mod = 2;
+	else if (pct_mana > 80 && pct_mana < 100)
+		focus_mod = 3;
+	else if (pct_mana == 100)
+		focus_mod = 4;
+
+	int total_mod = effect_mod*focus_mod;
+	return total_mod;
+}
+
+bool Mob::TryEnchanterManaFocusSpell(uint16 spell_id)
+{
+	if (IsClient() && GetClass() == ENCHANTER) {
+
+		if (GetSpellPowerManaModValue(spell_id)) {
+			if (GetManaPercent() >= 20)
+				return true;
+			else {
+				//Message_StringID(13, INSUFFICIENT_MANA);
+				Message(13, "Insufficient Mana to cast this spell! This ability requires at least 20 percent Mana.");
+				InterruptSpell();
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+void Mob::EnchanterManaFocusConsume(uint16 spell_id)
+{
+	if (IsClient() && GetClass() == ENCHANTER) {
+
+		if (GetSpellPowerManaModValue(spell_id))
+			SetMana(0);
 	}
 }
 

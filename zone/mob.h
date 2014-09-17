@@ -947,6 +947,8 @@ public:
 	inline bool HasProjectileRing() const { return ActiveProjectileRing; }
 	inline void SetProjectileRing(bool HasProjectileRing_value) { ActiveProjectileRing = HasProjectileRing_value; }
 	bool ExistsProjectileRing();
+	inline bool IsProjectilePet() const { return ProjectilePet; }
+	inline void SetProjectilePet(bool value) { ProjectilePet = value; }
 
 	void SpellProjectileEffect2();
 	bool TrySpellProjectile2(Mob* spell_target,  uint16 spell_id);
@@ -1008,6 +1010,11 @@ public:
 	void OpportunityFromStunCheck();
 	void OpportunityFromStunClear();
 
+	void ClientFaceTarget(Mob* MobToFace = 0);
+	void MeleeManaTap(int32 damage);
+	int32 GetSpellPowerManaMod(uint16 spell_id);
+	bool TryEnchanterManaFocusSpell(uint16 spell_id);
+	void EnchanterManaFocusConsume(uint16 spell_id);
 	//C!Kayen END
 
 protected:
@@ -1371,6 +1378,7 @@ protected:
 	uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
 	bool ActiveProjectileRing;
 	bool ActiveProjectile;
+	bool ProjectilePet;
 
 	bool MeleeChargeActive;
 	uint16 MeleeCharge_target_id;

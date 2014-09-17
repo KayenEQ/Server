@@ -1380,6 +1380,10 @@ void Client::ApplyAABonuses(uint32 aaid, uint32 slots, StatBonuses* newbon)
 				newbon->MeleeMitigationEffect -= base1;
 				break;
 
+			case SE_MeleeManaTap:
+				newbon->MeleeManaTap += base1;
+				break;
+
 		}
 	}
 }

@@ -650,7 +650,9 @@ typedef enum {
 #define SE_CastOnCureFromCure			1022 // implemented - Casts a spell on the cured person FROM cure spell - Limit = amount cured by spell
 #define SE_StunResilience				1023 // implemented -
 #define SE_MitigateAllDamage			1024 // implemented - Increase/Decrease ALL spell and melee damage
-
+#define SE_PercentalMana				1025 // implemented - 
+#define SE_MeleeManaTap					1026 // implemented - 
+#define SE_SpellPowerManaMod			1027 // implemented -
 // LAST
 
 
@@ -914,5 +916,6 @@ const char *GetSpellName(int16 spell_id);
 //C!Kayen - Custom Spell functions
 bool IsAuraCustomSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
+int32 GetSpellPowerManaModValue(uint16 spell_id);
 
 #endif

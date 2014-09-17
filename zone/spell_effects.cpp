@@ -2844,6 +2844,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_PercentalMana:
+			{
+				SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){
@@ -3773,6 +3779,12 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 			case SE_AuraCustom:
 			{
 				entity_list.ApplyAuraCustom(caster, caster, spell_id, spells[spell_id].base[i]);
+				break;
+			}
+
+			case SE_PercentalMana:
+			{
+				SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
 				break;
 			}
 

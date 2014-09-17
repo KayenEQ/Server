@@ -1206,7 +1206,7 @@ public:
 
 	void ShowNumHits(); // work around function for numhits not showing on buffs
 
-	//C!Kayen
+	//C!Kayen - START
 	void UnscribeSpellByGroup(uint16 spellid);
 	void UnscribeDiscByGroup(uint16 spellid);
 	bool TrainDisciplineBySpellid(uint16 spell_id);
@@ -1221,6 +1221,8 @@ public:
 	void PopupUI();
 	inline bool HasSpellAwareness() const { return spell_awareness_enabled; }
 	void SetSpellAwareness(bool value) { spell_awareness_enabled = value; }
+	bool IsSpectralBladeEquiped();
+	//C!Kayen - END
 	
 protected:
 	friend class Mob;

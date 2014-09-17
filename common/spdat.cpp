@@ -1163,3 +1163,16 @@ bool IsAAToggleSpell(uint16 spell_id)
 
 	return false;
 }
+
+int32 GetSpellPowerManaModValue(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_SpellPowerManaMod)
+			return spells[spell_id].base[i];
+	}
+
+	return 0;
+}
