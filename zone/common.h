@@ -353,7 +353,7 @@ struct StatBonuses {
 	uint16	MitigateDotRune[4];					// 0 = Mitigation value 1 = Buff Slot 2 = Max mitigation per tick 3 = Rune Amt
 	bool	TriggerMeleeThreshold;				// Has Melee Threshhold
 	bool	TriggerSpellThreshold;				// Has Spell Threshhold
-	uint16	ManaAbsorbPercentDamage[2];			// 0 = Mitigation value 1 = Buff Slot
+	uint16	ManaAbsorbPercentDamage[3];			// 0 = Mitigation value 1 = Buff Slot 2 = Penalty //C!Kayen
 	int16	ShieldBlock;						// Chance to Shield Block
 	int16	BlockBehind;						// Chance to Block Behind (with our without shield)
 	bool	CriticalRegenDecay;					// increase critical regen chance, decays based on spell level cast

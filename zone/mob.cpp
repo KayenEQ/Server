@@ -6765,10 +6765,15 @@ bool Mob::TriggerStunResilience(uint16 spell_id)
 	return false;
 }
 
-bool Mob::CalcStunResilience(int effect_value)
-{Shout("START %i %i",GetStunResilience(),GetMaxStunResilience());
-	if (!IsNPC() || !GetMaxStunResilience() || IsStunned())
+bool Mob::CalcStunResilience(int effect_value, Mob* caster)
+{
+	if (!IsNPC() || !GetMaxStunResilience()) //IsStuned() ? Should I allow you to reduce if NPC is already stunned.
 		return false;
+
+	if (IsStunned() && caster){
+		caster->Message(MT_SpellFailure, "Your targets stun resilience is completely depleted.");
+		return false;
+	}
 
 	//Regen ~100 pt in every 18 seconds - All values are in intervals of 100 for STA and Neg SR
 	int SR = int(GetStunResilience()/100) * 100;

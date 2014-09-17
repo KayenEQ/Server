@@ -2477,6 +2477,7 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				if (newbon->ManaAbsorbPercentDamage[0] < effect_value){
 					newbon->ManaAbsorbPercentDamage[0] = effect_value;
 					newbon->ManaAbsorbPercentDamage[1] = buffslot;
+					newbon->ManaAbsorbPercentDamage[2] = base2; //C!Kayen -Penalty
 				}
 				break;
 			}

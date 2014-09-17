@@ -3351,6 +3351,10 @@ int32 Mob::ReduceAllDamage(int32 damage)
 		int32 mana_reduced =  damage * spellbonuses.ManaAbsorbPercentDamage[0] / 100;
 		if (GetMana() >= mana_reduced){
 			damage -= mana_reduced;
+
+			if (spellbonuses.ManaAbsorbPercentDamage[2]) //C!Kayen - Penalty increases mana drain.
+				mana_reduced += mana_reduced * spellbonuses.ManaAbsorbPercentDamage[2] / 100;
+
 			SetMana(GetMana() - mana_reduced);
 			TryTriggerOnValueAmount(false, true);
 		}

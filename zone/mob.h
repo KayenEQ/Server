@@ -1007,7 +1007,7 @@ public:
 	int GetOpportunityMitigation() const { return hard_MitigateAllDamage; }
 	inline void SetOpportunityMitigation(int value) { hard_MitigateAllDamage = value; }
 	bool TriggerStunResilience(uint16 spell_id); //Not used currently
-	bool CalcStunResilience(int effect_value);
+	bool CalcStunResilience(int effect_value, Mob* caster = nullptr);
 	void OpportunityFromStunCheck();
 	void OpportunityFromStunClear();
 
