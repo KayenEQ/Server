@@ -721,13 +721,22 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 							effect_value += effect_value*caster->CastToClient()->GetFocusEffect(focusFcStunTimeMod, spell_id)/100;
 
 						//C!Kayen
-						if (GetOpportunityMitigation())
-							caster->Message(MT_SpellFailure, "Your target is already stunned");
+						if (GetOpportunityMitigation()){
+							caster->Message(MT_SpellFailure, "Your target is already critically stunned.");
+						}
+						/*
 						else if (!TriggerStunResilience(spell_id))
 							Stun(effect_value);
 						else
 							entity_list.MessageClose(this, false, 200, MT_Stun, "%s shakes off the stun effect. (%i / %i)", GetCleanName(), int(GetStunResilience()/100) * 100, GetMaxStunResilience());
-
+						*/
+						else if ((int(GetStunResilience()/100) * 100) == 0){
+							Stun(effect_value);
+							SetStunResilience(GetMaxStunResilience());
+						}
+						else
+							entity_list.MessageClose(this, false, 200, MT_Stun, "%s shakes off the stun effect.", GetCleanName());
+					
 					} else {
 						if (IsClient())
 							Message_StringID(MT_Stun, SHAKE_OFF_STUN);
@@ -2850,6 +2859,23 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_FadeIfTargetNotCaster:
+			{
+				//Fade if you are not the current target
+				Mob* target = GetTarget();
+				if (target && (target->GetID() != buffs[buffslot].casterid))
+					BuffFadeBySlot(buffslot, true);
+					
+				break;
+			}
+
+			case SE_StunResilience:
+			{
+				Shout("Stun Res TEST");
+				CalcStunResilience(spell.base[i]);
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){
@@ -3888,6 +3914,16 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 			case SE_PercentalMana:
 			{
 				SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
+				break;
+			}
+
+			case SE_FadeIfTargetNotCaster:
+			{
+				//Fade if you are not the current target
+				Mob* target = GetTarget();
+				if (target && (target->GetID() != buffs[slot].casterid))
+					BuffFadeBySlot(slot, true);
+					
 				break;
 			}
 

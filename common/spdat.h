@@ -653,6 +653,7 @@ typedef enum {
 #define SE_PercentalMana				1025 // implemented - 
 #define SE_MeleeManaTap					1026 // implemented - 
 #define SE_SpellPowerManaMod			1027 // implemented -
+#define SE_FadeIfTargetNotCaster		1028 // implemented - Fade on buff tick if current taret is not caster.
 // LAST
 
 

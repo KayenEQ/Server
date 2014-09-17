@@ -416,8 +416,8 @@ Mob::Mob(const char* in_name,
 	WizardInnateActive = false;
 	cured_count = 0;
 	stun_resilience = 0;
+	max_stun_resilience = 0;
 	hard_MitigateAllDamage = 0;
-
 }
 
 Mob::~Mob()
@@ -6762,6 +6762,31 @@ bool Mob::TriggerStunResilience(uint16 spell_id)
 	}
 
 	SetStunResilience(GetMaxStunResilience()); //If stunned restore 'Stun Resilience' to MAX
+	return false;
+}
+
+bool Mob::CalcStunResilience(int effect_value)
+{Shout("START %i %i",GetStunResilience(),GetMaxStunResilience());
+	if (!IsNPC() || !GetMaxStunResilience() || IsStunned())
+		return false;
+
+	//Regen ~100 pt in every 18 seconds - All values are in intervals of 100 for STA and Neg SR
+	int SR = int(GetStunResilience()/100) * 100;
+	if (SR > 0){
+		
+		int new_value = SR + effect_value;
+
+		if (new_value <= 99){
+			new_value = 0;
+			entity_list.MessageClose(this, false, 200, MT_Stun, "%s stun resilience falters!  (%i / %i)", GetCleanName(), new_value,GetMaxStunResilience());
+		}
+		else
+			entity_list.MessageClose(this, false, 200, MT_Stun, "%s stun resilience is diminished! (%i / %i)", GetCleanName(),new_value,GetMaxStunResilience());
+
+		SetStunResilience(new_value);
+		return true;
+	}
+
 	return false;
 }
 

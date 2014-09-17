@@ -168,8 +168,12 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, float x, float y, float z, float 
 	WIS = d->WIS;
 	CHA = d->CHA;
 	npc_mana = d->Mana;
-	SetMaxStunResilience(d->STA); //C!Kayen
-	SetStunResilience(d->STA); //C!Kayen
+	
+	//C!Kayen - If NPC Staminia is >/= to 100 Enable StunResilience.
+	if (STA >= 100) {
+		SetMaxStunResilience(STA);
+		SetStunResilience(STA);
+	}
 
 	//quick fix of ordering if they screwed it up in the DB
 	if(max_dmg < min_dmg) {
