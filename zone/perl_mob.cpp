@@ -8137,12 +8137,12 @@ XS(XS_Mob_GetFlurryChance)
 	XSRETURN(1);
 }
 //C!Kayen Perl Functions
-XS(XS_Mob_EnableTargetSpellAnim);
-XS(XS_Mob_EnableTargetSpellAnim)
+XS(XS_Mob_DisableTargetSpellAnim);
+XS(XS_Mob_DisableTargetSpellAnim)
 {
 	dXSARGS;
 	if (items != 2)
-		Perl_croak(aTHX_ "Usage: Mob::SetSendTargetSpellAnimation((THIS, value)");
+		Perl_croak(aTHX_ "Usage: Mob::DisableSpellAnimation((THIS, value)");
 	{
 		Mob *	THIS;
 		bool value = (bool)SvTRUE(ST(1));
@@ -8156,17 +8156,17 @@ XS(XS_Mob_EnableTargetSpellAnim)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		THIS->SetSendTargetSpellAnimation(value);
+		THIS->DisableTargetSpellAnim(value);
 	}
 	XSRETURN_EMPTY;
 }
 
-XS(XS_Mob_GetTargetSpellAnim); /* prototype to pass -Wmissing-prototypes */
-XS(XS_Mob_GetTargetSpellAnim)
+XS(XS_Mob_IsTargetSpellAnimDisabled); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_IsTargetSpellAnimDisabled)
 {
 	dXSARGS;
 	if (items != 1)
-		Perl_croak(aTHX_ "Usage: Mob::GetSendTargetSpellAnimation()");
+		Perl_croak(aTHX_ "Usage: Mob::IsTargetSpellAnimDisabled()");
 	{
 		Mob *		THIS;
 		bool		RETVAL;
@@ -8180,7 +8180,7 @@ XS(XS_Mob_GetTargetSpellAnim)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = THIS->GetSendTargetSpellAnimation();
+		RETVAL = THIS->IsTargetSpellAnimDisabled();
 		ST(0) = boolSV(RETVAL);
 		sv_2mortal(ST(0));
 	}
@@ -8211,6 +8211,56 @@ XS(XS_Mob_NPCLastName)
 		THIS->ChangeNPCLastName(name);
 	}
 	XSRETURN_EMPTY;
+}
+
+XS(XS_Mob_SetOnlyAggroLast);
+XS(XS_Mob_SetOnlyAggroLast)
+{
+	dXSARGS;
+	if (items != 2)
+		Perl_croak(aTHX_ "Usage: Mob::SetOnlyAggroLast((THIS, value)");
+	{
+		Mob *	THIS;
+		bool value = (bool)SvTRUE(ST(1));
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->SetOnlyAggroLast(value);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Mob_GetOnlyAggroLast); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_GetOnlyAggroLast)
+{
+	dXSARGS;
+	if (items != 1)
+		Perl_croak(aTHX_ "Usage: Mob::GetOnlyAggroLast()");
+	{
+		Mob *		THIS;
+		bool		RETVAL;
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetOnlyAggroLast();
+		ST(0) = boolSV(RETVAL);
+		sv_2mortal(ST(0));
+	}
+	XSRETURN(1);
 }
 
 #ifdef __cplusplus
@@ -8513,9 +8563,12 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "SetFlurryChance"), XS_Mob_SetFlurryChance, file, "$$");
 		newXSproto(strcpy(buf, "GetFlurryChance"), XS_Mob_GetFlurryChance, file, "$");
 		//C!Kayyen
-		newXSproto(strcpy(buf, "EnableTargetSpellAnim"), XS_Mob_SetDisableMelee, file, "$$");
-		newXSproto(strcpy(buf, "GetTargetSpellAnim"), XS_Mob_IsMeleeDisabled, file, "$$");
-		newXSproto(strcpy(buf, "NPCLastName"), XS_Mob_TempName, file, "$:$");
+		newXSproto(strcpy(buf, "DisableTargetSpellAnim"), XS_Mob_DisableTargetSpellAnim, file, "$$");
+		newXSproto(strcpy(buf, "IsTargetSpellAnimDisabled"), XS_Mob_IsTargetSpellAnimDisabled, file, "$$");
+		newXSproto(strcpy(buf, "NPCLastName"), XS_Mob_NPCLastName, file, "$:$");
+		newXSproto(strcpy(buf, "SetOnlyAggroLast"), XS_Mob_SetOnlyAggroLast, file, "$$");
+		newXSproto(strcpy(buf, "GetOnlyAggroLast"), XS_Mob_GetOnlyAggroLast, file, "$$");
+		
 
 	XSRETURN_YES;
 }

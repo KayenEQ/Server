@@ -942,6 +942,7 @@ public:
 	inline float GetTargetRingZ() const { return targetring_z; }
 	
 	bool ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge = false);
+	uint32 GetProjectileTargetRingPetID() { return 1000000; } //npctypesid from database for temp pet
 	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
 	void SpellProjectileEffectTargetRing();
 	inline bool HasProjectileRing() const { return ActiveProjectileRing; }
@@ -949,6 +950,9 @@ public:
 	bool ExistsProjectileRing();
 	inline bool IsProjectilePet() const { return ProjectilePet; }
 	inline void SetProjectilePet(bool value) { ProjectilePet = value; }
+	void TryApplyEffectProjectileHit(uint16 spell_id);
+	float CalcSpecialProjectile(uint16 spell_id);
+	void ProjectileTargetRingTempPet(uint16 spell_id);
 
 	void SpellProjectileEffect2();
 	bool TrySpellProjectile2(Mob* spell_target,  uint16 spell_id);
@@ -965,6 +969,8 @@ public:
 	
 	void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
+	void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
+	inline int8 GetCastFromCrouchIntervalProj() const { return CastFromCrouchIntervalProj; }
 	void CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster);
 
 	void MeleeCharge();
@@ -982,8 +988,8 @@ public:
 	void ClearNPCLastName();
 	void SpellCastingTimerDisplay();
 
-	inline bool GetSendTargetSpellAnimation() const { return SendTargetSpellAnimation; }
-	inline void SetSendTargetSpellAnimation(bool value) { SendTargetSpellAnimation = value; }
+	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; }
+	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; }
 
 	bool TryTargetRingEffects(uint16 spell_id);
 	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false);
@@ -1012,10 +1018,18 @@ public:
 	void OpportunityFromStunClear();
 
 	void ClientFaceTarget(Mob* MobToFace = 0);
+
 	void MeleeManaTap(int32 damage);
 	int32 GetSpellPowerManaMod(uint16 spell_id);
 	bool TryEnchanterManaFocusSpell(uint16 spell_id);
 	void EnchanterManaFocusConsume(uint16 spell_id);
+
+	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist
+	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; }
+
+
+	
+
 	//C!Kayen END
 
 protected:
@@ -1385,16 +1399,17 @@ protected:
 	uint16 MeleeCharge_target_id;
 
 	int8 CastFromCrouchInterval;
+	int8 CastFromCrouchIntervalProj;
 
 	int32 casting_z_diff;
-	bool SendTargetSpellAnimation;
+	bool DisableTargetSpellAnimation;
 	int32 SpellPowerAmtHits;
 	bool WizardInnateActive;
 	int cured_count;
 	int stun_resilience;
 	int max_stun_resilience;
 	int hard_MitigateAllDamage;
-
+	bool OnlyAggroLast;
 
 private:
 	void _StopSong(); //this is not what you think it is

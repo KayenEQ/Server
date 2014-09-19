@@ -400,6 +400,9 @@ public:
 
 	bool IsRaidTarget() const { return raid_target; };
 
+	//C!Kayen - START
+	void ApplyCustomPetBonuses(Mob* owner, uint16 spell_id);
+
 protected:
 
 	const NPCType*	NPCTypedata;

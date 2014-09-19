@@ -409,15 +409,17 @@ Mob::Mob(const char* in_name,
 	MeleeChargeActive = false;
 	MeleeCharge_target_id = 0;
 	CastFromCrouchInterval = 0;
+	CastFromCrouchIntervalProj = 0;
 	casting_z_diff = 0;
 
-	SendTargetSpellAnimation = true;
+	DisableTargetSpellAnimation = false;
 	SpellPowerAmtHits = 0;
 	WizardInnateActive = false;
 	cured_count = 0;
 	stun_resilience = 0;
 	max_stun_resilience = 0;
 	hard_MitigateAllDamage = 0;
+	OnlyAggroLast = false;
 }
 
 Mob::~Mob()
@@ -5665,10 +5667,8 @@ bool Client::IsSpectralBladeEquiped()
 	if (inst && inst->GetItem()->Light == 1 && inst->GetItem()->ItemType ==  ItemType1HPiercing)
 		return true;
 
-	else {
-		Message(MT_SpellFailure, "You must have a spectral blade equiped to use this ability!");
+	else 
 		return false;
-	}
 }
 
 bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
@@ -5676,21 +5676,18 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 	if (!IsValidSpell(spell_id))
 		return false;
 
-	uint32 duration = 60000;
+	uint32 duration = 60;
 	if (!IsMeleeCharge)
-		duration = 10;
+		duration = 10; //Fade in 10 seconds if used from projectile
 
-	TypesTemporaryPets(650, nullptr, "#",duration, false);
+	TypesTemporaryPets(GetProjectileTargetRingPetID(), nullptr, "#",duration, false);
 	Mob* temppet = nullptr;
-	temppet = GetTempPetByTypeID(650, true); //This needs to be defined
-	//temppet = entity_list.GetTempPetByTypeID(650, GetID(), true);
+	temppet = GetTempPetByTypeID(GetProjectileTargetRingPetID(), true);
 	
 	if (temppet){
 		temppet->GMMove(GetTargetRingX(), GetTargetRingY(),GetTargetRingZ(), 0, true);
-		temppet->ChangeSize(GetSize()); //Seems to work well.
-		//temppet->ChangeSize(1); //Seems to work well.
-		//InterruptSpell(spell_id);
-		//CastSpell(28027, temppet->GetID());
+		temppet->ChangeSize(GetSize()); //Seems to work well. - Ensures straight line arc.
+		//temppet->ChangeSize(1); //Seems to work well. - Makes projectile land at feet.
 		
 		if (IsMeleeCharge){
 
@@ -5726,11 +5723,9 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 
 bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	
-	if (!spell_target)
+	if (!spell_target || !IsValidSpell(spell_id))
 		return false;
 	
-	uint8 anim = spells[spell_id].CastingAnim; 
-
 	int bolt_id = -1;
 
 	//Make sure there is an avialable projectile to be cast.
@@ -5757,12 +5752,14 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 		}
 	}
 
-	float tilt = static_cast<float>(spells[spell_id].pvpresistbase);
-	int caster_anim = spells[spell_id].pvpresistcalc;
-	float angle = 0.0;
+	bool SendProjectile = true;
+	int caster_anim = GetProjCastingAnimation(spell_id);
+	float angle = static_cast<float>(GetProjAngle(spell_id));
+	float tilt = static_cast<float>(GetProjTilt(spell_id));
+	float arc = static_cast<float>(GetProjArc(spell_id));
 
 	if (tilt == 525){ //Straightens out most melee weapons.
-		angle = 1000.0f;
+		//angle = 1000.0f;
 		if ( (GetZ() - spell_target->GetZ()) > 10.0f)
 			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
 	}
@@ -5770,12 +5767,12 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	//Note: Field209 / powerful_flag : Used as Speed Variable and to flag TargetType Ring/Location as a Projectile
 	//Note: pvpresistbase : Used to set tilt
 	//Baseline 280 mod was calculated on how long it takes for projectile to hit target at 1 speed.
-	float projectile_speed_ring = static_cast<float>(spells[spell_id].powerful_flag) / 1000.0f; 
+	float projectile_speed_ring = static_cast<float>(GetProjSpeed(spell_id)) / 1000.0f; 
 	float distance = CalculateDistance(spell_target->GetX(), spell_target->GetY(), spell_target->GetZ());
 	float hit = 0.0f;
 	float dist_mod = 270.0f;
 	float speed_mod = 0.0f;
-	
+
 	if (projectile_speed_ring >= 0.5f && projectile_speed_ring < 1.0f)
 		speed_mod = 175.0f - ((projectile_speed_ring - 0.5f) * (175.0f - 100.0f));
 	else if (projectile_speed_ring >= 1.0f && projectile_speed_ring < 2.0f)
@@ -5791,9 +5788,13 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	hit = (distance * dist_mod) / 100; //#1
 
 	Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
-
-	if (distance < 25)
-		hit += 75;
+	//Close Distance Modifiers
+	if (distance <= 35 && distance > 25)
+		hit *= 1.6f;
+	if (distance <= 25 && distance > 15)
+		hit *= 1.8f;
+	if (distance <= 15) 
+		hit *= 2.0f;
 
 	Shout("B Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
 	
@@ -5815,7 +5816,19 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	else
 		FaceTarget(spell_target);
 	
-	ProjectileAnimation(spell_target,0, false, projectile_speed_ring,angle,tilt,0, item_IDFile,skillinuse);
+
+	if (SendProjectile){
+
+		ProjectileAnimation(spell_target,0, false, projectile_speed_ring,angle,tilt,arc, item_IDFile,skillinuse);
+
+		//Enchanter triple blade effect - Requires adjusting angle based on heading to get correct appearance.
+		if (spell_id == 2006){ //This will likely need to be adjusted.
+			float _angle =  CalcSpecialProjectile(spell_id);
+			//Shout("DEBUG: TrySpellProjectileTargetRingSpecial ::  Angle %.2f [Heading %.2f]", _angle, GetHeading()/2);
+			ProjectileAnimation(spell_target,0, false, projectile_speed_ring,_angle,tilt,600, item_IDFile,skillinuse);
+			ProjectileAnimation(spell_target,0, false, projectile_speed_ring,(_angle - 70),tilt,600, item_IDFile,skillinuse);
+		}
+	}
 	
 	//Override the default projectile animation which is based on item type.
 	if (caster_anim == 44)
@@ -5839,13 +5852,15 @@ void Mob::SpellProjectileEffectTargetRing()
 
 			Mob* target = entity_list.GetMobID(projectile_target_id_ring[i]);
 			if (target){
-			
-				if (IsValidSpell(projectile_spell_id_ring[i])){
-					if (spells[projectile_spell_id_ring[i]].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
-							entity_list.AESpell(this, target, projectile_spell_id_ring[i], false, spells[projectile_spell_id_ring[i]].ResistDiff);
+				uint16 p_spell_id = projectile_spell_id_ring[i];
+				if (IsValidSpell(p_spell_id)){
+					if (spells[p_spell_id].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
+						entity_list.AESpell(this, target, p_spell_id, false, spells[p_spell_id].ResistDiff);
+						TryApplyEffectProjectileHit(p_spell_id);
+						SetCastFromCrouchIntervalProj(0);
 					}
 				}
-				//target->Depop(); //Depop Temp Pet at Ring Location
+				//target->Depop(); //Depop Temp Pet at Ring Location - Now pets auto depop after 10 seconds
 			}
 
 			//Reset Projectile Ring variables.
@@ -5865,7 +5880,7 @@ void Mob::SpellProjectileEffectTargetRing()
 
 bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 
-	if (!spell_target)
+	if (!spell_target || !IsValidSpell(spell_id))
 		return false;
 	//Note: Field209 / powerful_flag : Used as Speed Variable (in MS > 500) and to flag TargetType Ring/Location as a Projectile
 	//Note: pvpresistbase : Used to set tilt
@@ -5883,10 +5898,11 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	if (bolt_id < 0)
 		return false;
 
-	float speed = static_cast<float>(spells[spell_id].powerful_flag) / 1000.0f;
-	float tilt = static_cast<float>(spells[spell_id].pvpresistbase);
-	int caster_anim = spells[spell_id].pvpresistcalc;
-	float angle = 0.0;
+	int caster_anim = GetProjCastingAnimation(spell_id);
+	float speed = static_cast<float>(GetProjSpeed(spell_id)) / 1000.0f; 
+	float angle = static_cast<float>(GetProjAngle(spell_id));
+	float tilt = static_cast<float>(GetProjTilt(spell_id));
+	float arc = static_cast<float>(GetProjArc(spell_id));
 
 	if (tilt == 525){ //Straightens out most melee weapons. [May need to re evaluate this]
 		//angle = 1000.0f;
@@ -5910,7 +5926,7 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	else
 		skillinuse = SkillArchery;
 
-	ProjectileAnimation(spell_target,0, false, speed,angle,tilt,0, spells[spell_id].player_1,skillinuse);
+	ProjectileAnimation(spell_target,0, false, speed,angle,tilt,arc, spells[spell_id].player_1,skillinuse);
 	
 	//Override the default projectile animation which is based on item type.
 	if (caster_anim == 44)
@@ -5994,6 +6010,40 @@ bool Mob::ExistsProjectile()
 			return true;
 	}
 	return false;
+}
+
+void Mob::TryApplyEffectProjectileHit(uint16 spell_id)
+{
+	if(!IsValidSpell(spell_id))
+		return;
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_ApplyEffectProjectileHit){
+			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i])
+				SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spell_id].ResistDiff);
+		}
+	}
+}
+
+float Mob::CalcSpecialProjectile(uint16 spell_id)
+{
+	float head = GetHeading()/2;
+	float value = 0.0f;
+	//These conversions set the angle correctly for each heading for Spectral Blades spell
+	//North to West
+	if (head >= 0 && head <= 64)
+		value = 400 - ((64 - head) * 1.5625f);
+	//West to South
+	else if (head > 64 && head <= 128)
+		value = 570 - ((128 - head) * 2.6562f);
+	//South to East
+	else if (head > 128 && head <= 192)
+		value = 670 - ((192 - head) * 1.5625f);
+	//East to North
+	else if (head > 192 && head <= 256)
+		value = 300 - ((256 - head) * 1.5625f);
+
+	return value;
 }
 
 void Mob::MeleeCharge()
@@ -6234,9 +6284,21 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	//mod = mod*spells[spell_id].cast_from_crouch/100;
 
 	//SetChargeTimeCasting(time_casting);
-	SetCastFromCrouchInterval(charge_interval);
+	if (GetProjSpeed(spell_id)){ //Need to use seperate variable if dealing with projectile (clears at different time).
+		SetCastFromCrouchIntervalProj(charge_interval);
+		SetCastFromCrouchInterval(charge_interval); //For recast adjust code purposes.
+	}
+	else
+		SetCastFromCrouchInterval(charge_interval);
+	
 	spellend_timer.Start(1);
-	Stand();
+
+	//Set Standing Apperance from duck/jump
+	SendAppearancePacket(AT_Anim, ANIM_STAND);
+	playeraction = 0;
+	SetFeigned(false);
+	BindWound(this, false, true);
+	camp_timer.Disable();
 
 	return true;
 }
@@ -6246,7 +6308,14 @@ void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
 	if (!caster || (IsValidSpell(spell_id) && !spells[spell_id].cast_from_crouch))
 		return;
 
-	int32 interval = caster->GetCastFromCrouchInterval();
+	int32 interval = 0;
+	if (GetProjSpeed(spell_id))
+		interval = caster->GetCastFromCrouchIntervalProj();
+	else
+		interval = caster->GetCastFromCrouchInterval();
+
+	if (!interval)
+		return;
 
 	//Spell will fizzel if allowed to go full duration.
 	//if (!interval)
@@ -6254,9 +6323,9 @@ void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
 
 	int32 modifier = (interval - 1)*100;
 	modifier = modifier*spells[spell_id].cast_from_crouch/100; //Base cast_from_crouch = 100;
-
 	if (modifier)
 		damage += damage*modifier/100;
+
 }
 
 void Client::DoAdjustRecastTimer()
@@ -6800,7 +6869,7 @@ void Mob::OpportunityFromStunCheck()
 	if (IsCasting()){
 		SetOpportunityMitigation(50);
 		entity_list.MessageClose(this, false, 200, MT_Stun, "%s collapses to the ground, completely exhausted!", GetCleanName());
-		SetSendTargetSpellAnimation(false);
+		DisableTargetSpellAnim(true);
 		SetAppearance(eaDead);
 	}
 }
@@ -6808,7 +6877,7 @@ void Mob::OpportunityFromStunCheck()
 void Mob::OpportunityFromStunClear()
 {
 	if (GetOpportunityMitigation()) {
-		SetSendTargetSpellAnimation(true);
+		DisableTargetSpellAnim(false);
 		SetOpportunityMitigation(0);
 		SetAppearance(eaStanding);
 	}
@@ -6891,6 +6960,68 @@ void Mob::EnchanterManaFocusConsume(uint16 spell_id)
 		if (GetSpellPowerManaModValue(spell_id))
 			SetMana(0);
 	}
+}
+
+void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
+{
+	if (!owner || !IsValidSpell(spell_id))
+		return;
+
+	int mod = 0;
+	int enc_mod = owner->GetSpellPowerManaMod(spell_id);
+	
+	mod = enc_mod;
+
+	//1: Check for any special pet 'type' behaviors
+	const char *pettype = spells[spell_id].player_1; //Constant for each type of pet
+
+	if ((strcmp(pettype, "spectral_animation")) == 0){
+		WearChange(7,owner->GetEquipmentMaterial(MaterialPrimary),0); //ENC Animation spell to set graphic same as sword.
+		WearChange(8,0,0);
+		SetOnlyAggroLast(true);
+	}
+
+	else if ((strcmp(pettype, "tk_bladestorm")) == 0){
+		SetOnlyAggroLast(true);
+		//SendSpellEffect(567, 500, 0, 1, 3000, true);
+	}
+
+	//2: Determine if target pets spawn at location or path to location. [Limit value in SE_TemporaryPetNoAgggro]
+	if (spells[spell_id].targettype == ST_Ring && (IsEffectInSpell(spell_id,SE_TemporaryPetsNoAggro))){
+		
+		int limit = 0;
+		for(int i = 0; i < EFFECT_COUNT; i++){
+			if (spells[spell_id].effectid[i] == SE_TemporaryPetsNoAggro)
+				limit = spells[spell_id].base2[i];
+		}
+
+		if (!limit)
+			GMMove(owner->GetTargetRingX(), owner->GetTargetRingY(), owner->GetTargetRingZ(), GetHeading(), true);
+		else if (limit == 1)
+			MoveTo(owner->GetTargetRingX(), owner->GetTargetRingY(), owner->GetTargetRingZ(), GetHeading(), true);
+	}
+	
+
+	//3: Scale pet based on any focus modifiers.
+	//Shout("DEBUG: ApplyCustomPetBonuses :: PRE Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
+	base_hp  += base_hp * mod / 100;
+	max_dmg += max_dmg * mod / 100;
+	min_dmg += min_dmg * mod / 100;
+	AC += AC * mod / 100;
+	ChangeSize(GetSize() + (GetSize() * static_cast<float>(mod/2) / 100));
+	//Shout("DEBUG: ApplyCustomPetBonuses :: POST Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
+
+	SetHP(GetMaxHP());
+}
+
+void Mob::ProjectileTargetRingTempPet(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return;
+
+	char pet_name[64];
+	snprintf(pet_name, sizeof(pet_name), "%s`s pet [No aggro]", GetCleanName());
+	TemporaryPets(spell_id, nullptr, pet_name);
 }
 
 void Client::PopupUI()

@@ -241,7 +241,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						dmg = caster->GetActSpellDamage(spell_id, dmg, this);
 						caster->ResourceTap(-dmg, spell_id);
 					}
-
+					Shout("DEBUG: Check Damage %i", dmg);
 					dmg = -dmg;
 					Damage(caster, dmg, spell_id, spell.skill, false, buffslot, false);
 				}
@@ -721,8 +721,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 							effect_value += effect_value*caster->CastToClient()->GetFocusEffect(focusFcStunTimeMod, spell_id)/100;
 
 						//C!Kayen
-						if (GetOpportunityMitigation()){
-							caster->Message(MT_SpellFailure, "Your target is already critically stunned.");
+						if (IsStunned() || GetOpportunityMitigation()){
+							caster->Message(MT_SpellFailure, "Your target is already stunned.");
 						}
 						/*
 						else if (!TriggerStunResilience(spell_id))
@@ -2871,8 +2871,57 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 			case SE_StunResilience:
 			{
-				Shout("Stun Res TEST");
-				CalcStunResilience(spell.base[i]);
+				CalcStunResilience(spell.base[i], caster);
+				break;
+			}
+
+			case SE_TemporaryPetsNoAggro: 
+			{
+				char pet_name[64];
+				snprintf(pet_name, sizeof(pet_name), "%s`s pet [No aggro]", caster->GetCleanName());
+				caster->TemporaryPets(spell_id, nullptr, pet_name);
+				break;
+			}
+
+			case SE_HateOnPetOwner:{
+
+				Mob* owner = nullptr;
+				
+				if (caster && caster->IsPet())
+					owner = caster->GetOwner();
+				else if (caster && (caster->IsNPC() && caster->CastToNPC()->GetSwarmOwner()))
+					owner = entity_list.GetMobID(caster->CastToNPC()->GetSwarmOwner());
+
+				if  (!owner || !caster)
+					break;
+
+				effect_value = CalcSpellEffectValue(spell_id, i, caster_level);
+				int32 transfer_hate_amt = 0;
+
+				if (spell.base2[i]) //Percent hate transfered from spell cast by pet to owner.
+					transfer_hate_amt = CheckAggroAmount(spell_id, false) * spell.base2[i] / 100;
+
+				effect_value += transfer_hate_amt;
+
+				if(effect_value > 0){ //Add Hate to pet's owner.
+					if(owner->IsClient() && !owner->CastToClient()->GetFeigned())
+						AddToHateList(owner, effect_value);
+					else if(!owner->IsClient())
+						AddToHateList(owner, effect_value);
+				}else{ //Reduce Hate to pet's owner.
+					int32 newhate = GetHateAmount(owner) + effect_value;
+					if (newhate < 1) 
+						SetHate(owner,1);
+					else 
+						SetHate(owner,newhate);
+				}
+				
+				break;
+			}
+
+			case SE_RemoveFromHateList:
+			{
+				entity_list.RemoveFromTargets(caster);
 				break;
 			}
 
@@ -6666,9 +6715,13 @@ void Mob::ResourceTap(int32 damage, uint16 spellid){
 			if (spells[spellid].max[i] && (damage > spells[spellid].max[i]))
 				damage = spells[spellid].max[i];
 
-			if (spells[spellid].base2[i] == 0)  //HP Tap
-				SetHP((GetHP()+ damage));
-
+			if (spells[spellid].base2[i] == 0){ //HP Tap
+				if (damage > 0)
+					HealDamage(damage);
+				else
+					Damage(this, -damage,0, SkillEvocation,false);
+			}
+			
 			if (spells[spellid].base2[i] == 1)  //Mana Tap
 				SetMana(GetMana() + damage);
 

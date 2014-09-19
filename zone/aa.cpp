@@ -566,7 +566,7 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 
 	for(int x = 0; x < 12; x++)
 	{
-		if(spells[spell_id].effectid[x] == SE_TemporaryPets)
+		if(spells[spell_id].effectid[x] == SE_TemporaryPets || spells[spell_id].effectid[x] == SE_TemporaryPetsNoAggro) //C!Kayen
 		{
 			pet.count = spells[spell_id].base[x];
 			pet.duration = spells[spell_id].max[x];
@@ -655,6 +655,9 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 			npca->GiveNPCTypeData(npc_dup);
 
 		entity_list.AddNPC(npca, true, true);
+
+		npca->ApplyCustomPetBonuses(this, spell_id); //C!Kayen
+
 		summon_count--;
 	}
 

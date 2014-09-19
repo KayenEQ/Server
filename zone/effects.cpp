@@ -741,7 +741,7 @@ void EntityList::AETaunt(Client* taunter, float range)
 void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster, int16 resist_adjust)
 { 
 	Mob *curmob;
-	
+
 	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
@@ -781,7 +781,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			if (bad) {
 				//affect mobs that are on our hate list, or
 				//which have bad faction with us
-				if (!(caster->CheckAggro(curmob) || f == FACTION_THREATENLY || f == FACTION_SCOWLS) )
+				if (!CanAOEHitNPC(spell_id) && !(caster->CheckAggro(curmob) || f == FACTION_THREATENLY || f == FACTION_SCOWLS) )
 					continue;
 			} else {
 				//only affect mobs we would assist.

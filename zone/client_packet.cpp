@@ -2970,6 +2970,12 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 		else if (sa->parameter == ANIM_CROUCH) {
 			if(!UseBardSpellLogic() && !CastFromCrouch()) //C!Kayen
 				InterruptSpell();
+			//C!Kayen - Don't set to crouching
+			if (GetCastFromCrouchInterval() || GetCastFromCrouchIntervalProj()){ 
+				DumpPacket(app);	
+				return;
+			}
+
 			SetAppearance(eaCrouching);
 			playeraction = 2;
 			SetFeigned(false);

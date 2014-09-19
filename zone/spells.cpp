@@ -214,6 +214,14 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		return(false);
 	}
 
+	//C!Kayen - For ENC class abilities that require Spectral Blade equiped - Item LightType = 1 and Spell LightType = 1
+	if ((GetClass() == ENCHANTER && spells[spell_id].LightType == 1) && IsClient() && !CastToClient()->IsSpectralBladeEquiped()){
+		Message(MT_SpellFailure, "You must have a spectral blade equiped to use this ability.");
+		CastToClient()->SendSpellBarEnable(spell_id);
+		InterruptSpell(173, 0x121, false);
+		return(false);
+	}
+
 	if (spellbonuses.NegateIfCombat)
 		BuffFadeByEffect(SE_NegateIfCombat);
 
@@ -2261,7 +2269,9 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 		//C!Kayen - Custom Target Type [Clients use ST_Ring / NPC use ST_TargetLocation]
 		case TargetRing:{
-			if (spells[spell_id].powerful_flag) //Denotes spell to use projectile
+			if (IsEffectInSpell(spell_id,SE_TemporaryPetsNoAggro))
+				ProjectileTargetRingTempPet(spell_id);
+			else if (GetProjSpeed(spell_id) > 1) //Denotes spell to use projectile
 				ProjectileTargetRing(spell_id);
 			else
 				entity_list.AESpell(this, nullptr, spell_id, false, resist_adjust);
@@ -2291,7 +2301,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			TryTriggerOnValueAmount(false, true);
 		}
 	}
-
+	
 	DoCustomResourceDrain(); //C!Kayen
 
 	//set our reuse timer on long ass reuse_time spells...
@@ -3944,7 +3954,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	cd->spellid = action->spell;
 	cd->sequence = action->sequence;
 	cd->damage = 0;
-	if(GetSendTargetSpellAnimation() && !IsEffectInSpell(spell_id, SE_BindAffinity)) //C!Kayen - Use to prevents spell animation on target
+	if(IsTargetSpellAnimDisabled() && !IsEffectInSpell(spell_id, SE_BindAffinity)) //C!Kayen - Use to prevents spell animation on target
 	{
 		entity_list.QueueCloseClients(spelltar, message_packet, false, 200, 0, true, spelltar->IsClient() ? FilterPCSpells : FilterNPCSpells);
 	}

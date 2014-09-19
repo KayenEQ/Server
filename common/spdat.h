@@ -648,12 +648,16 @@ typedef enum {
 #define	SE_BaseSpellPowerWizard			1020 // implemented - Non focused stackable spell modifier [Wizard innate]
 #define SE_CastOnCurerFromCure			1021 // implemented - Casts a spell on the person curing FROM cure spell - Limit = amount cured by spell
 #define SE_CastOnCureFromCure			1022 // implemented - Casts a spell on the cured person FROM cure spell - Limit = amount cured by spell
-#define SE_StunResilience				1023 // implemented -
+#define SE_StunResilience				1023 // implemented - Intervals of 100
 #define SE_MitigateAllDamage			1024 // implemented - Increase/Decrease ALL spell and melee damage
 #define SE_PercentalMana				1025 // implemented - 
 #define SE_MeleeManaTap					1026 // implemented - 
-#define SE_SpellPowerManaMod			1027 // implemented -
+#define SE_SpellPowerManaMod			1027 // implemented - Enchanter effect that focuses spells from % mana
 #define SE_FadeIfTargetNotCaster		1028 // implemented - Fade on buff tick if current taret is not caster.
+#define SE_ApplyEffectProjectileHit		1028 // implemented - Apply an effect on CASTER when projectile hits target
+#define SE_TemporaryPetsNoAggro			1029 // implemented - Base #Pets Limit (0=At Loc/1=Move to Loc) Max = Duration
+#define SE_HateOnPetOwner				1030 // implemented - add hate to pet's owner - Base = Amt Hate Limit = %Tx from pet hate to caster
+#define SE_RemoveFromHateList			1031 // implemented - Remove's caster from hatelists 
 // LAST
 
 
@@ -700,7 +704,7 @@ struct SPDat_Spell_Struct
 											// If it is a number between 1-4 it means components[number] is a focus and not to expend it
 											// If it is a valid itemid it means this item is a focus as well
 /* 070 */	uint16 formula[EFFECT_COUNT]; // Spell's value formula
-/* 082 */	//int LightType; // probaly another effecttype flag
+/* 082 */	int LightType; // probaly another effecttype flag //C!Kayen
 /* 083 */	int8 goodEffect; //0=detrimental, 1=Beneficial, 2=Beneficial, Group Only
 /* 084 */	int Activated; // probably another effecttype flag
 /* 085 */	int resisttype;
@@ -918,5 +922,11 @@ const char *GetSpellName(int16 spell_id);
 bool IsAuraCustomSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);
+bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
+int GetProjCastingAnimation(uint16 spell_id);
+int GetProjArc(uint16 spell_id);
+int GetProjTilt(uint16 spell_id);
+int GetProjAngle(uint16 spell_id);
+int GetProjSpeed(uint16 spell_id);
 
 #endif

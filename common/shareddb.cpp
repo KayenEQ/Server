@@ -1692,6 +1692,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			for(y=0; y< EFFECT_COUNT;y++)
 				sp[tempid].formula[y]=atoi(row[70+y]);
 
+			sp[tempid].LightType=atoi(row[82]); //C!Kayen
 			sp[tempid].goodEffect=atoi(row[83]);
 			sp[tempid].Activated=atoi(row[84]);
 			sp[tempid].resisttype=atoi(row[85]);
