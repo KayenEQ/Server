@@ -984,12 +984,12 @@ public:
 
 	bool SpellDirectionalTarget(uint16 spell_id, Mob *target);
 
-	void ChangeNPCLastName(const char* in_lastname);
+	void ChangeNPCLastName(const char* in_lastname); //Perl
 	void ClearNPCLastName();
 	void SpellCastingTimerDisplay();
 
-	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; }
-	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; }
+	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; } //Perl
+	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //Perl
 
 	bool TryTargetRingEffects(uint16 spell_id);
 	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false);
@@ -1024,8 +1024,8 @@ public:
 	bool TryEnchanterManaFocusSpell(uint16 spell_id);
 	void EnchanterManaFocusConsume(uint16 spell_id);
 
-	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist
-	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; }
+	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - Perl
+	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } // - Perl
 
 
 	

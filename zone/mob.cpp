@@ -6981,10 +6981,12 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		SetOnlyAggroLast(true);
 	}
 
+	/* MOVE TO PERL QUEST FILE #_tk_bladestorm
 	else if ((strcmp(pettype, "tk_bladestorm")) == 0){
 		SetOnlyAggroLast(true);
-		//SendSpellEffect(567, 500, 0, 1, 3000, true);
+		SendSpellEffect(567, 500, 0, 1, 3000, true);
 	}
+	*/
 
 	//2: Determine if target pets spawn at location or path to location. [Limit value in SE_TemporaryPetNoAgggro]
 	if (spells[spell_id].targettype == ST_Ring && (IsEffectInSpell(spell_id,SE_TemporaryPetsNoAggro))){
