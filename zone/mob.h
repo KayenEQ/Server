@@ -992,7 +992,7 @@ public:
 	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //Perl
 
 	bool TryTargetRingEffects(uint16 spell_id);
-	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false);
+	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false, int slot = -1);
 	int16 GetBaseSpellPowerWizard();
 
 	bool AACastSpell(uint16 spell_id, uint16 target_id);
@@ -1030,6 +1030,8 @@ public:
 
 	inline bool IsTempPet() const { return TempPet; } 
 	inline void SetTempPet(bool value) { TempPet = value; }
+
+	int GetSlotFromSpellID(uint16 spell_id);
 
 
 	//C!Kayen END

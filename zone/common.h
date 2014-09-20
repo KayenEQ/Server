@@ -185,6 +185,7 @@ struct Buffs_Struct {
 	bool	persistant_buff;
 	bool	client; //True if the caster is a client
 	bool	UpdateClient;
+	int16	focus; //C!Kayen - For class specific focuses that are applied when spell is initially cast.
 };
 
 struct StatBonuses {

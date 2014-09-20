@@ -6682,7 +6682,7 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 	return true;
 }
 
-int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool IsHeal)
+int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool IsHeal, int slot)
 {
 	/*
 	Non focus % based stackable spell modifiers. - Works on NPC and Clients
@@ -6706,8 +6706,12 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 	
 	int16 mod = 0;
 
-	value += value*GetBaseSpellPowerWizard()/100; //Wizard Special
-	value += value*GetSpellPowerManaMod(spell_id)/100;//Enchanter Special
+	if (slot > 0)
+		value += value*buffs[slot].focus/100;
+	else {
+		value += value*GetBaseSpellPowerWizard()/100; //Wizard Special
+		value += value*GetSpellPowerManaMod(spell_id)/100;//Enchanter Special
+	}
 
 	mod = spellbonuses.BaseSpellPower + itembonuses.BaseSpellPower + aabonuses.BaseSpellPower; //All effects
 	
@@ -7054,7 +7058,18 @@ void Mob::ProjectileTargetRingTempPet(uint16 spell_id)
 
 	char pet_name[64];
 	snprintf(pet_name, sizeof(pet_name), "%s`s pet [No aggro]", GetCleanName());
-	TemporaryPets(spell_id, nullptr, pet_name);
+	TemporaryPets(spell_id, nullptr, pet_name); //Create pet.
+}
+
+int Mob::GetSlotFromSpellID(uint16 spell_id)
+{
+	int i;
+	uint32 buff_count = GetMaxTotalSlots();
+	for(i = 0; i < buff_count; i++)
+		if(buffs[i].spellid == spell_id)
+			return i;
+
+	return -1;
 }
 
 void Client::PopupUI()

@@ -129,6 +129,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		buffs[buffslot].melee_rune = 0;
 		buffs[buffslot].magic_rune = 0;
 		buffs[buffslot].numhits = 0;
+		buffs[buffslot].focus = 0; //C!Kayen
 
 		if(IsClient() && CastToClient()->GetClientVersionBit() & BIT_UnderfootAndLater)
 		{
@@ -184,6 +185,16 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		}
 		
 		buffs[buffslot].numhits = numhit;
+	}
+	//C!Kayen - store focus value in bufffs for class specific effects
+	if(spells[spell_id].buffduration > 0 && buffslot >= 0){
+
+		int focus_amt = 0;
+		if (caster && caster->IsClient()){
+			focus_amt = caster->GetBaseSpellPowerWizard();
+			focus_amt += caster->GetSpellPowerManaMod(spell_id);
+		}
+		buffs[buffslot].focus = focus_amt;
 	}
 
 	if (!IsPowerDistModSpell(spell_id))
@@ -3610,7 +3621,7 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 		return;
 
 	const SPDat_Spell_Struct &spell = spells[spell_id];
-
+	
 	if (spell_id == SPELL_UNKNOWN)
 		return;
 
@@ -3659,7 +3670,7 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				//Handle client cast DOTs here.
 				if (caster && caster->IsClient() && IsDetrimentalSpell(spell_id) && effect_value < 0) {
 
-					effect_value = caster->CastToClient()->GetActDoTDamage(spell_id, effect_value, this);
+					effect_value = caster->CastToClient()->GetActDoTDamage(spell_id, effect_value, this, slot); //C!Kayen
 
 					if (!caster->CastToClient()->GetFeigned())
 						AddToHateList(caster, -effect_value);
@@ -3692,8 +3703,12 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 			case SE_HealOverTime:
 			{
 				effect_value = CalcSpellEffectValue(spell_id, i, caster_level);
-				if(caster)
-					effect_value = caster->GetActSpellHealing(spell_id, effect_value);
+				if(caster){ //C!Kayen - So we don't have to change all the other functions.
+					if (caster->IsClient()) 
+						effect_value = caster->CastToClient()->GetActSpellHealing(spell_id, effect_value,this, slot); //C!Kayen
+					else
+						effect_value = caster->GetActSpellHealing(spell_id, effect_value,this);
+				}
 
 				HealDamage(effect_value, caster, spell_id);
 				//healing aggro would go here; removed for now
@@ -4379,9 +4394,6 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 			Numhits(false);
 	}
 	
-	if (spells[buffs[slot].spellid].NimbusEffect > 0)
-		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
-
 	if (spells[buffs[slot].spellid].NimbusEffect > 0)
 		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
 
