@@ -1020,15 +1020,17 @@ public:
 	void ClientFaceTarget(Mob* MobToFace = 0);
 
 	void MeleeManaTap(int32 damage);
-	int32 GetSpellPowerManaMod(uint16 spell_id);
+	void PetTapToOwner(int32 damage);
+	int32 GetSpellPowerManaMod(uint16 spell_id);//Enchanter special
 	bool TryEnchanterManaFocusSpell(uint16 spell_id);
 	void EnchanterManaFocusConsume(uint16 spell_id);
 
 	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - Perl
 	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } // - Perl
 
+	inline bool IsTempPet() const { return TempPet; } 
+	inline void SetTempPet(bool value) { TempPet = value; }
 
-	
 
 	//C!Kayen END
 
@@ -1410,6 +1412,7 @@ protected:
 	int max_stun_resilience;
 	int hard_MitigateAllDamage;
 	bool OnlyAggroLast;
+	bool TempPet; //Need a simple way to check this.
 
 private:
 	void _StopSong(); //this is not what you think it is

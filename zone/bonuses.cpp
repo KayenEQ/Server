@@ -3012,6 +3012,15 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				newbon->MitigateAllDamage += effect_value; 
 				break;
 
+			case SE_MeleeLifeTapPetOwner:
+				newbon->MeleeLifeTapPetOwner += effect_value; 
+				break;
+			
+			case SE_MeleeManaTapPetOwner:			
+				newbon->MeleeManaTapPetOwner += effect_value; 
+				break;
+			
+
 		}
 	}
 }

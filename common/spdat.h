@@ -657,7 +657,10 @@ typedef enum {
 #define SE_ApplyEffectProjectileHit		1028 // implemented - Apply an effect on CASTER when projectile hits target
 #define SE_TemporaryPetsNoAggro			1029 // implemented - Base #Pets Limit (0=At Loc/1=Move to Loc) Max = Duration
 #define SE_HateOnPetOwner				1030 // implemented - add hate to pet's owner - Base = Amt Hate Limit = %Tx from pet hate to caster
-#define SE_RemoveFromHateList			1031 // implemented - Remove's caster from hatelists 
+#define SE_RemoveFromHateList			1031 // implemented - Remove's caster from hatelist
+#define SE_MeleeLifeTapPetOwner			1032 // implemented -
+#define SE_MeleeManaTapPetOwner			1033 // implemented -
+
 // LAST
 
 

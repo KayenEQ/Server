@@ -447,6 +447,8 @@ struct StatBonuses {
 	int16 BaseSpellPowerWizard;					//Modifies all spells base effect by percent - non focus stackable
 	int16 MitigateAllDamage;
 	int16 MeleeManaTap;
+	int16 MeleeManaTapPetOwner;
+	int16 MeleeLifeTapPetOwner;
 };
 
 typedef struct

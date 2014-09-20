@@ -420,6 +420,7 @@ Mob::Mob(const char* in_name,
 	max_stun_resilience = 0;
 	hard_MitigateAllDamage = 0;
 	OnlyAggroLast = false;
+	TempPet = false;
 }
 
 Mob::~Mob()
@@ -4246,6 +4247,7 @@ void Mob::MeleeLifeTap(int32 damage) {
 	}
 
 	MeleeManaTap(damage); //C!Kayen
+	PetTapToOwner(damage); //C!Kayen
 }
 
 bool Mob::TryReflectSpell(uint32 spell_id)
@@ -6898,12 +6900,38 @@ void Mob::ClientFaceTarget(Mob* MobToFace)
 
 void Mob::MeleeManaTap(int32 damage)
 {
-	int16 manatap_amt = 0;
-	manatap_amt = spellbonuses.MeleeManaTap + itembonuses.MeleeManaTap + aabonuses.MeleeManaTap;
+	int16 manatap_bonus = spellbonuses.MeleeManaTap + itembonuses.MeleeManaTap + aabonuses.MeleeManaTap;
 
-	if(manatap_amt && damage > 0){
-		manatap_amt = damage * manatap_amt / 100;
-		SetMana(GetMana() + manatap_amt);
+	if(manatap_bonus && damage > 0)
+		SetMana(GetMana() + (damage * manatap_bonus / 100));
+}
+
+void Mob::PetTapToOwner(int32 damage)
+{
+	//Melee damage done by pet is converted to heal/mana gain on owner.
+	if ((IsPet() || IsTempPet()) && damage > 0) {
+
+		Mob* owner = GetOwner();
+
+		if (!owner)
+			return;
+
+		int16 lifetap_amt = 0;
+		lifetap_amt = spellbonuses.MeleeLifeTapPetOwner + itembonuses.MeleeLifeTapPetOwner + aabonuses.MeleeLifeTapPetOwner;
+
+		if(lifetap_amt){
+
+			lifetap_amt = damage * lifetap_amt / 100;
+
+			if (lifetap_amt > 0)
+				owner->HealDamage(lifetap_amt); //Heal self for modified damage amount.
+			else
+				owner->Damage(owner, -lifetap_amt,0, SkillEvocation,false); //Dmg self for modified damage amount.
+		}
+
+		int16 manatap_bonus = spellbonuses.MeleeManaTapPetOwner + itembonuses.MeleeManaTapPetOwner + aabonuses.MeleeManaTapPetOwner;
+		if(manatap_bonus)
+			owner->SetMana(owner->GetMana() + (damage * manatap_bonus / 100));
 	}
 }
 
@@ -6979,6 +7007,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		WearChange(7,owner->GetEquipmentMaterial(MaterialPrimary),0); //ENC Animation spell to set graphic same as sword.
 		WearChange(8,0,0);
 		SetOnlyAggroLast(true);
+		SpellFinished(2013, this, 10, 0, -1, spells[spell_id].ResistDiff);
 	}
 
 	/* MOVE TO PERL QUEST FILE #_tk_bladestorm
@@ -6988,7 +7017,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	}
 	*/
 
-	//2: Determine if target pets spawn at location or path to location. [Limit value in SE_TemporaryPetNoAgggro]
+	//2: Target RING - Determine if target pets spawn at location or path to location. [Limit value in SE_TemporaryPetNoAgggro]
 	if (spells[spell_id].targettype == ST_Ring && (IsEffectInSpell(spell_id,SE_TemporaryPetsNoAggro))){
 		
 		int limit = 0;
@@ -7011,6 +7040,8 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	min_dmg += min_dmg * mod / 100;
 	AC += AC * mod / 100;
 	ChangeSize(GetSize() + (GetSize() * static_cast<float>(mod/2) / 100));
+	SpellFocusDMG += SpellFocusDMG * mod / 100;
+	SpellFocusHeal += SpellFocusHeal * mod / 100;
 	//Shout("DEBUG: ApplyCustomPetBonuses :: POST Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
 
 	SetHP(GetMaxHP());
