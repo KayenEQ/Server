@@ -234,6 +234,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				int32 dmg = effect_value;
 				
 				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
+				if (caster && !caster->PassCasterRestriction(false,  spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
+					break;
 				if (GetSpellPowerAmtHits())//C!Kayen - Scale based on how many targets were hit by spell prior to this target.
 					dmg += dmg*GetSpellPowerAmtHits()/100;
 				CalcSpellPowerHeightMod(dmg, spell_id, caster); //C!Kayen coded narrowly for damage/heals.

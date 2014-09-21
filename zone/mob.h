@@ -915,6 +915,7 @@ public:
 	inline bool RightMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 236.0f, 304.0f); }
 	inline bool FlankMob(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
 		{ return (!other || other == this) ? true : (MobAngle(other, ourx, oury) > 56.0f && MobAngle(other, ourx, oury) > 124.0f); }
+	bool SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target);
 	
 	void SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage);
 	int GetWpnSkillDmgBonusAmt();
@@ -972,6 +973,8 @@ public:
 	void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
 	inline int8 GetCastFromCrouchIntervalProj() const { return CastFromCrouchIntervalProj; }
 	void CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster);
+
+	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value);
 
 	void MeleeCharge();
 	inline bool IsMeleeChargeActive() const { return MeleeChargeActive; }
@@ -1032,8 +1035,7 @@ public:
 	inline void SetTempPet(bool value) { TempPet = value; }
 
 	int GetSlotFromSpellID(uint16 spell_id);
-
-
+	
 	//C!Kayen END
 
 protected:

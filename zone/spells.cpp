@@ -1404,6 +1404,11 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 		Message_StringID(13,SPELL_NEED_TAR);
 		return false;
 	}
+	//C!Kayen - Restrictions based on conditions placed on the caster.
+	if (!PassCasterRestriction(true, spell_id, spells[spell_id].CastRestriction)){
+		Message(13,"Your will is not sufficient to cast this spell."); //Temp message
+		return false;
+	}
 
 	//Must be out of combat. (If Beneficial checks casters combat state, Deterimental checks targets)
 	if (!spells[spell_id].InCombat && spells[spell_id].OutofCombat){
@@ -2027,6 +2032,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			if (isproc) {
 				SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, true);
 			} else {
+				if (!SingleTargetSpellInAngle(spell_id, spell_target))//C!Kayen
+					return false;
 				if (spells[spell_id].targettype == ST_TargetOptional){
 					if (!TrySpellProjectile2(spell_target, spell_id)) //C!Kayen - Modified formula / Speed Changes
 						return false;

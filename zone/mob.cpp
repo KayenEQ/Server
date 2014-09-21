@@ -5185,6 +5185,22 @@ bool Mob::InAngleMob(Mob *other, float start_angle, float stop_angle) const
 	return false;
 }
 
+bool Mob::SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target){
+
+	if (!spells[spell_id].directional_start && !spells[spell_id].directional_end)
+		return true;
+		
+	if (spell_target){
+		if (!spell_target->InAngleMob(this, spells[spell_id].directional_start,spells[spell_id].directional_end)){
+			//Message_StringID(13,CANT_SEE_TARGET);
+			Message(MT_SpellFailure, "You must face your target to use this ability!");
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void Client::UnscribeSpellByGroup(uint16 spellid) {
 	
 	int spellgroup = spells[spellid].spellgroup;
@@ -5769,27 +5785,27 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	//Note: Field209 / powerful_flag : Used as Speed Variable and to flag TargetType Ring/Location as a Projectile
 	//Note: pvpresistbase : Used to set tilt
 	//Baseline 280 mod was calculated on how long it takes for projectile to hit target at 1 speed.
-	float projectile_speed_ring = static_cast<float>(GetProjSpeed(spell_id)) / 1000.0f; 
+	float speed = static_cast<float>(GetProjSpeed(spell_id)) / 1000.0f; 
 	float distance = CalculateDistance(spell_target->GetX(), spell_target->GetY(), spell_target->GetZ());
 	float hit = 0.0f;
 	float dist_mod = 270.0f;
 	float speed_mod = 0.0f;
 
-	if (projectile_speed_ring >= 0.5f && projectile_speed_ring < 1.0f)
-		speed_mod = 175.0f - ((projectile_speed_ring - 0.5f) * (175.0f - 100.0f));
-	else if (projectile_speed_ring >= 1.0f && projectile_speed_ring < 2.0f)
-		speed_mod = 100.0f - ((projectile_speed_ring - 1.0f) * (100.0f - 70.0f));
-	else if (projectile_speed_ring >= 2.0f && projectile_speed_ring < 3.0f)
-		speed_mod = 70.0f - ((projectile_speed_ring - 2.0f) * (70.0f - 60.0f));
-	else if (projectile_speed_ring >= 3.0f && projectile_speed_ring < 4.0f)
-		speed_mod = 60.0f - ((projectile_speed_ring - 3.0f) * (60.0f - 50.0f));
-	else if (projectile_speed_ring >= 4.0f && projectile_speed_ring <= 5.0f)
-		speed_mod = 50.0f - ((projectile_speed_ring - 4.0f) * (50.0f - 40.0f));
+	if (speed >= 0.5f && speed < 1.0f)
+		speed_mod = 175.0f - ((speed - 0.5f) * (175.0f - 100.0f));
+	else if (speed >= 1.0f && speed < 2.0f)
+		speed_mod = 100.0f - ((speed - 1.0f) * (100.0f - 70.0f));
+	else if (speed >= 2.0f && speed < 3.0f)
+		speed_mod = 70.0f - ((speed - 2.0f) * (70.0f - 60.0f));
+	else if (speed >= 3.0f && speed < 4.0f)
+		speed_mod = 60.0f - ((speed - 3.0f) * (60.0f - 50.0f));
+	else if (speed >= 4.0f && speed <= 5.0f)
+		speed_mod = 50.0f - ((speed - 4.0f) * (50.0f - 40.0f));
 
 	dist_mod = (dist_mod * speed_mod) / 100.0f;
 	hit = (distance * dist_mod) / 100; //#1
 
-	Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
+	Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
 	//Close Distance Modifiers
 	if (distance <= 35 && distance > 25)
 		hit *= 1.6f;
@@ -5798,7 +5814,7 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	if (distance <= 15) 
 		hit *= 2.0f;
 
-	Shout("B Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", projectile_speed_ring, distance, speed_mod, dist_mod, hit);
+	Shout("B Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
 	
 	projectile_spell_id_ring[bolt_id] = spell_id;
 	projectile_target_id_ring[bolt_id]  = spell_target->GetID();
@@ -5821,14 +5837,25 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 
 	if (SendProjectile){
 
-		ProjectileAnimation(spell_target,0, false, projectile_speed_ring,angle,tilt,arc, item_IDFile,skillinuse);
+		ProjectileAnimation(spell_target,0, false, speed,angle,tilt,arc, item_IDFile,skillinuse);
 
 		//Enchanter triple blade effect - Requires adjusting angle based on heading to get correct appearance.
 		if (spell_id == 2006){ //This will likely need to be adjusted.
 			float _angle =  CalcSpecialProjectile(spell_id);
 			//Shout("DEBUG: TrySpellProjectileTargetRingSpecial ::  Angle %.2f [Heading %.2f]", _angle, GetHeading()/2);
-			ProjectileAnimation(spell_target,0, false, projectile_speed_ring,_angle,tilt,600, item_IDFile,skillinuse);
-			ProjectileAnimation(spell_target,0, false, projectile_speed_ring,(_angle - 70),tilt,600, item_IDFile,skillinuse);
+			if (GetCastFromCrouchInterval() >= 1){
+				ProjectileAnimation(spell_target,0, false, speed,_angle,tilt,600, item_IDFile,skillinuse);
+				ProjectileAnimation(spell_target,0, false, speed,(_angle - 70),tilt,600, item_IDFile,skillinuse);
+			}
+			if (GetCastFromCrouchInterval() >= 2){
+				ProjectileAnimation(spell_target,0, false, (speed - 0.2f),_angle,tilt,600, item_IDFile,skillinuse);
+				ProjectileAnimation(spell_target,0, false, (speed - 0.2f),(_angle - 70),tilt,600, item_IDFile,skillinuse);
+			}
+
+			if (GetCastFromCrouchInterval() >= 3){
+				ProjectileAnimation(spell_target,0, false, (speed - 0.4f),_angle,tilt,600, item_IDFile,skillinuse);
+				ProjectileAnimation(spell_target,0, false, (speed - 0.4f),(_angle - 70),tilt,600, item_IDFile,skillinuse);
+			}
 		}
 	}
 	
@@ -6236,11 +6263,12 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	This value is then decreased based on the percentage of cast time remaining.
 	The value of CastFromCrouch field can then be used to modify the cast time percent modifier
 
-	Method 3: Modifier based on charge intervals 1-5 (each 20%)
+	*USED*Method 3: Modifier based on charge intervals 1-5 (each 20%)
 	You get a set modifier for ending charge for intervals of 20% on the cast bar with 5 being the highest.
 	This set as 1-5 in SetCastFromCrouchInterval() and used to correlate for conditionals
 	
 	spells[spell_id].cast_from_crouch //Value of 100 = No MOD
+	spells[spell_id].numhits - Will determine special interval with default = 5
 
 	[IMPORTANT] case SE_CurrentHP: Final Modifier is check in this function to adjust base value.
 
@@ -6259,7 +6287,10 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	uint32 remain_time = spellend_timer.GetRemainingTime();
 	int32 time_casting = t_start - remain_time; //MS
 	int32 pct_casted = 100 - (remain_time*100/t_start);
-	int8 charge_interval = 5;
+	int charge_interval = spells[spell_id].numhits;
+
+	if (!charge_interval)
+		charge_interval = 5;
 
 	/*Method 1
 	mod = (time_casting)/100;
@@ -6271,16 +6302,29 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	mod = mod*spells[spell_id].cast_from_crouch/100;
 	mod = mod * -1;
 	*/
-	if (pct_casted >= 0 && pct_casted <= 20)
-		charge_interval = 1;
-	else if (pct_casted > 20 && pct_casted <= 40)
-		charge_interval = 2;
-	else if (pct_casted > 40 && pct_casted <= 60)
-		charge_interval = 3;
-	else if (pct_casted > 60 && pct_casted <= 80)
-		charge_interval = 4;
-	else if (pct_casted > 80 && pct_casted <= 100)
-		charge_interval = 5;
+
+	//Default
+	if (charge_interval == 5) {
+		if (pct_casted >= 0 && pct_casted <= 20)
+			charge_interval = 1;
+		else if (pct_casted > 20 && pct_casted <= 40)
+			charge_interval = 2;
+		else if (pct_casted > 40 && pct_casted <= 60)
+			charge_interval = 3;
+		else if (pct_casted > 60 && pct_casted <= 80)
+			charge_interval = 4;
+		else if (pct_casted > 80 && pct_casted <= 100)
+			charge_interval = 5;
+	}
+
+	else if (charge_interval == 3) {
+		if (pct_casted >= 0 && pct_casted <= 34)
+			charge_interval = 1;
+		else if (pct_casted > 34 && pct_casted <= 68)
+			charge_interval = 2;
+		else if (pct_casted > 68 && pct_casted <= 100)
+			charge_interval = 3;
+	}
 
 	//mod = 100 - (remain_time*100/t_start); // % Cast Time Used
 	//mod = mod*spells[spell_id].cast_from_crouch/100;
@@ -6328,6 +6372,30 @@ void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
 	if (modifier)
 		damage += damage*modifier/100;
 
+}
+
+bool Mob::PassCasterRestriction(bool UseCasterRestriction,  uint16 spell_id, int16 value)
+{
+	//This value is always defined as a NEGATIVE in the database when doing CasterRestrictions.
+	//*NOTE IMPLMENTED YET FOR FROM CastRestriction Field - Will write as needed.
+	/*If return TRUE spell met all restrictions and can continue (this = CASTER).
+	This check is used when the spell_new field CastRestriction is defined OR spell effect '0'(DD/Heal) has a defined limit
+
+	Range 20000 - 200010	: Limit to CastFromCrouch Interval Projectile
+	THIS IS A WORK IN PROGRESS
+	*/ 
+
+	if (value >= 0)
+		return true;
+
+	value = -value; //Convert to positive for calculations
+
+	if (value >= 20000 && value <= 20010) {
+		if ((value - 20000) <= GetCastFromCrouchIntervalProj())
+			return true;
+	}
+
+	return false;
 }
 
 void Client::DoAdjustRecastTimer()
