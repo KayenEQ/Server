@@ -3068,12 +3068,11 @@ void Mob::TriggerOnCast(uint32 focus_spell, uint32 spell_id, bool aa_trigger)
 	}
 }
 
-void Mob::TrySpellTrigger(Mob *target, uint32 spell_id)
+bool Mob::TrySpellTrigger(Mob *target, uint32 spell_id, int effect)
 {
-	if(target == nullptr || !IsValidSpell(spell_id))
-	{
-		return;
-	}
+	if(!target || !IsValidSpell(spell_id))
+		return false;
+	
 	int spell_trig = 0;
 	// Count all the percentage chances to trigger for all effects
 	for(int i = 0; i < EFFECT_COUNT; i++)
@@ -3092,8 +3091,10 @@ void Mob::TrySpellTrigger(Mob *target, uint32 spell_id)
 				if(MakeRandomInt(0, trig_chance) <= spells[spell_id].base[i])
 				{
 					// If we trigger an effect then its over.
-					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
-					break;
+					if (IsValidSpell(spells[spell_id].base2[i])){
+						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
+						return true;
+					}
 				}
 				else
 				{
@@ -3107,37 +3108,15 @@ void Mob::TrySpellTrigger(Mob *target, uint32 spell_id)
 	// if the chances don't add to 100, then each effect gets a chance to fire, chance for no trigger as well.
 	else
 	{
-		for(int i = 0; i < EFFECT_COUNT; i++)
+		if(MakeRandomInt(0, 100) <= spells[spell_id].base[effect])
 		{
-			if (spells[spell_id].effectid[i] == SE_SpellTrigger)
-			{
-				if(MakeRandomInt(0, 100) <= spells[spell_id].base[i])
-				{
-					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
-				}
+			if (IsValidSpell(spells[spell_id].base2[effect])){
+				SpellFinished(spells[spell_id].base2[effect], target, 10, 0, -1, spells[spell_id].ResistDiff);
+				return true; //Only trigger once of these per spell effect.
 			}
 		}
 	}
-}
-
-void Mob::TryApplyEffect(Mob *target, uint32 spell_id)
-{
-	if(target == nullptr || !IsValidSpell(spell_id))
-	{
-		return;
-	}
-
-	for(int i = 0; i < EFFECT_COUNT; i++)
-	{
-		if (spells[spell_id].effectid[i] == SE_ApplyEffect)
-		{
-			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i])
-			{
-				if(target)
-					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
-			}
-		}
-	}
+	return false;
 }
 
 void Mob::TryTriggerOnValueAmount(bool IsHP, bool IsMana, bool IsEndur, bool IsPet)
@@ -6349,14 +6328,19 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	return true;
 }
 
-void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster){
+void Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int effectid){
 
 	if (!caster || (IsValidSpell(spell_id) && !spells[spell_id].cast_from_crouch))
 		return;
 
 	int32 interval = 0;
-	if (GetProjSpeed(spell_id))
+	if (GetProjSpeed(spell_id)){
+		//See CasterRestriction - If these is true we fire MORE projectiles instead of scaling.
+		if (spells[spell_id].base2[effectid] <= -20000 && spells[spell_id].base2[effectid] >= -20010)
+			return;
+
 		interval = caster->GetCastFromCrouchIntervalProj();
+	}
 	else
 		interval = caster->GetCastFromCrouchInterval();
 
@@ -7018,6 +7002,7 @@ int32 Mob::GetSpellPowerManaMod(uint16 spell_id)
 		return 0;
 
 	uint8 pct_mana = GetManaPercent();
+	int32 mana_amt_mod = ((GetMaxMana()*100)/5)/(1000/5); //For every 1000 mana gain 1% bonus (This will need to be tuned).
 	int focus_mod = 0;
 
 	if (pct_mana >= 20 && pct_mana  < 40)
@@ -7031,7 +7016,7 @@ int32 Mob::GetSpellPowerManaMod(uint16 spell_id)
 	else if (pct_mana == 100)
 		focus_mod = 4;
 
-	int total_mod = effect_mod*focus_mod;
+	int total_mod = (effect_mod*focus_mod) + ((mana_amt_mod * focus_mod) / 100);
 	return total_mod;
 }
 
@@ -7138,6 +7123,60 @@ int Mob::GetSlotFromSpellID(uint16 spell_id)
 			return i;
 
 	return -1;
+}
+
+void Mob::TryApplyEffectOrder(Mob* target, uint16 spell_id)
+{
+	//Spell Effect puts - Spell ID of buffs to be cast in a specific order, if not found it will cast it and remove the prior.
+	if(!target || !IsValidSpell(spell_id))
+		return;
+
+	bool effect_found = false;
+	uint16 current_buff = SPELL_UNKNOWN;
+
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_ApplyEffectOrder)
+		{
+			effect_found = true;
+			if (IsValidSpell(spells[spell_id].base[i]))
+			{
+				if (target->FindBuff(spells[spell_id].base[i]))
+					current_buff = spells[spell_id].base[i];
+			}
+		}
+	}
+
+	if (!effect_found)
+		return; //If no effect found just exit function
+
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_ApplyEffectOrder)
+		{
+			if (IsValidSpell(spells[spell_id].base[i]))
+			{
+				if (current_buff == SPELL_UNKNOWN) {
+					SpellFinished(spells[spell_id].base[i], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+					return;
+				}
+
+				else if (current_buff == spells[spell_id].base[i]){
+
+					if (IsValidSpell(spells[spell_id].base[i + 1])){
+						target->BuffFadeBySpellID(spells[spell_id].base[i]);
+						SpellFinished(spells[spell_id].base[i + 1], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+						return;
+					}
+					else {
+						target->BuffFadeBySpellID(spells[spell_id].base[i-1]);
+						SpellFinished(spells[spell_id].base[i], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+						return;
+					}
+				}
+			}
+		}
+	}
 }
 
 void Client::PopupUI()

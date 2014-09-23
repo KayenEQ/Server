@@ -200,6 +200,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 	if (!IsPowerDistModSpell(spell_id))
 		SetSpellPowerDistanceMod(0);
 
+	bool SE_SpellTrigger_HasCast = false;
+
 	// iterate through the effects in the spell
 	for (i = 0; i < EFFECT_COUNT; i++)
 	{
@@ -239,7 +241,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				if (GetSpellPowerAmtHits())//C!Kayen - Scale based on how many targets were hit by spell prior to this target.
 					dmg += dmg*GetSpellPowerAmtHits()/100;
 				CalcSpellPowerHeightMod(dmg, spell_id, caster); //C!Kayen coded narrowly for damage/heals.
-				CalcFromCrouchMod(dmg, spell_id, caster);//C!Kayen - Cast Time multiplier from charged spells.
+				CalcFromCrouchMod(dmg, spell_id, caster, i);//C!Kayen - Cast Time multiplier from charged spells.
 
 				if(dmg < 0)
 				{
@@ -254,7 +256,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						dmg = caster->GetActSpellDamage(spell_id, dmg, this);
 						caster->ResourceTap(-dmg, spell_id);
 					}
-					Shout("DEBUG: Check Damage %i", dmg);
+					Shout("KAYEN DEBUG: Direct Damage [%i] from spell [%i]", dmg, spell_id);
 					dmg = -dmg;
 					Damage(caster, dmg, spell_id, spell.skill, false, buffslot, false);
 				}
@@ -2778,6 +2780,25 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_ApplyEffect: {
+
+				if (caster && IsValidSpell(spells[spell_id].base2[i])){
+					
+					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i])
+						caster->SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spell_id].ResistDiff);
+				}
+				break;
+			}
+
+			case SE_SpellTrigger: {
+
+				if (!SE_SpellTrigger_HasCast) {
+					if (caster && caster->TrySpellTrigger(this, spell_id, i))
+						SE_SpellTrigger_HasCast = true;
+				}
+				break;
+			}
+
 			//C!Kayen - Custom Spell Efects
 			case SE_PetLifeShare:
 			{
@@ -3065,8 +3086,6 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_HealRate:
 			case SE_SkillDamageTaken:
 			case SE_FcSpellVulnerability:
-			case SE_SpellTrigger:
-			case SE_ApplyEffect:
 			case SE_FcTwincast:
 			case SE_DelayDeath:
 			case SE_CastOnFadeEffect:

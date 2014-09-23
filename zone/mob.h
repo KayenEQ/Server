@@ -579,8 +579,7 @@ public:
 	void DoBuffWearOffEffect(uint32 index);
 	void TryTriggerOnCast(uint32 spell_id, bool aa_trigger);
 	void TriggerOnCast(uint32 focus_spell, uint32 spell_id, bool aa_trigger);
-	void TrySpellTrigger(Mob *target, uint32 spell_id);
-	void TryApplyEffect(Mob *target, uint32 spell_id);
+	bool TrySpellTrigger(Mob *target, uint32 spell_id, int effect);
 	void TryTriggerOnValueAmount(bool IsHP = false, bool IsMana = false, bool IsEndur = false, bool IsPet = false);
 	void TryTwincast(Mob *caster, Mob *target, uint32 spell_id);
 	void TrySympatheticProc(Mob *target, uint32 spell_id);
@@ -972,7 +971,7 @@ public:
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
 	void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
 	inline int8 GetCastFromCrouchIntervalProj() const { return CastFromCrouchIntervalProj; }
-	void CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster);
+	void CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
 
 	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value);
 
@@ -1035,6 +1034,7 @@ public:
 	inline void SetTempPet(bool value) { TempPet = value; }
 
 	int GetSlotFromSpellID(uint16 spell_id);
+	void TryApplyEffectOrder(Mob* target, uint16 spell_id);
 	
 	//C!Kayen END
 

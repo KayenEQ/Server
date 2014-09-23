@@ -660,6 +660,7 @@ typedef enum {
 #define SE_RemoveFromHateList			1031 // implemented - Remove's caster from hatelist
 #define SE_MeleeLifeTapPetOwner			1032 // implemented -
 #define SE_MeleeManaTapPetOwner			1033 // implemented -
+#define SE_ApplyEffectOrder				1034 // implemented - If buff exists replace it will it specified buff, might use buff stacker.
 
 // LAST
 
