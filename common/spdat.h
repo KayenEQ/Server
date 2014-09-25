@@ -662,6 +662,8 @@ typedef enum {
 #define SE_MeleeManaTapPetOwner			1033 // implemented -
 #define SE_ApplyEffectOrder				1034 // implemented - If buff exists replace it will it specified buff, might use buff stacker.
 #define SE_EffectField					1035 // implemented - Base: Spell ID of Effect, Limit: 1=Kill Caster on Fade
+#define SE_HealAggroMod					1036 // implemented - Modifies heal spell aggro by %
+#define SE_SpellAggroMod				1037 // implemented - Modifies non-heal spell aggro by %
 // LAST
 
 

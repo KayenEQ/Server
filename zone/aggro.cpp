@@ -1127,6 +1127,8 @@ int32 Mob::CheckAggroAmount(uint16 spell_id, bool isproc)
 		if (IsClient())
 			HateMod += CastToClient()->GetFocusEffect(focusSpellHateMod, spell_id);
 
+		HateMod += spellbonuses.SpellAggroMod + itembonuses.SpellAggroMod + aabonuses.SpellAggroMod; //C!Kayen
+
 		AggroAmount = (AggroAmount * HateMod) / 100;
 
 		//made up number probably scales a bit differently on live but it seems like it will be close enough
@@ -1178,7 +1180,9 @@ int32 Mob::CheckHealAggroAmount(uint16 spell_id, uint32 heal_possible)
 			HateMod += CastToClient()->GetFocusEffect(focusSpellHateMod, spell_id);
 
 		//Live AA - Spell casting subtlety
-		HateMod += aabonuses.hatemod + spellbonuses.hatemod + itembonuses.hatemod;
+		//HateMod += aabonuses.hatemod + spellbonuses.hatemod + itembonuses.hatemod; //C!Kayen
+
+		HateMod += spellbonuses.HealAggroMod + itembonuses.HealAggroMod + aabonuses.HealAggroMod; //C!Kayen
 
 		AggroAmount = (AggroAmount * HateMod) / 100;
 

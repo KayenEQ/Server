@@ -1051,6 +1051,94 @@ void Client::BuyAA(AA_Action* action)
 	}
 	else
 		real_cost = aa2->cost + (aa2->cost_inc * cur_level);
+
+	if(m_pp.aapoints >= real_cost && cur_level < aa2->max_level) {
+		SetAA(aa2->id, cur_level+1);
+
+		mlog(AA__MESSAGE, "Set AA %d to level %d", aa2->id, cur_level+1);
+
+		m_pp.aapoints -= real_cost;
+
+		Save();
+		if ((RuleB(AA, Stacking) && (GetClientVersionBit() >= 4) && (aa2->hotkey_sid == 4294967295u))
+			&& ((aa2->max_level == (cur_level+1)) && aa2->sof_next_id)){
+			SendAA(aa2->id);
+			SendAA(aa2->sof_next_id);
+		}
+		else
+			SendAA(aa2->id);
+
+		SendAATable();
+
+		//we are building these messages ourself instead of using the stringID to work around patch discrepencies
+		//these are AA_GAIN_ABILITY	(410) & AA_IMPROVE (411), respectively, in both Titanium & SoF. not sure about 6.2
+		if(cur_level<1)
+			Message(15,"You have gained the ability \"%s\" at a cost of %d ability %s.", aa2->name, real_cost, (real_cost>1)?"points":"point");
+		else
+			Message(15,"You have improved %s %d at a cost of %d ability %s.", aa2->name, cur_level+1, real_cost, (real_cost>1)?"points":"point");
+
+
+		SendAAStats();
+
+		CalcBonuses();
+		if(title_manager.IsNewAATitleAvailable(m_pp.aapoints_spent, GetBaseClass()))
+			NotifyNewTitlesAvailable();
+	}
+}
+
+/*
+void Client::BuyAA(AA_Action* action)
+{
+	mlog(AA__MESSAGE, "Starting to buy AA %d", action->ability);
+
+	//find the AA information from the database
+	SendAA_Struct* aa2 = zone->FindAA(action->ability);
+	if(!aa2) {
+		//hunt for a lower level...
+		int i;
+		int a;
+		for(i=1;i<MAX_AA_ACTION_RANKS;i++){
+			a = action->ability - i;
+			if(a <= 0)
+				break;
+			mlog(AA__MESSAGE, "Could not find AA %d, trying potential parent %d", action->ability, a);
+			aa2 = zone->FindAA(a);
+			if(aa2 != nullptr)
+				break;
+		}
+	}
+	if(aa2 == nullptr)
+		return;	//invalid ability...
+
+	if(aa2->special_category == 1 || aa2->special_category == 2)
+		return; // Not purchasable progression style AAs
+
+	if(aa2->special_category == 8 && aa2->cost == 0)
+		return; // Not purchasable racial AAs(set a cost to make them purchasable)
+
+	uint32 cur_level = GetAA(aa2->id);
+	if((aa2->id + cur_level) != action->ability) { //got invalid AA
+		mlog(AA__ERROR, "Unable to find or match AA %d (found %d + lvl %d)", action->ability, aa2->id, cur_level);
+		return;
+	}
+
+	if(aa2->account_time_required)
+	{
+		if((Timer::GetTimeSeconds() - account_creation) < aa2->account_time_required)
+		{
+			return;
+		}
+	}
+
+	uint32 real_cost;
+	std::map<uint32, AALevelCost_Struct>::iterator RequiredLevel = AARequiredLevelAndCost.find(action->ability);
+
+	if(RequiredLevel != AARequiredLevelAndCost.end())
+	{
+		real_cost = RequiredLevel->second.Cost;
+	}
+	else
+		real_cost = aa2->cost + (aa2->cost_inc * cur_level);
 		
 	//C!Kayen - Subject to change. Set which AA Type will use which alt currency	
 	uint32 alt_currency_type = 0;
@@ -1143,7 +1231,7 @@ void Client::BuyAA(AA_Action* action)
 	else 
 		Message(13,"No alternate currency type found.");
 }
-
+*/
 void Client::SendAATimer(uint32 ability, uint32 begin, uint32 end) {
 	EQApplicationPacket* outapp = new EQApplicationPacket(OP_AAAction,sizeof(UseAA_Struct));
 	UseAA_Struct* uaaout = (UseAA_Struct*)outapp->pBuffer;

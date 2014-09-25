@@ -455,6 +455,8 @@ struct StatBonuses {
 	int16 MeleeManaTapPetOwner;
 	int16 MeleeLifeTapPetOwner;
 	uint16 EffectField;
+	int16 HealAggroMod;
+	int16 SpellAggroMod;
 };
 
 typedef struct

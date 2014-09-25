@@ -3023,8 +3023,14 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 			case SE_EffectField:			
 				newbon->EffectField = effect_value; 
 				break;
-			
 
+			case SE_HealAggroMod:			
+				newbon->HealAggroMod += effect_value; 
+				break;
+
+			case SE_SpellAggroMod:			
+				newbon->SpellAggroMod += effect_value; 
+				break;
 		}
 	}
 }

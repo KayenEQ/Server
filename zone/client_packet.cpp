@@ -3993,6 +3993,10 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 			return;
 		}
 
+		targetring_x = castspell->y_pos; //C!Kayen switch X and Y!
+		targetring_y = castspell->x_pos; //C!Kayen
+		targetring_z = castspell->z_pos; //C!Kayen
+
 		CastSpell(spell_to_cast, castspell->target_id, castspell->slot);
 	}
 	/* Spell Slot or Potion Belt Slot */
@@ -4112,10 +4116,6 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 
 			p_timers.Start(pTimerHarmTouch, HarmTouchReuseTime);
 		}
-
-		targetring_x = castspell->y_pos; //C!Kayen switch X and Y!
-		targetring_y = castspell->x_pos; //C!Kayen
-		targetring_z = castspell->z_pos; //C!Kayen
 
 		if (spell_to_cast > 0)	// if we've matched LoH or HT, cast now
 			CastSpell(spell_to_cast, castspell->target_id, castspell->slot);
