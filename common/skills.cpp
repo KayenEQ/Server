@@ -1,5 +1,5 @@
 /*	EQEMu: Everquest Server Emulator
-	Copyright (C) 2001-2003 EQEMu Development Team (http://eqemulator.net)
+	Copyright (C) 2001-2002 EQEMu Development Team (http://eqemu.org)
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -15,13 +15,26 @@
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
-#include "../common/debug.h"
-#include "misc_functions.h"
-#include "guilds.h"
-#include "database.h"
-#include "eq_packet_structs.h"
+#include "types.h"
+#include "skills.h"
 
-
-#ifndef WIN32
-#include <netinet/in.h>	//for htonl
-#endif
+bool EQEmu::IsTradeskill(uint32 skill)
+{
+	switch (skill) {
+	case SkillFishing:
+	case SkillMakePoison:
+	case SkillTinkering:
+	case SkillResearch:
+	case SkillAlchemy:
+	case SkillBaking:
+	case SkillTailoring:
+	case SkillBlacksmithing:
+	case SkillFletching:
+	case SkillBrewing:
+	case SkillPottery:
+	case SkillJewelryMaking:
+		return true;
+	default:
+		return false;
+	}
+}

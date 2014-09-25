@@ -40,7 +40,6 @@
 #include "../common/spdat.h"
 #include "../common/features.h"
 #include "string_ids.h"
-#include "../common/dbasync.h"
 #include "guild_mgr.h"
 #include "raids.h"
 #include "quest_parser_collection.h"
@@ -57,7 +56,6 @@ extern WorldServer worldserver;
 extern NetConnection net;
 extern uint32 numclients;
 extern PetitionList petition_list;
-extern DBAsync *dbasync;
 
 extern char errorname[32];
 extern uint16 adverrornum;
@@ -65,12 +63,11 @@ extern uint16 adverrornum;
 Entity::Entity()
 {
 	id = 0;
-	pDBAsyncWorkID = 0;
 }
 
 Entity::~Entity()
 {
-	dbasync->CancelWork(pDBAsyncWorkID);
+	
 }
 
 Client *Entity::CastToClient()
@@ -500,7 +497,6 @@ void EntityList::MobProcess()
 		if (!it->second->Process()) {
 			Mob *mob = it->second;
 			uint16 tempid = it->first;
-			++it; // we don't erase here because the destructor will
 			if (mob->IsNPC()) {
 				entity_list.RemoveNPC(mob->CastToNPC()->GetID());
 			} else if (mob->IsMerc()) {
@@ -528,7 +524,12 @@ void EntityList::MobProcess()
 				}
 				entity_list.RemoveClient(mob->GetID());
 			}
-			entity_list.RemoveMob(tempid);
+
+			if(entity_list.RemoveMob(tempid)) {
+				it = mob_list.begin();
+			} else {
+				++it;
+			}
 		} else {
 			++it;
 		}

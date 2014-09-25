@@ -18,6 +18,8 @@ Copyright (C) 2001-2004 EQEMu Development Team (http://eqemulator.net)
 
 // Test 1
 
+#include <iostream>
+
 #include "../common/debug.h"
 #include "aa.h"
 #include "mob.h"
@@ -300,7 +302,7 @@ void Client::ActivateAA(aaID activate){
 					return;
 				}
 			} else {
-				if(!CastSpell(caa->spell_id, target_id, 10, -1, -1, 0, -1, AATimerID + pTimerAAStart, timer_base, 1)) {
+				if (!CastSpell(caa->spell_id, target_id, USE_ITEM_SPELL_SLOT, -1, -1, 0, -1, AATimerID + pTimerAAStart, timer_base, 1)) {
 					//Reset on failed cast
 					SendAATimer(AATimerID, 0, 0xFFFFFF);
 					Message_StringID(15,ABILITY_FAILED);
@@ -320,13 +322,14 @@ void Client::ActivateAA(aaID activate){
 		}
 	}
 	// Check if AA is expendable
-	if (aas_send[activate - activate_val]->special_category == 7)
-	{
+	if (aas_send[activate - activate_val]->special_category == 7) {
+		
 		// Add the AA cost to the extended profile to track overall total
 		m_epp.expended_aa += aas_send[activate]->cost;
+		
 		SetAA(activate, 0);
 
-		Save();
+		SaveAA(); /* Save Character AA */
 		SendAA(activate);
 		SendAATable();
 	}
@@ -529,7 +532,7 @@ void Client::HandleAAAction(aaID activate) {
 	//cast the spell, if we have one
 	if(IsValidSpell(spell_id)) {
 		int aatid = GetAATimerID(activate);
-		if(!CastSpell(spell_id, target_id , 10, -1, -1, 0, -1, pTimerAAStart + aatid , CalcAAReuseTimer(caa), 1)) {
+		if (!CastSpell(spell_id, target_id, USE_ITEM_SPELL_SLOT, -1, -1, 0, -1, pTimerAAStart + aatid, CalcAAReuseTimer(caa), 1)) {
 			SendAATimer(aatid, 0, 0xFFFFFF);
 			Message_StringID(15,ABILITY_FAILED);
 			p_timers.Clear(&database, pTimerAAStart + aatid);
@@ -1018,20 +1021,13 @@ void Client::BuyAA(AA_Action* action)
 	}
 	if(aa2 == nullptr)
 		return;	//invalid ability...
-	
+
 	if(aa2->special_category == 1 || aa2->special_category == 2)
 		return; // Not purchasable progression style AAs
 
 	if(aa2->special_category == 8 && aa2->cost == 0)
 		return; // Not purchasable racial AAs(set a cost to make them purchasable)
 
-	/*
-	if (aa2->sof_type != 3){
-		Message(13,"You may only purchase class specific AA.");
-		return; //C!KAYEN - Only allow class AA to be purchased
-	}
-	*/
-	
 	uint32 cur_level = GetAA(aa2->id);
 	if((aa2->id + cur_level) != action->ability) { //got invalid AA
 		mlog(AA__ERROR, "Unable to find or match AA %d (found %d + lvl %d)", action->ability, aa2->id, cur_level);
@@ -1055,10 +1051,9 @@ void Client::BuyAA(AA_Action* action)
 	}
 	else
 		real_cost = aa2->cost + (aa2->cost_inc * cur_level);
-
+		
+	//C!Kayen - Subject to change. Set which AA Type will use which alt currency	
 	uint32 alt_currency_type = 0;
-
-	//C!Kayen - Subject to change. Set which AA Type will use which alt currency
 	switch(aa2->sof_type)
 	{
 		case 1: //General
@@ -1073,18 +1068,18 @@ void Client::BuyAA(AA_Action* action)
 		case 4: //Special
 			alt_currency_type = 4;
 			break;
-	}
+	}		
 
-	Message(13,"ALT currenct type %i Amt %i Sof Type %i.",alt_currency_type, GetAlternateCurrencyValue(alt_currency_type), aa2->sof_type);
-	//if(m_pp.aapoints >= real_cost && cur_level < aa2->max_level) { //C!KAYEN - USe Alt currency test
-	if(alt_currency_type) {
+	Message(13,"DEBUG Buy_AA: ALT currenct type %i Amt %i Sof Type %i.",alt_currency_type, GetAlternateCurrencyValue(alt_currency_type), aa2->sof_type); //C!Kayen
+	//if(m_pp.aapoints >= real_cost && cur_level < aa2->max_level) { //C!Kayen - Disabled Regular AA purchase buy
+	if(alt_currency_type) { //C!Kayen - Use Alt Currency Type instead of regular AA points
 		
 		if (GetAlternateCurrencyValue(alt_currency_type) >= real_cost && cur_level < aa2->max_level) {
 			SetAA(aa2->id, cur_level+1);
 
 			mlog(AA__MESSAGE, "Set AA %d to level %d", aa2->id, cur_level+1);
 
-			//m_pp.aapoints -= real_cost;
+			//m_pp.aapoints -= real_cost; //C!KAYEN - Use Alt currency
 			SetAlternateCurrencyValue(1, (GetAlternateCurrencyValue(alt_currency_type) - real_cost) );  //C!KAYEN - Use Alt currency
 
 			Save();
@@ -1095,51 +1090,35 @@ void Client::BuyAA(AA_Action* action)
 			}
 			else
 				SendAA(aa2->id);
-	
+
 			SendAATable();
 
 			//we are building these messages ourself instead of using the stringID to work around patch discrepencies
 			//these are AA_GAIN_ABILITY	(410) & AA_IMPROVE (411), respectively, in both Titanium & SoF. not sure about 6.2
+			if(cur_level<1)
+				Message(15,"You have gained the ability \"%s\" at a cost of %d ability %s.", aa2->name, real_cost, (real_cost>1)?"points":"point");
+			else
+				Message(15,"You have improved %s %d at a cost of %d ability %s.", aa2->name, cur_level+1, real_cost, (real_cost>1)?"points":"point");
 
-			/* Initial purchase of an AA ability */
-			if (cur_level < 1){
-				Message(15, "You have gained the ability \"%s\" at a cost of %d ability %s.", aa2->name, real_cost, (real_cost>1) ? "points" : "point");
-
-				/* QS: Player_Log_AA_Purchases */ 
-				if (RuleB(QueryServ, PlayerLogAAPurchases)){
-					std::string event_desc = StringFormat("Initial AA Purchase :: aa_name:%s aa_id:%i at cost:%i in zoneid:%i instid:%i", aa2->name, aa2->id, real_cost, this->GetZoneID(), this->GetInstanceID());
-					QServ->PlayerLogEvent(Player_Log_AA_Purchases, this->CharacterID(), event_desc);
-				}
-			}
-			/* Ranked purchase of an AA ability */
-			else{
-				Message(15, "You have improved %s %d at a cost of %d ability %s.", aa2->name, cur_level + 1, real_cost, (real_cost > 1) ? "points" : "point");
-
-				/* QS: Player_Log_AA_Purchases */
-				if (RuleB(QueryServ, PlayerLogAAPurchases)){
-					std::string event_desc = StringFormat("Ranked AA Purchase :: aa_name:%s aa_id:%i at cost:%i in zoneid:%i instid:%i", aa2->name, aa2->id, real_cost, this->GetZoneID(), this->GetInstanceID());
-					QServ->PlayerLogEvent(Player_Log_AA_Purchases, this->CharacterID(), event_desc);
-				}
-			}
 
 			SendAAStats();
 
 			CalcBonuses();
 			if(title_manager.IsNewAATitleAvailable(m_pp.aapoints_spent, GetBaseClass()))
 				NotifyNewTitlesAvailable();
-
+				
 			//C!Kayen - Remove all spells in same spell group and scribe the new spell / disc.
 
 			uint16 learn_spell_id = 0;
 			int32 new_aa_id = aa2->id + cur_level;
 			int32 aa_effect_id = GetAAEffectid(new_aa_id, 1);
-			
+				
 			if (aa_effect_id == SE_LearnSpellId)
 				learn_spell_id = GetAABase1(new_aa_id,1);
 
-			Message(15,"1 TEST MSG Scribe spell %i [%i %i]", learn_spell_id, new_aa_id, aa_effect_id);
+			Message(15,"DEBUG Buy_AA: Scribe spell %i [%i %i]", learn_spell_id, new_aa_id, aa_effect_id);
 			if (IsValidSpell(learn_spell_id)) {
-				Message(15,"2 TEST MSG Scribe spell %i", learn_spell_id);
+				Message(15,"DEBUG Buy_AA:  Scribe spell %i", learn_spell_id);
 				if (spells[learn_spell_id].IsDisciplineBuff){
 					UnscribeDiscByGroup(learn_spell_id);
 					TrainDisciplineBySpellid(learn_spell_id);
@@ -1149,6 +1128,7 @@ void Client::BuyAA(AA_Action* action)
 					ScribeSpell(learn_spell_id,GetNextAvailableSpellBookSlot(0), true);
 				}
 			}
+			//C!Kayen - Close
 		}
 		else if (GetAlternateCurrencyValue(alt_currency_type) < real_cost){
 			const Item_Struct* item = database.GetItem((GetAltCurrencyItemid(alt_currency_type)));
@@ -1162,7 +1142,6 @@ void Client::BuyAA(AA_Action* action)
 	
 	else 
 		Message(13,"No alternate currency type found.");
-
 }
 
 void Client::SendAATimer(uint32 ability, uint32 begin, uint32 end) {
@@ -1585,11 +1564,15 @@ bool ZoneDatabase::LoadAAEffects2() {
 	return true;
 }
 void Client::ResetAA(){
+	RefundAA(); 
 	uint32 i;
 	for(i=0;i<MAX_PP_AA_ARRAY;i++){
 		aa[i]->AA = 0;
 		aa[i]->value = 0;
+		m_pp.aa_array[MAX_PP_AA_ARRAY].AA = 0;
+		m_pp.aa_array[MAX_PP_AA_ARRAY].value = 0; 
 	}
+
 	std::map<uint32,uint8>::iterator itr;
 	for(itr=aa_points.begin();itr!=aa_points.end();++itr)
 		aa_points[itr->first] = 0;
@@ -1601,6 +1584,12 @@ void Client::ResetAA(){
 	m_pp.raid_leadership_points = 0;
 	m_pp.group_leadership_exp = 0;
 	m_pp.raid_leadership_exp = 0;
+
+	database.DeleteCharacterAAs(this->CharacterID());
+	SaveAA(); 
+	SendAATable();
+	database.DeleteCharacterLeadershipAAs(this->CharacterID());
+	Kick();
 }
 
 int Client::GroupLeadershipAAHealthEnhancement()
@@ -1889,8 +1878,7 @@ void ZoneDatabase::LoadAAs(SendAA_Struct **load){
     }
 
     AALevelCost_Struct aalcs;
-    for (auto row = results.begin(); row != results.end(); ++row)
-    {
+    for (auto row = results.begin(); row != results.end(); ++row) {
         aalcs.Level = atoi(row[1]);
         aalcs.Cost = atoi(row[2]);
         AARequiredLevelAndCost[atoi(row[0])] = aalcs;

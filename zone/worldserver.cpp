@@ -182,7 +182,7 @@ void WorldServer::Process() {
 						else if (scm->queued == 2) // tell queue was full
 							client->Tell_StringID(QUEUE_TELL_FULL, scm->to, scm->message);
 						else if (scm->queued == 3) // person was offline
-							client->Message_StringID(MT_TellEcho, TOLD_NOT_ONLINE);
+							client->Message_StringID(MT_TellEcho, TOLD_NOT_ONLINE, scm->to);
 						else // normal stuff
 							client->ChannelMessageSend(scm->from, scm->to, scm->chan_num, scm->language, scm->message);
 						if (!scm->noreply && scm->chan_num != 2) { //dont echo on group chat
@@ -328,7 +328,7 @@ void WorldServer::Process() {
 
 					entity->CastToMob()->SetZone(ztz->requested_zone_id, ztz->requested_instance_id);
 
-					if(ztz->ignorerestrictions == 3)
+					if(ztz->ignorerestrictions == 3) 
 						entity->CastToClient()->GoToSafeCoords(ztz->requested_zone_id, ztz->requested_instance_id);
 				}
 
@@ -1781,6 +1781,24 @@ void WorldServer::Process() {
 					break;
 			}
 
+			break;
+		}
+		case ServerOP_CZSetEntityVariableByNPCTypeID:
+		{
+			CZSetEntVarByNPCTypeID_Struct* CZM = (CZSetEntVarByNPCTypeID_Struct*)pack->pBuffer;
+			NPC* n = entity_list.GetNPCByNPCTypeID(CZM->npctype_id);
+			if (n != 0) {
+				n->SetEntityVariable(CZM->id, CZM->m_var);
+			}
+			break;
+		}
+		case ServerOP_CZSignalNPC:
+		{
+			CZNPCSignal_Struct* CZCN = (CZNPCSignal_Struct*)pack->pBuffer;
+			NPC* n = entity_list.GetNPCByNPCTypeID(CZCN->npctype_id); 
+			if (n != 0) {
+				n->SignalNPC(CZCN->data);
+			}
 			break;
 		}
 		case ServerOP_CZSignalClient:
