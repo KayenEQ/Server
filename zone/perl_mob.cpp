@@ -8263,6 +8263,50 @@ XS(XS_Mob_GetOnlyAggroLast)
 	XSRETURN(1);
 }
 
+XS(XS_Mob_SendAppearanceEffect2); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_SendAppearanceEffect2)
+{
+	dXSARGS;
+	if (items < 2 || items > 7)
+		Perl_croak(aTHX_ "Usage: Mob::SendAppearanceEffect2(THIS, parm1, parm2, parm3, parm4, parm5, singleclient)");
+	{
+		Mob *		THIS;
+		int32		parm1 = (int32)SvIV(ST(1));
+		int32		parm2 = 0;
+		int32		parm3 = 0;
+		int32		parm4 = 0;
+		int32		parm5 = 0;
+		Client*		client = nullptr;
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		if (items > 2)	{	parm2 = (int32)SvIV(ST(2));	}
+		if (items > 3)	{	parm3 = (int32)SvIV(ST(3));	}
+		if (items > 4)	{	parm4 = (int32)SvIV(ST(4));	}
+		if (items > 5)	{	parm5 = (int32)SvIV(ST(5));	}
+		if (items > 6)	{
+			if (sv_derived_from(ST(6), "Client")) {
+				IV tmp = SvIV((SV*)SvRV(ST(6)));
+				client = INT2PTR(Client *,tmp);
+			}
+			else
+				Perl_croak(aTHX_ "client is not of type Client");
+			if(client == nullptr)
+				Perl_croak(aTHX_ "client is nullptr, avoiding crash.");
+		}
+
+		THIS->SendAppearanceEffect2(parm1, parm2, parm3, parm4, parm5, client);
+	}
+	XSRETURN_EMPTY;
+}
+
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -8568,6 +8612,7 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "NPCLastName"), XS_Mob_NPCLastName, file, "$:$");
 		newXSproto(strcpy(buf, "SetOnlyAggroLast"), XS_Mob_SetOnlyAggroLast, file, "$$");
 		newXSproto(strcpy(buf, "GetOnlyAggroLast"), XS_Mob_GetOnlyAggroLast, file, "$$");
+		newXSproto(strcpy(buf, "SendAppearanceEffect2"), XS_Mob_SendAppearanceEffect2, file, "$$;$$$$");
 		
 
 	XSRETURN_YES;

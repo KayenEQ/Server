@@ -2959,6 +2959,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_EffectField:
+			{
+				effect_field_timer.Start(2000);
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){
@@ -4381,6 +4387,22 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 					my_c->m_TimeSinceLastPositionCheck = cur_time;
 					my_c->m_DistanceSinceLastPositionCheck = 0.0f;
 				}
+				break;
+			}
+
+			//C!Kayen - Custom Buff Fade Effects
+			case SE_EffectField:{
+				uint16 _caster_id = GetID();
+					
+				if (IsNPC() && CastToNPC()->GetSwarmOwner())
+					_caster_id = CastToNPC()->GetSwarmOwner();//If used on swarm pet get the caster id by getting swarm pets owner.
+
+				entity_list.FadeEffectField(_caster_id, spells[buffs[slot].spellid].base[i]);
+
+				if (spells[buffs[slot].spellid].base2[i] == 1) //Limit 1 = Depop the mob with the buff when it fades (Used on swarm pets)
+					Depop();
+				
+				break;				
 			}
 		}
 	}

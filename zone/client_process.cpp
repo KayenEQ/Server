@@ -586,6 +586,9 @@ bool Client::Process() {
 		if (spell_awareness_popup.Check())
 			PopupUI();
 
+		if (effect_field_timer.Check())
+			DoEffectField();
+
 		//C!Kayen END
 					
 		if(spellbonuses.GravityEffect == 1) {

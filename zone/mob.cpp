@@ -421,6 +421,7 @@ Mob::Mob(const char* in_name,
 	hard_MitigateAllDamage = 0;
 	OnlyAggroLast = false;
 	TempPet = false;
+	effect_field_timer.Disable();
 }
 
 Mob::~Mob()
@@ -7114,7 +7115,7 @@ void Mob::ProjectileTargetRingTempPet(uint16 spell_id)
 	TemporaryPets(spell_id, nullptr, pet_name); //Create pet.
 }
 
-int Mob::GetSlotFromSpellID(uint16 spell_id)
+int Mob::GetBuffSlotFromSpellID(uint16 spell_id)
 {
 	int i;
 	uint32 buff_count = GetMaxTotalSlots();
@@ -7123,6 +7124,18 @@ int Mob::GetSlotFromSpellID(uint16 spell_id)
 			return i;
 
 	return -1;
+}
+
+void Mob::BuffFadeBySpellIDCaster(uint16 spell_id, uint16 caster_id)
+{
+	uint32 buff_count = GetMaxTotalSlots();
+	for (int j = 0; j < buff_count; j++)
+	{
+		if (buffs[j].spellid == spell_id && buffs[j].casterid == caster_id)
+			BuffFadeBySlot(j, false);
+	}
+
+	CalcBonuses();
 }
 
 void Mob::TryApplyEffectOrder(Mob* target, uint16 spell_id)
@@ -7176,6 +7189,121 @@ void Mob::TryApplyEffectOrder(Mob* target, uint16 spell_id)
 				}
 			}
 		}
+	}
+}
+//Set apperance effect on NPC then have it fade when NPC dies.
+void Mob::SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target){
+	EQApplicationPacket* outapp = new EQApplicationPacket(OP_LevelAppearance, sizeof(LevelAppearance_Struct));
+	LevelAppearance_Struct* la = (LevelAppearance_Struct*)outapp->pBuffer;
+	la->spawn_id = GetID();
+	la->parm1 = parm1;
+	la->parm2 = parm2;
+	la->parm3 = parm3;
+	la->parm4 = parm4;
+	la->parm5 = parm5;
+	// Note that setting the b values to 0 will disable the related effect from the corresponding parameter.
+	// Setting the a value appears to have no affect at all.s
+	la->value1a = 2;
+	la->value1b = 0;
+	la->value2a = 2;
+	la->value2b = 0;
+	la->value3a = 2;
+	la->value3b = 0;
+	la->value4a = 2;
+	la->value4b = 0;
+	la->value5a = 2;
+	la->value5b = 0;
+	if(specific_target == nullptr) {
+		entity_list.QueueClients(this,outapp);
+	}
+	else if (specific_target->IsClient()) {
+		specific_target->CastToClient()->QueuePacket(outapp, false);
+	}
+	safe_delete(outapp);
+}
+
+void Mob::DoEffectField()
+{
+	/* Effect Field is an AOE at a location in which anything that enters the area gets the buff, this
+	buff then immediately fades upon exiting the area. The bonus is placed from spell effect 1035 which
+	has its base value the spell_id of the buff/debuff which is applied to the mobs who enter the effect field.
+	This bonus therefore is placed on an NPC or Swarmpet at the location center of the field. When the owner of this
+	bonus dies/depops the buff/debuff fades on all mobs.
+	RANGE of field is determined by the applied buff/debuffs RANGE field in spells_new
+	*/
+	if (spellbonuses.EffectField) {
+		Mob* caster = this;
+		
+		if (IsNPC() && CastToNPC()->GetSwarmOwner())
+			caster = entity_list.GetClientByID(CastToNPC()->GetSwarmOwner());
+		
+		if (caster)
+			entity_list.ApplyEffectField(caster, this, spellbonuses.EffectField, false);
+	}
+	else
+		effect_field_timer.Disable();
+}
+
+void EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster)
+{ 
+	if (!IsValidSpell(spell_id) || !center || !caster)
+		return;
+
+	Mob *curmob;
+	float dist = spells[spell_id].range;
+	float dist2 = dist * dist;
+	float dist_targ = 0;
+	bool bad = IsDetrimentalSpell(spell_id);
+
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+		if (!curmob)
+			continue;
+		if (curmob->IsClient() && !curmob->CastToClient()->ClientFinishedLoading())
+			continue;
+		if (curmob == center)
+			continue;
+		if (curmob == caster && !affect_caster)
+			continue;
+		dist_targ = center->DistNoRoot(*curmob);
+
+		if (dist_targ > dist2){
+			if (curmob->FindBuff(spell_id))
+				curmob->BuffFadeBySpellID(spell_id);
+			
+			continue;
+		}
+
+		if (bad){
+			if (!caster->IsAttackAllowed(curmob, true))
+				continue;
+			if (center && !center->CheckLosFN(curmob))
+				continue;
+		}
+		else {
+			if (caster->IsAttackAllowed(curmob, true))
+				continue;
+			if (caster->CheckAggro(curmob))
+				continue;
+		}
+
+		if (curmob && !curmob->FindBuff(spell_id))
+			caster->SpellOnTarget(spell_id, curmob, false, true, 0);
+	}
+}
+
+void EntityList::FadeEffectField(uint16 caster_id, uint16 spell_id)
+{ 
+	//Removes from all npcs the effect field buff when the effect field base spell fades.
+	if (!IsValidSpell(spell_id) || !caster_id)
+		return;
+
+	Mob *curmob;
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+
+		if (curmob && curmob->FindBuff(spell_id))
+			curmob->BuffFadeBySpellIDCaster(spell_id, caster_id);
 	}
 }
 

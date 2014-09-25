@@ -450,6 +450,7 @@ struct StatBonuses {
 	int16 MeleeManaTap;
 	int16 MeleeManaTapPetOwner;
 	int16 MeleeLifeTapPetOwner;
+	uint16 EffectField;
 };
 
 typedef struct

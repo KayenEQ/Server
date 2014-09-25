@@ -688,6 +688,8 @@ bool NPC::Process()
 	SpellProjectileEffect2();
 	SpellProjectileEffectTargetRing();
 	SpellCastingTimerDisplay();
+	if (effect_field_timer.Check())
+		DoEffectField();
 
 	if(spellbonuses.GravityEffect == 1) {
 		if(gravity_timer.Check())

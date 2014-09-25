@@ -1033,8 +1033,13 @@ public:
 	inline bool IsTempPet() const { return TempPet; } 
 	inline void SetTempPet(bool value) { TempPet = value; }
 
-	int GetSlotFromSpellID(uint16 spell_id);
+	int GetBuffSlotFromSpellID(uint16 spell_id);
+	void BuffFadeBySpellIDCaster(uint16 spell_id, uint16 caster_id);
+
 	void TryApplyEffectOrder(Mob* target, uint16 spell_id);
+
+	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //-PERL
+	void DoEffectField();
 	
 	//C!Kayen END
 
@@ -1416,7 +1421,9 @@ protected:
 	int max_stun_resilience;
 	int hard_MitigateAllDamage;
 	bool OnlyAggroLast;
-	bool TempPet; //Need a simple way to check this.
+	bool TempPet; //Need a simple way to check this (Flags the NPC as a temp pet)
+	
+	Timer effect_field_timer;
 
 private:
 	void _StopSong(); //this is not what you think it is
