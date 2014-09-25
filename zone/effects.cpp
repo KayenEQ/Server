@@ -745,6 +745,13 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
+
+	if (CastFromPetOwner(spell_id) && (caster->IsPet() || caster->IsTempPet())) //C!Kayen
+		caster = caster->GetOwner();
+	
+	if (!caster || !center) //C!Kayen
+		return;
+
 	float dist = caster->GetAOERange(spell_id);
 	float dist2 = dist * dist;
 	float min_range2 = spells[spell_id].min_range * spells[spell_id].min_range;
@@ -781,7 +788,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			if (bad) {
 				//affect mobs that are on our hate list, or
 				//which have bad faction with us
-				if (!CanAOEHitNPC(spell_id) && !(caster->CheckAggro(curmob) || f == FACTION_THREATENLY || f == FACTION_SCOWLS) )
+				if (!CanAOEHitNPC(spell_id) && !(caster->CheckAggro(curmob) || f == FACTION_THREATENLY || f == FACTION_SCOWLS) ) //C!Kayen
 					continue;
 			} else {
 				//only affect mobs we would assist.

@@ -7106,7 +7106,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 }
 
 void Mob::ProjectileTargetRingTempPet(uint16 spell_id)
-{
+{   //Used with spell effect SE_TemporaryPetsNoAggro, which spawms a temporary NPC without a target.
 	if (!IsValidSpell(spell_id))
 		return;
 

@@ -1176,13 +1176,9 @@ int32 GetSpellPowerManaModValue(uint16 spell_id)
 
 	return 0;
 }
-//Allows NPC casting spell to hit other NPC's without aggro.
-bool CanAOEHitNPC(uint16 spell_id) 
-{ 
-	if(IsValidSpell(spell_id) && spells[spell_id].deities[0])
-		return true;
-}
 
+bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
+bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 int GetProjCastingAnimation(uint16 spell_id) { return spells[spell_id].viral_range; }
 int GetProjTilt(uint16 spell_id) { return spells[spell_id].pvpresistbase; }
 int GetProjArc(uint16 spell_id) { return spells[spell_id].pvpresistcap; }

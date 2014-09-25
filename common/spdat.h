@@ -927,6 +927,7 @@ bool IsAuraCustomSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);
 bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
+bool CastFromPetOwner(uint16 spell_id); //NPC use only.
 int GetProjCastingAnimation(uint16 spell_id);
 int GetProjArc(uint16 spell_id);
 int GetProjTilt(uint16 spell_id);

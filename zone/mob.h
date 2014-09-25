@@ -1040,6 +1040,7 @@ public:
 
 	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //-PERL
 	void DoEffectField();
+
 	
 	//C!Kayen END
 
