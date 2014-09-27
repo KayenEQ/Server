@@ -2298,7 +2298,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 	}
 
-	EnchanterManaFocusConsume(spell_id); //C!Kayen
+	TryEnchanterManaFocusConsume(spell_id); //C!Kayen
 	
 	// if this was a spell slot or an ability use up the mana for it
 	// CastSpell already reduced the cost for it if we're a client with focus

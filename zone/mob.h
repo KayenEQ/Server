@@ -620,6 +620,7 @@ public:
 	void CalcSpellPowerDistanceMod(uint16 spell_id, float range, Mob* caster = nullptr);
 	inline int16 GetSpellPowerDistanceMod() const { return SpellPowerDistanceMod; };
 	inline void SetSpellPowerDistanceMod(int16 value) { SpellPowerDistanceMod = value; };
+	int32 GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot = 0);
 
 	void ModSkillDmgTaken(SkillUseTypes skill_num, int value);
 	int16 GetModSkillDmgTaken(const SkillUseTypes skill_num);
@@ -1028,7 +1029,7 @@ public:
 	int32 CalcSpellPowerManaMod(uint16 spell_id);//Enchanter special
 	int32 GetSpellPowerModFromPet(uint16 spell_id);
 	bool TryEnchanterManaFocusSpell(uint16 spell_id);
-	void EnchanterManaFocusConsume(uint16 spell_id);
+	void TryEnchanterManaFocusConsume(uint16 spell_id);
 
 	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - Perl
 	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } // - Perl
@@ -1043,7 +1044,6 @@ public:
 
 	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //-PERL
 	void DoEffectField();
-	
 	
 	//C!Kayen END
 
