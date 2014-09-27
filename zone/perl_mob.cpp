@@ -8640,7 +8640,7 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "SetFlurryChance"), XS_Mob_SetFlurryChance, file, "$$");
 		newXSproto(strcpy(buf, "GetFlurryChance"), XS_Mob_GetFlurryChance, file, "$");
 		newXSproto(strcpy(buf, "GetSpellStat"), XS_Mob_GetSpellStat, file, "$$$$");
-		//C!Kayyen
+		//C!Kayen
 		newXSproto(strcpy(buf, "DisableTargetSpellAnim"), XS_Mob_DisableTargetSpellAnim, file, "$$");
 		newXSproto(strcpy(buf, "IsTargetSpellAnimDisabled"), XS_Mob_IsTargetSpellAnimDisabled, file, "$$");
 		newXSproto(strcpy(buf, "NPCLastName"), XS_Mob_NPCLastName, file, "$:$");
@@ -8648,7 +8648,6 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "GetOnlyAggroLast"), XS_Mob_GetOnlyAggroLast, file, "$$");
 		newXSproto(strcpy(buf, "SendAppearanceEffect2"), XS_Mob_SendAppearanceEffect2, file, "$$;$$$$");
 		
-
 	XSRETURN_YES;
 }
 

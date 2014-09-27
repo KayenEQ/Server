@@ -8064,3 +8064,4 @@ bool Mob::LineWalk(float heading, float distance,  float interval, float size)
 
     return new Point(end.X-deltaX, end.Y-deltaY);
 }*/
+

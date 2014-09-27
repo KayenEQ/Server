@@ -199,8 +199,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 	if (!IsPowerDistModSpell(spell_id))
 		SetSpellPowerDistanceMod(0);
-
-	bool SE_SpellTrigger_HasCast = false;
+		
+	bool SE_SpellTrigger_HasCast = false;	
 
 	// iterate through the effects in the spell
 	for (i = 0; i < EFFECT_COUNT; i++)
@@ -2779,7 +2779,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				Message(10, "The power of your next illusion spell will flow to your grouped target in your place.");
 				break;
 			}
-
+			
 			case SE_ApplyEffect: {
 
 				if (caster && IsValidSpell(spells[spell_id].base2[i])){
@@ -2789,7 +2789,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				}
 				break;
 			}
-
+			
 			case SE_SpellTrigger: {
 
 				if (!SE_SpellTrigger_HasCast) {
@@ -6777,7 +6777,7 @@ void Mob::ResourceTap(int32 damage, uint16 spellid){
 				else
 					Damage(this, -damage,0, SkillEvocation,false);
 			}
-			
+
 			if (spells[spellid].base2[i] == 1)  //Mana Tap
 				SetMana(GetMana() + damage);
 
