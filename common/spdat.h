@@ -652,7 +652,7 @@ typedef enum {
 #define SE_MitigateAllDamage			1024 // implemented - Increase/Decrease ALL spell and melee damage
 #define SE_PercentalMana				1025 // implemented - 
 #define SE_MeleeManaTap					1026 // implemented - 
-#define SE_SpellPowerManaMod			1027 // implemented - Enchanter effect that focuses spells from % mana
+#define SE_SpellPowerManaMod			1027 // implemented - Enchanter effect that focuses spells from % mana base: Mod% Limit % divider mana amt mod
 #define SE_FadeIfTargetNotCaster		1028 // implemented - Fade on buff tick if current taret is not caster.
 #define SE_ApplyEffectProjectileHit		1028 // implemented - Apply an effect on CASTER when projectile hits target
 #define SE_TemporaryPetsNoAggro			1029 // implemented - Base #Pets Limit (0=At Loc/1=Move to Loc) Max = Duration

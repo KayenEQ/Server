@@ -57,7 +57,7 @@ int32 NPC::GetActSpellDamage(uint16 spell_id, int32 value,  Mob* target) {
 			value -= target->GetFcDamageAmtIncoming(this, spell_id)/spells[spell_id].buffduration;
 	 }
 	  	 
-	 value += dmg*SpellFocusDMG/100; 
+	 value += dmg*GetSpellFocusDMG()/100; 
 
 	if (AI_HasSpellsEffects()){
 		int16 chance = 0;
@@ -278,7 +278,7 @@ int32 NPC::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 
 	//Scale all NPC spell healing via SetSpellFocusHeal(value)
 	value = GetBaseSpellPower(value,spell_id, false, true); //C!Kayen NPC Heal
-	value += value*SpellFocusHeal/100; 
+	value += value*GetSpellFocusHeal()/100; 
 
 	 if (target) {
 		value += target->GetFocusIncoming(focusFcHealAmtIncoming, SE_FcHealAmtIncoming, this, spell_id); 
@@ -743,8 +743,12 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
 
-	if (CastFromPetOwner(spell_id) && (caster->IsPet() || caster->IsTempPet())) //C!Kayen
+	if (CastFromPetOwner(spell_id) && (caster->IsPet() || caster->IsTempPet())){ //C!Kayen
+		uint16 petid = caster->GetID();
 		caster = caster->GetOwner();
+		if (caster)
+			caster->SetOriginCasterID(petid);
+	}
 	
 	if (!caster || !center) //C!Kayen
 		return;

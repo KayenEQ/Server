@@ -192,7 +192,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		int focus_amt = 0;
 		if (caster && caster->IsClient()){
 			focus_amt = caster->GetBaseSpellPowerWizard();
-			focus_amt += caster->GetSpellPowerManaMod(spell_id);
+			focus_amt += caster->CalcSpellPowerManaMod(spell_id);
 		}
 		buffs[buffslot].focus = focus_amt;
 	}

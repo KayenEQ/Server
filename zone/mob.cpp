@@ -422,6 +422,7 @@ Mob::Mob(const char* in_name,
 	OnlyAggroLast = false;
 	TempPet = false;
 	effect_field_timer.Disable();
+	origin_caster_id = 0;
 }
 
 Mob::~Mob()
@@ -6757,14 +6758,16 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 
 	if (!IsValidSpell(spell_id))
 		return 0;
-	
+
 	int16 mod = 0;
 
 	if (slot > 0)
 		value += value*buffs[slot].focus/100;
+	if (CastFromPetOwner(spell_id))
+		value += value*GetSpellPowerModFromPet(spell_id)/100;
 	else {
 		value += value*GetBaseSpellPowerWizard()/100; //Wizard Special
-		value += value*GetSpellPowerManaMod(spell_id)/100;//Enchanter Special
+		value += value*CalcSpellPowerManaMod(spell_id)/100;//Enchanter Special
 	}
 
 	mod = spellbonuses.BaseSpellPower + itembonuses.BaseSpellPower + aabonuses.BaseSpellPower; //All effects
@@ -6993,18 +6996,38 @@ void Mob::PetTapToOwner(int32 damage)
 	}
 }
 
-int32 Mob::GetSpellPowerManaMod(uint16 spell_id)
+int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
 {
-	if (!IsValidSpell(spell_id))
+	if (GetClass() != ENCHANTER && !IsValidSpell(spell_id))
 		return 0;
 
-	int32 effect_mod = GetSpellPowerManaModValue(spell_id); //Percent increase of base damage.
+	//int32 effect_mod = GetSpellPowerManaModValue(spell_id); //Percent increase of base damage.
+	int effect_mod = 0;
+	int limit_mod = 0;
 
-	if (!effect_mod)
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_SpellPowerManaMod){
+			effect_mod = spells[spell_id].base[i]; //Modifies bonus from mana ratio interval
+			limit_mod = spells[spell_id].base2[i]; //Modifies bonus from max mana amount
+			break;
+		}
+	}
+	
+	//If set to (-1) then do not focus effect, but will still require/drain mana.
+	if (!effect_mod || effect_mod < 0)
 		return 0;
 
 	uint8 pct_mana = GetManaPercent();
-	int32 mana_amt_mod = ((GetMaxMana()*100)/5)/(1000/5); //For every 1000 mana gain 1% bonus (This will need to be tuned).
+
+	int mana_amt_mod = 0;
+	int mana_divider = 1000; //Default value, overwritten by Limit value.
+	
+	if (limit_mod > 0)
+		mana_divider = limit_mod;
+
+	if (limit_mod != -1 && (mana_divider >= 5))
+		mana_amt_mod = ((GetMaxMana()*100)/5)/(mana_divider/5); //For every 1000 mana gain 1% bonus (This will need to be tuned).
+	
 	int focus_mod = 0;
 
 	if (pct_mana >= 20 && pct_mana  < 40)
@@ -7019,7 +7042,28 @@ int32 Mob::GetSpellPowerManaMod(uint16 spell_id)
 		focus_mod = 4;
 
 	int total_mod = (effect_mod*focus_mod) + ((mana_amt_mod * focus_mod) / 100);
+	Shout("Enchanter Mod: Effect Mod %i Mana_Mod %i Total Mod %i", (effect_mod*focus_mod), ((mana_amt_mod * focus_mod) / 100), total_mod);
+	//SetBaseSpellPowerEnchanter(total_mod);
 	return total_mod;
+}
+
+int32 Mob::GetSpellPowerModFromPet(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	int focus = 0;
+	Mob* pet = nullptr;
+	
+	if (GetOriginCasterID())
+		pet = entity_list.GetMob(GetOriginCasterID());
+
+	if (pet) {
+
+		focus = pet->CastToNPC()->GetSpellFocusDMG();
+		Shout("Focus %i", focus);
+	}
+	return focus;
 }
 
 bool Mob::TryEnchanterManaFocusSpell(uint16 spell_id)
@@ -7027,9 +7071,10 @@ bool Mob::TryEnchanterManaFocusSpell(uint16 spell_id)
 	if (IsClient() && GetClass() == ENCHANTER) {
 
 		if (GetSpellPowerManaModValue(spell_id)) {
-			if (GetManaPercent() >= 20)
+			if (GetManaPercent() >= 20){
 				return true;
-			else {
+			}
+			else { 
 				//Message_StringID(13, INSUFFICIENT_MANA);
 				Message(13, "Insufficient Mana to cast this spell! This ability requires at least 20 percent Mana.");
 				InterruptSpell();
@@ -7042,10 +7087,16 @@ bool Mob::TryEnchanterManaFocusSpell(uint16 spell_id)
 
 void Mob::EnchanterManaFocusConsume(uint16 spell_id)
 {
-	if (IsClient() && GetClass() == ENCHANTER) {
-
-		if (GetSpellPowerManaModValue(spell_id))
-			SetMana(0);
+	if (IsClient() && GetClass() == ENCHANTER && IsValidSpell(spell_id)) {
+		for(int i = 0; i < EFFECT_COUNT; i++){
+			if (spells[spell_id].effectid[i] == SE_SpellPowerManaMod){
+			
+				if (spells[spell_id].base[i]){
+					SetMana(0);
+					Shout("Set mana zero %i", spell_id);
+				}
+			}
+		}
 	}
 }
 
@@ -7055,8 +7106,8 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		return;
 
 	int mod = 0;
-	int enc_mod = owner->GetSpellPowerManaMod(spell_id);
-	
+	int enc_mod = owner->CalcSpellPowerManaMod(spell_id);
+	//Need to set a stat on NPC that is equal to the spell ID to be cast.
 	mod = enc_mod;
 
 	//1: Check for any special pet 'type' behaviors
@@ -7099,10 +7150,12 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	min_dmg += min_dmg * mod / 100;
 	AC += AC * mod / 100;
 	ChangeSize(GetSize() + (GetSize() * static_cast<float>(mod/2) / 100));
-	SpellFocusDMG += SpellFocusDMG * mod / 100;
-	SpellFocusHeal += SpellFocusHeal * mod / 100;
+	Shout("Apply to NPC: Mod %i Focus %i", mod, GetSpellFocusDMG());
+	SetSpellFocusDMG(GetSpellFocusDMG() + mod);
+	Shout("Apply to NPC: Mod %i Focus %i", mod, GetSpellFocusDMG());
+	SetSpellFocusHeal(GetSpellFocusHeal() + mod);
 	//Shout("DEBUG: ApplyCustomPetBonuses :: POST Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
-
+	SetEntityVariable("SpellPowerModFromPet", "1"); //Flags the temp pet to be transfer spell focus to cast.
 	SetHP(GetMaxHP());
 }
 

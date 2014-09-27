@@ -966,6 +966,8 @@ public:
 
 	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
 	inline Timer GetSpellEndTime() const { return spellend_timer; }
+	inline void SetOriginCasterID(uint16 value) { origin_caster_id = value; }
+	inline uint16 GetOriginCasterID() const { return origin_caster_id; }
 	
 	void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
@@ -1023,7 +1025,8 @@ public:
 
 	void MeleeManaTap(int32 damage);
 	void PetTapToOwner(int32 damage);
-	int32 GetSpellPowerManaMod(uint16 spell_id);//Enchanter special
+	int32 CalcSpellPowerManaMod(uint16 spell_id);//Enchanter special
+	int32 GetSpellPowerModFromPet(uint16 spell_id);
 	bool TryEnchanterManaFocusSpell(uint16 spell_id);
 	void EnchanterManaFocusConsume(uint16 spell_id);
 
@@ -1423,6 +1426,7 @@ protected:
 	int hard_MitigateAllDamage;
 	bool OnlyAggroLast;
 	bool TempPet; //Need a simple way to check this (Flags the NPC as a temp pet)
+	uint16 origin_caster_id;
 	
 	Timer effect_field_timer;
 

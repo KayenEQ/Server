@@ -789,6 +789,7 @@ void Mob::ZeroCastingVars()
 	SetCastFromCrouchInterval(0); //C!Kayen
 	SetCuredCount(0); //C!Kayen
 	ClearNPCLastName(); //C!Kayen
+	SetOriginCasterID(0); //C!Kayen
 }
 
 void Mob::InterruptSpell(uint16 spellid)
@@ -2297,12 +2298,13 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 	}
 
+	EnchanterManaFocusConsume(spell_id); //C!Kayen
+	
 	// if this was a spell slot or an ability use up the mana for it
 	// CastSpell already reduced the cost for it if we're a client with focus
 	if(slot != USE_ITEM_SPELL_SLOT && slot != POTION_BELT_SPELL_SLOT && mana_used > 0)
 	{
 		mlog(SPELLS__CASTING, "Spell %d: consuming %d mana", spell_id, mana_used);
-		EnchanterManaFocusConsume(spell_id); //C!Kayen
 		if (!DoHPToManaCovert(mana_used)){
 			SetMana(GetMana() - mana_used);
 			TryTriggerOnValueAmount(false, true);
@@ -2665,11 +2667,9 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 
 	res = mod_buff_duration(res, caster, target, spell_id);
 
-	Shout("TEST %i", caster->GetSpellPowerManaMod(spell_id));
+	res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
 
 	mlog(SPELLS__CASTING, "Spell %d: Casting level %d, formula %d, base_duration %d: result %d",
-		spell_id, castlevel, formula, duration, res);
-	Shout("Spell %d: Casting level %d, formula %d, base_duration %d: result %d",
 		spell_id, castlevel, formula, duration, res);
 
 	return(res);
