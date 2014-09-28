@@ -2435,9 +2435,6 @@ void Mob::AddToHateList(Mob* other, int32 hate, int32 damage, bool iYellForHelp,
 		hate = ((hate * (hatemod))/100);
 	}
 
-	if (hate)
-		other->Shout("Get Hate value [ %i ]", hate);
-
 	if(IsPet() && GetOwner() && GetOwner()->GetAA(aaPetDiscipline) && IsHeld() && !IsFocused()) { //ignore aggro if hold and !focus
 		return;
 	}

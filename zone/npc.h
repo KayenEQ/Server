@@ -404,8 +404,6 @@ public:
 
 	//C!Kayen - START
 	void ApplyCustomPetBonuses(Mob* owner, uint16 spell_id);
-	//int32 GetSpellPowerModFromPet(uint16 spell_id);
-	//uint32 GetSwarmTimerRemain() { return  GetSwarmInfo()->duration->GetRemainingTime(); }
 
 protected:
 

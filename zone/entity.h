@@ -414,11 +414,11 @@ public:
 	void RefreshClientXTargets(Client *c);
 
 	//C!Kayen
-	//Mob* GetTempPetByTypeID(uint32 npc_typeid, uint16 ownerid, bool SetVarTargetRing);
 	void TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id);
 	void ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id);
 	void ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster);
 	void FadeEffectField(uint16 caster_id, uint16 spell_id);
+	NPC *GetTempPetByNPCTypeID(uint32 npc_id, uint16 ownerid, bool SetVarTargetRing);
 
 protected:
 	friend class Zone;

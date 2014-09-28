@@ -2278,7 +2278,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		//C!Kayen - Custom Target Type [Clients use ST_Ring / NPC use ST_TargetLocation]
 		case TargetRing:{
 			if (IsEffectInSpell(spell_id,SE_TemporaryPetsNoAggro))
-				ProjectileTargetRingTempPet(spell_id);
+				TargetRingTempPet(spell_id);
 			else if (GetProjSpeed(spell_id) > 1) //Denotes spell to use projectile
 				ProjectileTargetRing(spell_id);
 			else
@@ -2298,8 +2298,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 	}
 
-	TryEnchanterManaFocusConsume(spell_id); //C!Kayen
-	
 	// if this was a spell slot or an ability use up the mana for it
 	// CastSpell already reduced the cost for it if we're a client with focus
 	if(slot != USE_ITEM_SPELL_SLOT && slot != POTION_BELT_SPELL_SLOT && mana_used > 0)
@@ -2311,7 +2309,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 	}
 	
-	DoCustomResourceDrain(); //C!Kayen
+	TryWizardEnduranceConsume(); //C!Kayen
+	TryEnchanterManaFocusConsume(spell_id); //C!Kayen
 
 	//set our reuse timer on long ass reuse_time spells...
 	if(IsClient())

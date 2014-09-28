@@ -664,7 +664,7 @@ typedef enum {
 #define SE_EffectField					1035 // implemented - Base: Spell ID of Effect, Limit: 1=Kill Caster on Fade
 #define SE_HealAggroMod					1036 // implemented - Modifies heal spell aggro by %
 #define SE_SpellAggroMod				1037 // implemented - Modifies non-heal spell aggro by %
-#define SE_FocusFromBuffSpellGroup		1038 // implemented - Spell modifier based on buffs on target. Base SpellGroup Limit Modifier (x Rank)
+#define SE_SpellPowerFromBuffSpellGroup	1038 // implemented - Spell modifier based on buffs on target. Base SpellGroup Limit Modifier (x Rank)
 // LAST
 
 

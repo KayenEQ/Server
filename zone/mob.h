@@ -902,149 +902,198 @@ public:
 	void	mod_spell_cast(uint16 spell_id, Mob* spelltar, bool reflect, bool use_resist_adjust, int16 resist_adjust, bool isproc);
 	bool    mod_will_aggro(Mob *attacker, Mob *on);
 
-	//C!Kayen - Custom Mob Functions
-	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
-	
-	inline float GetMomentum() const { return(momentum); }
-	void SetMomentum(float momentum_value) { momentum = momentum_value; }
-	inline float GetMomentumSpeed() const { return(0.005f); }
-	void MomentumDamage(Mob *defender, int32 &damage);
+	//C!Kayen - Custom Mob Functions [Also see client.h, entity_list.h, npc.h for additional functions that are handled in mob.cpp] Order as in mob.cpp
 
+	//C!SpecialAASystem - see client.h - Helper functions for purchasing AA
+	/* client.h
+	//!// void Client::UnscribeSpellByGroup(uint16 spellid);
+	//!// void Client::UnscribeDiscByGroup(uint16 spellid);
+	//!// bool Client::TrainDisciplineBySpellid(uint16 spell_id);
+	//!// void Client::RefundAAType(uint32 sof_type = 0);
+	//!// uint32 Client::GetAltCurrencyItemid(uint32 alt_currency_id);
+	*/
+
+	//C!Uncategorized
+	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
+	bool RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr);
+	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
+	void ClientFaceTarget(Mob* MobToFace = nullptr);
+	bool AACastSpell(uint16 spell_id, uint16 target_id);
+	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value);
+	//!// EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id)
+	//!// EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id)
+	
+	//C!Momentum
+	void MomentumDamage(Mob *defender, int32 &damage);
+	inline float GetMomentum() const { return(momentum); }
+	inline void SetMomentum(float momentum_value) { momentum = momentum_value; }
+	inline float GetMomentumSpeed() const { return(0.005f); }
+
+	//C!DirectionalCalcs
 	bool InAngleMob(Mob *other = nullptr, float start_angle = 0.0f, float stop_angle = 0.0f) const;
 	inline bool LeftMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 56.0f, 124.0f); }
 	inline bool RightMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 236.0f, 304.0f); }
 	inline bool FlankMob(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
 		{ return (!other || other == this) ? true : (MobAngle(other, ourx, oury) > 56.0f && MobAngle(other, ourx, oury) > 124.0f); }
 	bool SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target);
+	bool SpellDirectionalTarget(uint16 spell_id, Mob *target); //Used in popup UI
 	
+	//C!CustomSkillBonus
 	void SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage);
 	int GetWpnSkillDmgBonusAmt();
 	void SetSpellResistTypeDmgBonus(uint16 spell_id, int32 damage);
 	int GetSpellResistTypeDmgBonus();
 	
-	void LeapProjectileEffect();
-	void SetLeapEffect(uint16 spell_id);
-	
-	void PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
-	
-	int32 GetSpellPowerAmtHitsEffect(uint16 spell_id);
-	inline int32 GetSpellPowerAmtHits() const { return SpellPowerAmtHits; }
-	void SetSpellPowerAmtHits(int32 value) { SpellPowerAmtHits = value; }
+	//C!MiscTargetRing
+	void TargetRingTempPet(uint16 spell_id); //Spawn a temp pet using target ring.
+	bool TryTargetRingEffects(uint16 spell_id); //Handles multiple different effects.
+	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
+	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
 
-	void CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
-	inline int32 GetCastingZDiff() const { return casting_z_diff; }
-	void SetCastingZDiff(int32 value) { casting_z_diff = value; }
-	
-	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
-	//bool LineWalk(float heading, float distance, float interval, float size = 1);
-	Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false);
-	inline float GetTargetRingX() const { return targetring_x; }
-	inline float GetTargetRingY() const { return targetring_y; }
-	inline float GetTargetRingZ() const { return targetring_z; }
-	
+	//C!ProjectileTargetRing
 	bool ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge = false);
-	uint32 GetProjectileTargetRingPetID() { return 1000000; } //npctypesid from database for temp pet
+	//!// NPC *EntityList::GetTempPetByNPCTypeID(uint32 npc_id, uint16 ownerid, bool SetVarTargetRing)
 	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
 	void SpellProjectileEffectTargetRing();
+	inline uint32 GetProjectileTargetRingPetID() { return 1000000; } //HARDCODED - npctypesid from database for temp pet
 	inline bool HasProjectileRing() const { return ActiveProjectileRing; }
 	inline void SetProjectileRing(bool HasProjectileRing_value) { ActiveProjectileRing = HasProjectileRing_value; }
-	bool ExistsProjectileRing();
 	inline bool IsProjectilePet() const { return ProjectilePet; }
 	inline void SetProjectilePet(bool value) { ProjectilePet = value; }
+	bool ExistsProjectileRing();
 	void TryApplyEffectProjectileHit(uint16 spell_id);
 	float CalcSpecialProjectile(uint16 spell_id);
-	void ProjectileTargetRingTempPet(uint16 spell_id);
 
+	//C!Projectile2
 	void SpellProjectileEffect2();
 	bool TrySpellProjectile2(Mob* spell_target,  uint16 spell_id);
 	inline bool HasProjectile() const { return ActiveProjectile; }
 	inline void SetProjectile(bool HasProjectile_value) { ActiveProjectile = HasProjectile_value; }
 	bool ExistsProjectile();
-
-	bool RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr);
-	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
-	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
-
-	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; }
-	inline Timer GetSpellEndTime() const { return spellend_timer; }
-	inline void SetOriginCasterID(uint16 value) { origin_caster_id = value; }
-	inline uint16 GetOriginCasterID() const { return origin_caster_id; }
 	
-	void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
-	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
-	void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
-	inline int8 GetCastFromCrouchIntervalProj() const { return CastFromCrouchIntervalProj; }
-	void CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
-
-	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value);
-
+	//C!MeleeCharge - THIS NEEDS TO BE FINISHED
 	void MeleeCharge();
 	inline bool IsMeleeChargeActive() const { return MeleeChargeActive; }
-	void SetMeleeChargeActive(bool value) { MeleeChargeActive = value; }
+	inline void SetMeleeChargeActive(bool value) { MeleeChargeActive = value; }
 	inline uint16 GetMeleeChargeTargetID() const { return MeleeCharge_target_id; }
-	void SetMeleeChargeTargetID(bool value) { MeleeCharge_target_id = value; }
-
-	uint16 GetSpellGroupFromLimit(uint16 spell_id);
-	void TryCastonSpellFinished(Mob *target, uint32 spell_id);
-
-	bool SpellDirectionalTarget(uint16 spell_id, Mob *target);
-
-	void ChangeNPCLastName(const char* in_lastname); //Perl
-	void ClearNPCLastName();
-	void SpellCastingTimerDisplay();
-
-	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; } //Perl
-	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //Perl
-
-	bool TryTargetRingEffects(uint16 spell_id);
+	inline void SetMeleeChargeTargetID(bool value) { MeleeCharge_target_id = value; }
+		
+	//C!BaseSpellPower
 	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false, int slot = -1);
-	int16 GetBaseSpellPowerWizard();
+	void CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
 
-	bool AACastSpell(uint16 spell_id, uint16 target_id);
+	//C!LastName
+	void ChangeNPCLastName(const char* in_lastname); //PERL EXPORT
+	void ClearNPCLastName();
+	void SpellCastingTimerDisplay(); //Displayed as Last Name
+
+	//C!AdjustRecast - Rest of functions are in client.h
+	uint16 GetSpellGroupFromLimit(uint16 spell_id);
+	//!// Client::DoAdjustRecastTimer()
+	//!// Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
+
+	//C!CastFromCrouch - Spell Field CastFromCrouch
+	//!// Client::CastFromCrouch(uint16 spell_id)
+	int32 CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
+	inline void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
+	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
+	inline void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
+	inline int8 GetCastFromCrouchIntervalProj() const { return CastFromCrouchIntervalProj; }
+
+	//C!Wizard :: Functions related to spell power from endurance
 	inline bool IsWizardInnateActive() const { return WizardInnateActive; }
 	inline void SetWizardInnateActive(bool value) { WizardInnateActive = value; }
-	void DoCustomResourceDrain();
+	int16 GetBaseSpellPowerWizard();
+	void TryWizardEnduranceConsume();
+
+	//C!Enchanter :: Functions related to spell power from mana amount
+	int32 CalcSpellPowerManaMod(uint16 spell_id); //Enchanter special focus
+	bool TryEnchanterManaFocusSpell(uint16 spell_id);
+	void TryEnchanterManaFocusConsume(uint16 spell_id);
+	int32 GetSpellPowerModFromPet(uint16 spell_id); //Enchanter special focus from pet
+	//!// NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
+	//!// Client::IsSpectralBladeEquiped()
+
+	//C!SpellEffects :: SE_TryCastonSpellFinished	
+	void TryCastonSpellFinished(Mob *target, uint32 spell_id);
+
+	//C!SpellEffects :: SE_SpellPowerFromBuffSpellGroup
+	int32 CalcSpellPowerFromBuffSpellGroup(int32 &damage, uint16 spell_id, Mob* caster);
 	
-	int GetCuredCount() const { return cured_count; }
+	//C!SpellEffects :: SE_SpellPowerAmtHits
+	int32 GetSpellPowerAmtHitsEffect(uint16 spell_id);
+	inline int32 GetSpellPowerAmtHits() const { return SpellPowerAmtHits; }
+	inline void SetSpellPowerAmtHits(int32 value) { SpellPowerAmtHits = value; }
+
+	//C!SpellEffects :: SE_SpellPowerHeightMod
+	int32 CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
+	inline int32 GetCastingZDiff() const { return casting_z_diff; }
+	inline void SetCastingZDiff(int32 value) { casting_z_diff = value; }
+
+	//C!SpellEffects :: SE_EffectField
+	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //PERL EXPORTED
+	void DoEffectField();
+	//!// EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster)
+	//!// EntityList::FadeEffectField(uint16 caster_id, uint16 spell_id)
+
+	//C!SpellEffects :: SE_MeleeManaTap / SE_MeleeLifeTapPetOwner / SE_MeleeManaTapPetOwner	
+	void MeleeManaTap(int32 damage);
+	void PetTapToOwner(int32 damage);
+
+	//C!SpellEffects :: SE_CastOnLeap / SE_TossUp
+	void LeapProjectileEffect();
+	void SetLeapEffect(uint16 spell_id);
+
+	//C!SpellEffects :: SE_PetLifeShare
+	void PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
+
+	//C!SpellEffects :: SE_ApplyEffectOrder
+	void TryApplyEffectOrder(Mob* target, uint16 spell_id);
+
+	//C!SpellEffects :: SE_CastOnCurerFromCure / SE_CastOnCureFromCure
+	inline int GetCuredCount() const { return cured_count; }
 	inline void SetCuredCount(int value) { cured_count = value; }
 	void CuredEffect();
 	void CastOnCurerFromCure(uint16 spell_id);
 	void CastOnCureFromCure(uint16 spell_id);
 
-	int GetStunResilience() const { return stun_resilience; }
+	//C!StunResilience
+	inline int GetStunResilience() const { return stun_resilience; }
 	inline void SetStunResilience(int value) { stun_resilience = value; }
-	int GetMaxStunResilience() const { return max_stun_resilience; }
+	inline int GetMaxStunResilience() const { return max_stun_resilience; }
 	inline void SetMaxStunResilience(int value) { max_stun_resilience = value; }
-	int GetOpportunityMitigation() const { return hard_MitigateAllDamage; }
+	inline int GetOpportunityMitigation() const { return hard_MitigateAllDamage; }
 	inline void SetOpportunityMitigation(int value) { hard_MitigateAllDamage = value; }
-	bool TriggerStunResilience(uint16 spell_id); //Not used currently
 	bool CalcStunResilience(int effect_value, Mob* caster = nullptr);
 	void OpportunityFromStunCheck();
 	void OpportunityFromStunClear();
+	
+	//C!BUFFS
+	int GetBuffSlotFromSpellID(uint16 spell_id);
+	void BuffFadeBySpellIDCaster(uint16 spell_id, uint16 caster_id);
+	uint16 GetBuffSpellidBySpellGroup(int spellgroupid);
 
-	void ClientFaceTarget(Mob* MobToFace = 0);
+	//C!Misc Inline Functions
+	inline float GetTargetRingX() const { return targetring_x; }
+	inline float GetTargetRingY() const { return targetring_y; }
+	inline float GetTargetRingZ() const { return targetring_z; }
 
-	void MeleeManaTap(int32 damage);
-	void PetTapToOwner(int32 damage);
-	int32 CalcSpellPowerManaMod(uint16 spell_id);//Enchanter special
-	int32 GetSpellPowerModFromPet(uint16 spell_id);
-	bool TryEnchanterManaFocusSpell(uint16 spell_id);
-	void TryEnchanterManaFocusConsume(uint16 spell_id);
-
-	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - Perl
+	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - PERL EXPORTED
 	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } // - Perl
 
 	inline bool IsTempPet() const { return TempPet; } 
 	inline void SetTempPet(bool value) { TempPet = value; }
 
-	int GetBuffSlotFromSpellID(uint16 spell_id);
-	void BuffFadeBySpellIDCaster(uint16 spell_id, uint16 caster_id);
+	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; } //PERL EXPORTED
+	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //PERL EXPORTED
 
-	void TryApplyEffectOrder(Mob* target, uint16 spell_id);
+	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; } //casting var
+	inline Timer GetSpellEndTime() const { return spellend_timer; } //casting var
 
-	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //-PERL
-	void DoEffectField();
-	
+	inline void SetOriginCasterID(uint16 value) { origin_caster_id = value; }
+	inline uint16 GetOriginCasterID() const { return origin_caster_id; }
+
+	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 
 protected:
