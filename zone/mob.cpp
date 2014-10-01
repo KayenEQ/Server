@@ -6398,7 +6398,7 @@ void Mob::MeleeCharge()
 
 //#### C!BaseSpellPower
 
-int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool IsHeal, int slot)
+int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool IsHeal, int16 buff_focus)
 {
 	/*
 	Non focus % based stackable spell modifiers. - Works on NPC and Clients
@@ -6418,9 +6418,9 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 		return 0;
 
 	int16 mod = 0;
-	Shout("Buff Slot Focus %i, %i slot", buffs[slot].focus , slot);
-	if (slot >= 0)
-		value += value*buffs[slot].focus/100;
+	Shout("Mob::GetBaseSpellPower Buff Slot Focus %i  slot %i ", buff_focus , buff_focus);
+	if (buff_focus >= 0) //Default is -1 (Therefore we only check this when checking over time)
+		value += value*buff_focus/100;
 	else {
 		value += value*GetBaseSpellPowerWizard()/100; //Wizard Special
 		
@@ -6429,8 +6429,6 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 		else
 			value += value*CalcSpellPowerManaMod(spell_id)/100;//Enchanter Special
 	}
-
-
 
 	mod = spellbonuses.BaseSpellPower + itembonuses.BaseSpellPower + aabonuses.BaseSpellPower; //All effects
 	
@@ -6445,8 +6443,8 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 	}
 
 	value += value*mod/100;
-
-	return value;
+	Shout("Mob::GetBaseSpellPower Final Base Focus value %i mod %i", value, mod);
+	return value; //This is final damage/heal or whatever returned.
 }
 
 void Mob::CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* caster, int effectid)
@@ -7402,8 +7400,9 @@ void Mob::TryApplyEffectOrder(Mob* target, uint16 spell_id)
 		}
 	}
 
-	if (!effect_found)
+	if (!effect_found){
 		return; //If no effect found just exit function
+	}
 
 	for(int i = 0; i < EFFECT_COUNT; i++)
 	{
@@ -7412,6 +7411,7 @@ void Mob::TryApplyEffectOrder(Mob* target, uint16 spell_id)
 			if (IsValidSpell(spells[spell_id].base[i]))
 			{
 				if (current_buff == SPELL_UNKNOWN) {
+					//Shout("DEBUG::TryApplyEffectOrder :1 Cast %i", spells[spell_id].base[i]);
 					SpellFinished(spells[spell_id].base[i], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
 					return;
 				}
@@ -7420,11 +7420,13 @@ void Mob::TryApplyEffectOrder(Mob* target, uint16 spell_id)
 
 					if (IsValidSpell(spells[spell_id].base[i + 1])){
 						target->BuffFadeBySpellID(spells[spell_id].base[i]);
-						SpellFinished(spells[spell_id].base[i + 1], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+						//Shout("DEBUG::TryApplyEffectOrder :2 Cast %i", spells[spell_id].base[i+1]);
+						SpellFinished(spells[spell_id].base[i + 1], target, 10, 0, -1, spells[spells[spell_id].base[i+1]].ResistDiff);
 						return;
 					}
 					else {
 						target->BuffFadeBySpellID(spells[spell_id].base[i-1]);
+						//Shout("DEBUG::TryApplyEffectOrder :3 Cast %i", spells[spell_id].base[i]);
 						SpellFinished(spells[spell_id].base[i], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
 						return;
 					}
@@ -7432,6 +7434,8 @@ void Mob::TryApplyEffectOrder(Mob* target, uint16 spell_id)
 			}
 		}
 	}
+
+	//Shout("DEBUG::TryApplyEffectOrder END Fail [%i]",spell_id);
 }
 
 //#### C!SpellEffects :: SE_CastOnCurerFromCure / SE_CastOnCureFromCure

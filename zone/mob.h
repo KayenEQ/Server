@@ -979,7 +979,7 @@ public:
 	inline void SetMeleeChargeTargetID(bool value) { MeleeCharge_target_id = value; }
 		
 	//C!BaseSpellPower
-	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false, int slot = -1);
+	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false, int16 buff_focus = -1);
 	void CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
 
 	//C!LastName
@@ -1079,7 +1079,7 @@ public:
 	inline float GetTargetRingZ() const { return targetring_z; }
 
 	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - PERL EXPORTED
-	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } // - Perl
+	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } //PERL EXPORTED
 
 	inline bool IsTempPet() const { return TempPet; } 
 	inline void SetTempPet(bool value) { TempPet = value; }

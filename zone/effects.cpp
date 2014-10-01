@@ -183,7 +183,7 @@ int32 Client::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 	return value;
 }
 
-int32 Client::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target, int slot) {
+int32 Client::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target, int16 buff_focus) {
 
 	if (target == nullptr)
 		return value;
@@ -197,7 +197,7 @@ int32 Client::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target, int slo
 			chance += GetDecayEffectValue(spell_id, SE_CriticalDotDecay);
 	
 	value_BaseEffect = value + (value*GetFocusEffect(focusFcBaseEffects, spell_id)/100);
-	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id, true, slot); //C!Kayen DOT
+	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id, true, false, buff_focus); //C!Kayen DOT
 
 	if (chance > 0 && (MakeRandomInt(1, 100) <= chance)) {
 	
@@ -303,7 +303,7 @@ int32 NPC::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 	return value;
 }
 
-int32 Client::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target, int slot) {
+int32 Client::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target, int16 buff_focus) {
 
 	if (target == nullptr)
 		target = this;
@@ -314,7 +314,7 @@ int32 Client::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target, int 
 	bool Critical = false;
 
 	value_BaseEffect = value + (value*GetFocusEffect(focusFcBaseEffects, spell_id)/100);
-	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id,false,true, slot); //C!Kayen Heal
+	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id,false,true, buff_focus); //C!Kayen Heal
 
 	value = value_BaseEffect;
 

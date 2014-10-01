@@ -189,12 +189,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 	//C!Kayen - store focus value in bufffs for class specific effects
 	if(spells[spell_id].buffduration > 0 && buffslot >= 0){
 
-		int focus_amt = 0;
+		int16 focus_amt = 0;
 		if (caster && caster->IsClient()){
 			focus_amt = caster->GetBaseSpellPowerWizard();
-			focus_amt += caster->CalcSpellPowerManaMod(spell_id);
+			//focus_amt += caster->CalcSpellPowerManaMod(spell_id); We use duration extended instead of damage focus.
+			caster->Shout("Storing Buff Focus value %i %i", focus_amt, caster->CalcSpellPowerManaMod(spell_id));
 		}
 		buffs[buffslot].focus = focus_amt;
+		caster->Shout("Buff Slot Focus is now %i", buffs[buffslot].focus);
 	}
 
 	if (!IsPowerDistModSpell(spell_id))
@@ -239,6 +241,11 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				if (caster && !caster->PassCasterRestriction(false,  spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
 					break;
 				
+				caster->Shout("Send Color Text");
+				uint32 color = 0;
+				color = 15;
+				caster->CastToClient()->SendColoredText(color, std::string("This creature would take an army to defeat!"));
+				caster->Shout("Send Color Text");
 				/*
 				if (GetSpellPowerAmtHits())//C!Kayen - Scale based on how many targets were hit by spell prior to this target.
 					dmg += dmg*GetSpellPowerAmtHits()/100;
@@ -3702,7 +3709,7 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				//Handle client cast DOTs here.
 				if (caster && caster->IsClient() && IsDetrimentalSpell(spell_id) && effect_value < 0) {
 
-					effect_value = caster->CastToClient()->GetActDoTDamage(spell_id, effect_value, this, slot); //C!Kayen
+					effect_value = caster->CastToClient()->GetActDoTDamage(spell_id, effect_value, this, buffs[slot].focus); //C!Kayen
 
 					if (!caster->CastToClient()->GetFeigned())
 						AddToHateList(caster, -effect_value);
@@ -3737,7 +3744,7 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				effect_value = CalcSpellEffectValue(spell_id, i, caster_level);
 				if(caster){ //C!Kayen - So we don't have to change all the other functions.
 					if (caster->IsClient()) 
-						effect_value = caster->CastToClient()->GetActSpellHealing(spell_id, effect_value,this, slot); //C!Kayen
+						effect_value = caster->CastToClient()->GetActSpellHealing(spell_id, effect_value,this, buffs[slot].focus); //C!Kayen
 					else
 						effect_value = caster->GetActSpellHealing(spell_id, effect_value,this);
 				}
