@@ -589,6 +589,9 @@ bool Client::Process() {
 		if (effect_field_timer.Check())
 			DoEffectField();
 
+		if (aura_field_timer.Check())
+			DoAuraField();
+
 		//C!Kayen END
 					
 		if(spellbonuses.GravityEffect == 1) {

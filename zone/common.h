@@ -455,9 +455,10 @@ struct StatBonuses {
 	int16 MeleeManaTap;
 	int16 MeleeManaTapPetOwner;
 	int16 MeleeLifeTapPetOwner;
-	uint16 EffectField;
+	uint16 EffectField;							//Spell Cast in Effect Field
 	int16 HealAggroMod;
 	int16 SpellAggroMod;
+	uint16 AuraField;							//Spell Cast in Aura Field
 };
 
 typedef struct

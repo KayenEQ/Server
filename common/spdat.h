@@ -665,6 +665,7 @@ typedef enum {
 #define SE_HealAggroMod					1036 // implemented - Modifies heal spell aggro by %
 #define SE_SpellAggroMod				1037 // implemented - Modifies non-heal spell aggro by %
 #define SE_SpellPowerFromBuffSpellGroup	1038 // implemented - Spell modifier based on buffs on target. Base SpellGroup Limit Modifier (x Rank)
+#define SE_AuraField					1039 // implemented - Base: Spell ID of Effect
 // LAST
 
 
@@ -759,7 +760,7 @@ struct SPDat_Spell_Struct
 
 /* 169 */	bool cast_while_moving; //C!Kayen
 /* 170 */	int cast_from_crouch; //C!Kayen - Mod the modifer [Start - Remain Time / 100]... (Base 100)
-/* 171 */	//int customPH;
+/* 171 */	int AppEffect;
 /* 172 */	//int customPH;
 
 /* 173 */	int HateAdded;
@@ -931,6 +932,7 @@ bool IsAAToggleSpell(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);
 bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
 bool CastFromPetOwner(uint16 spell_id); //NPC use only.
+bool IsTargetRingSpell(uint16 spell_id);
 int GetProjCastingAnimation(uint16 spell_id);
 int GetProjArc(uint16 spell_id);
 int GetProjTilt(uint16 spell_id);

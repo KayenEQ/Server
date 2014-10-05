@@ -726,6 +726,8 @@ void Client::CompleteConnect()
 
 	entity_list.SendUntargetable(this);
 
+	entity_list.SendAppearanceEffects(this); //C!Kayen
+
 	int x;
 	for (x = 0; x < 8; x++)
 		SendWearChange(x);

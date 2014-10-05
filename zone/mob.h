@@ -1004,7 +1004,7 @@ public:
 	inline bool IsWizardInnateActive() const { return WizardInnateActive; }
 	inline void SetWizardInnateActive(bool value) { WizardInnateActive = value; }
 	int16 GetBaseSpellPowerWizard();
-	void TryWizardEnduranceConsume();
+	void TryWizardEnduranceConsume(uint16 spell_id);
 
 	//C!Enchanter :: Functions related to spell power from mana amount
 	int32 CalcSpellPowerManaMod(uint16 spell_id); //Enchanter special focus
@@ -1030,12 +1030,22 @@ public:
 	inline int32 GetCastingZDiff() const { return casting_z_diff; }
 	inline void SetCastingZDiff(int32 value) { casting_z_diff = value; }
 
-	//C!SpellEffects :: SE_EffectField
+	//C!SpellEffects :: Appearance Effects
 	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //PERL EXPORTED
+	bool HasAppearanceEffects(int slot = -1);
+	//!// EntityList::SendAppearanceEffects(Client)
+	void SendAllAppearanceEffects(Client* c);
+	inline bool GetAppearanceEffect() const { return AppearanceEffect; } 
+	inline void SetAppearanceEffect(bool value) { AppearanceEffect = value; }
+	//!// EntityList::SendAppearanceEffects(Client)
+	
+	//C!SpellEffects :: SE_EffectField
 	void DoEffectField();
 	//!// EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster)
-	//!// EntityList::FadeEffectField(uint16 caster_id, uint16 spell_id)
-
+	//!// EntityList::ApplyAuraField(Mob *caster, Mob *center, uint16 spell_id)
+	//!// EntityList::FadeFieldBuff(uint16 caster_id, uint16 spell_id)
+	void DoAuraField();
+	
 	//C!SpellEffects :: SE_MeleeManaTap / SE_MeleeLifeTapPetOwner / SE_MeleeManaTapPetOwner	
 	void MeleeManaTap(int32 damage);
 	void PetTapToOwner(int32 damage);
@@ -1084,6 +1094,9 @@ public:
 	inline bool IsTempPet() const { return TempPet; } 
 	inline void SetTempPet(bool value) { TempPet = value; }
 
+	inline bool IsTempPetClient() const { return TempPetClient; } 
+	inline void SetTempPetClient(bool value) { TempPetClient = value; }
+	
 	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; } //PERL EXPORTED
 	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //PERL EXPORTED
 
@@ -1092,6 +1105,12 @@ public:
 
 	inline void SetOriginCasterID(uint16 value) { origin_caster_id = value; }
 	inline uint16 GetOriginCasterID() const { return origin_caster_id; }
+
+	//
+
+	void CalcSpellDPS(uint16 spell_id);
+	void DirectionalFailMessage(uint16 spell_id);
+	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
@@ -1475,9 +1494,12 @@ protected:
 	int hard_MitigateAllDamage;
 	bool OnlyAggroLast;
 	bool TempPet; //Need a simple way to check this (Flags the NPC as a temp pet)
+	bool TempPetClient; //Need a simple way to check this (Flags the NPC as a temp pet)
 	uint16 origin_caster_id;
+	bool AppearanceEffect;
 	
 	Timer effect_field_timer;
+	Timer aura_field_timer;
 
 private:
 	void _StopSong(); //this is not what you think it is

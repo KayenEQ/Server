@@ -1588,7 +1588,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			for(y=0; y < PLAYER_CLASS_COUNT;y++)
 				sp[tempid].classes[y]=atoi(row[104+y]);
 
-			sp[tempid].CastingAnim=atoi(row[120]);
+			sp[tempid].CastingAnim=atoi(row[120]); //C!Kayen
 			sp[tempid].SpellAffectIndex=atoi(row[123]);
 			sp[tempid].disallow_sit=atoi(row[124]);
 
@@ -1614,8 +1614,9 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].EndurTimerIndex=atoi(row[167]);
 			sp[tempid].IsDisciplineBuff = atoi(row[168]) != 0;
 
-			sp[tempid].cast_while_moving = atoi(row[169]) != 0;
-			sp[tempid].cast_from_crouch = atoi(row[170]);
+			sp[tempid].cast_while_moving = atoi(row[169]) != 0;//C!Kayen
+			sp[tempid].cast_from_crouch = atoi(row[170]);//C!Kayen
+			sp[tempid].AppEffect = atoi(row[171]);//C!Kayen
 
 			sp[tempid].HateAdded=atoi(row[173]);
 			sp[tempid].EndurUpkeep=atoi(row[174]);

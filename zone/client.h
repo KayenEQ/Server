@@ -1156,6 +1156,7 @@ public:
 	const char* GetClassPlural(Client* client);
 	void SendWebLink(const char* website);
 	void SendMarqueeMessage(uint32 type, uint32 priority, uint32 fade_in, uint32 fade_out, uint32 duration, std::string msg);
+	void SendSpellAnim(uint16 targetid, uint16 spell_id);
 
 	void DuplicateLoreMessage(uint32 ItemID);
 	void GarbleMessage(char *, uint8);
@@ -1223,6 +1224,9 @@ public:
 	inline bool HasSpellAwareness() const { return spell_awareness_enabled; }
 	void SetSpellAwareness(bool value) { spell_awareness_enabled = value; }
 	bool IsSpectralBladeEquiped();
+	
+	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
+	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);
 	//C!Kayen - END
 	
 protected:

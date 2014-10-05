@@ -193,10 +193,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		if (caster && caster->IsClient()){
 			focus_amt = caster->GetBaseSpellPowerWizard();
 			//focus_amt += caster->CalcSpellPowerManaMod(spell_id); We use duration extended instead of damage focus.
-			caster->Shout("Storing Buff Focus value %i %i", focus_amt, caster->CalcSpellPowerManaMod(spell_id));
 		}
 		buffs[buffslot].focus = focus_amt;
-		caster->Shout("Buff Slot Focus is now %i", buffs[buffslot].focus);
 	}
 
 	if (!IsPowerDistModSpell(spell_id))
@@ -240,19 +238,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
 				if (caster && !caster->PassCasterRestriction(false,  spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
 					break;
-				
-				caster->Shout("Send Color Text");
-				uint32 color = 0;
-				color = 15;
-				caster->CastToClient()->SendColoredText(color, std::string("This creature would take an army to defeat!"));
-				caster->Shout("Send Color Text");
-				/*
-				if (GetSpellPowerAmtHits())//C!Kayen - Scale based on how many targets were hit by spell prior to this target.
-					dmg += dmg*GetSpellPowerAmtHits()/100;
-				CalcSpellPowerHeightMod(dmg, spell_id, caster); //C!Kayen coded narrowly for damage/heals.
-				CalcFromCrouchMod(dmg, spell_id, caster, i);//C!Kayen - Cast Time multiplier from charged spells.
-				CalcSpellPowerFromBuffSpellGroup(dmg, spell_id, caster);
-				*/
+
 				CalcTotalBaseModifierCurrentHP(dmg, spell_id, caster, i);
 				
 				if(dmg < 0)
@@ -2978,6 +2964,18 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_AuraField:
+			{
+				aura_field_timer.Start(2000);
+				break;
+			}
+
+			case SE_BaseSpellPowerWizard:
+			{
+				SetWizardInnateActive(false); //Prevent endurance drain if effect in spell.
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){
@@ -4415,11 +4413,16 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 				if (IsNPC() && CastToNPC()->GetSwarmOwner())
 					_caster_id = CastToNPC()->GetSwarmOwner();//If used on swarm pet get the caster id by getting swarm pets owner.
 
-				entity_list.FadeEffectField(_caster_id, spells[buffs[slot].spellid].base[i]);
+				entity_list.FadeFieldBuff(_caster_id, spells[buffs[slot].spellid].base[i]);
 
 				if (spells[buffs[slot].spellid].base2[i] == 1) //Limit 1 = Depop the mob with the buff when it fades (Used on swarm pets)
 					Depop();
 				
+				break;				
+			}
+
+			case SE_AuraField:{
+				entity_list.FadeFieldBuff(GetID(), spells[buffs[slot].spellid].base[i]);
 				break;				
 			}
 		}
@@ -4457,6 +4460,12 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 	
 	if (spells[buffs[slot].spellid].NimbusEffect > 0)
 		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);
+
+	//C!Kayen - Remove Appearance Effects by sending an illusion packet.
+	if (spells[buffs[slot].spellid].AppEffect){
+		SendIllusionPacket(GetRace());
+		HasAppearanceEffects(slot);
+	}
 
 	buffs[slot].spellid = SPELL_UNKNOWN;
 	if(IsPet() && GetOwner() && GetOwner()->IsClient()) {

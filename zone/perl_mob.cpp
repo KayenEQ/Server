@@ -8340,6 +8340,33 @@ XS(XS_Mob_SendAppearanceEffect2)
 	XSRETURN_EMPTY;
 }
 
+XS(XS_Mob_SendAppearanceEffectTest); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_SendAppearanceEffectTest)
+{
+	dXSARGS;
+	if (items != 5)
+		Perl_croak(aTHX_ "Usage: Mob::SendAppearanceEffect2(THIS, parm1, parm2, parm3, parm4, parm5, singleclient)");
+	{
+		Mob *		THIS;
+		int32		parm1 = (int32)SvIV(ST(1));
+		int32		avalue = (int32)SvIV(ST(2));
+		int32		bvalue = (int32)SvIV(ST(3));
+		Client*		client = nullptr;
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->SendAppearanceEffectTest(parm1, avalue, bvalue, client);
+	}
+	XSRETURN_EMPTY;
+}
+
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -8647,6 +8674,7 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "SetOnlyAggroLast"), XS_Mob_SetOnlyAggroLast, file, "$$");
 		newXSproto(strcpy(buf, "GetOnlyAggroLast"), XS_Mob_GetOnlyAggroLast, file, "$$");
 		newXSproto(strcpy(buf, "SendAppearanceEffect2"), XS_Mob_SendAppearanceEffect2, file, "$$;$$$$");
+		newXSproto(strcpy(buf, "SendAppearanceEffectTest"), XS_Mob_SendAppearanceEffectTest, file, "$$$$$");
 		
 	XSRETURN_YES;
 }

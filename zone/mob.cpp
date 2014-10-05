@@ -421,8 +421,12 @@ Mob::Mob(const char* in_name,
 	hard_MitigateAllDamage = 0;
 	OnlyAggroLast = false;
 	TempPet = false;
-	effect_field_timer.Disable();
+	TempPetClient = false;
 	origin_caster_id = 0;
+	AppearanceEffect = false;
+
+	effect_field_timer.Disable();
+	aura_field_timer.Disable();
 }
 
 Mob::~Mob()
@@ -6427,7 +6431,7 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 		return 0;
 
 	int16 mod = 0;
-	Shout("Mob::GetBaseSpellPower Buff Slot Focus %i  slot %i ", buff_focus , buff_focus);
+	//Shout("Mob::GetBaseSpellPower Buff Slot Focus %i  slot %i ", buff_focus , buff_focus);
 	if (buff_focus >= 0) //Default is -1 (Therefore we only check this when checking over time)
 		value += value*buff_focus/100;
 	else {
@@ -6452,7 +6456,7 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 	}
 
 	value += value*mod/100;
-	Shout("Mob::GetBaseSpellPower Final Base Focus value %i mod %i", value, mod);
+	//Shout("Mob::GetBaseSpellPower Final Base Focus value %i mod %i", value, mod);
 	return value; //This is final damage/heal or whatever returned.
 }
 
@@ -6464,11 +6468,11 @@ void Mob::CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* ca
 	mod += CalcFromCrouchMod(damage, spell_id,caster, effectid);
 	mod += CalcSpellPowerFromBuffSpellGroup(damage, spell_id, caster);
 
-	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
+	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
 	if (mod)
 		damage += damage*mod/100;
 
-	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
+	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
 }
 
 //#### C!LastName
@@ -6615,6 +6619,9 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
 		
 		recast_adjust = spells[spell_id].base[effectid]/1000; //Time amount subtracted
 		spellid_refresh = spells[spell_id].base2[effectid];  //Spell ID that does the refresh effect.
+
+		if (!recast_adjust)
+			return; //Incase we set to zero as a place holder just end here.
 
 		if(!IsValidSpell(spellid_refresh))
 			return; //NO Refresher ID
@@ -6830,7 +6837,7 @@ int16 Mob::GetBaseSpellPowerWizard()
 	return 0;
 }
 
-void Mob::TryWizardEnduranceConsume()
+void Mob::TryWizardEnduranceConsume(uint16 spell_id)
 {
 	if (IsWizardInnateActive() && IsClient()){ //Wizard innate 'weave of power'
 		CastToClient()->SetEndurance(CastToClient()->GetEndurance() - CastToClient()->GetMaxEndurance()/5);
@@ -7059,12 +7066,12 @@ int32 Mob::CalcSpellPowerFromBuffSpellGroup(int32 &damage, uint16 spell_id, Mob*
 				if (IsValidSpell(spid)) {
 					mod += spells[spell_id].base2[i] * spells[spid].rank;
 					amt_effects_found++;
-					Shout("DEBUG::CalcSpellPowerFromBuffSpellGroup :: Spellid [%i] MOD %i",spid, mod);
+					//Shout("DEBUG::CalcSpellPowerFromBuffSpellGroup :: Spellid [%i] MOD %i",spid, mod);
 				}
 			}
 		}
 	}
-	Shout("DEBUG::CalcSpellPowerFromBuffSpellGroupFinal :: MOD %i Effecst Found [%i / %i]", mod , amt_effects_found,  amt_effects);
+	//Shout("DEBUG::CalcSpellPowerFromBuffSpellGroupFinal :: MOD %i Effecst Found [%i / %i]", mod , amt_effects_found,  amt_effects);
 
 	if (amt_effects_found < amt_effects)
 		return 0;
@@ -7127,7 +7134,7 @@ int32 Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 	return mod;
 }
 
-//#### C!SpellEffects :: SE_EffectField
+//#### C!SpellEffects :: Appearance Effects
 
 void Mob::SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target){
 
@@ -7161,6 +7168,56 @@ void Mob::SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32
 	}
 	safe_delete(outapp);
 }
+
+bool Mob::HasAppearanceEffects(int slot)
+{
+	uint32 buff_max = GetMaxTotalSlots();
+		
+	for(uint32 d = 0; d < buff_max; d++) {
+		if(slot != d && IsValidSpell(buffs[d].spellid) && spells[buffs[d].spellid].AppEffect)
+			return true;
+	}
+
+	SetAppearanceEffect(false);
+	return false;
+}
+
+void EntityList::SendAppearanceEffects(Client *c)
+{
+	if (!c)
+		return;
+
+	auto it = mob_list.begin();
+	while (it != mob_list.end()) {
+		Mob *cur = it->second;
+
+		if (cur) {
+			if (cur == c) {
+				++it;
+				continue;
+			}
+			if (cur->GetAppearanceEffect()) 
+				cur->SendAllAppearanceEffects(c);	
+		}
+		++it;
+	}
+}
+
+void Mob::SendAllAppearanceEffects(Client* c)
+{
+	if (!c)
+		return;
+
+	uint32 buff_max = GetMaxTotalSlots();
+	for(uint32 d = 0; d < buff_max; d++) {
+				
+		if(IsValidSpell(buffs[d].spellid) && spells[buffs[d].spellid].AppEffect){
+			SendAppearanceEffect2(spells[buffs[d].spellid].AppEffect, 0, 0, 0, 0, c);			
+		}
+	}
+}
+
+//#### C!SpellEffects :: SE_EffectField
 
 void Mob::DoEffectField()
 {
@@ -7233,7 +7290,7 @@ void EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, boo
 	}
 }
 
-void EntityList::FadeEffectField(uint16 caster_id, uint16 spell_id)
+void EntityList::FadeFieldBuff(uint16 caster_id, uint16 spell_id)
 { 
 	//Removes from all npcs the effect field buff when the effect field base spell fades.
 	if (!IsValidSpell(spell_id) || !caster_id)
@@ -7245,6 +7302,50 @@ void EntityList::FadeEffectField(uint16 caster_id, uint16 spell_id)
 
 		if (curmob && curmob->FindBuff(spell_id))
 			curmob->BuffFadeBySpellIDCaster(spell_id, caster_id);
+	}
+}
+
+void Mob::DoAuraField()
+{
+	if (spellbonuses.AuraField) {
+		entity_list.ApplyAuraField(this, this, spellbonuses.AuraField);
+	}
+	else
+		aura_field_timer.Disable();
+}
+
+void EntityList::ApplyAuraField(Mob *caster, Mob *center, uint16 spell_id)
+{ 
+	if (!IsValidSpell(spell_id) || !center || !caster)
+		return;
+
+	Mob *curmob;
+	float dist = spells[spell_id].range;
+	float dist2 = dist * dist;
+	float dist_targ = 0;
+
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+		if (!curmob)
+			continue;
+		if (curmob->IsClient() && !curmob->CastToClient()->ClientFinishedLoading())
+			continue;
+		if (curmob->IsNPC() && !curmob->IsPet() && !curmob->IsTempPetClient())
+			continue;
+		if (curmob->IsPet() && curmob->GetOwner() && !curmob->GetOwner()->IsClient())
+			continue;
+
+		dist_targ = center->DistNoRoot(*curmob);
+
+		if (dist_targ > dist2){	//make sure they are in range
+			if (curmob->FindBuff(spell_id))
+				curmob->BuffFadeBySpellID(spell_id);
+			
+			continue;
+		}
+
+		if (curmob && !curmob->FindBuff(spell_id))
+			caster->SpellOnTarget(spell_id, curmob, false, true, 0);
 	}
 }
 
@@ -7573,7 +7674,102 @@ uint16 Mob::GetBuffSpellidBySpellGroup(int spellgroupid)
 	return 0;
 }
 
+//C! - New uncategorized functions
+
+void Mob::CalcSpellDPS(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return;
+
+	int cast_time = spells[spell_id].cast_time/1000;
+	int recast_time = spells[spell_id].recast_time/1000;
+	int damage = 0;
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_CurrentHP)
+			damage += spells[spell_id].base[i];
+	}
+
+	int divide = cast_time + recast_time;
+	float dps = 0;
+	
+	Shout("Mob::CalcSpellDPS :: %i %i %i", damage,cast_time, recast_time);
+	
+	if (divide)
+		dps = damage / (divide);
+
+	Shout("CalcSpellDPS :: Spell: %s DPS: %.2f", spells[spell_id].name, dps);
+
+}
+
+void Mob::DirectionalFailMessage(uint16 spell_id)
+{
+	//Message given for failed directional abilities, message will differ based on type of spell.
+	Message(MT_SpellFailure, "Your spell failed to find a target.");
+
+}
+
+
 //C!Misc - Functions still in development
+
+void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
+
+	//Set apperance effect on NPC that will fade when the NPC dies. (Use original function if want perma effects)
+	Shout("%i %i %i", parm1, avalue, bvalue);
+	EQApplicationPacket* outapp = new EQApplicationPacket(OP_LevelAppearance, sizeof(LevelAppearance_Struct));
+	LevelAppearance_Struct* la = (LevelAppearance_Struct*)outapp->pBuffer;
+	la->spawn_id = GetID();
+	la->parm1 = parm1;
+	la->parm2 = 0;
+	la->parm3 = 0;
+	la->parm4 = 0;
+	la->parm5 = 0;
+	// Note that setting the b values to 0 will disable the related effect from the corresponding parameter.
+	// Setting the a value appears to have no affect at all.s
+	la->value1a = avalue;
+	la->value1b = bvalue;
+	la->value2a = 2;
+	la->value2b = 0;
+	la->value3a = 2;
+	la->value3b = 0;
+	la->value4a = 2;
+	la->value4b = 0;
+	la->value5a = 2;
+	la->value5b = 0;
+	if(specific_target == nullptr) {
+		entity_list.QueueClients(this,outapp);
+	}
+	else if (specific_target->IsClient()) {
+		specific_target->CastToClient()->QueuePacket(outapp, false);
+	}
+	safe_delete(outapp);
+}
+
+void Client::SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16, uint32 unknown18, uint32 unknown23,uint8 unknown29, uint8 buff_unknown)
+{	
+	//THIS IS A TEST FUNCTION USE SendSpellAnim(targetid,spell_id)
+	if (!targetid)
+		return;
+
+	Shout("[%i] Type %i Spell id %i Seq %i", targetid, type, spell_id, seq);
+	Shout("u16 [%i] u18 [%i] u23 [%i] u29 [%i] ubuff [%i]", unknown16, unknown18, unknown23, unknown29, buff_unknown);
+	EQApplicationPacket app(OP_Action, sizeof(Action_Struct));
+	Action_Struct* a = (Action_Struct*)app.pBuffer;
+	a->target = targetid;
+	a->source = this->GetID();
+	a->type = type;
+	a->spell = spell_id;
+	a->sequence = type;
+
+	a->unknown16 = unknown16;
+	a->unknown18 = unknown18;
+	a->unknown23 = unknown23;
+	a->unknown29 = unknown29;
+	a->buff_unknown = buff_unknown;
+
+	app.priority = 1;
+	entity_list.QueueCloseClients(this, &app);
+}
 
 void Client::PopupUI()
 {	

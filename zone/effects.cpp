@@ -739,6 +739,9 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 { 
 	Mob *curmob;
 
+	if (!caster) //C!Kayen
+		return;
+
 	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
@@ -749,9 +752,6 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (caster)
 			caster->SetOriginCasterID(petid);
 	}
-	
-	if (!caster || !center) //C!Kayen
-		return;
 
 	float dist = caster->GetAOERange(spell_id);
 	float dist2 = dist * dist;
@@ -773,10 +773,10 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
 		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
-		if ((spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation) && !spells[spell_id].powerful_flag){ //C!Kayen pflag = Projectile
+		if (IsTargetRingSpell(spell_id) && !GetProjSpeed(spell_id)){ //C!Kayen pflag = Projectile
 			dist_targ = curmob->DistNoRoot(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ());
 		}
-		else{
+		else if (center){
 			dist_targ = center->DistNoRoot(*curmob);
 		}
 		if (dist_targ > dist2)	//make sure they are in range

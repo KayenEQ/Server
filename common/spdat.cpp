@@ -1177,6 +1177,15 @@ int32 GetSpellPowerManaModValue(uint16 spell_id)
 	return 0;
 }
 
+bool IsTargetRingSpell(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	if (spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation)
+		return 1;
+}
+
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 

@@ -6020,7 +6020,59 @@ XS(XS_Client_SendMarqueeMessage)
 	XSRETURN_EMPTY;
 }
 
-XS(XS_Client_RefundAAType); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_SendColoredText); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_SendColoredText)
+{
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: Client::SendColoredText(color, message)");
+	{
+		Client *		THIS;
+		uint32 color =	(uint32)SvUV(ST(1));
+		std::string msg = (std::string)SvPV_nolen(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Client")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Client *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->SendColoredText(color, msg);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Client_SendSpellAnim); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_SendSpellAnim)
+{
+	dXSARGS;
+	if (items != 3)
+		Perl_croak(aTHX_ "Usage: SendSpellAnim(uint16 spell_id, uint32 seq)");
+	{
+		Client *		THIS;
+		uint16 targetid =	(uint16)SvUV(ST(1));
+		uint16 spell_id =	(uint16)SvUV(ST(2));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Client")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Client *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->SendSpellAnim(targetid,spell_id);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Client_RefundAAType); /* prototype to pass -Wmissing-prototypes */ //C!Kayen
 XS(XS_Client_RefundAAType)
 {
 	dXSARGS;
@@ -6043,6 +6095,40 @@ XS(XS_Client_RefundAAType)
 	}
 	XSRETURN_EMPTY;
 }
+
+XS(XS_Client_SendActionPacket); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_SendActionPacket)
+{
+	dXSARGS;
+	if (items != 10)
+		Perl_croak(aTHX_ "Usage: ActionPacket(uint8 type, uint16 spell_id, uint32 seq)");
+	{
+		Client *		THIS;
+		uint16 targetid =	(uint16)SvUV(ST(1));
+		uint8 type =	(uint8)SvUV(ST(2));
+		uint16 spell_id =	(uint16)SvUV(ST(3));
+		uint32 seq =	(uint32)SvUV(ST(4));
+		uint16 unknown16 =	(uint32)SvUV(ST(5));
+		uint32 unknown18 =	(uint32)SvUV(ST(6));
+		uint32 unknown23 =	(uint32)SvUV(ST(7));
+		uint8 unknown29 =	(uint32)SvUV(ST(8));
+		uint8 buff_unknown =	(uint32)SvUV(ST(9));
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Client")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Client *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Client");
+		if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->SendActionPacket(targetid,type, spell_id, seq,unknown16,unknown18, unknown23,unknown29, buff_unknown);
+	}
+	XSRETURN_EMPTY;
+}
+
 
 #ifdef __cplusplus
 extern "C"
@@ -6283,7 +6369,10 @@ XS(boot_Client)
 		newXSproto(strcpy(buf, "SendTargetCommand"), XS_Client_SendTargetCommand, file, "$$");
 		newXSproto(strcpy(buf, "ExpeditionMessage"), XS_Client_ExpeditionMessage, file, "$$$");
 		newXSproto(strcpy(buf, "SendMarqueeMessage"), XS_Client_SendMarqueeMessage, file, "$$$$$$$");
-		newXSproto(strcpy(buf, "RefundAAType"), XS_Client_RefundAAType, file, "$$");
+		newXSproto(strcpy(buf, "SendColoredText"), XS_Client_SendColoredText, file, "$$$");
+		newXSproto(strcpy(buf, "SendSpellAnim"), XS_Client_SendSpellAnim, file, "$$$");
+		newXSproto(strcpy(buf, "RefundAAType"), XS_Client_RefundAAType, file, "$$"); //C!Kayen
+		newXSproto(strcpy(buf, "SendActionPacket"), XS_Client_SendActionPacket, file, "$$$$$$$$$$"); //C!Kayen
 		XSRETURN_YES;
 }
 

@@ -1864,10 +1864,11 @@ void NPC::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 
 	//Basic settings to make sure swarm pets work properly.
 	if  (GetSwarmOwner()) {
+		SetTempPet(1);//C!Kayen - Simple mob flag
 		Client *c = entity_list.GetClientByID(GetSwarmOwner());
 			if(c) {
+				SetTempPetClient(1);//C!Kayen - Simple mob flag
 				SetAllowBeneficial(1); //Allow client cast swarm pets to be heal/buffed.
-				SetTempPet(1);//C!Kayen - Simple mob flag
 				//This is a hack to allow CLIENT swarm pets NOT to be targeted with F8. Warning: Will turn name 'Yellow'!
 				if (RuleB(Pets, SwarmPetNotTargetableWithHotKey))
 					ns->spawn.IsMercenary = 1;

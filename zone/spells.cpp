@@ -154,7 +154,7 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 {
 	mlog(SPELLS__CASTING, "CastSpell called for spell %s (%d) on entity %d, slot %d, time %d, mana %d, from item slot %d",
 		spells[spell_id].name, spell_id, target_id, slot, cast_time, mana_cost, (item_slot==0xFFFFFFFF)?999:item_slot);
-
+	CalcSpellDPS(spell_id);//C!Kayen
 	if(casting_spell_id == spell_id)
 		ZeroCastingVars();
 
@@ -2191,6 +2191,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
 			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+			bool target_found = false; //C!Kayen - Determine if message for no targets hit.
 
 			bool taget_exclude_npc = false; //False by default!
 			
@@ -2243,6 +2244,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					{
 						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los){
 							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+							target_found = true; //C!Kayen
 
 							if (maxtargets)
 								targets_in_cone.push_back(*iter);
@@ -2258,6 +2260,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					{
 						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
 							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+							target_found = true; //C!Kayen
 							if (maxtargets) 
 								targets_in_cone.push_back(*iter);
 							else
@@ -2273,6 +2276,9 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			if (maxtargets)
 				CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cone);
 
+			if (!target_found)
+				DirectionalFailMessage(spell_id);
+
 			break;
 		}
 		//C!Kayen - Custom Target Type [Clients use ST_Ring / NPC use ST_TargetLocation]
@@ -2281,8 +2287,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				TargetRingTempPet(spell_id);
 			else if (GetProjSpeed(spell_id) > 1) //Denotes spell to use projectile
 				ProjectileTargetRing(spell_id);
-			else
+			else{
+				Shout("DEBUG:: Spells:TargetRing :: Do AE");
 				entity_list.AESpell(this, nullptr, spell_id, false, resist_adjust);
+			}
 
 			break;
 		}
@@ -2297,7 +2305,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			SendSpellEffect(NimbusEffect, 500, 0, 1, 3000, true);
 		}
 	}
-
+	
 	// if this was a spell slot or an ability use up the mana for it
 	// CastSpell already reduced the cost for it if we're a client with focus
 	if(slot != USE_ITEM_SPELL_SLOT && slot != POTION_BELT_SPELL_SLOT && mana_used > 0)
@@ -2309,7 +2317,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 	}
 	
-	TryWizardEnduranceConsume(); //C!Kayen
+	TryWizardEnduranceConsume(spell_id); //C!Kayen
 	TryEnchanterManaFocusConsume(spell_id); //C!Kayen
 
 	//set our reuse timer on long ass reuse_time spells...
@@ -3876,6 +3884,12 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	}
 	safe_delete(action_packet);
 	safe_delete(message_packet);
+
+	//C!Kayen - Send Appearance Effects from Spell File [Field1
+	if (spelltar && spells[spell_id].AppEffect){
+		spelltar->SendAppearanceEffect2(spells[spell_id].AppEffect, 0, 0, 0, 0, nullptr);
+		spelltar->SetAppearanceEffect(true);
+	}
 
 	mlog(SPELLS__CASTING, "Cast of %d by %s on %s complete successfully.", spell_id, GetName(), spelltar->GetName());
 
@@ -5454,4 +5468,20 @@ void NPC::UninitializeBuffSlots()
 	safe_delete_array(buffs);
 }
 
+void Client::SendSpellAnim(uint16 targetid, uint16 spell_id)
+{
+	if (!targetid || !IsValidSpell(spell_id))
+		return;
+
+	EQApplicationPacket app(OP_Action, sizeof(Action_Struct));
+	Action_Struct* a = (Action_Struct*)app.pBuffer;
+	a->target = targetid;
+	a->source = this->GetID();
+	a->type = 231;
+	a->spell = spell_id;
+	a->sequence = 231;
+
+	app.priority = 1;
+	entity_list.QueueCloseClients(this, &app);
+}
 

@@ -416,8 +416,10 @@ public:
 	//C!Kayen
 	void TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id);
 	void ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id);
+	void ApplyAuraField(Mob *caster, Mob *center, uint16 spell_id);
 	void ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster);
-	void FadeEffectField(uint16 caster_id, uint16 spell_id);
+	void FadeFieldBuff(uint16 caster_id, uint16 spell_id);
+	void SendAppearanceEffects(Client *c);
 	NPC *GetTempPetByNPCTypeID(uint32 npc_id, uint16 ownerid, bool SetVarTargetRing);
 
 protected:
