@@ -1342,6 +1342,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, uint16 slot,
 	}
 
 	TryCastonSpellFinished(this, spell_id); //C!Kayen - Apply the recast timer adjustment spell at this point only.Must use SE (1009)
+	TryCastonSpellCastCountAmt(slot, spell_id);//C!Kayen - Does an increment for how many times a spell has been cast, then can trigger effect off that.
 
 	// there should be no casting going on now
 	ZeroCastingVars();
@@ -2194,7 +2195,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			bool target_found = false; //C!Kayen - Determine if message for no targets hit.
 
 			bool taget_exclude_npc = false; //False by default!
-			
 			bool target_client_only = false;
 
 			if (IsBeneficialSpell(spell_id) && IsClient())
@@ -2219,17 +2219,19 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
 			iter = targets_in_range.begin();
 
-			//C!Kayen - If beneficial always hit caster.
-			if (IsBeneficialSpell(spell_id))
+			//C!Kayen - Allow to hit caster
+			if (IsBeneficialSpell(spell_id) && DirectionalAffectCaster(spell_id))
 				SpellOnTarget(spell_id,this, false, true, resist_adjust);
-			
+
+			Shout("Directional Param: %i %i", target_client_only, DirectionalAffectCaster(spell_id));
+
 			while(iter != targets_in_range.end())
 			{
-				if (!(*iter) || (target_client_only && (IsNPC() && !IsPet()))){
+				if (!(*iter) || (!CastToClient()->GetGM() && target_client_only && ((*iter)->IsNPC() && !(*iter)->IsClientPet()))){
 				    ++iter;
 					continue;
 				}
-				
+
 				float heading_to_target = (CalculateHeadingToTarget((*iter)->GetX(), (*iter)->GetY()) * 360.0f / 256.0f);
 				while(heading_to_target < 0.0f)
 					heading_to_target += 360.0f;
@@ -2352,6 +2354,12 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		ItemInst *itm = CastToClient()->GetInv().GetItem(inventory_slot);
 		if(itm && itm->GetItem()->RecastDelay > 0){
 			CastToClient()->GetPTimers().Start((pTimerItemStart + itm->GetItem()->RecastType), itm->GetItem()->RecastDelay);
+			EQApplicationPacket *outapp = new EQApplicationPacket(OP_ItemRecastDelay, sizeof(ItemRecastDelay_Struct));
+			ItemRecastDelay_Struct *ird = (ItemRecastDelay_Struct *)outapp->pBuffer;
+			ird->recast_delay = itm->GetItem()->RecastDelay;
+			ird->recast_type = itm->GetItem()->RecastType;
+			CastToClient()->QueuePacket(outapp);
+			safe_delete(outapp);
 		}
 	}
 
@@ -4894,6 +4902,7 @@ void Client::MemSpell(uint16 spell_id, int slot, bool update_client)
 	}
 
 	m_pp.mem_spells[slot] = spell_id;
+	spell_cast_count[slot] = 0; //C!Kayen
 	mlog(CLIENT__SPELLS, "Spell %d memorized into slot %d", spell_id, slot);
 
 	database.SaveCharacterMemorizedSpell(this->CharacterID(), m_pp.mem_spells[slot], slot);
@@ -5303,20 +5312,40 @@ void Mob::_StopSong()
 //Thus I use this in the buff process to update the correct duration once after casting
 //this allows AAs and focus effects that increase buff duration to work correctly, but could probably
 //be used for other things as well
-void Client::SendBuffDurationPacket(uint16 spell_id, int duration, int inlevel)
+void Client::SendBuffDurationPacket(Buffs_Struct &buff)
 {
 	EQApplicationPacket* outapp;
 	outapp = new EQApplicationPacket(OP_Buff, sizeof(SpellBuffFade_Struct));
 	SpellBuffFade_Struct* sbf = (SpellBuffFade_Struct*) outapp->pBuffer;
 
 	sbf->entityid = GetID();
-	sbf->slot=2;
-	sbf->spellid=spell_id;
-	sbf->slotid=0;
-	sbf->effect = inlevel > 0 ? inlevel : GetLevel();
-	sbf->level = inlevel > 0 ? inlevel : GetLevel();
+	sbf->slot = 2;
+	sbf->spellid = buff.spellid;
+	sbf->slotid = 0;
+	sbf->effect = buff.casterlevel > 0 ? buff.casterlevel : GetLevel();
+	sbf->level = buff.casterlevel > 0 ? buff.casterlevel : GetLevel();
 	sbf->bufffade = 0;
-	sbf->duration = duration;
+	sbf->duration = buff.ticsremaining;
+	sbf->num_hits = buff.numhits;
+	FastQueuePacket(&outapp);
+}
+
+void Client::SendBuffNumHitPacket(Buffs_Struct &buff, int slot)
+{
+	// UF+ use this packet
+	if (GetClientVersion() < EQClientUnderfoot)
+		return;
+	EQApplicationPacket *outapp;
+	outapp = new EQApplicationPacket(OP_BuffCreate, sizeof(BuffIcon_Struct) + sizeof(BuffIconEntry_Struct));
+	BuffIcon_Struct *bi = (BuffIcon_Struct *)outapp->pBuffer;
+	bi->entity_id = GetID();
+	bi->count = 1;
+	bi->all_buffs = 0;
+
+	bi->entries[0].buff_slot = slot;
+	bi->entries[0].spell_id = buff.spellid;
+	bi->entries[0].tics_remaining = buff.ticsremaining;
+	bi->entries[0].num_hits = buff.numhits;
 	FastQueuePacket(&outapp);
 }
 
@@ -5391,6 +5420,7 @@ EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target)
 	BuffIcon_Struct *buff = (BuffIcon_Struct*)outapp->pBuffer;
 	buff->entity_id = GetID();
 	buff->count = count;
+	buff->all_buffs = 1;
 
 	uint32 index = 0;
 	for(unsigned int i = 0; i < buff_count; ++i)
@@ -5400,6 +5430,7 @@ EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target)
 			buff->entries[index].buff_slot = i;
 			buff->entries[index].spell_id = buffs[i].spellid;
 			buff->entries[index].tics_remaining = buffs[i].ticsremaining;
+			buff->entries[index].num_hits = buffs[i].numhits;
 			++index;
 		}
 	}
@@ -5417,7 +5448,7 @@ void Mob::BuffModifyDurationBySpellID(uint16 spell_id, int32 newDuration)
 			buffs[i].ticsremaining = newDuration;
 			if(IsClient())
 			{
-				CastToClient()->SendBuffDurationPacket(buffs[i].spellid, buffs[i].ticsremaining, buffs[i].casterlevel);
+				CastToClient()->SendBuffDurationPacket(buffs[i]);
 			}
 		}
 	}

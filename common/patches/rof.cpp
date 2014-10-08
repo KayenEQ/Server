@@ -376,6 +376,7 @@ namespace RoF
 		OUT(duration);
 		eq->playerId = 0x7cde;
 		OUT(slotid);
+		OUT(num_hits);
 		if (emu->bufffade == 1)
 			eq->bufffade = 1;
 		else
@@ -414,7 +415,7 @@ namespace RoF
 
 		__packet->WriteUInt32(emu->entity_id);
 		__packet->WriteUInt32(0);		// PlayerID ?
-		__packet->WriteUInt8(1);			// 1 indicates all buffs on the player (0 to add or remove a single buff)
+		__packet->WriteUInt8(emu->all_buffs);			// 1 indicates all buffs on the player (0 to add or remove a single buff)
 		__packet->WriteUInt16(emu->count);
 
 		for (uint16 i = 0; i < emu->count; ++i)
@@ -429,10 +430,10 @@ namespace RoF
 			__packet->WriteUInt32(buffslot);
 			__packet->WriteUInt32(emu->entries[i].spell_id);
 			__packet->WriteUInt32(emu->entries[i].tics_remaining);
-			__packet->WriteUInt32(0); // Unknown
+			__packet->WriteUInt32(emu->entries[i].num_hits); // Unknown
 			__packet->WriteString("");
 		}
-		__packet->WriteUInt8(0); // Unknown
+		__packet->WriteUInt8(!emu->all_buffs); // Unknown
 
 		FINISH_ENCODE();
 	}
@@ -1423,7 +1424,7 @@ namespace RoF
 
 		OUT(lootee);
 		OUT(looter);
-		eq->slot_id = emu->slot_id + 1;
+		eq->slot_id = ServerToRoFCorpseSlot(emu->slot_id);
 		OUT(auto_loot);
 
 		FINISH_ENCODE();
@@ -4405,7 +4406,7 @@ namespace RoF
 
 		IN(lootee);
 		IN(looter);
-		emu->slot_id = eq->slot_id - 1;
+		emu->slot_id = RoFToServerCorpseSlot(eq->slot_id);
 		IN(auto_loot);
 
 		FINISH_DIRECT_DECODE();
@@ -4671,6 +4672,7 @@ namespace RoF
 			slot_id = legacy::SLOT_TRADESKILL;	// 1000
 		}
 		emu->container_slot = slot_id;
+		emu->guildtribute_slot = RoFToServerSlot(eq->guildtribute_slot); // this should only return INVALID_INDEX until implemented -U
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -5405,6 +5407,7 @@ namespace RoF
 	static inline uint32 ServerToRoFCorpseSlot(uint32 ServerCorpse)
 	{
 		//uint32 RoFCorpse;
+		return (ServerCorpse + 1);
 	}
 
 	static inline uint32 RoFToServerSlot(structs::ItemSlotStruct RoFSlot)
@@ -5498,6 +5501,10 @@ namespace RoF
 		ServerSlot = TempSlot;
 		}*/
 
+		else if (RoFSlot.SlotType == maps::MapGuildTribute) {
+			ServerSlot = INVALID_INDEX;
+		}
+
 		_log(NET__ERROR, "Convert RoF Slots: Type %i, Unk2 %i, Main %i, Sub %i, Aug %i, Unk1 %i to Server Slot %i", RoFSlot.SlotType, RoFSlot.Unknown02, RoFSlot.MainSlot, RoFSlot.SubSlot, RoFSlot.AugSlot, RoFSlot.Unknown01, ServerSlot);
 
 		return ServerSlot;
@@ -5541,6 +5548,7 @@ namespace RoF
 	static inline uint32 RoFToServerCorpseSlot(uint32 RoFCorpse)
 	{
 		//uint32 ServerCorpse;
+		return (RoFCorpse - 1);
 	}
 }
 // end namespace RoF

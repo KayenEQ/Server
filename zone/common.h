@@ -459,6 +459,7 @@ struct StatBonuses {
 	int16 HealAggroMod;
 	int16 SpellAggroMod;
 	uint16 AuraField;							//Spell Cast in Aura Field
+	int16 IncomingSpellDmgPct[HIGHEST_RESIST+1];//
 };
 
 typedef struct

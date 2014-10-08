@@ -1164,6 +1164,17 @@ bool IsAAToggleSpell(uint16 spell_id)
 	return false;
 }
 
+bool DirectionalAffectCaster(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return true;
+
+	if (spells[spell_id].targettype == ST_Directional && spells[spell_id].resisttype == 1)
+		return true;
+
+	return false;
+}
+
 int32 GetSpellPowerManaModValue(uint16 spell_id)
 {
 	if (!IsValidSpell(spell_id))
@@ -1180,10 +1191,12 @@ int32 GetSpellPowerManaModValue(uint16 spell_id)
 bool IsTargetRingSpell(uint16 spell_id)
 {
 	if (!IsValidSpell(spell_id))
-		return 0;
+		return false;
 
 	if (spells[spell_id].targettype == ST_Ring || spells[spell_id].targettype == ST_TargetLocation)
-		return 1;
+		return true;
+
+	return false;
 }
 
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.

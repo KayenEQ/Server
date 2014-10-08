@@ -897,7 +897,8 @@ public:
 
 	//This is used to later set the buff duration of the spell, in slot to duration.
 	//Doesn't appear to work directly after the client recieves an action packet.
-	void SendBuffDurationPacket(uint16 spell_id, int duration, int inlevel);
+	void SendBuffDurationPacket(Buffs_Struct &buff);
+	void SendBuffNumHitPacket(Buffs_Struct &buff, int slot);
 
 	void	ProcessInspectRequest(Client* requestee, Client* requester);
 	bool	ClientFinishedLoading() { return (conn_state == ClientConnectFinished); }
@@ -1215,15 +1216,18 @@ public:
 	void RefundAAType(uint32 sof_type = 0);
 	uint32 GetAltCurrencyItemid(uint32 alt_currency_id);
 	inline bool HasAdjustRecastTimer() const { return AdjustRecastTimer; }
-	void SetAdjustRecastTimer(bool value) { AdjustRecastTimer = value; }
+	inline void SetAdjustRecastTimer(bool value) { AdjustRecastTimer = value; }
 	void DoAdjustRecastTimer();
 	void EffectAdjustRecastTimer(uint16 spell_id, int effectid);
 	bool CastFromCrouch(uint16 spell_id = 0xffff);
 	void MarkNPCTest(Mob* Target, int Number);
 	void PopupUI();
 	inline bool HasSpellAwareness() const { return spell_awareness_enabled; }
-	void SetSpellAwareness(bool value) { spell_awareness_enabled = value; }
+	inline void SetSpellAwareness(bool value) { spell_awareness_enabled = value; }
 	bool IsSpectralBladeEquiped();
+
+	uint16 GetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN);
+	void SetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN, int value = 0);
 	
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);
@@ -1271,6 +1275,7 @@ protected:
 	Timer adjustrecast_timer;
 	uint32 recast_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
 	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is spell id used to refresh the spell gem early.
+	uint16 spell_cast_count[MAX_PP_MEMSPELL]; //Number of times a specific spell has been cast in a row.
 	bool spell_awareness_enabled;
 	Timer spell_awareness_popup; //Need to addd < Spell Name> to npc casted spells.
 

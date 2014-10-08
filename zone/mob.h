@@ -1014,8 +1014,11 @@ public:
 	//!// NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	//!// Client::IsSpectralBladeEquiped()
 
+	//C!SpellEffects :: SE_CastOnSpellCastCountAmt
+	void Mob::TryCastonSpellCastCountAmt(int slot, uint16 spell_id);
+
 	//C!SpellEffects :: SE_TryCastonSpellFinished	
-	void TryCastonSpellFinished(Mob *target, uint32 spell_id);
+	void TryCastonSpellFinished(Mob *target, uint16 spell_id);
 
 	//C!SpellEffects :: SE_SpellPowerFromBuffSpellGroup
 	int32 CalcSpellPowerFromBuffSpellGroup(int32 &damage, uint16 spell_id, Mob* caster);
@@ -1101,6 +1104,7 @@ public:
 	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //PERL EXPORTED
 
 	inline uint16 GetSpellTargetID() const { return casting_spell_targetid; } //casting var
+	inline uint16 GetCastingVarSlot() const { return casting_spell_slot; } //casting var
 	inline Timer GetSpellEndTime() const { return spellend_timer; } //casting var
 
 	inline void SetOriginCasterID(uint16 value) { origin_caster_id = value; }
@@ -1111,6 +1115,8 @@ public:
 	void CalcSpellDPS(uint16 spell_id);
 	void DirectionalFailMessage(uint16 spell_id);
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
+
+	bool IsClientPet();
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END

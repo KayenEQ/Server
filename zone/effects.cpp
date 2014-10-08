@@ -741,7 +741,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 	if (!caster) //C!Kayen
 		return;
-
+	
 	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
@@ -797,6 +797,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 					continue;
 			}
 		}
+		curmob->Shout("AESpell Pass Faction %i %i %i %i", bad, center->GetID(),center->CheckLosFN(curmob), caster->IsAttackAllowed(curmob, true));
 		//finally, make sure they are within range
 		if (bad) {
 			if (!caster->IsAttackAllowed(curmob, true))
@@ -822,7 +823,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 						continue;
 				}
 		}
-
+		curmob->Shout("AESpell Pass IsBad");
 		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);
 
 		//if we get here... cast the spell.

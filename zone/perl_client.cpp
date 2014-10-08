@@ -6129,7 +6129,6 @@ XS(XS_Client_SendActionPacket)
 	XSRETURN_EMPTY;
 }
 
-
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -6371,8 +6370,10 @@ XS(boot_Client)
 		newXSproto(strcpy(buf, "SendMarqueeMessage"), XS_Client_SendMarqueeMessage, file, "$$$$$$$");
 		newXSproto(strcpy(buf, "SendColoredText"), XS_Client_SendColoredText, file, "$$$");
 		newXSproto(strcpy(buf, "SendSpellAnim"), XS_Client_SendSpellAnim, file, "$$$");
+
 		newXSproto(strcpy(buf, "RefundAAType"), XS_Client_RefundAAType, file, "$$"); //C!Kayen
 		newXSproto(strcpy(buf, "SendActionPacket"), XS_Client_SendActionPacket, file, "$$$$$$$$$$"); //C!Kayen
+
 		XSRETURN_YES;
 }
 

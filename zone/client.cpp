@@ -39,15 +39,10 @@
 extern volatile bool RunLoops;
 
 #include "../common/features.h"
-#include "masterentity.h"
-#include "worldserver.h"
 #include "../common/misc.h"
-#include "zonedb.h"
 #include "../common/spdat.h"
-#include "net.h"
 #include "../common/packet_dump.h"
 #include "../common/packet_functions.h"
-#include "petitions.h"
 #include "../common/serverinfo.h"
 #include "../common/zone_numbers.h"
 #include "../common/moremath.h"
@@ -55,6 +50,12 @@ extern volatile bool RunLoops;
 #include "../common/breakdowns.h"
 #include "../common/rulesys.h"
 #include "../common/string_util.h"
+#include "../common/data_verification.h"
+#include "net.h"
+#include "masterentity.h"
+#include "worldserver.h"
+#include "zonedb.h"
+#include "petitions.h"
 #include "forage.h"
 #include "command.h"
 #include "string_ids.h"
@@ -331,6 +332,7 @@ Client::Client(EQStreamInterface* ieqs)
 	AdjustRecastTimer = false;
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { recast_mem_spells[i] = 0; }
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { refreshid_mem_spells[i] = 0; }
+	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { spell_cast_count[i] = 0; }
 	adjustrecast_timer.Disable();
 	spell_awareness_enabled = false;
 	spell_awareness_popup.Disable();
@@ -602,19 +604,8 @@ bool Client::Save(uint8 iCommitNow) {
 	database.SaveCharacterTribute(this->CharacterID(), &m_pp);
 	SaveTaskState(); /* Save Character Task */
 
-	if(m_pp.hunger_level < 0) {
-		m_pp.hunger_level = 0;
-	}
-	else if(m_pp.hunger_level > 6000) {
-		m_pp.hunger_level = 6000;
-	}
-
-	if(m_pp.thirst_level < 0) {
-		m_pp.thirst_level = 0;
-	}
-	else if(m_pp.thirst_level > 6000) {
-		m_pp.thirst_level = 6000;
-	}
+	m_pp.hunger_level = EQEmu::Clamp(m_pp.hunger_level, 0, 50000);
+	m_pp.thirst_level = EQEmu::Clamp(m_pp.thirst_level, 0, 50000);
 	database.SaveCharacterData(this->CharacterID(), this->AccountID(), &m_pp, &m_epp); /* Save Character Data */
 
 	return true;

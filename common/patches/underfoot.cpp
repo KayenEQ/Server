@@ -330,6 +330,7 @@ namespace Underfoot
 		OUT(duration);
 		OUT(slotid);
 		OUT(bufffade);	// Live (October 2011) sends a 2 rather than 0 when a buff is created, but it doesn't seem to matter.
+		OUT(num_hits);
 		eq->unknown008 = 1.0f;
 
 		FINISH_ENCODE();
@@ -348,7 +349,7 @@ namespace Underfoot
 		*((uint32*)ptr) = emu->entity_id;
 		ptr += sizeof(uint32);
 		ptr += sizeof(uint32);
-		*((uint8*)ptr) = 1;
+		*((uint8*)ptr) = emu->all_buffs;
 		ptr += sizeof(uchar);
 		*((uint16*)ptr) = emu->count;
 		ptr += sizeof(uint16);
@@ -371,7 +372,9 @@ namespace Underfoot
 			ptr += sizeof(uint32);
 			*((uint32*)ptr) = emu->entries[i].tics_remaining;
 			ptr += sizeof(uint32);
+			*((uint32*)ptr) = emu->entries[i].num_hits;
 			ptr += sizeof(uint32);
+			*((uint8*)ptr) = !emu->all_buffs;
 			ptr += 1;
 		}
 
@@ -1234,7 +1237,7 @@ namespace Underfoot
 
 		OUT(lootee);
 		OUT(looter);
-		eq->slot_id = emu->slot_id + 1;
+		eq->slot_id = ServerToUnderFootCorpseSlot(emu->slot_id);
 		OUT(auto_loot);
 
 		FINISH_ENCODE();
@@ -3299,7 +3302,7 @@ namespace Underfoot
 
 		IN(lootee);
 		IN(looter);
-		emu->slot_id = eq->slot_id - 1;
+		emu->slot_id = UnderfootToServerCorpseSlot(eq->slot_id);
 		IN(auto_loot);
 
 		FINISH_DIRECT_DECODE();
@@ -3477,6 +3480,7 @@ namespace Underfoot
 		SETUP_DIRECT_DECODE(NewCombine_Struct, structs::NewCombine_Struct);
 
 		emu->container_slot = UnderfootToServerSlot(eq->container_slot);
+		IN(guildtribute_slot);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -4025,6 +4029,7 @@ namespace Underfoot
 	static inline uint32 ServerToUnderFootCorpseSlot(uint32 ServerCorpse)
 	{
 		//uint32 UnderfootCorpse;
+		return (ServerCorpse + 1);
 	}
 
 	static inline uint32 UnderfootToServerSlot(uint32 UnderfootSlot)
@@ -4050,6 +4055,7 @@ namespace Underfoot
 	static inline uint32 UnderfootToServerCorpseSlot(uint32 UnderfootCorpse)
 	{
 		//uint32 ServerCorpse;
+		return (UnderfootCorpse - 1);
 	}
 }
 // end namespace Underfoot

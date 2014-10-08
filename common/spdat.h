@@ -666,6 +666,8 @@ typedef enum {
 #define SE_SpellAggroMod				1037 // implemented - Modifies non-heal spell aggro by %
 #define SE_SpellPowerFromBuffSpellGroup	1038 // implemented - Spell modifier based on buffs on target. Base SpellGroup Limit Modifier (x Rank)
 #define SE_AuraField					1039 // implemented - Base: Spell ID of Effect
+#define SE_IncomingSpellDmgPct			1040 // implemented - Increase/Decrease spell and damage
+#define SE_CastOnSpellCastCountAmt      1041 // implemented - Trigger spell after a specific spell has been casted a certain number of times.
 // LAST
 
 
@@ -747,7 +749,7 @@ struct SPDat_Spell_Struct
 /* 155 */	int descnum; // eqstr of description of spell
 /* 156 */	//int typedescnum; // eqstr of type description
 /* 157 */	int effectdescnum; // eqstr of effect description
-/* 158 */   //Category Desc ID 3
+/* 158 */   //Category Desc ID 3 //C!Kayen - Allows spell to be put in another effectdesc
 /* 159 */	bool npc_no_los;
 /* 161 */	bool reflectable;
 /* 162 */	int bonushate;
@@ -929,6 +931,7 @@ const char *GetSpellName(int16 spell_id);
 //C!Kayen - Custom Spell functions
 bool IsAuraCustomSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
+bool DirectionalAffectCaster(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);
 bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
 bool CastFromPetOwner(uint16 spell_id); //NPC use only.

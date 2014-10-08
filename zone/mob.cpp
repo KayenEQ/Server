@@ -3108,7 +3108,7 @@ bool Mob::TrySpellTrigger(Mob *target, uint32 spell_id, int effect)
 				{
 					// If we trigger an effect then its over.
 					if (IsValidSpell(spells[spell_id].base2[i])){
-						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
+						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 						return true;
 					}
 				}
@@ -3127,7 +3127,7 @@ bool Mob::TrySpellTrigger(Mob *target, uint32 spell_id, int effect)
 		if(MakeRandomInt(0, 100) <= spells[spell_id].base[effect])
 		{
 			if (IsValidSpell(spells[spell_id].base2[effect])){
-				SpellFinished(spells[spell_id].base2[effect], target, 10, 0, -1, spells[spell_id].ResistDiff);
+				SpellFinished(spells[spell_id].base2[effect], target, 10, 0, -1, spells[spells[spell_id].base2[effect]].ResistDiff);
 				return true; //Only trigger once of these per spell effect.
 			}
 		}
@@ -3315,6 +3315,7 @@ int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
 	}
 
 	value += GetSpellResistTypeDmgBonus(); //C!Kayen
+	value += spellbonuses.IncomingSpellDmgPct[GetSpellResistType(spell_id)] + spellbonuses.IncomingSpellDmgPct[HIGHEST_RESIST]; //C!Kayen
 	return value;
 }
 
@@ -5471,7 +5472,7 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
  
 	while(iter != targets_in_range.end())
 	{
-		if (!(*iter) || (target_client_only && (IsNPC() && !IsPet())) 
+		if (!(*iter) || (target_client_only && ((*iter)->IsNPC() && !(*iter)->IsClientPet())) 
 			|| (*iter)->BehindMob(this, (*iter)->GetX(),(*iter)->GetY())){
 		    ++iter;
 			continue;
@@ -5632,8 +5633,7 @@ void EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spe
 
 void EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id)
 { 
-	//The buff cast by the aura has spell effect 1016 set to -1 in the spell data as the last effect. This should return an invalid spell.
-	//Aura range is determined by AOE range on primary aura spell.
+	//This is not used at present time - See ApplyAuraField
 	if (!IsValidSpell(spell_id) || !IsValidSpell(aura_spell_id))
 		return;
 	
@@ -5737,6 +5737,10 @@ bool Mob::SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target){
 		return true;
 		
 	if (spell_target){
+
+		if (spell_target == this)
+			return true;
+
 		if (!spell_target->InAngleMob(this, spells[spell_id].directional_start,spells[spell_id].directional_end)){
 			//Message_StringID(13,CANT_SEE_TARGET);
 			Message(MT_SpellFailure, "You must face your target to use this ability!");
@@ -7020,9 +7024,44 @@ bool Client::IsSpectralBladeEquiped()
 		return false;
 }
 
+//C!SpellEffects :: SE_CastOnSpellCastCountAmt
+
+void Mob::TryCastonSpellCastCountAmt(int slot, uint16 spell_id)
+{
+	if (!IsClient())
+		return;
+
+	//This is the general cast count incrementer for all spells
+	CastToClient()->SetSpellCastCount(slot, SPELL_UNKNOWN, (CastToClient()->GetSpellCastCount(slot) + 1));
+
+
+	//This function is primarily used to reset recast timers after a spell has been cast a specific amount of time.
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_CastOnSpellCastCountAmt)
+		{
+			uint16 cast_count = CastToClient()->GetSpellCastCount(-1, spell_id);
+			if (cast_count == (spells[spell_id].max[i])){
+				if (IsValidSpell(spells[spell_id].base2[i])){
+					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+						SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+						return;
+					}
+				}
+			}
+			
+			//The next cast after the trigger reset the cast count.
+			else if (cast_count == (spells[spell_id].max[i]+1)){
+				CastToClient()->SetSpellCastCount(-1, spell_id, 0);
+				return;
+			}
+		}
+	}
+}
+
 //C!SpellEffects :: SE_TryCastonSpellFinished
 
-void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id)
+void Mob::TryCastonSpellFinished(Mob *target, uint16 spell_id)
 {
 	if(!IsClient() || target == nullptr || !IsValidSpell(spell_id))
 		return;
@@ -7034,7 +7073,7 @@ void Mob::TryCastonSpellFinished(Mob *target, uint32 spell_id)
 			if(MakeRandomInt(1, 100) <= spells[spell_id].base[i])
 			{
 				if(target)
-					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
+					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
 			}
 		}
 	}
@@ -7675,6 +7714,55 @@ uint16 Mob::GetBuffSpellidBySpellGroup(int spellgroupid)
 }
 
 //C! - New uncategorized functions
+
+bool Mob::IsClientPet()
+{
+	if (IsTempPetClient())
+		return true;
+	else if (IsPet() && GetOwner() && GetOwner()->IsClient())
+		return true;
+
+	return false;
+}
+
+uint16 Client::GetSpellCastCount(int slot, uint16 spell_id)
+{
+	if (spell_id == SPELL_UNKNOWN){
+		if (slot >= 0 && slot < MAX_PP_MEMSPELL)
+		return spell_cast_count[slot];
+	}
+
+	else if (IsValidSpell(spell_id)){
+
+		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
+			if(IsValidSpell(m_pp.mem_spells[i])) {
+				if (m_pp.mem_spells[i] == spell_id)
+					return spell_cast_count[i];
+			}
+		}
+	}
+
+	return 0;
+}
+
+void Client::SetSpellCastCount(int slot, uint16 spell_id, int value)
+{Shout("SetSpellCast %i %i %i", slot, spell_id, value);
+
+	if (spell_id == SPELL_UNKNOWN){
+		if (slot >= 0 && slot < MAX_PP_MEMSPELL)
+			spell_cast_count[slot] = value;
+	}
+
+	else if (IsValidSpell(spell_id)){
+
+		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
+			if(IsValidSpell(m_pp.mem_spells[i])) {
+				if (m_pp.mem_spells[i] == spell_id)
+					spell_cast_count[i] = value;
+			}
+		}
+	}
+}
 
 void Mob::CalcSpellDPS(uint16 spell_id)
 {

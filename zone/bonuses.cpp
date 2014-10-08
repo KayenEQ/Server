@@ -3044,6 +3044,14 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 			case SE_AuraField:			
 				newbon->AuraField = effect_value; 
 				break;
+
+			case SE_IncomingSpellDmgPct:{
+				if (base2 == -1)
+					newbon->IncomingSpellDmgPct[HIGHEST_RESIST] += effect_value;
+				else
+					newbon->IncomingSpellDmgPct[base2] += effect_value; //Base2 is resist type
+				break;
+			}
 		}
 	}
 }
