@@ -6072,6 +6072,7 @@ XS(XS_Client_SendSpellAnim)
 	XSRETURN_EMPTY;
 }
 
+
 XS(XS_Client_RefundAAType); /* prototype to pass -Wmissing-prototypes */ //C!Kayen
 XS(XS_Client_RefundAAType)
 {
@@ -6128,6 +6129,7 @@ XS(XS_Client_SendActionPacket)
 	}
 	XSRETURN_EMPTY;
 }
+
 
 #ifdef __cplusplus
 extern "C"

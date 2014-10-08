@@ -5515,4 +5515,3 @@ void Client::SendSpellAnim(uint16 targetid, uint16 spell_id)
 	app.priority = 1;
 	entity_list.QueueCloseClients(this, &app);
 }
-

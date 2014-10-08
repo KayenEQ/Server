@@ -2628,7 +2628,7 @@ namespace RoF
 		else
 			eq->window = emu->window;
 		OUT(type);
-		eq->invslot = 0; // Set to hard 0 since it's not required for the structure to work
+		OUT(invslot);
 		strn0cpy(eq->txtfile, emu->booktext, sizeof(eq->txtfile));
 
 		FINISH_ENCODE();
@@ -4036,12 +4036,7 @@ namespace RoF
 		IN(race);
 		IN(class_);
 		IN(deity);
-
-		if (RuleB(World, EnableTutorialButton) && eq->tutorial)
-			emu->start_zone = RuleI(World, TutorialZoneID);
-		else
-			emu->start_zone = eq->start_zone;
-
+		IN(start_zone);
 		IN(haircolor);
 		IN(beard);
 		IN(beardcolor);
@@ -4059,7 +4054,7 @@ namespace RoF
 		IN(WIS);
 		IN(INT);
 		IN(CHA);
-		//IN(tutorial);
+		IN(tutorial);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -4497,7 +4492,7 @@ namespace RoF
 		SETUP_DIRECT_DECODE(BookRequest_Struct, structs::BookRequest_Struct);
 
 		IN(type);
-		emu->invslot = 0; // Set to hard 0 since it's not required for the structure to work
+		IN(invslot);
 		emu->window = (uint8)eq->window;
 		strn0cpy(emu->txtfile, eq->txtfile, sizeof(emu->txtfile));
 
