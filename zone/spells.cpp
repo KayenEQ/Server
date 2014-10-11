@@ -154,7 +154,7 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 {
 	mlog(SPELLS__CASTING, "CastSpell called for spell %s (%d) on entity %d, slot %d, time %d, mana %d, from item slot %d",
 		spells[spell_id].name, spell_id, target_id, slot, cast_time, mana_cost, (item_slot==0xFFFFFFFF)?999:item_slot);
-	CalcSpellDPS(spell_id);//C!Kayen
+
 	if(casting_spell_id == spell_id)
 		ZeroCastingVars();
 
@@ -444,8 +444,10 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		}
 	}
 
-	if (!TryEnchanterManaFocusSpell(spell_id)) //C!Kayen
+	if (!TryEnchanterCastingConditions(spell_id)){ //C!Kayen
+		InterruptSpell();
 		return false;
+	}
 
 	if(mana_cost > GetMana())
 		mana_cost = GetMana();
@@ -2223,8 +2225,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			if (IsBeneficialSpell(spell_id) && DirectionalAffectCaster(spell_id))
 				SpellOnTarget(spell_id,this, false, true, resist_adjust);
 
-			Shout("Directional Param: %i %i", target_client_only, DirectionalAffectCaster(spell_id));
-
 			while(iter != targets_in_range.end())
 			{
 				if (!(*iter) || (!CastToClient()->GetGM() && target_client_only && ((*iter)->IsNPC() && !(*iter)->IsClientPet()))){
@@ -2290,7 +2290,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			else if (GetProjSpeed(spell_id) > 1) //Denotes spell to use projectile
 				ProjectileTargetRing(spell_id);
 			else{
-				Shout("DEBUG:: Spells:TargetRing :: Do AE");
 				entity_list.AESpell(this, nullptr, spell_id, false, resist_adjust);
 			}
 

@@ -405,6 +405,7 @@ Mob::Mob(const char* in_name,
 	ActiveProjectileRing = false;
 	ActiveProjectile = false;
 	ProjectilePet = false;
+	ProjectileAESpellHitTarget = false;
 
 	MeleeChargeActive = false;
 	MeleeCharge_target_id = 0;
@@ -6117,7 +6118,7 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	dist_mod = (dist_mod * speed_mod) / 100.0f;
 	hit = (distance * dist_mod) / 100; //#1
 
-	Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
+	//Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
 	//Close Distance Modifiers
 	if (distance <= 35 && distance > 25)
 		hit *= 1.6f;
@@ -6126,7 +6127,7 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	if (distance <= 15) 
 		hit *= 2.0f;
 
-	Shout("B Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
+	//Shout("B Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
 	
 	projectile_spell_id_ring[bolt_id] = spell_id;
 	projectile_target_id_ring[bolt_id]  = spell_target->GetID();
@@ -6189,7 +6190,7 @@ void Mob::SpellProjectileEffectTargetRing()
 			continue;
 		
 		if (projectile_increment_ring[i] > projectile_hit_ring[i]){
-		Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
+		//Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
 
 			Mob* target = entity_list.GetMobID(projectile_target_id_ring[i]);
 			if (target){
@@ -6197,8 +6198,15 @@ void Mob::SpellProjectileEffectTargetRing()
 				if (IsValidSpell(p_spell_id)){
 					if (spells[p_spell_id].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
 						entity_list.AESpell(this, target, p_spell_id, false, spells[p_spell_id].ResistDiff);
-						TryApplyEffectProjectileHit(p_spell_id);
+						
+						if (HasProjectileAESpellHitTarget())
+							TryApplyEffectProjectileHit(p_spell_id);
+						else
+							ProjectileTargetRingFailMessage(p_spell_id);
+						
+						//Reset Projectile Ring Variables
 						SetCastFromCrouchIntervalProj(0);
+						SetProjectileAESpellHitTarget(false);
 					}
 				}
 				//target->Depop(); //Depop Temp Pet at Ring Location - Now pets auto depop after 10 seconds
@@ -6435,7 +6443,7 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 		return 0;
 
 	int16 mod = 0;
-	//Shout("Mob::GetBaseSpellPower Buff Slot Focus %i  slot %i ", buff_focus , buff_focus);
+	//("Mob::GetBaseSpellPower Buff Slot Focus %i  slot %i ", buff_focus , buff_focus);
 	if (buff_focus >= 0) //Default is -1 (Therefore we only check this when checking over time)
 		value += value*buff_focus/100;
 	else {
@@ -6897,14 +6905,15 @@ int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
 		focus_mod = 4;
 
 	int total_mod = (effect_mod*focus_mod) + ((mana_amt_mod * focus_mod) / 100);
-	Shout("DEBUG::CalcSpellPowerManaMod :: Effect Mod %i Mana_Mod %i Total Mod %i", (effect_mod*focus_mod), ((mana_amt_mod * focus_mod) / 100), total_mod);
+	//Shout("DEBUG::CalcSpellPowerManaMod :: Effect Mod %i Mana_Mod %i Total Mod %i", (effect_mod*focus_mod), ((mana_amt_mod * focus_mod) / 100), total_mod);
 	return total_mod;
 }
 
-bool Mob::TryEnchanterManaFocusSpell(uint16 spell_id)
+bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 {
 	if (IsClient() && GetClass() == ENCHANTER) {
 
+		//Check if spell requires mana to be consumed.
 		if (GetSpellPowerManaModValue(spell_id)) {
 			if (GetManaPercent() >= 20){
 				return true;
@@ -6912,7 +6921,15 @@ bool Mob::TryEnchanterManaFocusSpell(uint16 spell_id)
 			else { 
 				//Message_StringID(13, INSUFFICIENT_MANA);
 				Message(13, "Insufficient Mana to cast this spell! This ability requires at least 20 percent Mana.");
-				InterruptSpell();
+				return false;
+			}
+		}
+
+		//Check if 'Mind Over Matter' Mana drain from tanking effect - Can not cast spectral blades while active.
+		if (spells[spell_id].spellgroup == 2000 || spells[spell_id].spellgroup == 2006){ //Spectral Blade spells
+			if (spellbonuses.ManaAbsorbPercentDamage[0]){
+				Message(13, "You lack the concentratation to manifest spectral blades while using using Mind Over Matter.");
+				Debug("DEBUG: Mob::TryEnchanterCastingConditions :: This may need to be altered.");
 				return false;
 			}
 		}
@@ -7059,6 +7076,44 @@ void Mob::TryCastonSpellCastCountAmt(int slot, uint16 spell_id)
 	}
 }
 
+uint16 Client::GetSpellCastCount(int slot, uint16 spell_id)
+{
+	if (spell_id == SPELL_UNKNOWN){
+		if (slot >= 0 && slot < MAX_PP_MEMSPELL)
+		return spell_cast_count[slot];
+	}
+
+	else if (IsValidSpell(spell_id)){
+
+		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
+			if(IsValidSpell(m_pp.mem_spells[i])) {
+				if (m_pp.mem_spells[i] == spell_id)
+					return spell_cast_count[i];
+			}
+		}
+	}
+
+	return 0;
+}
+
+void Client::SetSpellCastCount(int slot, uint16 spell_id, int value)
+{
+	if (spell_id == SPELL_UNKNOWN){
+		if (slot >= 0 && slot < MAX_PP_MEMSPELL)
+			spell_cast_count[slot] = value;
+	}
+
+	else if (IsValidSpell(spell_id)){
+
+		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
+			if(IsValidSpell(m_pp.mem_spells[i])) {
+				if (m_pp.mem_spells[i] == spell_id)
+					spell_cast_count[i] = value;
+			}
+		}
+	}
+}
+
 //C!SpellEffects :: SE_TryCastonSpellFinished
 
 void Mob::TryCastonSpellFinished(Mob *target, uint16 spell_id)
@@ -7155,14 +7210,8 @@ int32 Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 				if (distance > max_distance)
 					distance = max_distance;
 
-				int mod = 1 + ((distance * (max_modifier/max_distance))/100);
+				mod = 1 + ((distance * (max_modifier/max_distance))/100);
 				//Shout("DEBUG::CalcSpellPowerHeightMod :: MOD %i Distance %i", mod, distance);
-				 //C!Kayen
-
-				/*
-				if (mod)
-					damage = damage*mod;
-				*/
 			}
 		}
 	}
@@ -7628,6 +7677,8 @@ void Mob::CastOnCureFromCure(uint16 spell_id)
 
 bool Mob::CalcStunResilience(int effect_value, Mob* caster)
 {
+	return false;//OFF for testing
+
 	if (!IsNPC() || !GetMaxStunResilience()) //IsStuned() ? Should I allow you to reduce if NPC is already stunned.
 		return false;
 
@@ -7725,77 +7776,30 @@ bool Mob::IsClientPet()
 	return false;
 }
 
-uint16 Client::GetSpellCastCount(int slot, uint16 spell_id)
-{
-	if (spell_id == SPELL_UNKNOWN){
-		if (slot >= 0 && slot < MAX_PP_MEMSPELL)
-		return spell_cast_count[slot];
-	}
-
-	else if (IsValidSpell(spell_id)){
-
-		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
-			if(IsValidSpell(m_pp.mem_spells[i])) {
-				if (m_pp.mem_spells[i] == spell_id)
-					return spell_cast_count[i];
-			}
-		}
-	}
-
-	return 0;
-}
-
-void Client::SetSpellCastCount(int slot, uint16 spell_id, int value)
-{Shout("SetSpellCast %i %i %i", slot, spell_id, value);
-
-	if (spell_id == SPELL_UNKNOWN){
-		if (slot >= 0 && slot < MAX_PP_MEMSPELL)
-			spell_cast_count[slot] = value;
-	}
-
-	else if (IsValidSpell(spell_id)){
-
-		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
-			if(IsValidSpell(m_pp.mem_spells[i])) {
-				if (m_pp.mem_spells[i] == spell_id)
-					spell_cast_count[i] = value;
-			}
-		}
-	}
-}
-
-void Mob::CalcSpellDPS(uint16 spell_id)
-{
-	if (!IsValidSpell(spell_id))
-		return;
-
-	int cast_time = spells[spell_id].cast_time/1000;
-	int recast_time = spells[spell_id].recast_time/1000;
-	int damage = 0;
-
-	for(int i = 0; i < EFFECT_COUNT; i++){
-		if (spells[spell_id].effectid[i] == SE_CurrentHP)
-			damage += spells[spell_id].base[i];
-	}
-
-	int divide = cast_time + recast_time;
-	float dps = 0;
-	
-	Shout("Mob::CalcSpellDPS :: %i %i %i", damage,cast_time, recast_time);
-	
-	if (divide)
-		dps = damage / (divide);
-
-	Shout("CalcSpellDPS :: Spell: %s DPS: %.2f", spells[spell_id].name, dps);
-
-}
-
 void Mob::DirectionalFailMessage(uint16 spell_id)
 {
 	//Message given for failed directional abilities, message will differ based on type of spell.
 	Message(MT_SpellFailure, "Your spell failed to find a target.");
 
 }
+
+void Mob::ProjectileTargetRingFailMessage(uint16 spell_id)
+{
+	if (spells[spell_id].spellgroup == 2000)
+		Message(MT_SpellFailure, "Your spectral blade missed!");
+	else if (spells[spell_id].spellgroup == 2006)
+		Message(MT_SpellFailure, "Your spectral blades missed!");
+
+	else
+		Message(MT_SpellFailure, "Your spell failed to find a target.");
+
+}
+
+void Mob::Debug(const char *str)
+{
+	entity_list.MessageStatus(0, 100, 326, "%s", str);
+}
+
 
 
 //C!Misc - Functions still in development

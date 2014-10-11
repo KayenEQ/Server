@@ -1347,7 +1347,7 @@ void Mob::ProjectileAnimation(Mob* to, int item_id, bool IsArrow, float speed, f
 	if(!arc) {
 		arc = 50;
 	}
-	Shout("Projectile Fire! Heading %.2f", GetHeading());
+
 	const char *item_IDFile = item->IDFile;
 
 	if (IDFile && (strncmp(IDFile, "IT", 2) == 0))

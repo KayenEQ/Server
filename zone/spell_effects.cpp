@@ -254,7 +254,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						dmg = caster->GetActSpellDamage(spell_id, dmg, this);
 						caster->ResourceTap(-dmg, spell_id);
 					}
-					Shout("KAYEN DEBUG: Direct Damage [%i] from spell [%i]", dmg, spell_id);
+					//Shout("KAYEN DEBUG: Direct Damage [%i] from spell [%i]", dmg, spell_id);
 					dmg = -dmg;
 					Damage(caster, dmg, spell_id, spell.skill, false, buffslot, false);
 				}
@@ -2972,6 +2972,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_BaseSpellPowerWizard:
 			{
 				SetWizardInnateActive(false); //Prevent endurance drain if effect in spell.
+				break;
+			}
+
+			case SE_ApplyEffectProjectileHit:
+			{
+				if (caster)
+					caster->SetProjectileAESpellHitTarget(true); //Confirm that we actually hit something wtih projectile target ring effects.
 				break;
 			}
 

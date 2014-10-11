@@ -963,6 +963,8 @@ public:
 	bool ExistsProjectileRing();
 	void TryApplyEffectProjectileHit(uint16 spell_id);
 	float CalcSpecialProjectile(uint16 spell_id);
+	inline bool HasProjectileAESpellHitTarget() const { return ProjectileAESpellHitTarget; } 
+	inline void SetProjectileAESpellHitTarget(bool value) { ProjectileAESpellHitTarget = value; } 
 
 	//C!Projectile2
 	void SpellProjectileEffect2();
@@ -1008,7 +1010,7 @@ public:
 
 	//C!Enchanter :: Functions related to spell power from mana amount
 	int32 CalcSpellPowerManaMod(uint16 spell_id); //Enchanter special focus
-	bool TryEnchanterManaFocusSpell(uint16 spell_id);
+	bool TryEnchanterCastingConditions(uint16 spell_id);
 	void TryEnchanterManaFocusConsume(uint16 spell_id);
 	int32 GetSpellPowerModFromPet(uint16 spell_id); //Enchanter special focus from pet
 	//!// NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
@@ -1016,6 +1018,8 @@ public:
 
 	//C!SpellEffects :: SE_CastOnSpellCastCountAmt
 	void Mob::TryCastonSpellCastCountAmt(int slot, uint16 spell_id);
+	//!// Client::GetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN);
+	//!// Client::SetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN, int value = 0);
 
 	//C!SpellEffects :: SE_TryCastonSpellFinished	
 	void TryCastonSpellFinished(Mob *target, uint16 spell_id);
@@ -1110,10 +1114,14 @@ public:
 	inline void SetOriginCasterID(uint16 value) { origin_caster_id = value; }
 	inline uint16 GetOriginCasterID() const { return origin_caster_id; }
 
+
+
 	//
 
-	void CalcSpellDPS(uint16 spell_id);
 	void DirectionalFailMessage(uint16 spell_id);
+	void ProjectileTargetRingFailMessage(uint16 spell_id);
+	void Mob::Debug(const char *str);
+
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
 	bool IsClientPet();
@@ -1483,6 +1491,7 @@ protected:
 	bool ActiveProjectileRing;
 	bool ActiveProjectile;
 	bool ProjectilePet;
+	bool ProjectileAESpellHitTarget; //USed with projectile target rings.
 
 	bool MeleeChargeActive;
 	uint16 MeleeCharge_target_id;
@@ -1503,7 +1512,7 @@ protected:
 	bool TempPetClient; //Need a simple way to check this (Flags the NPC as a temp pet)
 	uint16 origin_caster_id;
 	bool AppearanceEffect;
-	
+		
 	Timer effect_field_timer;
 	Timer aura_field_timer;
 

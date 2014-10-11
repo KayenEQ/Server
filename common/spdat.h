@@ -653,7 +653,6 @@ typedef enum {
 #define SE_PercentalMana				1025 // implemented - 
 #define SE_MeleeManaTap					1026 // implemented - 
 #define SE_SpellPowerManaMod			1027 // implemented - Enchanter effect that focuses spells from % mana base: Mod% Limit % divider mana amt mod
-#define SE_FadeIfTargetNotCaster		1028 // implemented - Fade on buff tick if current taret is not caster.
 #define SE_ApplyEffectProjectileHit		1028 // implemented - Apply an effect on CASTER when projectile hits target
 #define SE_TemporaryPetsNoAggro			1029 // implemented - Base #Pets Limit (0=At Loc/1=Move to Loc) Max = Duration
 #define SE_HateOnPetOwner				1030 // implemented - add hate to pet's owner - Base = Amt Hate Limit = %Tx from pet hate to caster
@@ -668,6 +667,7 @@ typedef enum {
 #define SE_AuraField					1039 // implemented - Base: Spell ID of Effect
 #define SE_IncomingSpellDmgPct			1040 // implemented - Increase/Decrease spell and damage
 #define SE_CastOnSpellCastCountAmt      1041 // implemented - Trigger spell after a specific spell has been casted a certain number of times.
+#define SE_FadeIfTargetNotCaster		1042 // implemented - Fade on buff tick if current taret is not caster.
 // LAST
 
 

@@ -5491,6 +5491,10 @@ void Client::Handle_OP_EnvDamage(const EQApplicationPacket *app)
 		return;
 	}
 
+	//C!Kayen - Remove Fall Damage
+	SetHP(GetHP() - 1);
+	return;
+
 	if (app->size != sizeof(EnvDamage2_Struct)) {
 		LogFile->write(EQEMuLog::Error, "Received invalid sized OP_EnvDamage: got %d, expected %d", app->size,
 			sizeof(EnvDamage2_Struct));
