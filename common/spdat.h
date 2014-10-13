@@ -668,6 +668,7 @@ typedef enum {
 #define SE_IncomingSpellDmgPct			1040 // implemented - Increase/Decrease spell and damage
 #define SE_CastOnSpellCastCountAmt      1041 // implemented - Trigger spell after a specific spell has been casted a certain number of times.
 #define SE_FadeIfTargetNotCaster		1042 // implemented - Fade on buff tick if current taret is not caster.
+#define SE_CastEffectFieldSpell			1043 // implemented - Determines what spell the effect field pet will cast
 // LAST
 
 
@@ -929,7 +930,7 @@ bool IsSpellUsableThisZoneType(uint16 spell_id, uint8 zone_type);
 const char *GetSpellName(int16 spell_id);
 
 //C!Kayen - Custom Spell functions
-bool IsAuraCustomSpell(uint16 spell_id);
+bool IsEffectFieldSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
 bool DirectionalAffectCaster(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);

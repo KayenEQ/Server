@@ -591,6 +591,14 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 		return;
 	}
 
+	//C!Kayen - Failsafe to disable having multiple of the same Effect Field spawned at same time.
+	if (IsEffectFieldSpell(spell_id)){
+		NPC* temp = nullptr;
+		temp = entity_list.GetNPCByNPCTypeID(pet.npc_id);
+		if (temp)
+			temp->Depop();
+	}
+
 	if(name_override != nullptr) {
 		//we have to make a custom NPC type for this name change
 		made_npc = new NPCType;

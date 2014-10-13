@@ -5906,7 +5906,7 @@ void Mob::TargetRingTempPet(uint16 spell_id)
 		return;
 
 	char pet_name[64];
-	snprintf(pet_name, sizeof(pet_name), "%s`s pet [No aggro]", GetCleanName());
+	snprintf(pet_name, sizeof(pet_name), "%s`s manifestation", GetCleanName());
 	TemporaryPets(spell_id, nullptr, pet_name); //Create pet.
 }
 
@@ -6198,7 +6198,7 @@ void Mob::SpellProjectileEffectTargetRing()
 				if (IsValidSpell(p_spell_id)){
 					if (spells[p_spell_id].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
 						entity_list.AESpell(this, target, p_spell_id, false, spells[p_spell_id].ResistDiff);
-						
+
 						if (HasProjectileAESpellHitTarget())
 							TryApplyEffectProjectileHit(p_spell_id);
 						else
@@ -6244,8 +6244,17 @@ void Mob::TryApplyEffectProjectileHit(uint16 spell_id)
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_ApplyEffectProjectileHit){
-			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i])
-				SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spell_id].ResistDiff);
+			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]){
+
+				if (!GetCastFromCrouchIntervalProj())
+					SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spell_id].ResistDiff);
+
+				else {
+					for(int j = 0; j < GetCastFromCrouchIntervalProj(); j++){
+						SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spell_id].ResistDiff);
+					}
+				}
+			}
 		}
 	}
 }
@@ -6928,7 +6937,7 @@ bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 		//Check if 'Mind Over Matter' Mana drain from tanking effect - Can not cast spectral blades while active.
 		if (spells[spell_id].spellgroup == 2000 || spells[spell_id].spellgroup == 2006){ //Spectral Blade spells
 			if (spellbonuses.ManaAbsorbPercentDamage[0]){
-				Message(13, "You lack the concentratation to manifest spectral blades while using using Mind Over Matter.");
+				Message(13, "You lack the concentratation to project spectral blades while using using Mind Over Matter.");
 				Debug("DEBUG: Mob::TryEnchanterCastingConditions :: This may need to be altered.");
 				return false;
 			}
@@ -6976,6 +6985,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	if (!owner || !IsValidSpell(spell_id))
 		return;
 
+	std::string WT;
 	int mod = 0;
 	int enc_mod = owner->CalcSpellPowerManaMod(spell_id);
 	//Need to set a stat on NPC that is equal to the spell ID to be cast.
@@ -6983,20 +6993,28 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 
 	//1: Check for any special pet 'type' behaviors
 	const char *pettype = spells[spell_id].player_1; //Constant for each type of pet
-
+	owner->Shout("Apply custom pet bonus %i", spell_id);
 	if ((strcmp(pettype, "spectral_animation")) == 0){
 		WearChange(7,owner->GetEquipmentMaterial(MaterialPrimary),0); //ENC Animation spell to set graphic same as sword.
 		WearChange(8,0,0);
 		SetOnlyAggroLast(true);
 		SpellFinished(2013, this, 10, 0, -1, spells[spell_id].ResistDiff);
+		WT = owner->GetCleanName();	
+		//WT += "'s Spectral Animation";
+		WT += "'s_Animation";
+		if (strlen(WT.c_str()) <= 64)
+			TempName(WT.c_str());
 	}
 
-	/* MOVE TO PERL QUEST FILE #_tk_bladestorm
 	else if ((strcmp(pettype, "tk_bladestorm")) == 0){
+		WT = owner->GetCleanName();	
+		//WT += "'s Telekenetic Bladestorm";
+		WT += "'s_Bladestorm";
+		if (strlen(WT.c_str()) <= 64)
+			TempName(WT.c_str());
 		SetOnlyAggroLast(true);
-		SendSpellEffect(567, 500, 0, 1, 3000, true);
+		//SendSpellEffect(567, 500, 0, 1, 3000, true);
 	}
-	*/
 
 	//2: Target RING - Determine if target pets spawn at location or path to location. [Limit value in SE_TemporaryPetNoAgggro]
 	if (spells[spell_id].targettype == ST_Ring && (IsEffectInSpell(spell_id,SE_TemporaryPetsNoAggro))){
@@ -7012,9 +7030,21 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		else if (limit == 1)
 			MoveTo(owner->GetTargetRingX(), owner->GetTargetRingY(), owner->GetTargetRingZ(), GetHeading(), true);
 	}
+
+	//3. Effect Fields on Temp Pets
+	if (IsEffectFieldSpell(spell_id)){
+		TempName("#");
+		for(int i = 0; i < EFFECT_COUNT; i++){
+			if (spells[spell_id].effectid[i] == SE_CastEffectFieldSpell){
+				if (IsValidSpell(spells[spell_id].base[i]));
+					owner->SpellOnTarget(spells[spell_id].base[i], this, false, true, 0);
+			}
+		}
+		SetOnlyAggroLast(true);
+	}
 	
 
-	//3: Scale pet based on any focus modifiers.
+	//4: Scale pet based on any focus modifiers.
 	//Shout("DEBUG: ApplyCustomPetBonuses :: PRE Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
 	base_hp  += base_hp * mod / 100;
 	max_dmg += max_dmg * mod / 100;
@@ -7334,7 +7364,7 @@ void EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, boo
 { 
 	if (!IsValidSpell(spell_id) || !center || !caster)
 		return;
-
+	
 	Mob *curmob;
 	float dist = spells[spell_id].range;
 	float dist2 = dist * dist;
@@ -7351,6 +7381,7 @@ void EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, boo
 			continue;
 		if (curmob == caster && !affect_caster)
 			continue;
+
 		dist_targ = center->DistNoRoot(*curmob);
 
 		if (dist_targ > dist2){
@@ -7373,9 +7404,35 @@ void EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, boo
 				continue;
 		}
 
-		if (curmob && !curmob->FindBuff(spell_id))
-			caster->SpellOnTarget(spell_id, curmob, false, true, 0);
+		if (curmob && !curmob->FindBuff(spell_id) && !curmob->IsImmuneToSpellEffectField(spell_id))
+			caster->SpellOnTarget(spell_id, curmob, false, true, 0); 
 	}
+}
+
+bool Mob::IsImmuneToSpellEffectField(uint16 spell_id)
+{
+	//Scaled down version of immune check to prevent spam, since these effects generally unresistable unless immmune.
+	if (GetSpecialAbility(IMMUNE_MAGIC))
+		return true;
+
+	for (int j = 0; j < EFFECT_COUNT; j++){
+
+		int effect = spells[spell_id].effectid[j];
+
+		if (effect == SE_AttackSpeed && GetSpecialAbility(UNSLOWABLE))
+			return true;
+
+		if ((effect == SE_Root || effect == SE_MovementSpeed) && GetSpecialAbility(UNSNAREABLE))
+			return true;
+
+		if (effect == SE_Fear && GetSpecialAbility(UNFEARABLE))
+			return true;
+
+		if (effect == SE_Mez && GetSpecialAbility(UNMEZABLE))
+			return true;
+	}
+
+	return false;
 }
 
 void EntityList::FadeFieldBuff(uint16 caster_id, uint16 spell_id)
@@ -7392,6 +7449,8 @@ void EntityList::FadeFieldBuff(uint16 caster_id, uint16 spell_id)
 			curmob->BuffFadeBySpellIDCaster(spell_id, caster_id);
 	}
 }
+
+
 
 void Mob::DoAuraField()
 {
@@ -7799,8 +7858,6 @@ void Mob::Debug(const char *str)
 {
 	entity_list.MessageStatus(0, 100, 326, "%s", str);
 }
-
-
 
 //C!Misc - Functions still in development
 

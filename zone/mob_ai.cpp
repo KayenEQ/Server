@@ -1409,8 +1409,10 @@ void Mob::AI_Process() {
 						mlog(AI__WAYPOINTS, "Pursuing %s while engaged.", target->GetName());
 						
 						//Shout("rs %.2f M %.4f MS %.4f", runspeed, GetMomentum(), GetMomentumSpeed());
-						if (GetMomentum() < runspeed*1.0f) //C!Kayen (Momentum can not be more than 2x run speed. (change by adjusting multiplier)
+						bool m_on = false;
+						if (m_on && GetMomentum() < runspeed*1.0f) //C!Kayen (Momentum can not be more than 2x run speed. (change by adjusting multiplier)
 							SetMomentum(GetMomentum() + GetMomentumSpeed());
+						
 
 						if(!RuleB(Pathing, Aggro) || !zone->pathing)
 							CalculateNewPosition2(target->GetX(), target->GetY(), target->GetZ(), GetRunspeed());

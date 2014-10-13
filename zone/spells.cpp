@@ -2681,7 +2681,9 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 
 	res = mod_buff_duration(res, caster, target, spell_id);
 
+	Shout("1 Test add buff ticsk %i", res);
 	res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
+	Shout("2 Test add buff ticsk %i", res);
 
 	mlog(SPELLS__CASTING, "Spell %d: Casting level %d, formula %d, base_duration %d: result %d",
 		spell_id, castlevel, formula, duration, res);
@@ -3892,7 +3894,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 	safe_delete(action_packet);
 	safe_delete(message_packet);
 
-	//C!Kayen - Send Appearance Effects from Spell File [Field1
+	//C!Kayen - Send Appearance Effects from Spell File
 	if (spelltar && spells[spell_id].AppEffect){
 		spelltar->SendAppearanceEffect2(spells[spell_id].AppEffect, 0, 0, 0, 0, nullptr);
 		spelltar->SetAppearanceEffect(true);

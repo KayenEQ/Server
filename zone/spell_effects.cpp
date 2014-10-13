@@ -2910,7 +2910,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_TemporaryPetsNoAggro: 
 			{
 				char pet_name[64];
-				snprintf(pet_name, sizeof(pet_name), "%s`s pet [No aggro]", caster->GetCleanName());
+				snprintf(pet_name, sizeof(pet_name), "%s`s manifestation", caster->GetCleanName());
 				caster->TemporaryPets(spell_id, nullptr, pet_name);
 				break;
 			}
@@ -2929,7 +2929,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				effect_value = CalcSpellEffectValue(spell_id, i, caster_level);
 				int32 transfer_hate_amt = 0;
-
+				
 				if (spell.base2[i]) //Percent hate transfered from spell cast by pet to owner.
 					transfer_hate_amt = CheckAggroAmount(spell_id, false) * spell.base2[i] / 100;
 
@@ -4417,6 +4417,10 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 			//C!Kayen - Custom Buff Fade Effects
 			case SE_EffectField:{
+				/*
+				This is put in the primary buff effect that determines what spell is CAST from field effect on the target. Therefore,
+				this is fading on the caster.
+				*/
 				uint16 _caster_id = GetID();
 					
 				if (IsNPC() && CastToNPC()->GetSwarmOwner())
@@ -4439,7 +4443,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 	// notify caster (or their master) of buff that it's worn off
 	Mob *p = entity_list.GetMob(buffs[slot].casterid);
-	if (p && p != this && !IsBardSong(buffs[slot].spellid) && !IsAuraCustomSpell(buffs[slot].spellid)) //C!Kayen
+	if (p && p != this && !IsBardSong(buffs[slot].spellid) && !IsEffectFieldSpell(buffs[slot].spellid)) //C!Kayen
 	{
 		Mob *notify = p;
 		if(p->IsPet())

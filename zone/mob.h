@@ -1049,6 +1049,7 @@ public:
 	//C!SpellEffects :: SE_EffectField
 	void DoEffectField();
 	//!// EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster)
+	bool IsImmuneToSpellEffectField(uint16 spell_id);
 	//!// EntityList::ApplyAuraField(Mob *caster, Mob *center, uint16 spell_id)
 	//!// EntityList::FadeFieldBuff(uint16 caster_id, uint16 spell_id)
 	void DoAuraField();
@@ -1120,7 +1121,7 @@ public:
 
 	void DirectionalFailMessage(uint16 spell_id);
 	void ProjectileTargetRingFailMessage(uint16 spell_id);
-	void Mob::Debug(const char *str);
+	void Debug(const char *str);
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
