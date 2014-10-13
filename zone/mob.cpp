@@ -6487,7 +6487,7 @@ void Mob::CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* ca
 	mod += GetSpellPowerAmtHits(); //Scale based on how many targets were hit by spell prior to this target.
 	mod += CalcSpellPowerHeightMod(damage, spell_id, caster);
 	mod += CalcFromCrouchMod(damage, spell_id,caster, effectid);
-	mod += CalcSpellPowerFromBuffSpellGroup(damage, spell_id, caster);
+	mod += CalcSpellPowerFromBuffSpellGroup(spell_id, caster);
 
 	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
 	if (mod)
@@ -6993,7 +6993,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 
 	//1: Check for any special pet 'type' behaviors
 	const char *pettype = spells[spell_id].player_1; //Constant for each type of pet
-	owner->Shout("Apply custom pet bonus %i", spell_id);
+
 	if ((strcmp(pettype, "spectral_animation")) == 0){
 		WearChange(7,owner->GetEquipmentMaterial(MaterialPrimary),0); //ENC Animation spell to set graphic same as sword.
 		WearChange(8,0,0);
@@ -7166,7 +7166,7 @@ void Mob::TryCastonSpellFinished(Mob *target, uint16 spell_id)
 
 //#### C!SpellEffects :: SE_SpellPowerFromBuffSpellGroup
 
-int32 Mob::CalcSpellPowerFromBuffSpellGroup(int32 &damage, uint16 spell_id, Mob* caster)
+int32 Mob::CalcSpellPowerFromBuffSpellGroup(uint16 spell_id, Mob* caster)
 {
 	if (!IsValidSpell(spell_id) || !caster)
 		return 0;
@@ -7857,6 +7857,21 @@ void Mob::ProjectileTargetRingFailMessage(uint16 spell_id)
 void Mob::Debug(const char *str)
 {
 	entity_list.MessageStatus(0, 100, 326, "%s", str);
+}
+
+bool Mob::CustomResistSpell(uint16 spell_id, Mob *caster)
+{
+	/*
+	Valid spell checked before running in ResistSpell
+	This function will be used for custom resist checks as needed
+	*/
+	if (IsEffectInSpell(spell_id, SE_SpellPowerFromBuffSpellGroup) && caster){
+		if (!CalcSpellPowerFromBuffSpellGroup(spell_id, caster))//Resist if all effects are not present
+			return true;
+	}
+	
+	return false;
+
 }
 
 //C!Misc - Functions still in development

@@ -1025,7 +1025,7 @@ public:
 	void TryCastonSpellFinished(Mob *target, uint16 spell_id);
 
 	//C!SpellEffects :: SE_SpellPowerFromBuffSpellGroup
-	int32 CalcSpellPowerFromBuffSpellGroup(int32 &damage, uint16 spell_id, Mob* caster);
+	int32 CalcSpellPowerFromBuffSpellGroup(uint16 spell_id, Mob* caster);
 	
 	//C!SpellEffects :: SE_SpellPowerAmtHits
 	int32 GetSpellPowerAmtHitsEffect(uint16 spell_id);
@@ -1122,6 +1122,7 @@ public:
 	void DirectionalFailMessage(uint16 spell_id);
 	void ProjectileTargetRingFailMessage(uint16 spell_id);
 	void Debug(const char *str);
+	bool CustomResistSpell(uint16 spell_id, Mob *caster);
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 

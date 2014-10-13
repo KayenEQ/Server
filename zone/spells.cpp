@@ -2681,9 +2681,7 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 
 	res = mod_buff_duration(res, caster, target, spell_id);
 
-	Shout("1 Test add buff ticsk %i", res);
 	res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
-	Shout("2 Test add buff ticsk %i", res);
 
 	mlog(SPELLS__CASTING, "Spell %d: Casting level %d, formula %d, base_duration %d: result %d",
 		spell_id, castlevel, formula, duration, res);
@@ -4283,6 +4281,9 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 		mlog(SPELLS__RESISTS, "We are immune to magic, so we fully resist the spell %d", spell_id);
 		return(0);
 	}
+
+	if (CustomResistSpell(spell_id, caster)) //C!Kayen
+		return(0);
 
 	//Get resist modifier and adjust it based on focus 2 resist about eq to 1% resist chance
 	int resist_modifier = (use_resist_override) ? resist_override : spells[spell_id].ResistDiff;
