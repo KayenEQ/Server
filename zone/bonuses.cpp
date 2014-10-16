@@ -3052,6 +3052,14 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 					newbon->IncomingSpellDmgPct[base2] += effect_value; //Base2 is resist type
 				break;
 			}
+
+			case SE_FastManaRegen:{
+				newbon->FastManaRegen[0] = effect_value;
+				newbon->FastManaRegen[1] = base2;
+				newbon->FastManaRegen[2] = max;
+				newbon->FastManaRegen[3] = spell_id;
+				break;
+			}
 		}
 	}
 }

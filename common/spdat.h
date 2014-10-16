@@ -669,6 +669,7 @@ typedef enum {
 #define SE_CastOnSpellCastCountAmt      1041 // implemented - Trigger spell after a specific spell has been casted a certain number of times.
 #define SE_FadeIfTargetNotCaster		1042 // implemented - Fade on buff tick if current taret is not caster.
 #define SE_CastEffectFieldSpell			1043 // implemented - Determines what spell the effect field pet will cast
+#define SE_FastManaRegen				1044 // implemented -
 // LAST
 
 

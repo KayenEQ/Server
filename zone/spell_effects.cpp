@@ -2969,6 +2969,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_FastManaRegen:
+			{
+				fast_buff_tick_timer.Start(1000);
+				break;
+			}
+
 			case SE_BaseSpellPowerWizard:
 			{
 				SetWizardInnateActive(false); //Prevent endurance drain if effect in spell.

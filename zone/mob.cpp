@@ -425,9 +425,11 @@ Mob::Mob(const char* in_name,
 	TempPetClient = false;
 	origin_caster_id = 0;
 	AppearanceEffect = false;
+	fast_buff_tick_count = 0;
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
+	fast_buff_tick_timer.Disable();
 }
 
 Mob::~Mob()
@@ -6302,6 +6304,20 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	if (bolt_id < 0)
 		return false;
 
+	const char *item_IDFile = spells[spell_id].player_1;
+
+	//Coded narrowly for Enchanter effect.
+	if ((strcmp(item_IDFile, "PROJECTILE_WPN")) == 0){
+		if (IsClient()) {
+			ItemInst* inst = CastToClient()->m_inv.GetItem(MainPrimary);
+			if (inst && CastToClient()->IsSpectralBladeEquiped()) 
+				 item_IDFile = inst->GetItem()->IDFile;
+			else 
+				return false;
+		}
+	}
+
+	bool SendProjectile = true;
 	int caster_anim = GetProjCastingAnimation(spell_id);
 	float speed = static_cast<float>(GetProjSpeed(spell_id)) / 1000.0f; 
 	float angle = static_cast<float>(GetProjAngle(spell_id));
@@ -6330,7 +6346,30 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	else
 		skillinuse = SkillArchery;
 
-	ProjectileAnimation(spell_target,0, false, speed,angle,tilt,arc, spells[spell_id].player_1,skillinuse);
+	if (SendProjectile){
+
+		ProjectileAnimation(spell_target,0, false, speed,angle,tilt,arc, item_IDFile,skillinuse);
+
+		//Enchanter triple blade effect - Requires adjusting angle based on heading to get correct appearance.
+		if (spells[spell_id].spellgroup == 2006){ //This will likely need to be adjusted.
+			ClientFaceTarget(spell_target);
+			float _angle =  CalcSpecialProjectile(spell_id);
+			//Shout("DEBUG: TrySpellProjectileTargetRingSpecial ::  Angle %.2f [Heading %.2f]", _angle, GetHeading()/2);
+			if (GetCastFromCrouchInterval() >= 1){
+				ProjectileAnimation(spell_target,0, false, speed,_angle,tilt,600, item_IDFile,skillinuse);
+				ProjectileAnimation(spell_target,0, false, speed,(_angle - 70),tilt,600, item_IDFile,skillinuse);
+			}
+			if (GetCastFromCrouchInterval() >= 2){
+				ProjectileAnimation(spell_target,0, false, (speed - 0.2f),_angle,tilt,600, item_IDFile,skillinuse);
+				ProjectileAnimation(spell_target,0, false, (speed - 0.2f),(_angle - 70),tilt,600, item_IDFile,skillinuse);
+			}
+
+			if (GetCastFromCrouchInterval() >= 3){
+				ProjectileAnimation(spell_target,0, false, (speed - 0.4f),_angle,tilt,600, item_IDFile,skillinuse);
+				ProjectileAnimation(spell_target,0, false, (speed - 0.4f),(_angle - 70),tilt,600, item_IDFile,skillinuse);
+			}
+		}
+	}
 	
 	//Override the default projectile animation which is based on item type.
 	if (caster_anim == 44)
@@ -6375,6 +6414,17 @@ void Mob::SpellProjectileEffect2()
 
 		dist_mod = (dist_mod * speed_mod) / 100.0f;
 		hit = (distance * dist_mod) / 100;
+
+		//Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
+		//Close Distance Modifiers
+		/*
+		if (distance <= 35 && distance > 25)
+			hit *= 1.6f;
+		if (distance <= 25 && distance > 15)
+			hit *= 1.8f;
+		if (distance <= 15) 
+			hit *= 2.0f;
+		*/
 
 		uint16 increment = static_cast<int>(hit);
 
@@ -6870,7 +6920,34 @@ void Mob::TryWizardEnduranceConsume(uint16 spell_id)
 
 int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
 {
-	if (GetClass() != ENCHANTER && !IsValidSpell(spell_id))
+	if (GetClass() != ENCHANTER || !IsValidSpell(spell_id))
+		return 0;
+
+	//Returns spell modifer based on amount of mana coverted to focus
+	//Base1: AMOUNT of mana required for 1 percent focus increase
+	//Base2: UNUSED
+	
+	int effect_mod = 0;
+	int limit_mod = 0;
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_SpellPowerManaMod){
+			effect_mod = spells[spell_id].base[i]; //AMT percent increase per 1 mana (divided by 1000)
+			limit_mod = spells[spell_id].base2[i]; //UNUSED
+			break;
+		}
+	}
+
+	if (!effect_mod)
+		return 0;
+
+	return ((GetMana() * effect_mod)/1000);
+}
+
+/*
+int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
+{
+	if (GetClass() != ENCHANTER || !IsValidSpell(spell_id))
 		return 0;
 
 	//int32 effect_mod = GetSpellPowerManaModValue(spell_id); //Percent increase of base damage.
@@ -6917,12 +6994,13 @@ int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
 	//Shout("DEBUG::CalcSpellPowerManaMod :: Effect Mod %i Mana_Mod %i Total Mod %i", (effect_mod*focus_mod), ((mana_amt_mod * focus_mod) / 100), total_mod);
 	return total_mod;
 }
+*/
 
 bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 {
 	if (IsClient() && GetClass() == ENCHANTER) {
-
-		//Check if spell requires mana to be consumed.
+		
+		/*
 		if (GetSpellPowerManaModValue(spell_id)) {
 			if (GetManaPercent() >= 20){
 				return true;
@@ -6933,7 +7011,15 @@ bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 				return false;
 			}
 		}
+		*/
 
+		//For ENC class abilities that require Spectral Blade equiped - Item LightType = 1 and Spell LightType = 1
+		if((spells[spell_id].LightType == 1) && !CastToClient()->IsSpectralBladeEquiped()){
+			Message(MT_SpellFailure, "You must have a spectral blade equiped to use this ability.");
+			return false;
+		}		
+
+		/*
 		//Check if 'Mind Over Matter' Mana drain from tanking effect - Can not cast spectral blades while active.
 		if (spells[spell_id].spellgroup == 2000 || spells[spell_id].spellgroup == 2006){ //Spectral Blade spells
 			if (spellbonuses.ManaAbsorbPercentDamage[0]){
@@ -6942,6 +7028,7 @@ bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 				return false;
 			}
 		}
+		*/
 	}
 	return true;
 }
@@ -6986,6 +7073,8 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		return;
 
 	std::string WT;
+	int size_divider = 0;
+
 	int mod = 0;
 	int enc_mod = owner->CalcSpellPowerManaMod(spell_id);
 	//Need to set a stat on NPC that is equal to the spell ID to be cast.
@@ -7000,16 +7089,24 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		SetOnlyAggroLast(true);
 		SpellFinished(2013, this, 10, 0, -1, spells[spell_id].ResistDiff);
 		WT = owner->GetCleanName();	
-		//WT += "'s Spectral Animation";
-		WT += "'s_Animation";
+		WT += "'s_animation";
+		if (strlen(WT.c_str()) <= 64)
+			TempName(WT.c_str());
+	}
+
+	if ((strcmp(pettype, "reaper")) == 0){
+		SpellFinished(2050, this, 10, 0, -1, spells[spell_id].ResistDiff);
+		size_divider = 2;
+		WT = owner->GetCleanName();	
+		WT += "'s_reaper";
 		if (strlen(WT.c_str()) <= 64)
 			TempName(WT.c_str());
 	}
 
 	else if ((strcmp(pettype, "tk_bladestorm")) == 0){
 		WT = owner->GetCleanName();	
-		//WT += "'s Telekenetic Bladestorm";
-		WT += "'s_Bladestorm";
+		size_divider = 20;
+		WT += "'s_bladestorm";
 		if (strlen(WT.c_str()) <= 64)
 			TempName(WT.c_str());
 		SetOnlyAggroLast(true);
@@ -7046,15 +7143,19 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 
 	//4: Scale pet based on any focus modifiers.
 	//Shout("DEBUG: ApplyCustomPetBonuses :: PRE Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
+	
 	base_hp  += base_hp * mod / 100;
 	max_dmg += max_dmg * mod / 100;
 	min_dmg += min_dmg * mod / 100;
 	AC += AC * mod / 100;
-	ChangeSize(GetSize() + (GetSize() * static_cast<float>(mod/2) / 100));
+	
+	if (size_divider)
+		ChangeSize(GetSize() + (GetSize() * static_cast<float>(mod/size_divider) / 100));
+
 	SetSpellFocusDMG(GetSpellFocusDMG() + mod);
 	SetSpellFocusHeal(GetSpellFocusHeal() + mod);
-	//Shout("DEBUG: ApplyCustomPetBonuses :: POST Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
-	SetHP(GetMaxHP());
+    //Shout("DEBUG: ApplyCustomPetBonuses :: POST Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
+	SetHP(1000000);
 }
 
 bool Client::IsSpectralBladeEquiped()
@@ -7872,6 +7973,25 @@ bool Mob::CustomResistSpell(uint16 spell_id, Mob *caster)
 	
 	return false;
 
+}
+
+void Mob::DoFastBuffTick()
+{
+	//Primary used for rapid regeneration abilities that require more percision. !ONLY MANA IMPLEMENTED
+
+	if (spellbonuses.FastManaRegen[0] || spellbonuses.FastManaRegen[1])
+	{
+		//Coded very narrowly to only allow one effect up (If necessary can change from bonus to iterating buffs) LIMITED
+		SetMana(GetMana() + spellbonuses.FastManaRegen[0] + (GetMaxMana() * spellbonuses.FastManaRegen[1] / 100));
+		fast_buff_tick_count += 1;
+
+		if (fast_buff_tick_count >= spellbonuses.FastManaRegen[2]){
+			BuffFadeBySpellID(spellbonuses.FastManaRegen[3]);
+			fast_buff_tick_count = 0;
+		}
+	}
+	else
+		fast_buff_tick_timer.Disable();
 }
 
 //C!Misc - Functions still in development

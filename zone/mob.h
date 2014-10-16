@@ -1123,6 +1123,7 @@ public:
 	void ProjectileTargetRingFailMessage(uint16 spell_id);
 	void Debug(const char *str);
 	bool CustomResistSpell(uint16 spell_id, Mob *caster);
+	void DoFastBuffTick();
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
@@ -1517,6 +1518,9 @@ protected:
 		
 	Timer effect_field_timer;
 	Timer aura_field_timer;
+
+	Timer fast_buff_tick_timer;
+	int fast_buff_tick_count;
 
 private:
 	void _StopSong(); //this is not what you think it is

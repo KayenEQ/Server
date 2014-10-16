@@ -592,6 +592,9 @@ bool Client::Process() {
 		if (aura_field_timer.Check())
 			DoAuraField();
 
+		if (fast_buff_tick_timer.Check()) //1 seconds
+			DoFastBuffTick();
+
 		//C!Kayen END
 					
 		if(spellbonuses.GravityEffect == 1) {

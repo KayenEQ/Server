@@ -214,12 +214,11 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		return(false);
 	}
 
-	//C!Kayen - For ENC class abilities that require Spectral Blade equiped - Item LightType = 1 and Spell LightType = 1
-	if ((GetClass() == ENCHANTER && spells[spell_id].LightType == 1) && IsClient() && !CastToClient()->IsSpectralBladeEquiped()){
-		Message(MT_SpellFailure, "You must have a spectral blade equiped to use this ability.");
+	//C!Kayen - Check various enchanter casting conditions.
+	if (!TryEnchanterCastingConditions(spell_id)){
 		CastToClient()->SendSpellBarEnable(spell_id);
 		InterruptSpell(173, 0x121, false);
-		return(false);
+		return false;
 	}
 
 	if (spellbonuses.NegateIfCombat)
@@ -446,6 +445,7 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 
 	if (!TryEnchanterCastingConditions(spell_id)){ //C!Kayen
 		InterruptSpell();
+		SendSpellBarEnable(spell_id);
 		return false;
 	}
 
@@ -2039,6 +2039,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				if (!SingleTargetSpellInAngle(spell_id, spell_target))//C!Kayen
 					return false;
 				if (spells[spell_id].targettype == ST_TargetOptional){
+					if (spell_target && spell_target == this)//C!Kayen
+						return false;
 					if (!TrySpellProjectile2(spell_target, spell_id)) //C!Kayen - Modified formula / Speed Changes
 						return false;
 				}
@@ -5431,7 +5433,12 @@ EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target)
 		{
 			buff->entries[index].buff_slot = i;
 			buff->entries[index].spell_id = buffs[i].spellid;
-			buff->entries[index].tics_remaining = buffs[i].ticsremaining;
+
+			if (spells[buffs[i].spellid].buffdurationformula == DF_Permanent)//C!Kayen - DO NOT SHOW DURATION
+				buff->entries[index].tics_remaining = 0xFFFFFFFF;
+			else
+				buff->entries[index].tics_remaining = buffs[i].ticsremaining;
+			
 			buff->entries[index].num_hits = buffs[i].numhits;
 			++index;
 		}

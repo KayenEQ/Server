@@ -460,7 +460,9 @@ struct StatBonuses {
 	int16 SpellAggroMod;
 	uint16 AuraField;							//Spell Cast in Aura Field
 	int16 IncomingSpellDmgPct[HIGHEST_RESIST+1];//
+	int32 FastManaRegen[4];                     //0: Flat Amount 1: Percent Max: Count
 };
+
 
 typedef struct
 {
