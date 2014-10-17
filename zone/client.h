@@ -315,7 +315,7 @@ public:
 	/* New PP Save Functions */
 	bool SaveCurrency(){ return database.SaveCharacterCurrency(this->CharacterID(), &m_pp); }
 	bool SaveAA();
-	
+
 	inline bool ClientDataLoaded() const { return client_data_loaded; }
 	inline bool	Connected()		const { return (client_state == CLIENT_CONNECTED); }
 	inline bool	InZone()		const { return (client_state == CLIENT_CONNECTED || client_state == CLIENT_LINKDEAD); }
@@ -560,6 +560,9 @@ public:
 	void	SendLeadershipEXPUpdate();
 	bool	IsLeadershipEXPOn();
 	inline	int GetLeadershipAA(int AAID) { return m_pp.leader_abilities.ranks[AAID]; }
+	inline	LeadershipAA_Struct &GetLeadershipAA() { return m_pp.leader_abilities; }
+	inline	GroupLeadershipAA_Struct &GetGroupLeadershipAA()	{ return m_pp.leader_abilities.group; }
+	inline	RaidLeadershipAA_Struct &GetRaidLeadershipAA()	{ return m_pp.leader_abilities.raid; }
 	int	GroupLeadershipAAHealthEnhancement();
 	int	GroupLeadershipAAManaEnhancement();
 	int	GroupLeadershipAAHealthRegeneration();
@@ -586,6 +589,7 @@ public:
 	bool	CheckLoreConflict(const Item_Struct* item);
 	void	ChangeLastName(const char* in_lastname);
 	void	GetGroupAAs(GroupLeadershipAA_Struct *into) const;
+	void	GetRaidAAs(RaidLeadershipAA_Struct *into) const;
 	void	ClearGroupAAs();
 	void	UpdateGroupAAs(int32 points, uint32 type);
 	void	SacrificeConfirm(Client* caster);
@@ -665,7 +669,7 @@ public:
 	void	IncreaseLanguageSkill(int skill_id, int value = 1);
 	virtual uint16 GetSkill(SkillUseTypes skill_id) const { if (skill_id <= HIGHEST_SKILL) { return((itembonuses.skillmod[skill_id] > 0) ? m_pp.skills[skill_id] * (100 + itembonuses.skillmod[skill_id]) / 100 : m_pp.skills[skill_id]); } return 0; }
 	uint32	GetRawSkill(SkillUseTypes skill_id) const { if (skill_id <= HIGHEST_SKILL) { return(m_pp.skills[skill_id]); } return 0; }
-	bool	HasSkill(SkillUseTypes skill_id) const;	
+	bool	HasSkill(SkillUseTypes skill_id) const;
 	bool	CanHaveSkill(SkillUseTypes skill_id) const;
 	void	SetSkill(SkillUseTypes skill_num, uint16 value);
 	void	AddSkill(SkillUseTypes skillid, uint16 value);
@@ -682,7 +686,7 @@ public:
 	inline	uint16	MaxSkill(SkillUseTypes skillid) const { return MaxSkill(skillid, GetClass(), GetLevel()); }
 	uint8	SkillTrainLevel(SkillUseTypes skillid, uint16 class_);
 
-	void TradeskillSearchResults(const char *query, unsigned long qlen, unsigned long objtype, unsigned long someid);
+	void TradeskillSearchResults(const std::string query, unsigned long objtype, unsigned long someid);
 	void SendTradeskillDetails(uint32 recipe_id);
 	bool TradeskillExecute(DBTradeskillRecipe_Struct *spec);
 	void CheckIncreaseTradeskill(int16 bonusstat, int16 stat_modifier, float skillup_modifier, uint16 success_modifier, SkillUseTypes tradeskill);
@@ -1486,7 +1490,7 @@ private:
 	unsigned int	RestRegenHP;
 	unsigned int	RestRegenMana;
 	unsigned int	RestRegenEndurance;
-	
+
 	bool EngagedRaidTarget;
 	uint32 SavedRaidRestTimer;
 

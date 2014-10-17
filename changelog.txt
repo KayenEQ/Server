@@ -1,5 +1,37 @@
 EQEMu Changelog (Started on Sept 24, 2003 15:50)
 -------------------------------------------------------
+== 10/16/2014 ==
+Uleat: Fixed the auto-conversion view naming error and renamed the views in the script files. Added a fix sql for databases that auto-converted.
+Fix SQL: ../sql/git/bots/deprecated/2014_10_16_Lower_Case_View_Fix.sql
+
+== 10/15/2014 ==
+Uleat: Cleaned up load/drop bots sqls, added '../utils/sql/git/bots/deprecated' and '../deprecated/load_bots_old.sql' (use this file on pre-player blob conversion databases.)
+Notes: I modifed the behavior of both load and drop bots to fail on the first operation if their modifications have been performed already.
+       'load_bots.sql' will explicitly add bot schema, while 'drop_bots.sql' will explicitly drop it. I also added a few lines to change
+	   a few altered tables back to their original state - as of the date in the file.
+
+== 10/13/2014 ==
+demonstar55: Partially implement leadership and raids
+	Currently working: client side only effects and stat bonuses.
+	Not working: Mark NPC, and other stuff that need extra server side support
+	Currently only UF tested (Tit and 62 may just work, others need packet work)
+
+== 10/12/2014 ==
+Akkadius: Fix for LDON Character Stat load
+
+== 10/11/2014 ==
+demonstar55: Implement Raid MOTD for UF
+	Don't forget 2014_10_11_RaidMOTD.sql!
+
+== 10/09/2014 ==
+Uleat: Added 'BOTS' conversion code to supplement the database 'PlayerProfile' blob conversion that Akkadius recently implemented.
+Note: This automatic conversion uses the view `vwbotcharactermobs` as an update vector. If you need/would like for the converter to run on
+previously and/or manually changed code, or just have a need for it to re-run, change the following in the database view and save:
+	"c.`last_login`,"				to	"c.`timelaston`,"
+	"c.`zone_id`"					to	"c.`zoneid`"
+	"FROM `character_data` AS c"	to	"FROM `character_old` AS c"
+** This will only work if you haven't deleted your `character_old` table **
+
 == 10/07/2014 ==
 demonstar55: Identified tutorial flag in all charcreate packets, reworked logic to correctly set homes binds
 
