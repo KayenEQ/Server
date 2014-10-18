@@ -234,6 +234,7 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_GroupInvite] = &Client::Handle_OP_GroupInvite;
 	ConnectedOpcodes[OP_GroupInvite2] = &Client::Handle_OP_GroupInvite2;
 	ConnectedOpcodes[OP_GroupMakeLeader] = &Client::Handle_OP_GroupMakeLeader;
+	ConnectedOpcodes[OP_GroupMentor] = &Client::Handle_OP_GroupMentor;
 	ConnectedOpcodes[OP_GroupRoles] = &Client::Handle_OP_GroupRoles;
 	ConnectedOpcodes[OP_GroupUpdate] = &Client::Handle_OP_GroupUpdate;
 	ConnectedOpcodes[OP_GuildBank] = &Client::Handle_OP_GuildBank;
@@ -1637,9 +1638,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 			}
 		}	//else, somebody from our group is already here...
 
-		if (group)
-			group->UpdatePlayer(this);
-		else
+		if (!group)
 			database.SetGroupID(GetName(), 0, CharacterID());	//cannot re-establish group, kill it
 
 	}
@@ -1658,9 +1657,11 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 			char AssistName[64];
 			char PullerName[64];
 			char NPCMarkerName[64];
+			char mentoree_name[64];
+			int mentor_percent;
 			GroupLeadershipAA_Struct GLAA;
 			memset(ln, 0, 64);
-			strcpy(ln, database.GetGroupLeadershipInfo(group->GetID(), ln, MainTankName, AssistName, PullerName, NPCMarkerName, &GLAA));
+			strcpy(ln, database.GetGroupLeadershipInfo(group->GetID(), ln, MainTankName, AssistName, PullerName, NPCMarkerName, mentoree_name, &mentor_percent, &GLAA));
 			Client *c = entity_list.GetClientByName(ln);
 			if (c)
 				group->SetLeader(c);
@@ -1670,6 +1671,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 			group->SetPuller(PullerName);
 			group->SetNPCMarker(NPCMarkerName);
 			group->SetGroupAAs(&GLAA);
+			group->SetGroupMentor(mentor_percent, mentoree_name);
 
 			//group->NotifyMainTank(this, 1);
 			//group->NotifyMainAssist(this, 1);
@@ -1681,6 +1683,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 				group->SendLeadershipAAUpdate();
 
 		}
+		group->UpdatePlayer(this);
 		LFG = false;
 	}
 
@@ -6868,6 +6871,27 @@ void Client::Handle_OP_GroupMakeLeader(const EQApplicationPacket *app)
 	}
 }
 
+void Client::Handle_OP_GroupMentor(const EQApplicationPacket *app)
+{
+	if (app->size != sizeof(GroupMentor_Struct)) {
+		LogFile->write(EQEMuLog::Error, "Wrong size: OP_GroupMentor, size=%i, expected %i", app->size, sizeof(GroupMentor_Struct));
+		DumpPacket(app);
+		return;
+	}
+	GroupMentor_Struct *gms = (GroupMentor_Struct *)app->pBuffer;
+	Group *group = GetGroup();
+	if (!group)
+		return;
+	gms->name[63] = '\0';
+
+	if (strlen(gms->name))
+		group->SetGroupMentor(gms->percent, gms->name);
+	else
+		group->ClearGroupMentor();
+
+	return;
+}
+
 void Client::Handle_OP_GroupRoles(const EQApplicationPacket *app)
 {
 	if (app->size != sizeof(GroupRole_Struct)) {
@@ -11026,6 +11050,7 @@ void Client::Handle_OP_RaidCommand(const EQApplicationPacket *app)
 							if (r->members[x].GroupNumber == grp){
 								r->SetGroupLeader(ri->leader_name, false);
 								r->SetGroupLeader(r->members[x].membername);
+								r->UpdateGroupAAs(grp);
 								break;
 							}
 						}
@@ -11037,6 +11062,8 @@ void Client::Handle_OP_RaidCommand(const EQApplicationPacket *app)
 						if (strlen(r->members[x].membername) > 0 && strcmp(r->members[x].membername, r->members[i].membername) != 0)
 						{
 							r->SetRaidLeader(r->members[i].membername, r->members[x].membername);
+							r->UpdateRaidAAs();
+							r->SendAllRaidLeadershipAA();
 							break;
 						}
 					}
@@ -11090,6 +11117,7 @@ void Client::Handle_OP_RaidCommand(const EQApplicationPacket *app)
 									if (strcmp(ri->leader_name, r->members[x].membername) != 0 && strlen(ri->leader_name) > 0)
 									{
 										r->SetGroupLeader(r->members[x].membername);
+										r->UpdateGroupAAs(oldgrp);
 										Client *cgl = entity_list.GetClientByName(r->members[x].membername);
 										if (cgl){
 											r->SendRaidRemove(r->members[x].membername, cgl);
@@ -11117,8 +11145,10 @@ void Client::Handle_OP_RaidCommand(const EQApplicationPacket *app)
 							}
 						}
 					}
-					if (grpcount == 0)
+					if (grpcount == 0) {
 						r->SetGroupLeader(ri->leader_name);
+						r->UpdateGroupAAs(ri->parameter);
+					}
 
 					r->MoveMember(ri->leader_name, ri->parameter);
 					if (c){
@@ -11153,9 +11183,10 @@ void Client::Handle_OP_RaidCommand(const EQApplicationPacket *app)
 					r->SetGroupLeader(ri->leader_name, false);
 					for (int x = 0; x < MAX_RAID_MEMBERS; x++)
 					{
-						if (strlen(r->members[x].membername) > 0 && strcmp(r->members[x].membername, ri->leader_name) != 0)
+						if (r->members[x].GroupNumber == oldgrp && strlen(r->members[x].membername) > 0 && strcmp(r->members[x].membername, ri->leader_name) != 0)
 						{
 							r->SetGroupLeader(r->members[x].membername);
+							r->UpdateGroupAAs(oldgrp);
 							Client *cgl = entity_list.GetClientByName(r->members[x].membername);
 							if (cgl){
 								r->SendRaidRemove(r->members[x].membername, cgl);
