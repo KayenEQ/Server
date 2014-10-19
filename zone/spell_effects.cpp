@@ -733,22 +733,21 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						if (caster->IsClient())
 							effect_value += effect_value*caster->CastToClient()->GetFocusEffect(focusFcStunTimeMod, spell_id)/100;
 
-						//C!Kayen
+						//C!Kayen - START :: Stun Resilience
 						if (IsStunned() || GetOpportunityMitigation()){
 							caster->Message(MT_SpellFailure, "Your target is already stunned.");
 						}
-						/*
-						else if (!TriggerStunResilience(spell_id))
+	
+						else if (!GetStunResilience()){
 							Stun(effect_value);
-						else
-							entity_list.MessageClose(this, false, 200, MT_Stun, "%s shakes off the stun effect. (%i / %i)", GetCleanName(), int(GetStunResilience()/100) * 100, GetMaxStunResilience());
-						*/
-						else if ((int(GetStunResilience()/100) * 100) == 0){
-							Stun(effect_value);
-							SetStunResilience(GetMaxStunResilience());
+							if (GetMaxStunResilience()){//Reset
+								SetStunResilience(GetMaxStunResilience());
+								stun_resilience_timer.Disable();
+							}
 						}
 						else
 							entity_list.MessageClose(this, false, 200, MT_Stun, "%s shakes off the stun effect.", GetCleanName());
+						//C!Kayen - END :: Stun Resilience
 					
 					} else {
 						if (IsClient())
@@ -1170,6 +1169,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Mesmerize");
 #endif
+
+				if (!IsStunned() && GetStunResilience()){ //C!Kayen - Mesmerize will be blocked if stun resilience but you can mez a stunned mob.
+					entity_list.MessageClose(this, false, 200, MT_SpellFailure, "%s is resilient to the mesmerization effect.", GetCleanName());
+					break;
+				}
+
 				Mesmerize();
 				break;
 			}

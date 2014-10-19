@@ -169,10 +169,10 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, float x, float y, float z, float 
 	CHA = d->CHA;
 	npc_mana = d->Mana;
 	
-	//C!Kayen - If NPC Staminia is >/= to 100 Enable StunResilience.
-	if (STA >= 100) {
-		SetMaxStunResilience(STA);
-		SetStunResilience(STA);
+	//C!Kayen - If NPC Staminia is >/= to 1000 Enable StunResilience.
+	if (STA >= 1000) {
+		SetMaxStunResilience((STA/1000));
+		SetStunResilience(STA/1000);
 	}
 
 	//quick fix of ordering if they screwed it up in the DB
@@ -629,12 +629,6 @@ bool NPC::Process()
 			SetMana(GetMana()+mana_regen+bonus);
 		}
 
-		//C!Kayen - Stun Resilience Regen
-		if (GetStunResilience() < GetMaxStunResilience())
-			SetStunResilience(GetStunResilience()+34);
-		else
-			SetStunResilience(GetMaxStunResilience());
-
 		if(zone->adv_data && !p_depop)
 		{
 			ServerZoneAdventureDataReply_Struct* ds = (ServerZoneAdventureDataReply_Struct*)zone->adv_data;
@@ -683,13 +677,18 @@ bool NPC::Process()
 	if(projectile_timer.Check())
 		SpellProjectileEffect();
 
-	//C!Kayen
+	//C!Kayen - Start Custom Timers
 	MeleeCharge();
 	SpellProjectileEffect2();
 	SpellProjectileEffectTargetRing();
 	SpellCastingTimerDisplay();
+	
 	if (effect_field_timer.Check())
 		DoEffectField();
+	
+	if (stun_resilience_timer.Check())
+		StunResilienceRegen();
+	//C!Kayen - End Custom Timers
 
 	if(spellbonuses.GravityEffect == 1) {
 		if(gravity_timer.Check())

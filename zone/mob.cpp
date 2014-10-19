@@ -430,6 +430,7 @@ Mob::Mob(const char* in_name,
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	fast_buff_tick_timer.Disable();
+	stun_resilience_timer.Disable();
 }
 
 Mob::~Mob()
@@ -7837,16 +7838,14 @@ void Mob::CastOnCureFromCure(uint16 spell_id)
 
 bool Mob::CalcStunResilience(int effect_value, Mob* caster)
 {
-	return false;//OFF for testing
-
-	if (!IsNPC() || !GetMaxStunResilience()) //IsStuned() ? Should I allow you to reduce if NPC is already stunned.
+	if (!IsNPC() || !GetMaxStunResilience())
 		return false;
 
 	if (IsStunned() && caster){
 		caster->Message(MT_SpellFailure, "Your targets stun resilience is completely depleted.");
 		return false;
 	}
-
+	/* OLD when = 100
 	//Regen ~100 pt in every 18 seconds - All values are in intervals of 100 for STA and Neg SR
 	int SR = int(GetStunResilience()/100) * 100;
 	if (SR > 0){
@@ -7861,6 +7860,25 @@ bool Mob::CalcStunResilience(int effect_value, Mob* caster)
 			entity_list.MessageClose(this, false, 200, MT_Stun, "%s stun resilience is diminished! (%i / %i)", GetCleanName(),new_value,GetMaxStunResilience());
 
 		SetStunResilience(new_value);
+		return true;
+	}
+	*/
+
+	if (GetStunResilience() > 0){
+		
+		int new_sr = GetStunResilience() + effect_value; //Effect value is typically a negative value thus lowering it.
+
+		if (new_sr <= 0){
+			new_sr = 0;
+			entity_list.MessageClose(this, false, 200, MT_Stun, "%s stun resilience falters!  (%i / %i)", GetCleanName(), new_sr,GetMaxStunResilience());
+		}
+		else
+			entity_list.MessageClose(this, false, 200, MT_Stun, "%s stun resilience is diminished! (%i / %i)", GetCleanName(),new_sr,GetMaxStunResilience());
+
+		if (!stun_resilience_timer.Check())
+			stun_resilience_timer.Start(12000);
+
+		SetStunResilience(new_sr);
 		return true;
 	}
 
@@ -7884,6 +7902,19 @@ void Mob::OpportunityFromStunClear()
 		SetOpportunityMitigation(0);
 		SetAppearance(eaStanding);
 	}
+}
+
+void Mob::StunResilienceRegen()
+{
+	if (GetStunResilience() < GetMaxStunResilience()){
+		SetStunResilience(GetStunResilience()+1);
+	}
+	//If stun resilience reaches max, disable the regeration timer.
+	else {
+		SetStunResilience(GetMaxStunResilience());
+		stun_resilience_timer.Disable();
+	}
+
 }
 
 //#### C!BUFFS - Buff Related Functions

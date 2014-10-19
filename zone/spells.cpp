@@ -2683,7 +2683,8 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 
 	res = mod_buff_duration(res, caster, target, spell_id);
 
-	res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
+	//res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
+	res += GetSpellPowerDistanceMod()/100; //C!Kayen - Add buff ticks based on distance modifer
 
 	mlog(SPELLS__CASTING, "Spell %d: Casting level %d, formula %d, base_duration %d: result %d",
 		spell_id, castlevel, formula, duration, res);
@@ -3896,7 +3897,12 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 
 	//C!Kayen - Send Appearance Effects from Spell File
 	if (spelltar && spells[spell_id].AppEffect){
-		spelltar->SendAppearanceEffect2(spells[spell_id].AppEffect, 0, 0, 0, 0, nullptr);
+
+		if (spells[spell_id].spellgroup == 102 && IsClient()) //Flare/Pulse Effects to check directional targets.
+			spelltar->SendAppearanceEffect2(spells[spell_id].AppEffect, 0, 0, 0, 0, CastToClient());
+		else
+			spelltar->SendAppearanceEffect2(spells[spell_id].AppEffect, 0, 0, 0, 0, nullptr);
+
 		spelltar->SetAppearanceEffect(true);
 	}
 

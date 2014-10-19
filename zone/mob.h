@@ -1085,6 +1085,7 @@ public:
 	bool CalcStunResilience(int effect_value, Mob* caster = nullptr);
 	void OpportunityFromStunCheck();
 	void OpportunityFromStunClear();
+	void StunResilienceRegen();//Timer 12 seconds
 	
 	//C!BUFFS
 	int GetBuffSlotFromSpellID(uint16 spell_id);
@@ -1507,9 +1508,12 @@ protected:
 	int32 SpellPowerAmtHits;
 	bool WizardInnateActive;
 	int cured_count;
+
+	Timer stun_resilience_timer;
 	int stun_resilience;
 	int max_stun_resilience;
 	int hard_MitigateAllDamage;
+
 	bool OnlyAggroLast;
 	bool TempPet; //Need a simple way to check this (Flags the NPC as a temp pet)
 	bool TempPetClient; //Need a simple way to check this (Flags the NPC as a temp pet)
