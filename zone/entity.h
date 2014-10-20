@@ -421,6 +421,7 @@ public:
 	void FadeFieldBuff(uint16 caster_id, uint16 spell_id);
 	void SendAppearanceEffects(Client *c);
 	NPC *GetTempPetByNPCTypeID(uint32 npc_id, uint16 ownerid, bool SetVarTargetRing);
+	void AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_id);
 
 protected:
 	friend class Zone;

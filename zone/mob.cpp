@@ -7889,7 +7889,7 @@ void Mob::OpportunityFromStunCheck()
 {
 	if (IsCasting()){
 		SetOpportunityMitigation(50);
-		entity_list.MessageClose(this, false, 200, MT_Stun, "%s collapses to the ground, completely exhausted!", GetCleanName());
+		entity_list.MessageClose(this, false, 200, MT_Stun, "%s collapses to the ground completely exhausted!", GetCleanName());
 		DisableTargetSpellAnim(true);
 		SetAppearance(eaDead);
 	}
@@ -8023,6 +8023,140 @@ void Mob::DoFastBuffTick()
 	}
 	else
 		fast_buff_tick_timer.Disable();
+}
+
+void Client::RelequishFlesh(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration, int aehate)
+{
+	if(!IsValidSpell(spell_id))
+		return;
+
+	PetRecord record;
+	if(!database.GetPetEntry(spells[spell_id].teleport_zone, &record))
+	{
+		Message(13, "Unable to find data for pet %s", spells[spell_id].teleport_zone);
+		return;
+	}
+
+	AA_SwarmPet pet;
+	pet.count = pet_count;
+	pet.duration = pet_duration;
+	pet.npc_id = record.npc_type;
+
+	NPCType *made_npc = nullptr;
+
+	const NPCType *npc_type = database.GetNPCType(pet.npc_id);
+	if(npc_type == nullptr) {
+		Message(0,"Unable to find pet!");
+		return;
+	}
+	// make a custom NPC type for this
+	made_npc = new NPCType;
+	memcpy(made_npc, npc_type, sizeof(NPCType));
+
+	strcpy(made_npc->name, name_override);
+	made_npc->level = GetLevel();
+	made_npc->race = GetBaseRace();
+	made_npc->gender = GetBaseGender();
+	made_npc->size = GetBaseSize();
+	made_npc->AC = GetAC();
+	made_npc->STR = GetSTR();
+	made_npc->STA = GetSTA();
+	made_npc->DEX = GetDEX();
+	made_npc->AGI = GetAGI();
+	made_npc->MR = GetMR();
+	made_npc->FR = GetFR();
+	made_npc->CR = GetCR();
+	made_npc->DR = GetDR();
+	made_npc->PR = GetPR();
+	made_npc->Corrup = GetCorrup();
+	made_npc->max_hp = GetMaxHP();
+	// looks
+	made_npc->texture = GetEquipmentMaterial(MaterialChest);
+	made_npc->helmtexture = GetEquipmentMaterial(MaterialHead);
+	made_npc->haircolor = GetHairColor();
+	made_npc->beardcolor = GetBeardColor();
+	made_npc->eyecolor1 = GetEyeColor1();
+	made_npc->eyecolor2 = GetEyeColor2();
+	made_npc->hairstyle = GetHairStyle();
+	made_npc->luclinface = GetLuclinFace();
+	made_npc->beard = GetBeard();
+	made_npc->drakkin_heritage = GetDrakkinHeritage();
+	made_npc->drakkin_tattoo = GetDrakkinTattoo();
+	made_npc->drakkin_details = GetDrakkinDetails();
+	made_npc->d_meele_texture1 = 0;
+	made_npc->d_meele_texture2 = 0;
+	for (int i = EmuConstants::MATERIAL_BEGIN; i <= EmuConstants::MATERIAL_END; i++)	{
+		made_npc->armor_tint[i] = GetEquipmentColor(i);
+	}
+	made_npc->loottable_id = 0;
+
+	npc_type = made_npc;
+
+	int summon_count = 0;
+	summon_count = pet.count;
+
+	if(summon_count > MAX_SWARM_PETS)
+		summon_count = MAX_SWARM_PETS;
+
+	static const float swarm_pet_x[MAX_SWARM_PETS] = { 5, -5, 5, -5, 10, -10, 10, -10, 8, -8, 8, -8 };
+	static const float swarm_pet_y[MAX_SWARM_PETS] = { 5, 5, -5, -5, 10, 10, -10, -10, 8, 8, -8, -8 };
+	TempPets(true);
+
+	while(summon_count > 0) {
+		NPCType *npc_dup = nullptr;
+		if(made_npc != nullptr) {
+			npc_dup = new NPCType;
+			memcpy(npc_dup, made_npc, sizeof(NPCType));
+		}
+
+		NPC* npca = new NPC(
+				(npc_dup!=nullptr)?npc_dup:npc_type,	//make sure we give the NPC the correct data pointer
+				0,
+				GetX()+swarm_pet_x[summon_count], GetY()+swarm_pet_y[summon_count],
+				GetZ(), GetHeading(), FlyMode3);
+
+		if(!npca->GetSwarmInfo()){
+			AA_SwarmPetInfo* nSI = new AA_SwarmPetInfo;
+			npca->SetSwarmInfo(nSI);
+			npca->GetSwarmInfo()->duration = new Timer(pet_duration*1000);
+		}
+		else{
+			npca->GetSwarmInfo()->duration->Start(pet_duration*1000);
+		}
+
+		npca->GetSwarmInfo()->owner_id = GetID();
+
+		//we allocated a new NPC type object, give the NPC ownership of that memory
+		if(npc_dup != nullptr)
+			npca->GiveNPCTypeData(npc_dup);
+
+		entity_list.AddNPC(npca);
+
+		//Relquish Flesh Effect
+		if (aehate) 
+		{
+			entity_list.AddClientHateToTempPet(this, npca, spell_id);
+		}
+
+
+		summon_count--;
+	}
+}
+
+void EntityList::AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_id)
+{ 
+	if (!IsValidSpell(spell_id) || !caster || !temppet)
+		return;
+
+	Mob *curnpc;
+
+	for (auto it = npc_list.begin(); it != npc_list.end(); ++it) {
+		curnpc = it->second;
+		if (curnpc && curnpc->CheckAggro(caster)){
+			int32 hateamount = curnpc->GetHateAmount(caster);
+			curnpc->AddToHateList(temppet, hateamount + 100);
+		}
+	}
 }
 
 //C!Misc - Functions still in development

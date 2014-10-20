@@ -1232,6 +1232,8 @@ public:
 
 	uint16 GetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN);
 	void SetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN, int value = 0);
+
+	void RelequishFlesh(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration, int aehate = 0);
 	
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);

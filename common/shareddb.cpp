@@ -1524,6 +1524,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 			sp[tempid].classes[y]=atoi(row[104+y]);
 
 		sp[tempid].CastingAnim=atoi(row[120]);
+		sp[tempid].TargetAnim=atoi(row[121]); //C!Kayen
 		sp[tempid].SpellAffectIndex=atoi(row[123]);
 		sp[tempid].disallow_sit=atoi(row[124]);
 
@@ -1539,7 +1540,9 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 
 		sp[tempid].short_buff_box = atoi(row[154]);
 		sp[tempid].descnum = atoi(row[155]);
+		sp[tempid].typedescnum = atoi(row[156]); //C!Kayen
 		sp[tempid].effectdescnum = atoi(row[157]);
+		sp[tempid].effectdescnum2 = atoi(row[158]); //C!Kayen
 
 		sp[tempid].npc_no_los = atoi(row[159]) != 0;
 		sp[tempid].reflectable = atoi(row[161]) != 0;

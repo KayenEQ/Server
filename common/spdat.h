@@ -670,6 +670,7 @@ typedef enum {
 #define SE_FadeIfTargetNotCaster		1042 // implemented - Fade on buff tick if current taret is not caster.
 #define SE_CastEffectFieldSpell			1043 // implemented - Determines what spell the effect field pet will cast
 #define SE_FastManaRegen				1044 // implemented -
+#define SE_RelequishFlesh				1045 // implemented -	
 // LAST
 
 
@@ -729,7 +730,7 @@ struct SPDat_Spell_Struct
 /* 103 */	int8 TimeOfDay;
 /* 104 */	uint8 classes[PLAYER_CLASS_COUNT]; // Classes, and their min levels
 /* 120 */	uint8 CastingAnim;
-/* 121 */	//uint8 TargetAnim;
+/* 121 */	uint8 TargetAnim; //C!Kayen
 /* 122 */	//uint32 TravelType;
 /* 123 */	uint16 SpellAffectIndex;
 /* 124 */	int8 disallow_sit; // 124: high-end Yaulp spells (V, VI, VII, VIII [Rk 1, 2, & 3], & Gallenite's Bark of Fury
@@ -749,9 +750,9 @@ struct SPDat_Spell_Struct
 								// 152 & 153: all set to 0
 /* 154 */	int8 short_buff_box;	// != 0, goes to short buff box.
 /* 155 */	int descnum; // eqstr of description of spell
-/* 156 */	//int typedescnum; // eqstr of type description
+/* 156 */	int typedescnum; // eqstr of type description //C!Kayen
 /* 157 */	int effectdescnum; // eqstr of effect description
-/* 158 */   //Category Desc ID 3 //C!Kayen - Allows spell to be put in another effectdesc
+/* 158 */   int effectdescnum2; //Category Desc ID 3 //C!Kayen - Allows spell to be put in another effectdesc
 /* 159 */	bool npc_no_los;
 /* 161 */	bool reflectable;
 /* 162 */	int bonushate;

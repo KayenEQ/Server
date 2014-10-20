@@ -2993,6 +2993,18 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_RelequishFlesh:
+			{
+				if(caster && caster->IsClient()) {
+					char pet_name[64];
+					snprintf(pet_name, sizeof(pet_name), "%s`s_flesh", caster->GetCleanName());//For now just set for the specific spell that uses this.
+					int pet_count = spells[spell_id].base[i];
+					int pet_duration = spells[spell_id].max[i];
+					caster->CastToClient()->RelequishFlesh(spell_id, nullptr, pet_name, pet_count, pet_duration, spells[spell_id].base2[i]);
+				}
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){
