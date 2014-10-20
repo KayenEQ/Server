@@ -1816,7 +1816,12 @@ const NPCType* ZoneDatabase::GetNPCType (uint32 id) {
 		tmpNPCType->min_dmg = atoi(row[31]);
 		tmpNPCType->max_dmg = atoi(row[32]);
 		tmpNPCType->attack_count = atoi(row[33]);
-		strn0cpy(tmpNPCType->special_abilities, row[34], 512);
+		
+		if (row[34] != nullptr)//C!Kayen
+			strn0cpy(tmpNPCType->special_abilities, row[34], 512);
+		else
+			strn0cpy(tmpNPCType->special_abilities,"\0", 512);
+
 		tmpNPCType->npc_spells_id = atoi(row[35]);
 		tmpNPCType->npc_spells_effects_id = atoi(row[36]);
 		tmpNPCType->d_meele_texture1 = atoi(row[37]);

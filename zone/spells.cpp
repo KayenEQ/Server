@@ -315,6 +315,10 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		parse->EventNPC(EVENT_CAST_BEGIN, CastToNPC(), nullptr, temp, 0);
 	}
 
+	//To prevent NPC ghosting when spells are cast from scripts
+	if (IsNPC() && IsMoving() && cast_time > 0)
+		SendPosition();
+
 	if(resist_adjust)
 	{
 		return(DoCastSpell(spell_id, target_id, slot, cast_time, mana_cost, oSpellWillFinish, item_slot, timer, timer_duration, type, *resist_adjust));
