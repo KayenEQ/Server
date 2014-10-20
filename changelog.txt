@@ -1,5 +1,14 @@
 EQEMu Changelog (Started on Sept 24, 2003 15:50)
 -------------------------------------------------------
+== 10/20/2014 ==
+demonstar55: Inspect Buffs rank 1 will now show NPC buffs in target window (SoD+)
+
+== 10/19/2014 ==
+Uleat: Updated command #peekinv to display item links properly in RoF clients
+demonstar55: Group Mentoring in raids
+demonstar55: Inspect Buffs (text only version) works in raid groups
+demonstar55: Make use of the Inspect Buffs op/packet. 62 SOL until someone finds its op
+
 == 10/18/2014==
 demonstar55: Implement group mentor, sharing leadership exp (SoF+ only)
 demonstar55: Add gaining of group leadership while in raids

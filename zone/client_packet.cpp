@@ -576,6 +576,7 @@ void Client::CompleteConnect()
 			if (grpID < 12){
 				raid->SendRaidGroupRemove(GetName(), grpID);
 				raid->SendRaidGroupAdd(GetName(), grpID);
+				raid->CheckGroupMentor(grpID, this);
 				if (raid->IsGroupLeader(GetName())) { // group leader same thing!
 					raid->UpdateGroupAAs(raid->GetGroup(this));
 					raid->GroupUpdate(grpID, false);
@@ -5343,6 +5344,17 @@ void Client::Handle_OP_DoGroupLeadershipAbility(const EQApplicationPacket *app)
 		if (!Target || !Target->IsClient())
 			return;
 
+		if (IsRaidGrouped()) {
+			Raid *raid = GetRaid();
+			if (!raid)
+				return;
+			uint32 group_id = raid->GetGroup(this);
+			if (group_id > 11 || raid->GroupCount(group_id) < 3)
+				return;
+			Target->CastToClient()->InspectBuffs(this, raid->GetLeadershipAA(groupAAInspectBuffs, group_id));
+			return;
+		}
+
 		Group *g = GetGroup();
 
 		if (!g || (g->GroupCount() < 3))
@@ -6879,10 +6891,25 @@ void Client::Handle_OP_GroupMentor(const EQApplicationPacket *app)
 		return;
 	}
 	GroupMentor_Struct *gms = (GroupMentor_Struct *)app->pBuffer;
+	gms->name[63] = '\0';
+
+	if (IsRaidGrouped()) {
+		Raid *raid = GetRaid();
+		if (!raid)
+			return;
+		uint32 group_id = raid->GetGroup(this);
+		if (group_id > 11)
+			return;
+		if (strlen(gms->name))
+			raid->SetGroupMentor(group_id, gms->percent, gms->name);
+		else
+			raid->ClearGroupMentor(group_id);
+		return;
+	}
+
 	Group *group = GetGroup();
 	if (!group)
 		return;
-	gms->name[63] = '\0';
 
 	if (strlen(gms->name))
 		group->SetGroupMentor(gms->percent, gms->name);
@@ -12946,9 +12973,25 @@ void Client::Handle_OP_TargetCommand(const EQApplicationPacket *app)
 		if (nt)
 		{
 			SetTarget(nt);
-			if ((nt->IsClient() && !nt->CastToClient()->GetPVP()) ||
-				(nt->IsPet() && nt->GetOwner() && nt->GetOwner()->IsClient() && !nt->GetOwner()->CastToClient()->GetPVP()) ||
-				(nt->IsMerc() && nt->GetOwner() && nt->GetOwner()->IsClient() && !nt->GetOwner()->CastToClient()->GetPVP()))
+			bool inspect_buffs = false;
+			// rank 1 gives you ability to see NPC buffs in target window (SoD+)
+			if (nt->IsNPC()) {
+				if (IsRaidGrouped()) {
+					Raid *raid = GetRaid();
+					if (raid) {
+						uint32 gid = raid->GetGroup(this);
+						if (gid < 12 && raid->GroupCount(gid) > 2)
+							inspect_buffs = raid->GetLeadershipAA(groupAAInspectBuffs, gid);
+					}
+				} else {
+					Group *group = GetGroup();
+					if (group && group->GroupCount() > 2)
+						inspect_buffs = group->GetLeadershipAA(groupAAInspectBuffs);
+				}
+			}
+			if (nt == this || inspect_buffs || (nt->IsClient() && !nt->CastToClient()->GetPVP()) ||
+					(nt->IsPet() && nt->GetOwner() && nt->GetOwner()->IsClient() && !nt->GetOwner()->CastToClient()->GetPVP()) ||
+					(nt->IsMerc() && nt->GetOwner() && nt->GetOwner()->IsClient() && !nt->GetOwner()->CastToClient()->GetPVP()))
 				nt->SendBuffsToClient(this);
 		}
 		else
