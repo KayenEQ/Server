@@ -666,11 +666,21 @@ typedef enum {
 #define SE_SpellPowerFromBuffSpellGroup	1038 // implemented - Spell modifier based on buffs on target. Base SpellGroup Limit Modifier (x Rank)
 #define SE_AuraField					1039 // implemented - Base: Spell ID of Effect
 #define SE_IncomingSpellDmgPct			1040 // implemented - Increase/Decrease spell and damage
-#define SE_CastOnSpellCastCountAmt      1041 // implemented - Trigger spell after a specific spell has been casted a certain number of times.
+#define SE_CastOnSpellCastCountAmt      1041 // implemented - Trigger spell after a specific spell has been casted a certain number of times [B: Chance L: Spell Id M: CntAmt].
 #define SE_FadeIfTargetNotCaster		1042 // implemented - Fade on buff tick if current taret is not caster.
 #define SE_CastEffectFieldSpell			1043 // implemented - Determines what spell the effect field pet will cast
 #define SE_FastManaRegen				1044 // implemented -
 #define SE_RelequishFlesh				1045 // implemented -	
+#define SE_AttackPrimary				1046 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier
+#define SE_DiscAdjustRecastonCountAmt	1047 // implemented - Adjust recast time on disc when has been cast X amount [B: Chance L: Amt M: Cnt Amt]
+#define SE_DiscAdjustRecastTillCountAmt	1048 // implemented - Adjust recast time per use until cast X amount (If set)  [B: Chance L: Amt M: Cnt Amt]
+#define SE_MeleeEndurTap				1049 // implemented - 
+#define SE_PercentalEndur				1050 // implemented - 
+#define SE_NumHitsAmt					1051 // implemented - 
+#define SE_ScaleMitigationNumhits		1052 // implemented - Scale mitigation based on numhits Base: Mitigation ratio x 100
+#define SE_ScaleDamageNumhits			1053 // implemented - Scale damage based on numhits Base: Damage ratio x 100
+#define SE_FadeBuffBySpellGroup			1054 // implemented - Base: Spellgroup ID
+#define SE_ChargeEffect					1055 // implemented
 // LAST
 
 
@@ -939,6 +949,7 @@ int32 GetSpellPowerManaModValue(uint16 spell_id);
 bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
 bool CastFromPetOwner(uint16 spell_id); //NPC use only.
 bool IsTargetRingSpell(uint16 spell_id);
+bool IsMeleeRangeSpellEffect(uint16 spell_id);
 int GetProjCastingAnimation(uint16 spell_id);
 int GetProjArc(uint16 spell_id);
 int GetProjTilt(uint16 spell_id);

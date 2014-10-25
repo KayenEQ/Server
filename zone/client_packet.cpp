@@ -8829,6 +8829,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 void Client::Handle_OP_Jump(const EQApplicationPacket *app)
 {
 	//SetEndurance(GetEndurance() - (GetLevel()<20 ? (225 * GetLevel() / 100) : 50)); //C!Kayen Disabled
+	SetEndurance(GetEndurance() + 1);
 	return;
 }
 
@@ -12973,7 +12974,7 @@ void Client::Handle_OP_TargetCommand(const EQApplicationPacket *app)
 		if (nt)
 		{
 			SetTarget(nt);
-			bool inspect_buffs = false;
+			bool inspect_buffs = true;//C!Kayen - (Default false) Allows you to view NPC buffs.
 			// rank 1 gives you ability to see NPC buffs in target window (SoD+)
 			if (nt->IsNPC()) {
 				if (IsRaidGrouped()) {

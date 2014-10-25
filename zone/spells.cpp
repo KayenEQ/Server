@@ -848,6 +848,10 @@ void Mob::InterruptSpell(uint16 message, uint16 color, uint16 spellid)
 	if(!message)
 		message = IsBardSong(spellid) ? SONG_ENDS_ABRUPTLY : INTERRUPT_SPELL;
 
+	//C!Kayen - Do not send message if discipline (If this breaks anything will need to reevaluate)
+	if (spells[spellid].IsDisciplineBuff)
+		return;
+	
 	// clients need some packets
 	if (IsClient() && message != SONG_ENDS)
 	{
@@ -2335,7 +2339,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			CastToClient()->GetPTimers().Start(casting_spell_timer, casting_spell_timer_duration);
 			mlog(SPELLS__CASTING, "Spell %d: Setting custom reuse timer %d to %d", spell_id, casting_spell_timer, casting_spell_timer_duration);
 		}
-		else if(spells[spell_id].recast_time > 1000) {
+		else if(spells[spell_id].recast_time > 1000 && !spells[spell_id].IsDisciplineBuff) {
 			int recast = spells[spell_id].recast_time/1000;
 			if (spell_id == SPELL_LAY_ON_HANDS)	//lay on hands
 			{
@@ -2370,6 +2374,12 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 	if(IsNPC())
 		CastToNPC()->AI_Event_SpellCastFinished(true, slot);
+
+	//C!Kayen - Hack to fix numhits display issue.
+	if (IsClient() && spells[spell_id].numhits){
+		SpellOnTarget(16, this);
+		BuffFadeBySpellID(16);
+	}
 
 	return true;
 }
@@ -4114,6 +4124,17 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 			return true;
 		}
 
+		if (!IsStunned() && GetStunResilience()){ //C!Kayen - Mesmerize will be blocked if stun resilience but you can mez a stunned mob.
+			entity_list.MessageClose(this, false, 200, MT_SpellFailure, "%s is resilient to the mesmerization effect.", GetCleanName());
+			int32 aggro = caster->CheckAggroAmount(spell_id);
+			if(aggro > 0) {
+				AddToHateList(caster, aggro);
+			} else {
+				AddToHateList(caster, 1);
+			}
+			return true;
+		}
+
 		// check max level for spell
 		effect_index = GetSpellEffectIndex(spell_id, SE_Mez);
 		assert(effect_index >= 0);
@@ -5364,7 +5385,12 @@ void Client::SendBuffNumHitPacket(Buffs_Struct &buff, int slot)
 
 	bi->entries[0].buff_slot = slot;
 	bi->entries[0].spell_id = buff.spellid;
-	bi->entries[0].tics_remaining = buff.ticsremaining;
+
+	if (spells[buff.spellid].buffdurationformula == DF_Permanent)//C!Kayen - DO NOT SHOW DURATION
+		bi->entries[0].tics_remaining = 0xFFFFFFFF;
+	else
+		bi->entries[0].tics_remaining = buff.ticsremaining;
+
 	bi->entries[0].num_hits = buff.numhits;
 	FastQueuePacket(&outapp);
 }

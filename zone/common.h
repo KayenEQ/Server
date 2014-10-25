@@ -461,6 +461,10 @@ struct StatBonuses {
 	uint16 AuraField;							//Spell Cast in Aura Field
 	int16 IncomingSpellDmgPct[HIGHEST_RESIST+1];//
 	int32 FastManaRegen[4];                     //0: Flat Amount 1: Percent Max: Count
+	int16 MeleeEndurTap;
+	int16 ScaleMitigationNumhits[2];			//0: Amount of Mitigation Mod 1: Slot
+	int16 ScaleDamageNumhits[2];				//0: Amount of Damage Mod 1: Slot
+	int16 ChargeEffect;							//Modifier
 };
 
 
@@ -583,7 +587,7 @@ struct ExtraAttackOptions {
 		: damage_percent(1.0f), damage_flat(0),
 		armor_pen_percent(0.0f), armor_pen_flat(0),
 		crit_percent(1.0f), crit_flat(0.0f),
-		hate_percent(1.0f), hate_flat(0)
+		hate_percent(1.0f), hate_flat(0), hit_chance(0)
 	{ }
 
 	float damage_percent;
@@ -594,6 +598,7 @@ struct ExtraAttackOptions {
 	float crit_flat;
 	float hate_percent;
 	int hate_flat;
+	int hit_chance; //C!Kayen
 };
 
 #endif

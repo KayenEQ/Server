@@ -1995,9 +1995,16 @@ int32 Client::CalcEnduranceRegen() {
 		if (AggroCount)//Incombat
 			regen = GetMaxEndurance()*1/100; //Wizard baseline endurance at 1% per tick in combat.
 		else //Out of Combat
-			regen = GetMaxEndurance()*20/100;
+			regen = GetMaxEndurance()*20/100; //20% per tick out of combat regen.
 	}
 
+	if (GetClass() == WARRIOR){
+		if (AggroCount)//Incombat
+			regen = regen * (-2) ; //Drain endurance at regen rate * 2.
+		else //Out of Combat
+			regen = -(GetMaxEndurance()*10/100); //10% per tick out of combat regen.
+	}
+	//Shout("Regen Endurance Rate %i", regen);
 	return (regen);
 }
 

@@ -426,6 +426,7 @@ Mob::Mob(const char* in_name,
 	origin_caster_id = 0;
 	AppearanceEffect = false;
 	fast_buff_tick_count = 0;
+	charge_effect = 0;
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
@@ -3328,7 +3329,7 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 	int skilldmg_mod = 0;
 
 	int16 MeleeVuln = spellbonuses.MeleeVulnerability + itembonuses.MeleeVulnerability + aabonuses.MeleeVulnerability;
-
+	
 	// All skill dmg mod + Skill specific
 	skilldmg_mod += itembonuses.SkillDmgTaken[HIGHEST_SKILL+1] + spellbonuses.SkillDmgTaken[HIGHEST_SKILL+1] +
 					itembonuses.SkillDmgTaken[skill_used] + spellbonuses.SkillDmgTaken[skill_used];
@@ -3339,6 +3340,7 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 
 	skilldmg_mod += MeleeVuln;
 	skilldmg_mod += GetWpnSkillDmgBonusAmt(); //C!Kayen
+	skilldmg_mod += GetScaleMitigationNumhits(); //C!Kayen
 
 	if(skilldmg_mod < -100)
 		skilldmg_mod = -100;
@@ -4177,6 +4179,8 @@ int16 Mob::GetMeleeDamageMod_SE(uint16 skill)
 	if (HasShieldEquiped() && !IsOffHandAtk())
 		dmg_mod += itembonuses.ShieldEquipDmgMod[0] + spellbonuses.ShieldEquipDmgMod[0] + aabonuses.ShieldEquipDmgMod[0];
 
+	dmg_mod += GetScaleDamageNumhits(); //C!Kayen
+
 	if(dmg_mod < -100)
 		dmg_mod = -100;
 
@@ -4248,6 +4252,7 @@ void Mob::MeleeLifeTap(int32 damage) {
 
 	MeleeManaTap(damage); //C!Kayen
 	PetTapToOwner(damage); //C!Kayen
+	MeleeEndurTap(damage); //C!Kayen
 }
 
 bool Mob::TryReflectSpell(uint32 spell_id)
@@ -5574,6 +5579,20 @@ bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
 	return true;
 }
 
+bool Mob::AACastSpellResourceCheck(uint16 spell_id, uint16 target_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	if (spells[spell_id].RecourseLink == 210){
+		if (CastToClient()->GetEndurancePercent() <= 20){
+			Message(11, "You are too fatigued to use this skill right now.");
+			return false;
+		}
+	}
+
+	return true;
+}
 bool Mob::PassCasterRestriction(bool UseCasterRestriction,  uint16 spell_id, int16 value)
 {
 	//This value is always defined as a NEGATIVE in the database when doing CasterRestrictions.
@@ -7181,7 +7200,8 @@ void Mob::TryCastonSpellCastCountAmt(int slot, uint16 spell_id)
 		return;
 
 	//This is the general cast count incrementer for all spells
-	CastToClient()->SetSpellCastCount(slot, SPELL_UNKNOWN, (CastToClient()->GetSpellCastCount(slot) + 1));
+	if (CastToClient()->GetSpellCastCount(slot) < 65535)
+		CastToClient()->SetSpellCastCount(slot, SPELL_UNKNOWN, (CastToClient()->GetSpellCastCount(slot) + 1));
 
 
 	//This function is primarily used to reset recast timers after a spell has been cast a specific amount of time.
@@ -7246,13 +7266,121 @@ void Client::SetSpellCastCount(int slot, uint16 spell_id, int value)
 	}
 }
 
+uint16 Client::GetDiscCastCount(int slot, uint16 spell_id)
+{
+	if (spell_id == SPELL_UNKNOWN){
+		if (slot >= 0 && slot < MAX_DISCIPLINE_TIMERS)
+		return disc_cast_count[slot];
+	}
+
+	else if (IsValidSpell(spell_id)){
+
+		for(unsigned int i =0 ; i < MAX_PP_DISCIPLINES; ++i) {
+			if(IsValidSpell(m_pp.disciplines.values[i])) {
+				if (m_pp.disciplines.values[i] == spell_id)
+					return disc_cast_count[spells[spell_id].EndurTimerIndex];
+			}
+		}
+	}
+	return 0;
+}
+
+void Client::SetDiscCastCount(int slot, uint16 spell_id, int value)
+{
+	if (spell_id == SPELL_UNKNOWN){
+		if (slot >= 0 && slot < MAX_DISCIPLINE_TIMERS)
+			disc_cast_count[slot] = value;
+	}
+
+	else if (IsValidSpell(spell_id)){
+
+		for(unsigned int i =0 ; i < MAX_PP_DISCIPLINES; ++i) {
+			if(IsValidSpell(m_pp.disciplines.values[i])) {
+				if (m_pp.disciplines.values[i] == spell_id){
+					disc_cast_count[spells[spell_id].EndurTimerIndex] = value;
+					return;
+				}
+			}
+		}
+	}
+}
+
+uint32 Client::TryCastonDiscCastCountAmt(int slot, uint16 spell_id, uint32 reduced_recast)
+{
+
+	//This is the general cast count incrementer for all discs
+	if (GetDiscCastCount(slot) < 65535)
+		SetDiscCastCount(slot, SPELL_UNKNOWN, (CastToClient()->GetDiscCastCount(slot) + 1));
+
+	bool reset_count = false;
+	uint16 cast_count = 0;
+	int _reduced_recast = reduced_recast;
+
+	cast_count = GetDiscCastCount(slot);
+
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_CastOnSpellCastCountAmt)
+		{
+			if (cast_count == (spells[spell_id].max[i])){
+				if (IsValidSpell(spells[spell_id].base2[i])){
+					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+						SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+						reset_count = true;
+					}
+				}
+			}
+		}
+
+		//Adjust DISC recast timer WHEN casted (MAX) amount of times, else use default timer.  [B: Chance L: Modifier M: Count Amt]
+		if (spells[spell_id].effectid[i] == SE_DiscAdjustRecastonCountAmt)
+		{
+			//Shout("DEBUG::TryCastonDiscCastCountAmt [%i] Cast Count %i B: %i L: %i M: %i", reduced_recast, cast_count, spells[spell_id].base[i],spells[spell_id].base2[i],spells[spell_id].max[i]);
+			if (cast_count == (spells[spell_id].max[i])){
+				if (spells[spell_id].base2[i]){ //Modifer to recast timer.
+					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+						_reduced_recast += (_reduced_recast * spells[spell_id].base2[i])/100;
+						reset_count = true;
+					}
+				}
+			}
+		}
+
+		//Adjust DISC recast timer per use until casted (MAX) amount of times then use default timers.  [B: Chance L: Modifier M: Count Amt]
+		if (spells[spell_id].effectid[i] == SE_DiscAdjustRecastTillCountAmt)
+		{
+			//Shout("DEBUG:: TryCastonDiscCastCountAmt [%i] Cast Count %i B: %i L: %i M: %i", reduced_recast, cast_count, spells[spell_id].base[i],spells[spell_id].base2[i],spells[spell_id].max[i]);
+			if (cast_count != spells[spell_id].max[i]){
+				if (spells[spell_id].base2[i]){ //Modifer to recast timer.
+					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+						_reduced_recast += (_reduced_recast * spells[spell_id].base2[i])/100;
+
+						if (!spells[spell_id].max[i])
+							Message(15, "You catch a second wind!");
+					}
+				}
+			}
+			else if (spells[spell_id].max[i] && cast_count == spells[spell_id].max[i])
+				reset_count = true;
+		}
+	}
+
+	if (reset_count)
+		SetDiscCastCount(slot, SPELL_UNKNOWN, 0);
+
+	if (_reduced_recast < 0)
+		_reduced_recast = 0;
+
+	return static_cast<uint32>(_reduced_recast);
+}
+
 //C!SpellEffects :: SE_TryCastonSpellFinished
 
 void Mob::TryCastonSpellFinished(Mob *target, uint16 spell_id)
 {
 	if(!IsClient() || target == nullptr || !IsValidSpell(spell_id))
 		return;
-
+	
 	for(int i = 0; i < EFFECT_COUNT; i++)
 	{
 		if (spells[spell_id].effectid[i] == SE_TryCastonSpellFinished)
@@ -7608,6 +7736,20 @@ void Mob::MeleeManaTap(int32 damage)
 		SetMana(GetMana() + (damage * manatap_bonus / 100));
 }
 
+void Mob::MeleeEndurTap(int32 damage)
+{
+	if (!IsClient())
+		return;
+
+	int16 endur_bonus = spellbonuses.MeleeEndurTap + itembonuses.MeleeEndurTap + aabonuses.MeleeEndurTap;
+
+	if (GetClass() == WARRIOR)
+		endur_bonus += 100; //Gain 10% of melee damage back as endurance.
+
+	if(endur_bonus && damage > 0)
+		CastToClient()->SetEndurance(CastToClient()->GetEndurance() + (damage * endur_bonus / 100));
+}
+
 void Mob::PetTapToOwner(int32 damage)
 {
 	//Melee damage done by pet is converted to heal/mana gain on owner.
@@ -7887,7 +8029,7 @@ bool Mob::CalcStunResilience(int effect_value, Mob* caster)
 
 void Mob::OpportunityFromStunCheck()
 {
-	if (IsCasting()){
+	if (IsCasting() && IsNPC()){
 		SetOpportunityMitigation(50);
 		entity_list.MessageClose(this, false, 200, MT_Stun, "%s collapses to the ground completely exhausted!", GetCleanName());
 		DisableTargetSpellAnim(true);
@@ -8155,6 +8297,54 @@ void EntityList::AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_
 		if (curnpc && curnpc->CheckAggro(caster)){
 			int32 hateamount = curnpc->GetHateAmount(caster);
 			curnpc->AddToHateList(temppet, hateamount + 100);
+		}
+	}
+}
+
+bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
+{
+	if (!IsMeleeRangeSpellEffect(spell_id))
+		return true;
+
+	Mob* target = nullptr;
+	target = entity_list.GetMob(target_id);
+
+	if (target){
+		if (CombatRange(target)){
+
+			if (IsFacingMob(target))
+				return true;
+			else
+				Message_StringID(13, CANT_SEE_TARGET);
+		}
+		else
+			Message_StringID(13, TARGET_OUT_OF_RANGE);
+	}
+	return false;
+}
+
+int16 Mob::GetScaleMitigationNumhits()
+{
+	int mitigation = spellbonuses.ScaleMitigationNumhits[0];
+	int slot = spellbonuses.ScaleMitigationNumhits[1];
+
+	if (mitigation && slot >= 0){
+		if (IsValidSpell(buffs[slot].spellid)){
+			int numhits = buffs[slot].numhits;
+			return (numhits * mitigation / 100);
+		}
+	}
+}
+
+int16 Mob::GetScaleDamageNumhits()
+{
+	int damage = spellbonuses.ScaleDamageNumhits[0];
+	int slot = spellbonuses.ScaleDamageNumhits[1];
+
+	if (damage && slot >= 0){
+		if (IsValidSpell(buffs[slot].spellid)){
+			int numhits = buffs[slot].numhits;
+			return (numhits * damage / 100);
 		}
 	}
 }

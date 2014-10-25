@@ -283,6 +283,14 @@ void Client::ActivateAA(aaID activate){
 	//cast the spell, if we have one
 	if(caa->spell_id > 0 && caa->spell_id < SPDAT_RECORDS) {
 
+		//C!Kayen - Check for AA resource usage requirements.
+		if (!AACastSpellResourceCheck(caa->spell_id,target_id)){ 
+			SendAATimer(AATimerID, 0, 0xFFFFFF);
+			Message_StringID(15,ABILITY_FAILED);
+			p_timers.Clear(&database, AATimerID + pTimerAAStart);
+			return;
+		}
+
 		if(caa->reuse_time > 0)
 		{
 			uint32 timer_base = CalcAAReuseTimer(caa);
@@ -297,7 +305,6 @@ void Client::ActivateAA(aaID activate){
 				if(!SpellFinished(caa->spell_id, entity_list.GetMob(target_id), 10, -1, -1, spells[caa->spell_id].ResistDiff, false)) {
 					//Reset on failed cast
 					SendAATimer(AATimerID, 0, 0xFFFFFF);
-					Message_StringID(15,ABILITY_FAILED);
 					p_timers.Clear(&database, AATimerID + pTimerAAStart);
 					return;
 				}

@@ -675,10 +675,20 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 		return(false);
 	}
 
+	//C!Kayen - Check for disciplines that require melee range to cast [Range == 101]
+	if (target && !MeleeDiscCombatRange(target, spell_id)){
+		if (GetPTimers().Enabled((uint32)DiscTimer))
+			GetPTimers().Clear(&database, (uint32)DiscTimer);
+
+		SetEndurance(GetEndurance() + 1); //Prevents it from bugging or draining endurance.
+		return(false);
+	}
+
 	if(GetEndurance() > spell.EndurCost) {
 		SetEndurance(GetEndurance() - spell.EndurCost);
 		TryTriggerOnValueAmount(false, false, true);
 	} else {
+		SetEndurance(GetEndurance() + 1);
 		Message(11, "You are too fatigued to use this skill right now.");
 		return(false);
 	}
@@ -687,16 +697,27 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 	{
 		uint32 reduced_recast = spell.recast_time / 1000;
 		reduced_recast -= CastToClient()->GetFocusEffect(focusReduceRecastTime, spell_id);
-		if(reduced_recast < 0)
+		reduced_recast = TryCastonDiscCastCountAmt(spells[spell_id].EndurTimerIndex, spell_id, reduced_recast); //C!Kayen - % Recast Adjuster by Count
+		if(reduced_recast <= 0){
 			reduced_recast = 0;
+			if (GetPTimers().Enabled((uint32)DiscTimer))
+				GetPTimers().Clear(&database, (uint32)DiscTimer);
+		}
 
-		CastSpell(spell_id, target, DISCIPLINE_SPELL_SLOT, -1, -1, 0, -1, (uint32)DiscTimer, reduced_recast);
+		if (reduced_recast > 0)
+			CastSpell(spell_id, target, DISCIPLINE_SPELL_SLOT, -1, -1, 0, -1, (uint32)DiscTimer, reduced_recast);
+		else{
+			CastSpell(spell_id, target, DISCIPLINE_SPELL_SLOT);
+			return true;
+		}
+
 		if(spells[spell_id].EndurTimerIndex < MAX_DISCIPLINE_TIMERS)
 		{
 			EQApplicationPacket *outapp = new EQApplicationPacket(OP_DisciplineTimer, sizeof(DisciplineTimer_Struct));
 			DisciplineTimer_Struct *dts = (DisciplineTimer_Struct *)outapp->pBuffer;
 			dts->TimerID = spells[spell_id].EndurTimerIndex;
 			dts->Duration = reduced_recast;
+
 			QueuePacket(outapp);
 			safe_delete(outapp);
 		}

@@ -3060,6 +3060,24 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				newbon->FastManaRegen[3] = spell_id;
 				break;
 			}
+
+			case SE_MeleeManaTap:
+				newbon->MeleeManaTap += effect_value;
+				break;
+
+			case SE_MeleeEndurTap:
+				newbon->MeleeEndurTap += effect_value;
+				break;
+
+			case SE_ScaleMitigationNumhits:
+				newbon->ScaleMitigationNumhits[0] = effect_value;
+				newbon->ScaleMitigationNumhits[1] = buffslot;
+				break;
+
+			case SE_ScaleDamageNumhits:
+				newbon->ScaleDamageNumhits[0] = effect_value;
+				newbon->ScaleDamageNumhits[1] = buffslot;
+				break;
 		}
 	}
 }

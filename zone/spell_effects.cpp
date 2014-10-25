@@ -1169,12 +1169,6 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Mesmerize");
 #endif
-
-				if (!IsStunned() && GetStunResilience()){ //C!Kayen - Mesmerize will be blocked if stun resilience but you can mez a stunned mob.
-					entity_list.MessageClose(this, false, 200, MT_SpellFailure, "%s is resilient to the mesmerization effect.", GetCleanName());
-					break;
-				}
-
 				Mesmerize();
 				break;
 			}
@@ -2821,6 +2815,33 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_AttackPrimary:{
+				if (caster){
+					ExtraAttackOptions opts;
+					opts.damage_percent = 1;
+					opts.hit_chance = spells[spell_id].max[i];
+
+					int numattacks = spells[spell_id].base[i];
+
+					if (spells[spell_id].LightType)
+						numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
+	
+					if (spells[spell_id].base2[i])
+						opts.damage_percent = static_cast<float>(spells[spell_id].base2[i] + 100.0f)/100.0f;
+
+					if (spells[spell_id].HateAdded)
+						opts.hate_percent = static_cast<float>(spells[spell_id].HateAdded + 100.0f)/100.0f;
+
+					Shout("Num attacks %i", numattacks);
+
+					for(int x = 0; x < numattacks; x++){
+						if (!HasDied())
+							caster->Attack(this, MainPrimary, false,false,true,&opts);
+					}
+				}
+				break;
+			}
+
 			case SE_AdjustRecastTimer:
 			{
 				if (IsClient())
@@ -2893,6 +2914,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_PercentalMana:
 			{
 				SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
+				break;
+			}
+
+			case SE_PercentalEndur:
+			{
+				if (IsClient())
+					CastToClient()->SetEndurance(CastToClient()->GetEndurance() + (CastToClient()->GetMaxEndurance() * spell.base[i] / 100));
+				
 				break;
 			}
 
@@ -3002,6 +3031,32 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					int pet_duration = spells[spell_id].max[i];
 					caster->CastToClient()->RelequishFlesh(spell_id, nullptr, pet_name, pet_count, pet_duration, spells[spell_id].base2[i]);
 				}
+				break;
+			}
+
+			case SE_NumHitsAmt:
+			{
+				if (IsValidSpell(spells[spell_id].base[i])){
+					int slot = GetBuffSlotFromSpellID(spells[spell_id].base[i]);
+					if (slot >= 0 && buffs[slot].numhits){
+						int _numhits = buffs[slot].numhits + spells[spell_id].base2[i];
+						if (_numhits <= 0)
+							_numhits = 1; //Min
+						else if (_numhits >= spells[spells[spell_id].base[i]].numhits)
+							_numhits = spells[spells[spell_id].base[i]].numhits; //Max
+
+						buffs[slot].numhits = _numhits;
+						CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+					}
+				}
+				break;
+
+			}
+
+			case SE_FadeBuffBySpellGroup:
+			{
+				if (spells[spell_id].base[i])
+					GetBuffSpellidBySpellGroup(spells[spell_id].base[i]);
 				break;
 			}
 
@@ -4048,6 +4103,14 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 			case SE_PercentalMana:
 			{
 				SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
+				break;
+			}
+
+			case SE_PercentalEndur:
+			{
+				if (IsClient())
+					CastToClient()->SetEndurance(CastToClient()->GetEndurance() + (CastToClient()->GetMaxEndurance() * spell.base[i] / 100));
+				
 				break;
 			}
 

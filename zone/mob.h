@@ -919,6 +919,7 @@ public:
 	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
 	void ClientFaceTarget(Mob* MobToFace = nullptr);
 	bool AACastSpell(uint16 spell_id, uint16 target_id);
+	bool AACastSpellResourceCheck(uint16 spell_id, uint16 target_id);
 	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value);
 	//!// EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id)
 	//!// EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id)
@@ -1056,6 +1057,7 @@ public:
 	
 	//C!SpellEffects :: SE_MeleeManaTap / SE_MeleeLifeTapPetOwner / SE_MeleeManaTapPetOwner	
 	void MeleeManaTap(int32 damage);
+	void MeleeEndurTap(int32 damage);
 	void PetTapToOwner(int32 damage);
 
 	//C!SpellEffects :: SE_CastOnLeap / SE_TossUp
@@ -1115,9 +1117,7 @@ public:
 
 	inline void SetOriginCasterID(uint16 value) { origin_caster_id = value; }
 	inline uint16 GetOriginCasterID() const { return origin_caster_id; }
-
-
-
+	
 	//
 
 	void DirectionalFailMessage(uint16 spell_id);
@@ -1125,6 +1125,12 @@ public:
 	void Debug(const char *str);
 	bool CustomResistSpell(uint16 spell_id, Mob *caster);
 	void DoFastBuffTick();
+	bool MeleeDiscCombatRange(uint32 target_id, uint16 spell_id);
+	int16 GetScaleMitigationNumhits();
+	int16 GetScaleDamageNumhits();
+	inline void GetChargeEffect(uint16 value) { charge_effect = value; }
+	inline uint16 SetChargeEffect() const { return charge_effect; }
+	
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
@@ -1525,6 +1531,8 @@ protected:
 
 	Timer fast_buff_tick_timer;
 	int fast_buff_tick_count;
+
+	int charge_effect;
 
 private:
 	void _StopSong(); //this is not what you think it is

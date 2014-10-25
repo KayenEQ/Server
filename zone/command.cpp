@@ -5667,6 +5667,7 @@ void command_unscribespells(Client *c, const Seperator *sep)
 		t=c->GetTarget()->CastToClient();
 
 	t->UnscribeSpellAll();
+	t->UntrainDiscAll(); //C!Kayen
 }
 
 void command_wpinfo(Client *c, const Seperator *sep)

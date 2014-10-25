@@ -1233,6 +1233,10 @@ public:
 	uint16 GetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN);
 	void SetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN, int value = 0);
 
+	uint16 GetDiscCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN);
+	void SetDiscCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN, int value = 0);
+	uint32 TryCastonDiscCastCountAmt(int slot, uint16 spell_id, uint32 reduced_recast);
+
 	void RelequishFlesh(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration, int aehate = 0);
 	
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
@@ -1282,6 +1286,7 @@ protected:
 	uint32 recast_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
 	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is spell id used to refresh the spell gem early.
 	uint16 spell_cast_count[MAX_PP_MEMSPELL]; //Number of times a specific spell has been cast in a row.
+	uint16 disc_cast_count[MAX_DISCIPLINE_TIMERS]; //Number of times a specific disc has been cast in a row.
 	bool spell_awareness_enabled;
 	Timer spell_awareness_popup; //Need to addd < Spell Name> to npc casted spells.
 

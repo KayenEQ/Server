@@ -1368,6 +1368,7 @@ void EntityList::QueueClientsByTarget(Mob *sender, const EQApplicationPacket *ap
 		TargetsTarget = Target->GetTarget();
 
 		bool Send = false;
+		inspect_buffs = false; //C!Kayen
 
 		if (c == SkipThisMob)
 			continue;

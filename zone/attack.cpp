@@ -1288,15 +1288,18 @@ bool Client::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, b
 		mlog(COMBAT__DAMAGE, "Damage calculated to %d (min %d, max %d, str %d, skill %d, DMG %d, lv %d)",
 			damage, min_hit, max_hit, GetSTR(), GetSkill(skillinuse), weapon_damage, mylevel);
 
+		int hit_bonus = 0;
+
 		if(opts) {
 			damage *= opts->damage_percent;
 			damage += opts->damage_flat;
 			hate *= opts->hate_percent;
 			hate += opts->hate_flat;
+			hit_bonus += opts->hit_chance;
 		}
 
 		//check to see if we hit..
-		if(!other->CheckHitChance(this, skillinuse, Hand)) {
+		if(!other->CheckHitChance(this, skillinuse, Hand, hit_bonus)) {
 			mlog(COMBAT__ATTACKS, "Attack missed. Damage set to 0.");
 			damage = 0;
 		} else {	//we hit, try to avoid it
@@ -1890,23 +1893,26 @@ bool NPC::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, bool
 			other->AddToHateList(this, hate);
 
 		} else {
+
+			int hit_chance_bonus = 0;
+			
 			if(opts) {
 				damage *= opts->damage_percent;
 				damage += opts->damage_flat;
 				hate *= opts->hate_percent;
 				hate += opts->hate_flat;
+				hit_chance_bonus += opts->hit_chance;
 			}
 
 			//C!Kayen - If momentum built chance to hit 100% next attack
-			int16 hitchancebonus = 0;
 			bool HasMomentum = false;
 
 			if (GetMomentum()) {
-				hitchancebonus = 10000;
+				hit_chance_bonus = 10000;
 			    HasMomentum = true;
 			}
 
-			if(!other->CheckHitChance(this, skillinuse, Hand, hitchancebonus)) {
+			if(!other->CheckHitChance(this, skillinuse, Hand, hit_chance_bonus)) {
 				damage = 0;	//miss
 			} else {	//hit, check for damage avoidance
 				
