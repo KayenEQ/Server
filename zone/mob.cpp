@@ -426,12 +426,15 @@ Mob::Mob(const char* in_name,
 	origin_caster_id = 0;
 	AppearanceEffect = false;
 	fast_buff_tick_count = 0;
+
 	charge_effect = 0;
+	charge_effect_increment = 0;
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	fast_buff_tick_timer.Disable();
 	stun_resilience_timer.Disable();
+	charge_effect_timer.Disable();
 }
 
 Mob::~Mob()
@@ -8347,6 +8350,84 @@ int16 Mob::GetScaleDamageNumhits()
 			return (numhits * damage / 100);
 		}
 	}
+}
+
+void Client::TryChargeEffect()
+{
+	if (!spellbonuses.ChargeEffect[0])
+		return;
+
+	int slot = spellbonuses.ChargeEffect[1];
+
+	if (slot >= 0){
+		float dist = 0.0f;
+		dist = CalculateDistance(static_cast<float>(buffs[slot].caston_x), static_cast<float>(buffs[slot].caston_y), static_cast<float>(buffs[slot].caston_z));
+		uint32 dist_int = static_cast<uint32>(dist);
+
+		if (dist_int == GetChargeEffect()){
+			buffs[slot].caston_x = static_cast<int32>(GetX());
+			buffs[slot].caston_y = static_cast<int32>(GetY());
+			buffs[slot].caston_z = static_cast<int32>(GetZ());
+			charge_effect_increment = 0;
+			SetChargeEffect(dist_int);
+		}
+		else{
+			SetChargeEffect(dist_int);
+			if (!charge_effect_increment)
+				charge_effect_increment = 1;
+		}
+
+		Shout("Distance %i Increment %i",GetChargeEffect(), charge_effect_increment);
+	}
+}
+
+void Client::TryChargeHit()
+{
+	if (!spellbonuses.ChargeEffect[0])
+		return;
+
+	charge_effect_increment++;
+
+	Mob* target = nullptr;
+	target = GetTarget();
+
+	if (!target || !target->IsNPC() || target->IsClientPet())
+		return;
+
+	if (!CombatRange(target))
+		return;
+
+	/*
+	ItemInst* weapon;
+	int weapon_damage = 0;
+	weapon = GetInv().GetItem(MainPrimary);
+	if (weapon)
+		 weapon_damage = GetWeaponDamage(target, weapon, 0);
+	*/
+
+	if (charge_effect_increment <= 10)
+		Message(MT_SpellFailure,"Your charge failed to gain enough momentum.");
+
+	else{
+
+		int focus = charge_effect_increment/10;
+		int damage = 1 + GetAC()/2; //Will need some adjusting
+		damage += damage * spellbonuses.ChargeEffect[0]/100;
+		damage += damage*focus/100;
+	
+		//Shout("Trigger ChargeHit NOW [%i] [%i] | [%i] [%i] | [%i] ", GetChargeEffect(), charge_effect_increment, damage, GetAC(), focus);
+
+		Message(MT_Spells, "You slams into %s !", target->GetCleanName());
+		entity_list.MessageClose(this, true, 200, MT_Spells, "%s slams into %s !", GetCleanName(), target->GetCleanName());
+		DoSpecialAttackDamage(target, SkillBash,  damage, 1, -1,0, false, false);
+
+		if (IsValidSpell(spellbonuses.ChargeEffect[2]))
+			SpellFinished(spellbonuses.ChargeEffect[2], target, 10, 0, -1, spells[spellbonuses.ChargeEffect[2]].ResistDiff);
+	}
+
+	BuffFadeBySlot(spellbonuses.ChargeEffect[1]);
+	SetChargeEffect(0);
+	charge_effect_timer.Disable();
 }
 
 //C!Misc - Functions still in development

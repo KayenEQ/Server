@@ -579,6 +579,10 @@ bool Client::Process() {
 		SpellProjectileEffect2();
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
+		TryChargeHit();
+		
+		if (charge_effect_timer.Check())
+			TryChargeEffect();
 
 		if (adjustrecast_timer.Check()) //1 second
 			DoAdjustRecastTimer();

@@ -1128,8 +1128,9 @@ public:
 	bool MeleeDiscCombatRange(uint32 target_id, uint16 spell_id);
 	int16 GetScaleMitigationNumhits();
 	int16 GetScaleDamageNumhits();
-	inline void GetChargeEffect(uint16 value) { charge_effect = value; }
-	inline uint16 SetChargeEffect() const { return charge_effect; }
+	inline void SetChargeEffect(uint32 value) { charge_effect = value; }
+	inline uint32 GetChargeEffect() const { return charge_effect; }
+	
 	
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
@@ -1532,7 +1533,9 @@ protected:
 	Timer fast_buff_tick_timer;
 	int fast_buff_tick_count;
 
-	int charge_effect;
+	Timer charge_effect_timer;
+	uint32 charge_effect;
+	int charge_effect_increment;
 
 private:
 	void _StopSong(); //this is not what you think it is

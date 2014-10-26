@@ -464,7 +464,7 @@ struct StatBonuses {
 	int16 MeleeEndurTap;
 	int16 ScaleMitigationNumhits[2];			//0: Amount of Mitigation Mod 1: Slot
 	int16 ScaleDamageNumhits[2];				//0: Amount of Damage Mod 1: Slot
-	int16 ChargeEffect;							//Modifier
+	int16 ChargeEffect[3];						//0: Modifier 1: Slot 2: Trigger Spell ID
 };
 
 

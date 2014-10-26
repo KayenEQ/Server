@@ -189,6 +189,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 	//C!Kayen - store focus value in bufffs for class specific effects
 	if(spells[spell_id].buffduration > 0 && buffslot >= 0){
 
+		buffs[buffslot].caston_x = static_cast<int32>(GetX());	
+		buffs[buffslot].caston_y = static_cast<int32>(GetY());	
+		buffs[buffslot].caston_z = static_cast<int32>(GetZ());	
+
 		int16 focus_amt = 0;
 		if (caster && caster->IsClient()){
 			focus_amt = caster->GetBaseSpellPowerWizard();
@@ -2815,6 +2819,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+
 			case SE_AttackPrimary:{
 				if (caster){
 					ExtraAttackOptions opts;
@@ -3000,6 +3005,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_AuraField:
 			{
 				aura_field_timer.Start(2000);
+				break;
+			}
+
+			case SE_ChargeEffect:
+			{
+				SetChargeEffect(0);
+				charge_effect_increment = 0;
+				charge_effect_timer.Start(1100);
 				break;
 			}
 

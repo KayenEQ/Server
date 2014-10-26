@@ -337,6 +337,7 @@ Client::Client(EQStreamInterface* ieqs)
 	adjustrecast_timer.Disable();
 	spell_awareness_enabled = false;
 	spell_awareness_popup.Disable();
+
 }
 
 Client::~Client() {
