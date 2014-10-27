@@ -4412,7 +4412,7 @@ void Mob::SpreadVirus(uint16 spell_id, uint16 casterID)
 	// Only spread in zones without perm buffs
 	if(!zone->BuffTimersSuspended()) {
 		for(int i = 0; i < num_targs; i++) {
-			target = entity_list.GetTargetForVirus(this);
+			target = entity_list.GetTargetForVirus(this, spells[spell_id].viral_range);
 			if(target) {
 				// Only spreads to the uninfected
 				if(!target->FindBuff(spell_id)) {
@@ -8405,23 +8405,34 @@ void Client::TryChargeHit()
 		 weapon_damage = GetWeaponDamage(target, weapon, 0);
 	*/
 
-	if (charge_effect_increment <= 10)
+	if (charge_effect_increment <= 150)
 		Message(MT_SpellFailure,"Your charge failed to gain enough momentum.");
 
 	else{
 
 		int focus = charge_effect_increment/10;
 		int damage = 1 + GetAC()/2; //Will need some adjusting
-		damage += damage * spellbonuses.ChargeEffect[0]/100;
-		damage += damage*focus/100;
-	
-		//Shout("Trigger ChargeHit NOW [%i] [%i] | [%i] [%i] | [%i] ", GetChargeEffect(), charge_effect_increment, damage, GetAC(), focus);
+
+		int mod = 0;
+		int distance = charge_effect_increment;
+		int max_distance = 1200;
+		int max_modifier = spellbonuses.ChargeEffect[0]*100; //100;
+
+		if (distance > max_distance)
+			distance = max_distance;
+
+		mod = 1 + ((distance * (max_modifier/max_distance))/100);
+
+		damage += damage*mod/100;
+
+		//Shout("Trigger Charge Hit: Incr [%i] Damage [%i / %i] Mod [%i]", charge_effect_increment, 1 + GetAC()/2 ,damage, mod);
 
 		Message(MT_Spells, "You slams into %s !", target->GetCleanName());
 		entity_list.MessageClose(this, true, 200, MT_Spells, "%s slams into %s !", GetCleanName(), target->GetCleanName());
 		DoSpecialAttackDamage(target, SkillBash,  damage, 1, -1,0, false, false);
+		Stun(500);
 
-		if (IsValidSpell(spellbonuses.ChargeEffect[2]))
+		if (target && !target->HasDied() && IsValidSpell(spellbonuses.ChargeEffect[2]))
 			SpellFinished(spellbonuses.ChargeEffect[2], target, 10, 0, -1, spells[spellbonuses.ChargeEffect[2]].ResistDiff);
 	}
 

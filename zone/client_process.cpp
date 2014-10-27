@@ -1950,7 +1950,12 @@ void Client::DoEnduranceRegen()
 {
 	//C!Kayen - Warrior lose endurance per tick
 	if (GetClass() == WARRIOR){
-		SetEndurance(GetEndurance() + CalcEnduranceRegen());
+
+		int new_endur = GetEndurance() + CalcEnduranceRegen();
+		if (new_endur <= 0)
+			new_endur = 10;
+
+		SetEndurance(new_endur);
 		return;
 	}
 

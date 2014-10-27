@@ -3616,7 +3616,8 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 		} 
 
 		//check stun chances if bashing
-		if (damage > 0 && ((skill_used == SkillBash || skill_used == SkillKick) && attacker)) {
+		//C!Kayen - Disable Bash stun from CLIENTS for now.
+		if ((attacker && !attacker->IsClient()) && damage > 0 && ((skill_used == SkillBash || skill_used == SkillKick) && attacker)) {
 			// NPCs can stun with their bash/kick as soon as they receive it.
 			// Clients can stun mobs under level 56 with their kick when they get level 55 or greater.
 			// Clients have a chance to stun if the mob is 56+

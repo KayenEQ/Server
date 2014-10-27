@@ -680,7 +680,7 @@ typedef enum {
 #define SE_ScaleMitigationNumhits		1052 // implemented - Scale mitigation based on numhits Base: Mitigation ratio x 100
 #define SE_ScaleDamageNumhits			1053 // implemented - Scale damage based on numhits Base: Damage ratio x 100
 #define SE_FadeBuffBySpellGroup			1054 // implemented - Base: Spellgroup ID
-#define SE_ChargeEffect					1055 // implemented
+#define SE_ChargeEffect					1055 // implemented - Base: distance Mod (100) Limit: Trigger Spell ID (Stun)
 // LAST
 
 
