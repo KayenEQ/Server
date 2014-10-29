@@ -1164,6 +1164,18 @@ bool IsAAToggleSpell(uint16 spell_id)
 	return false;
 }
 
+bool IsFastBuffTicSpell(uint16 spell_id)
+{
+	if (IsValidSpell(spell_id) && 
+		spells[spell_id].viral_range == -1 &&
+		spells[spell_id].buffduration > 0 && 
+		spells[spell_id].buffduration <= 3 && 
+		spells[spell_id].not_extendable == 1)
+		return true;
+
+	return false;
+}
+
 bool DirectionalAffectCaster(uint16 spell_id)
 {
 	if (!IsValidSpell(spell_id))

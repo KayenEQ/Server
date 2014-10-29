@@ -944,6 +944,7 @@ const char *GetSpellName(int16 spell_id);
 //C!Kayen - Custom Spell functions
 bool IsEffectFieldSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
+bool IsFastBuffTicSpell(uint16 spell_id);
 bool DirectionalAffectCaster(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);
 bool CanAOEHitNPC(uint16 spell_id); //NPC use only.

@@ -89,6 +89,7 @@ Mob::Mob(const char* in_name,
 		attack_dw_timer(2000),
 		ranged_timer(2000),
 		tic_timer(6000),
+		fast_tic_timer(1000), //C!Kayen
 		mana_timer(2000),
 		spellend_timer(0),
 		rewind_timer(30000), //Timer used for determining amount of time between actual player position updates for /rewind.
@@ -426,6 +427,7 @@ Mob::Mob(const char* in_name,
 	origin_caster_id = 0;
 	AppearanceEffect = false;
 	fast_buff_tick_count = 0;
+	has_fast_buff = false;
 
 	charge_effect = 0;
 	charge_effect_increment = 0;
@@ -7814,13 +7816,14 @@ void Mob::LeapProjectileEffect()
 			for (int i=0; i < EFFECT_COUNT; i++){
 				if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
 					
-					float dist = CalculateDistance(leap_x, leap_y,  leap_z);
-					if (dist > 40.0f && dist < 75.0f) {
+					//float dist = CalculateDistance(leap_x, leap_y,  leap_z);
+					//if (dist > 40.0f && dist < 75.0f) {
+						
 						if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i])
 							SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
-					}
-					else
-						Message(MT_SpellFailure, "Your leap failed to gather enough momentum.");
+					//}
+					//else
+						//Message(MT_SpellFailure, "Your leap failed to gather enough momentum.");
 				}
 			}
 		}
@@ -8151,7 +8154,7 @@ bool Mob::CustomResistSpell(uint16 spell_id, Mob *caster)
 
 }
 
-void Mob::DoFastBuffTick()
+void Mob::DoSpecialFastBuffTick()
 {
 	//Primary used for rapid regeneration abilities that require more percision. !ONLY MANA IMPLEMENTED
 
@@ -8377,7 +8380,7 @@ void Client::TryChargeEffect()
 				charge_effect_increment = 1;
 		}
 
-		Shout("Distance %i Increment %i",GetChargeEffect(), charge_effect_increment);
+		//Shout("Distance %i Increment %i",GetChargeEffect(), charge_effect_increment);
 	}
 }
 
@@ -8397,15 +8400,7 @@ void Client::TryChargeHit()
 	if (!CombatRange(target))
 		return;
 
-	/*
-	ItemInst* weapon;
-	int weapon_damage = 0;
-	weapon = GetInv().GetItem(MainPrimary);
-	if (weapon)
-		 weapon_damage = GetWeaponDamage(target, weapon, 0);
-	*/
-
-	if (charge_effect_increment <= 150)
+	if (charge_effect_increment <= 200)
 		Message(MT_SpellFailure,"Your charge failed to gain enough momentum.");
 
 	else{
@@ -8439,6 +8434,100 @@ void Client::TryChargeHit()
 	BuffFadeBySlot(spellbonuses.ChargeEffect[1]);
 	SetChargeEffect(0);
 	charge_effect_timer.Disable();
+}
+
+void Mob::BuffFastProcess()
+{
+	if (!HasFastBuff())
+		return;
+
+	uint32 buff_count = GetMaxTotalSlots();
+
+	for (int buffs_i = 0; buffs_i < buff_count; ++buffs_i)
+	{
+		if (buffs[buffs_i].spellid != SPELL_UNKNOWN)
+		{
+			if (!IsFastBuffTicSpell(buffs[buffs_i].spellid))
+				continue;
+
+			DoFastBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
+			// If the Mob died during DoBuffTic, then the buff we are currently processing will have been removed
+			if(buffs[buffs_i].spellid == SPELL_UNKNOWN)
+				continue;
+
+			--buffs[buffs_i].ticsremaining;
+
+			int end_time = -((spells[buffs[buffs_i].spellid].buffduration * 6) - spells[buffs[buffs_i].spellid].buffduration);
+
+			if (buffs[buffs_i].ticsremaining == end_time) 
+				BuffFadeBySlot(buffs_i);
+
+			if(IsClient() && !(CastToClient()->GetClientVersionBit() & BIT_SoFAndLater))
+				buffs[buffs_i].UpdateClient = true;
+
+			if(IsClient())
+			{
+				if(buffs[buffs_i].UpdateClient == true)
+				{
+					CastToClient()->SendBuffDurationPacket(buffs[buffs_i]);
+					// Hack to get UF to play nicer, RoF seems fine without it
+					if (CastToClient()->GetClientVersion() == EQClientUnderfoot && buffs[buffs_i].numhits > 0)
+						CastToClient()->SendBuffNumHitPacket(buffs[buffs_i], buffs_i);
+					buffs[buffs_i].UpdateClient = false;
+				}
+			}
+		}
+	}
+}
+
+void Mob::DoFastBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caster_level, Mob* caster) {
+	//No effects defined for use yet in this function.
+	return;
+	
+	int effect, effect_value;
+
+	if(!IsValidSpell(spell_id))
+		return;
+
+	const SPDat_Spell_Struct &spell = spells[spell_id];
+	
+	if (spell_id == SPELL_UNKNOWN)
+		return;
+
+	for (int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if(IsBlankSpellEffect(spell_id, i))
+			continue;
+
+		effect = spell.effectid[i];
+
+		switch(effect)
+		{
+			default:
+			{
+				// do we need to do anyting here?
+			}
+		}
+	}
+}
+
+void Mob::ClearHasFastBuff(int exclude_slot)
+{
+	if (!HasFastBuff())
+		return;
+
+	uint32 buff_max = GetMaxTotalSlots();
+		
+	for(uint32 d = 0; d < buff_max; d++) {
+	
+		if (exclude_slot == d)
+			continue;
+
+		if(IsValidSpell(buffs[d].spellid) && (IsFastBuffTicSpell(buffs[d].spellid)))
+			return;
+	}
+
+	SetFastBuff(false);
 }
 
 //C!Misc - Functions still in development

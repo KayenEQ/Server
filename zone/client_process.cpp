@@ -580,7 +580,7 @@ bool Client::Process() {
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
 		TryChargeHit();
-		
+
 		if (charge_effect_timer.Check())
 			TryChargeEffect();
 
@@ -596,8 +596,8 @@ bool Client::Process() {
 		if (aura_field_timer.Check())
 			DoAuraField();
 
-		if (fast_buff_tick_timer.Check()) //1 seconds
-			DoFastBuffTick();
+		if (fast_buff_tick_timer.Check() && !dead) //1 seconds
+			DoSpecialFastBuffTick();
 
 		//C!Kayen END
 					
@@ -636,6 +636,11 @@ bool Client::Process() {
 		SpellProcess();
 		if (endupkeep_timer.Check() && !dead){
 			DoEnduranceUpkeep();
+		}
+
+		//C!Kayen - Special Fast timer		
+		if (fast_tic_timer.Check() && !dead) {
+			BuffFastProcess();
 		}
 
 		if (tic_timer.Check() && !dead) {

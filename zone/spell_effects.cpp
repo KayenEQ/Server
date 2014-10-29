@@ -186,13 +186,18 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		
 		buffs[buffslot].numhits = numhit;
 	}
-	//C!Kayen - store focus value in bufffs for class specific effects
+	//C!Kayen - Misc buff related checks
 	if(spells[spell_id].buffduration > 0 && buffslot >= 0){
 
+		if (caster && IsFastBuffTicSpell(spell_id))
+			caster->SetFastBuff(true);
+
+		//C!Kayen - always set these for all buffs.
 		buffs[buffslot].caston_x = static_cast<int32>(GetX());	
 		buffs[buffslot].caston_y = static_cast<int32>(GetY());	
 		buffs[buffslot].caston_z = static_cast<int32>(GetZ());	
 
+		//C!Kayen - store focus value in bufffs for class specific effects
 		int16 focus_amt = 0;
 		if (caster && caster->IsClient()){
 			focus_amt = caster->GetBaseSpellPowerWizard();
@@ -3699,6 +3704,9 @@ void Mob::BuffProcess()
 	{
 		if (buffs[buffs_i].spellid != SPELL_UNKNOWN)
 		{
+			if (IsFastBuffTicSpell(buffs[buffs_i].spellid)) //C!Kayen
+				continue;
+
 			DoBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
 			// If the Mob died during DoBuffTic, then the buff we are currently processing will have been removed
 			if(buffs[buffs_i].spellid == SPELL_UNKNOWN)
@@ -4569,6 +4577,8 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 		if (!found_numhits)
 			Numhits(false);
 	}
+
+	ClearHasFastBuff(slot); //C!Kayen
 	
 	if (spells[buffs[slot].spellid].NimbusEffect > 0)
 		RemoveNimbusEffect(spells[buffs[slot].spellid].NimbusEffect);

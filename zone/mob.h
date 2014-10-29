@@ -1124,14 +1124,18 @@ public:
 	void ProjectileTargetRingFailMessage(uint16 spell_id);
 	void Debug(const char *str);
 	bool CustomResistSpell(uint16 spell_id, Mob *caster);
-	void DoFastBuffTick();
+	void DoSpecialFastBuffTick();
 	bool MeleeDiscCombatRange(uint32 target_id, uint16 spell_id);
 	int16 GetScaleMitigationNumhits();
 	int16 GetScaleDamageNumhits();
 	inline void SetChargeEffect(uint32 value) { charge_effect = value; }
 	inline uint32 GetChargeEffect() const { return charge_effect; }
 	
-	
+	void BuffFastProcess();
+	virtual void DoFastBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caster_level, Mob* caster = 0);
+	inline bool HasFastBuff() const { return has_fast_buff; } 
+	inline void SetFastBuff(bool value) { has_fast_buff = value; }
+	void ClearHasFastBuff(int exclude_slot);
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
@@ -1294,6 +1298,7 @@ protected:
 	int8 attack_delay; //delay between attacks in 10ths of seconds
 	float slow_mitigation; // Allows for a slow mitigation (100 = 100%, 50% = 50%)
 	Timer tic_timer;
+	Timer fast_tic_timer; //C!Kayen
 	Timer mana_timer;
 
 	//spell casting vars
@@ -1487,9 +1492,9 @@ protected:
 	
 	int leap_increment;
 	uint16 leap_spell_id;
-	float leap_x;
-	float leap_y;
-	float leap_z;
+	float leap_x;//not used
+	float leap_y;//not used
+	float leap_z;//not used
 
 	float targetring_x;
 	float targetring_y;
@@ -1530,12 +1535,14 @@ protected:
 	Timer effect_field_timer;
 	Timer aura_field_timer;
 
-	Timer fast_buff_tick_timer;
-	int fast_buff_tick_count;
+	Timer fast_buff_tick_timer; //used for special case
+	int fast_buff_tick_count; //used for special case
 
 	Timer charge_effect_timer;
 	uint32 charge_effect;
 	int charge_effect_increment;
+
+	bool has_fast_buff; //Check if mob has a buff that uses fast timer.
 
 private:
 	void _StopSong(); //this is not what you think it is
