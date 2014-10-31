@@ -639,10 +639,9 @@ bool Client::Process() {
 		}
 
 		//C!Kayen - Special Fast timer		
-		if (fast_tic_timer.Check() && !dead) {
+		if (fast_tic_timer.Check() && !dead)
 			BuffFastProcess();
-		}
-
+		
 		if (tic_timer.Check() && !dead) {
 			CalcMaxHP();
 			CalcMaxMana();
@@ -654,6 +653,7 @@ bool Client::Process() {
 			DoEnduranceRegen();
 			BuffProcess();
 			DoStaminaUpdate();
+			CustomTickUpdates(); //C!Kayen
 
 			if(tribute_timer.Check()) {
 				ToggleTribute(true);	//re-activate the tribute.

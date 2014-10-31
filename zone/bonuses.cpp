@@ -3084,6 +3084,15 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				newbon->ChargeEffect[1] = buffslot;
 				newbon->ChargeEffect[2] = base2;
 				break;
+
+			case SE_CriticalHitChanceFlank:
+			{
+				if(base2 == -1)
+					newbon->CritHitChanceFlank[HIGHEST_SKILL+1] += effect_value;
+				else
+					newbon->CritHitChanceFlank[base2] += effect_value;
+			}
+			break;
 		}
 	}
 }

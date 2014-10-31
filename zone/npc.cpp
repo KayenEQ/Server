@@ -592,6 +592,10 @@ bool NPC::Process()
 
 	SpellProcess();
 
+	//C!Kayen - Special Fast timer		
+	if (fast_tic_timer.Check())
+		BuffFastProcess();
+
 	if(tic_timer.Check())
 	{
 		BuffProcess();

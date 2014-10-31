@@ -432,6 +432,8 @@ Mob::Mob(const char* in_name,
 	charge_effect = 0;
 	charge_effect_increment = 0;
 
+	bravery_recast = 0;
+
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	fast_buff_tick_timer.Disable();
@@ -8456,9 +8458,9 @@ void Mob::BuffFastProcess()
 				continue;
 
 			--buffs[buffs_i].ticsremaining;
-
+			
 			int end_time = -((spells[buffs[buffs_i].spellid].buffduration * 6) - spells[buffs[buffs_i].spellid].buffduration);
-
+			//Shout("DEBUG :: BuffFastProcess %i / %i", buffs[buffs_i].ticsremaining,end_time);
 			if (buffs[buffs_i].ticsremaining == end_time) 
 				BuffFadeBySlot(buffs_i);
 
@@ -8528,6 +8530,30 @@ void Mob::ClearHasFastBuff(int exclude_slot)
 	}
 
 	SetFastBuff(false);
+}
+
+int16 Mob::GetCriticalChanceFlankBonus(Mob *defender, uint16 skill)
+{
+	int critical_chance = 0;
+
+	critical_chance +=	itembonuses.CritHitChanceFlank[HIGHEST_SKILL+1] + spellbonuses.CritHitChanceFlank[HIGHEST_SKILL+1] + aabonuses.CritHitChanceFlank[HIGHEST_SKILL+1] +
+						itembonuses.CritHitChanceFlank[skill] + spellbonuses.CritHitChanceFlank[skill] + aabonuses.CritHitChanceFlank[skill];
+
+	if (critical_chance && defender && FlankMob(defender)){
+		
+		if(critical_chance < -100)
+			critical_chance = -100;
+		
+		return critical_chance;
+	}
+	else
+		return 0;
+}
+
+void Mob::CustomTickUpdates()
+{
+	if (GetBraveryRecast())
+		SetBraveryRecast(GetBraveryRecast() - 6);
 }
 
 //C!Misc - Functions still in development

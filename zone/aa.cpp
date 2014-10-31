@@ -291,6 +291,19 @@ void Client::ActivateAA(aaID activate){
 			return;
 		}
 
+		//C!Kayen - Warrior innate AA - Can use instantly until recast timer is hit (will degrade -6 sec / tick)
+		if (caa->spell_id == GetWarriorBraverySpell()){
+			SetBraveryRecast(GetBraveryRecast() + 6);
+			if (GetBraveryRecast() <= 30){ //Lowering this will lower how much can be spammed
+				AACastSpell(caa->spell_id,target_id);
+				
+				if (GetPTimers().Enabled((uint32)AATimerID + pTimerAAStart))
+					p_timers.Clear(&database, AATimerID + pTimerAAStart);
+				
+				return;
+			}
+		}
+
 		if(caa->reuse_time > 0)
 		{
 			uint32 timer_base = CalcAAReuseTimer(caa);
@@ -320,7 +333,7 @@ void Client::ActivateAA(aaID activate){
 		}
 		else
 		{
-			/* C!Kayen - Allow for special cases when casting
+			/* C!Kayen - Allow for special cases when casting - instant recast abilities
 			if(!CastSpell(caa->spell_id, target_id))
 				return;
 			*/

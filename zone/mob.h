@@ -1136,10 +1136,19 @@ public:
 	inline bool HasFastBuff() const { return has_fast_buff; } 
 	inline void SetFastBuff(bool value) { has_fast_buff = value; }
 	void ClearHasFastBuff(int exclude_slot);
+	
+	bool IsClientPet();
+	int16 GetCriticalChanceFlankBonus(Mob *defender, uint16 skill);
+	inline uint16 GetWarriorBraverySpell() const { return 105; }
+	inline void SetBraveryRecast(uint8 value) { bravery_recast = value; }
+	inline uint8 GetBraveryRecast() const { return  bravery_recast; }
+	void CustomTickUpdates();
+
+
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
-	bool IsClientPet();
+	
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
@@ -1543,6 +1552,8 @@ protected:
 	int charge_effect_increment;
 
 	bool has_fast_buff; //Check if mob has a buff that uses fast timer.
+
+	uint8 bravery_recast;
 
 private:
 	void _StopSong(); //this is not what you think it is

@@ -681,6 +681,7 @@ typedef enum {
 #define SE_ScaleDamageNumhits			1053 // implemented - Scale damage based on numhits Base: Damage ratio x 100
 #define SE_FadeBuffBySpellGroup			1054 // implemented - Base: Spellgroup ID
 #define SE_ChargeEffect					1055 // implemented - Base: distance Mod (100) Limit: Trigger Spell ID (Stun)
+#define SE_CriticalHitChanceFlank		1056 // implemented 
 // LAST
 
 
@@ -951,6 +952,7 @@ bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
 bool CastFromPetOwner(uint16 spell_id); //NPC use only.
 bool IsTargetRingSpell(uint16 spell_id);
 bool IsMeleeRangeSpellEffect(uint16 spell_id);
+//Projectile Hacks
 int GetProjCastingAnimation(uint16 spell_id);
 int GetProjArc(uint16 spell_id);
 int GetProjTilt(uint16 spell_id);

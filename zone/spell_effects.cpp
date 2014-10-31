@@ -3058,6 +3058,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					int slot = GetBuffSlotFromSpellID(spells[spell_id].base[i]);
 					if (slot >= 0 && buffs[slot].numhits){
 						int _numhits = buffs[slot].numhits + spells[spell_id].base2[i];
+						
 						if (_numhits <= 0)
 							_numhits = 1; //Min
 						else if (_numhits >= spells[spells[spell_id].base[i]].numhits)

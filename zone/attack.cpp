@@ -4294,6 +4294,7 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttack
 	}
 
 	int CritChanceBonus = GetCriticalChanceBonus(skill);
+	CritChanceBonus += GetCriticalChanceFlankBonus(defender,skill); //C!Kayen
 
 	if (CritChanceBonus || critChance) {
 
