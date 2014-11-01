@@ -1288,18 +1288,18 @@ bool Client::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, b
 		mlog(COMBAT__DAMAGE, "Damage calculated to %d (min %d, max %d, str %d, skill %d, DMG %d, lv %d)",
 			damage, min_hit, max_hit, GetSTR(), GetSkill(skillinuse), weapon_damage, mylevel);
 
-		int hit_bonus = 0;
+		int hit_chance_bonus = 0;
 
 		if(opts) {
 			damage *= opts->damage_percent;
 			damage += opts->damage_flat;
 			hate *= opts->hate_percent;
 			hate += opts->hate_flat;
-			hit_bonus += opts->hit_chance;
+			hit_chance_bonus += opts->hit_chance;
 		}
 
 		//check to see if we hit..
-		if(!other->CheckHitChance(this, skillinuse, Hand, hit_bonus)) {
+		if(!other->CheckHitChance(this, skillinuse, Hand, hit_chance_bonus)) {
 			mlog(COMBAT__ATTACKS, "Attack missed. Damage set to 0.");
 			damage = 0;
 		} else {	//we hit, try to avoid it
@@ -1895,7 +1895,7 @@ bool NPC::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, bool
 		} else {
 
 			int hit_chance_bonus = 0;
-			
+
 			if(opts) {
 				damage *= opts->damage_percent;
 				damage += opts->damage_flat;
@@ -4353,8 +4353,8 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttack
 				// Crippling blows also have a chance to stun
 				//Kayen: Crippling Blow would cause a chance to interrupt for npcs < 55, with a staggers message.
 				if (defender->GetLevel() <= 55 && !defender->GetSpecialAbility(IMMUNE_STUN)){
-					defender->Emote("staggers.");
-					defender->Stun(0);
+					//defender->Emote("staggers."); //C!Kayen
+					//defender->Stun(0);
 				}
 			} else if (deadlySuccess) {
 				entity_list.FilteredMessageClose_StringID(this, false, 200,

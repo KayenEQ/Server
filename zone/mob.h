@@ -916,7 +916,7 @@ public:
 	//C!Uncategorized
 	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
 	bool RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr);
-	void CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
+	void CalcDestFromHeading(float heading, float distance, float MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
 	void ClientFaceTarget(Mob* MobToFace = nullptr);
 	bool AACastSpell(uint16 spell_id, uint16 target_id);
 	bool AACastSpellResourceCheck(uint16 spell_id, uint16 target_id);
@@ -979,7 +979,7 @@ public:
 	inline bool IsMeleeChargeActive() const { return MeleeChargeActive; }
 	inline void SetMeleeChargeActive(bool value) { MeleeChargeActive = value; }
 	inline uint16 GetMeleeChargeTargetID() const { return MeleeCharge_target_id; }
-	inline void SetMeleeChargeTargetID(bool value) { MeleeCharge_target_id = value; }
+	inline void SetMeleeChargeTargetID(uint16 value) { MeleeCharge_target_id = value; }
 		
 	//C!BaseSpellPower
 	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false, int16 buff_focus = -1);

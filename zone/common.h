@@ -599,7 +599,8 @@ struct ExtraAttackOptions {
 	float crit_flat;
 	float hate_percent;
 	int hate_flat;
-	int hit_chance; //C!Kayen
+	int hit_chance;
+
 };
 
 #endif

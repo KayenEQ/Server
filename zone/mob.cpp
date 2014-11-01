@@ -5531,7 +5531,7 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 	return true;
 }
 
-void Mob::CalcDestFromHeading(float heading, float distance, int MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ)
+void Mob::CalcDestFromHeading(float heading, float distance, float MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ)
 {
 	if (!distance) { return; }
 	if (!MaxZDiff) { MaxZDiff = 5; }
@@ -7847,7 +7847,7 @@ void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 	if (spellbonuses.PetLifeShare[1]){
 
 		int slot = -1;
-		int32 damage_to_reduce = 0;
+		int damage_to_reduce = 0;
 		int32 base_damage = damage;
 
 		if (!GetPet()){
@@ -8072,7 +8072,7 @@ void Mob::StunResilienceRegen()
 int Mob::GetBuffSlotFromSpellID(uint16 spell_id)
 {
 	int i;
-	uint32 buff_count = GetMaxTotalSlots();
+	int buff_count = GetMaxTotalSlots();
 	for(i = 0; i < buff_count; i++)
 		if(buffs[i].spellid == spell_id)
 			return i;
@@ -8082,7 +8082,7 @@ int Mob::GetBuffSlotFromSpellID(uint16 spell_id)
 
 void Mob::BuffFadeBySpellIDCaster(uint16 spell_id, uint16 caster_id)
 {
-	uint32 buff_count = GetMaxTotalSlots();
+	int buff_count = GetMaxTotalSlots();
 	for (int j = 0; j < buff_count; j++)
 	{
 		if (buffs[j].spellid == spell_id && buffs[j].casterid == caster_id)
@@ -8096,7 +8096,7 @@ uint16 Mob::GetBuffSpellidBySpellGroup(int spellgroupid)
 {
 	int i;
 
-	uint32 buff_count = GetMaxTotalSlots();
+	int buff_count = GetMaxTotalSlots();
 	for(i = 0; i < buff_count; i++)
 		if(IsValidSpell(buffs[i].spellid)){
 			if (spells[buffs[i].spellid].spellgroup == spellgroupid)
@@ -8320,8 +8320,20 @@ bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	if (target){
 		if (CombatRange(target)){
 
-			if (IsFacingMob(target))
-				return true;
+			if (IsFacingMob(target)){
+				
+				if (spells[spell_id].viral_range == 1){ //1 = Must attack from behind.
+						
+					if (BehindMob(target, GetX(), GetY()))
+						return true;
+					else{
+						Message(13, "You must be behind your target to execute this attack.");
+						return false;
+					}
+				}
+				else
+					return true;
+			}
 			else
 				Message_StringID(13, CANT_SEE_TARGET);
 		}
@@ -8342,6 +8354,8 @@ int16 Mob::GetScaleMitigationNumhits()
 			return (numhits * mitigation / 100);
 		}
 	}
+
+	return 0;
 }
 
 int16 Mob::GetScaleDamageNumhits()
@@ -8355,6 +8369,7 @@ int16 Mob::GetScaleDamageNumhits()
 			return (numhits * damage / 100);
 		}
 	}
+	return 0;
 }
 
 void Client::TryChargeEffect()
@@ -8392,7 +8407,8 @@ void Client::TryChargeHit()
 		return;
 
 	charge_effect_increment++;
-
+	//Shout("[%i] Client: X %.2f Y %.2f Z %.2f",charge_effect_increment, GetX(), GetY(), GetZ());
+	 
 	Mob* target = nullptr;
 	target = GetTarget();
 
@@ -8435,7 +8451,18 @@ void Client::TryChargeHit()
 
 	BuffFadeBySlot(spellbonuses.ChargeEffect[1]);
 	SetChargeEffect(0);
+	charge_effect_increment = 0;
 	charge_effect_timer.Disable();
+}
+
+void Client::TryOnClientUpdate()
+{
+	/*
+	CHECKED AT END OF - void Client::Handle_OP_ClientUpdate(const EQApplicationPacket *app)
+	This allows us to check any conditions immediately after the client position is updated.
+	*/
+
+	Shout("DEBUG:TryonClientUpdate :: X %.2f Y %.2f Z %.2f D: %.2f", GetX(), GetY(), GetZ(), m_DistanceSinceLastPositionCheck);
 }
 
 void Mob::BuffFastProcess()
@@ -8443,7 +8470,7 @@ void Mob::BuffFastProcess()
 	if (!HasFastBuff())
 		return;
 
-	uint32 buff_count = GetMaxTotalSlots();
+	int buff_count = GetMaxTotalSlots();
 
 	for (int buffs_i = 0; buffs_i < buff_count; ++buffs_i)
 	{
@@ -8502,6 +8529,7 @@ void Mob::DoFastBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 c
 			continue;
 
 		effect = spell.effectid[i];
+		effect_value = spell.base[i];
 
 		switch(effect)
 		{

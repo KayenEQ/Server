@@ -671,7 +671,7 @@ typedef enum {
 #define SE_CastEffectFieldSpell			1043 // implemented - Determines what spell the effect field pet will cast
 #define SE_FastManaRegen				1044 // implemented -
 #define SE_RelequishFlesh				1045 // implemented -	
-#define SE_AttackPrimary				1046 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier
+#define SE_AttackPrimary				1046 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier Max: Hit Modifer
 #define SE_DiscAdjustRecastonCountAmt	1047 // implemented - Adjust recast time on disc when has been cast X amount [B: Chance L: Amt M: Cnt Amt]
 #define SE_DiscAdjustRecastTillCountAmt	1048 // implemented - Adjust recast time per use until cast X amount (If set)  [B: Chance L: Amt M: Cnt Amt]
 #define SE_MeleeEndurTap				1049 // implemented - 

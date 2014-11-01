@@ -328,6 +328,8 @@ Client::Client(EQStreamInterface* ieqs)
 	EngagedRaidTarget = false;
 	SavedRaidRestTimer = 0;
 
+	interrogateinv_flag = false;
+
 	//C!Kayen
 	AdjustRecastTimer = false;
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { recast_mem_spells[i] = 0; }

@@ -1213,6 +1213,11 @@ public:
 
 	void ShowNumHits(); // work around function for numhits not showing on buffs
 
+	void TripInterrogateInvState() { interrogateinv_flag = true; }
+	bool GetInterrogateInvState() { return interrogateinv_flag; }
+
+	bool InterrogateInventory(Client* requester, bool log, bool silent, bool allowtrip, bool& error, bool autolog = true);
+
 	//C!Kayen - START
 	void UnscribeSpellByGroup(uint16 spellid);
 	void UnscribeDiscByGroup(uint16 spellid);
@@ -1240,11 +1245,13 @@ public:
 	void RelequishFlesh(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration, int aehate = 0);
 	void TryChargeEffect();
 	void TryChargeHit();
+
+	void TryOnClientUpdate();
 	
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);
 	//C!Kayen - END
-	
+
 protected:
 	friend class Mob;
 	void CalcItemBonuses(StatBonuses* newbon);
@@ -1567,6 +1574,11 @@ private:
 	std::map<std::string,std::string> accountflags;
 
 	uint8 initial_respawn_selection;
+
+	bool interrogateinv_flag; // used to minimize log spamming by players
+
+	void InterrogateInventory_(bool errorcheck, Client* requester, int16 head, int16 index, const ItemInst* inst, const ItemInst* parent, bool log, bool silent, bool &error, int depth);
+	bool InterrogateInventory_error(int16 head, int16 index, const ItemInst* inst, const ItemInst* parent, int depth);
 };
 
 #endif

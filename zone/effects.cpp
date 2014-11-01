@@ -698,6 +698,7 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 		uint32 reduced_recast = spell.recast_time / 1000;
 		reduced_recast -= CastToClient()->GetFocusEffect(focusReduceRecastTime, spell_id);
 		reduced_recast = TryCastonDiscCastCountAmt(spells[spell_id].EndurTimerIndex, spell_id, reduced_recast); //C!Kayen - % Recast Adjuster by Count
+
 		if(reduced_recast <= 0){
 			reduced_recast = 0;
 			if (GetPTimers().Enabled((uint32)DiscTimer))

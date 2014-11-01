@@ -2827,13 +2827,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 			case SE_AttackPrimary:{
 				if (caster){
+					bool FromBehind = false;
 					ExtraAttackOptions opts;
 					opts.damage_percent = 1;
 					opts.hit_chance = spells[spell_id].max[i];
-
+					
 					int numattacks = spells[spell_id].base[i];
 
-					if (spells[spell_id].LightType)
+					if (spells[spell_id].LightType) //Num hits min for random amount of attacks.
 						numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
 	
 					if (spells[spell_id].base2[i])
@@ -2841,8 +2842,6 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 					if (spells[spell_id].HateAdded)
 						opts.hate_percent = static_cast<float>(spells[spell_id].HateAdded + 100.0f)/100.0f;
-
-					Shout("Num attacks %i", numattacks);
 
 					for(int x = 0; x < numattacks; x++){
 						if (!HasDied())
