@@ -682,6 +682,9 @@ typedef enum {
 #define SE_FadeBuffBySpellGroup			1054 // implemented - Base: Spellgroup ID
 #define SE_ChargeEffect					1055 // implemented - Base: distance Mod (100) Limit: Trigger Spell ID (Stun)
 #define SE_CriticalHitChanceFlank		1056 // implemented 
+#define SE_LifeShare					1057 // implemented
+#define SE_DistanceRemovalFromCaster	1058 // implemented - Buff is removed from target when target moves X amount of distance away from where caster is.
+#define SE_IncommingCriticalMelee		1059 //
 // LAST
 
 

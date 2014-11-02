@@ -189,8 +189,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 	//C!Kayen - Misc buff related checks
 	if(spells[spell_id].buffduration > 0 && buffslot >= 0){
 
-		if (caster && IsFastBuffTicSpell(spell_id))
-			caster->SetFastBuff(true);
+		if (IsFastBuffTicSpell(spell_id))
+			SetFastBuff(true);
 
 		//C!Kayen - always set these for all buffs.
 		buffs[buffslot].caston_x = static_cast<int32>(GetX());	
@@ -3078,6 +3078,18 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_LifeShare:
+			{
+				if (caster && caster == this){
+					Message_StringID(MT_SpellFailure, SPELL_NO_HOLD);
+					BuffFadeBySpellID(spell_id);
+				}
+				else
+					buffs[buffslot].melee_rune = spells[spell_id].max[i];
+
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){
@@ -4084,6 +4096,7 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 					}
 					break;
 				}
+				break;
 			}
 
 			case SE_AddHateOverTimePct:
@@ -4142,6 +4155,24 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				if (target && (target->GetID() != buffs[slot].casterid))
 					BuffFadeBySlot(slot, true);
 					
+				break;
+			}
+
+			case SE_DistanceRemovalFromCaster:
+			{
+				if (spellbonuses.DistanceRemovalFromCaster && caster){
+
+					float distance =	(((GetX()) - caster->GetX()) * ((GetX()) - caster->GetX())) + 
+									(((GetY()) - caster->GetY()) * ((GetY()) - caster->GetY()) +
+									(((GetZ()) - caster->GetZ()) * ((GetZ()) - caster->GetZ())));
+
+					if (distance > (static_cast<float>(spells[spell_id].base[i]) * static_cast<float>(spells[spell_id].base[i]))){
+
+						if(!TryFadeEffect(slot))
+							BuffFadeBySlot(slot , true);
+					}
+					break;
+				}
 				break;
 			}
 

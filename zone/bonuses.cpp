@@ -3091,8 +3091,29 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 					newbon->CritHitChanceFlank[HIGHEST_SKILL+1] += effect_value;
 				else
 					newbon->CritHitChanceFlank[base2] += effect_value;
+
+				break;
 			}
-			break;
+
+			case SE_LifeShare:
+			{
+				if (newbon->LifeShare[1] < effect_value){
+					newbon->LifeShare[1] = effect_value; //Mitigation
+					newbon->LifeShare[0] = buffslot;
+					newbon->LifeShare[2] = base2; //Penalty
+					newbon->LifeShare[3] = max; //Rune Amt
+				}
+				break;
+			}
+
+			case SE_DistanceRemovalFromCaster:
+				newbon->DistanceRemovalFromCaster = true;
+				break;
+
+			case SE_IncommingCriticalMelee:
+				newbon->IncommingCriticalMelee += effect_value;
+				break;
+
 		}
 	}
 }

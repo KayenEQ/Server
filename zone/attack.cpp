@@ -3552,8 +3552,9 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 			mlog(COMBAT__HITS, "Melee Damage reduced to %d", damage);
 			damage = ReduceAllDamage(damage);
 			TryTriggerThreshHold(damage, SE_TriggerMeleeThreshold, attacker);
-			SetWpnSkillDmgBonus(skill_used, damage);
-			PetLifeShare(skill_used, damage, attacker);
+			SetWpnSkillDmgBonus(skill_used, damage); //C!Kayen
+			PetLifeShare(skill_used, damage, attacker); //C!Kayen
+			LifeShare(skill_used, damage, attacker); //C!Kayen
 		} else {
 			int32 origdmg = damage;
 			damage = AffectMagicalDamage(damage, spell_id, iBuffTic, attacker);
@@ -4199,6 +4200,8 @@ void Mob::TryPetCriticalHit(Mob *defender, uint16 skill, int32 &damage)
 		//even if buffed with a CritChanceBonus effects.
 		critChance += CritPetChance;
 		critChance += critChance*CritChanceBonus/100.0f;
+		if (defender) //C!Kayen
+			critChance += defender->spellbonuses.IncommingCriticalMelee + defender->itembonuses.IncommingCriticalMelee + defender->aabonuses.IncommingCriticalMelee;
 	}
 
 	if(critChance > 0){
@@ -4295,6 +4298,8 @@ void Mob::TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttack
 
 	int CritChanceBonus = GetCriticalChanceBonus(skill);
 	CritChanceBonus += GetCriticalChanceFlankBonus(defender,skill); //C!Kayen
+	if (defender) //C!Kayen
+		CritChanceBonus += defender->spellbonuses.IncommingCriticalMelee + defender->itembonuses.IncommingCriticalMelee + defender->aabonuses.IncommingCriticalMelee;
 
 	if (CritChanceBonus || critChance) {
 

@@ -5822,7 +5822,7 @@ bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target)
 //#### C!CustomSkillBonus
 
 void Mob::SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage)
-{
+{return; //Disabled
 	if (IsNPC()) {
 
 		int32 DmgAmt = GetMaxHP() * 5 / 100;
@@ -5859,7 +5859,7 @@ void Mob::SetWpnSkillDmgBonus(SkillUseTypes skill_used, int32 damage)
 }
 
 int Mob::GetWpnSkillDmgBonusAmt()
-{
+{ return 0; //Disabled
 	int _WpnSkillDmgBonus = 0;
 	if (IsNPC()) {
 		
@@ -5880,7 +5880,7 @@ int Mob::GetWpnSkillDmgBonusAmt()
 }
 
 void Mob::SetSpellResistTypeDmgBonus(uint16 spell_id, int32 damage)
-{
+{return; //DISABLED
 	if (IsNPC()) {
 
 		int32 resist_type = GetSpellResistType(spell_id);
@@ -5910,7 +5910,7 @@ void Mob::SetSpellResistTypeDmgBonus(uint16 spell_id, int32 damage)
 }
 
 int Mob::GetSpellResistTypeDmgBonus()
-{
+{return 0;//Disabled
 	int _SpellResistTypeDmgBonus = 0;
 	if (IsNPC()) {
 		
@@ -7798,40 +7798,41 @@ void Mob::SetLeapEffect(uint16 spell_id){
 		leap_y = GetY();
 		leap_z = GetZ();
 		leap_increment = 1;
+
+		//Break deterimental snares and roots.
+		int buff_count = GetMaxTotalSlots();
+		for(int i = 0; i < buff_count; i++) {
+			if (IsValidSpell(buffs[i].spellid)){
+
+				if (spells[buffs[i].spellid].dispel_flag || spells[buffs[i].spellid].goodEffect)
+					continue;
+
+				for(int i = 0; i < EFFECT_COUNT; i++)
+				{
+					if (spells[spell_id].effectid[i] == SE_Root){
+						BuffFadeBySlot(i);
+						continue;
+					}
+
+					if (spells[spell_id].effectid[i] == SE_MovementSpeed){
+						BuffFadeBySlot(i);
+						continue;
+					}
+				}
+			}
+		}
 	}
 }
 
 void Mob::LeapProjectileEffect()
 {
-	if (leap_increment == 0)
-		return;
 	//Due to my inability to calculate the predicted distance - Hack job for this ability.
 	//Using 8 pushback and 30 pushup results in a distance ~ 56 which takes about 75 increments
-	
-	/*
-	float dist = caster->CalculateDistance(leap_x, leap_y,  leap_z);
-	//if (dist > 48.0f && dist < 66.0f) {
-	*/
+	//Trigger is set on TryOnClientUpdate when increment = 75
 
-	if (leap_increment >= 75) {
-		if (IsValidSpell(leap_spell_id)){
-			for (int i=0; i < EFFECT_COUNT; i++){
-				if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
-					
-					//float dist = CalculateDistance(leap_x, leap_y,  leap_z);
-					//if (dist > 40.0f && dist < 75.0f) {
-						
-						if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i])
-							SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
-					//}
-					//else
-						//Message(MT_SpellFailure, "Your leap failed to gather enough momentum.");
-				}
-			}
-		}
-		leap_increment = 0;
+	if (!leap_increment)
 		return;
-	}
+
 	leap_increment++;
 	return;
 }
@@ -7860,13 +7861,13 @@ void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 		{
 			int damage_to_reduce = damage * spellbonuses.PetLifeShare[1] / 100;
 
-			if(spellbonuses.MitigateMeleeRune[3] && (damage_to_reduce >= buffs[slot].melee_rune)){
+			if(spellbonuses.PetLifeShare[3] && (damage_to_reduce >= buffs[slot].melee_rune)){
 				damage -= buffs[slot].melee_rune;
 				if(!TryFadeEffect(slot))
 					BuffFadeBySlot(slot);
 			}
 			else{
-				if (spellbonuses.MitigateMeleeRune[3])
+				if (spellbonuses.PetLifeShare[3])
 					buffs[slot].melee_rune = (buffs[slot].melee_rune - damage_to_reduce);
 				
 				damage -= damage_to_reduce;
@@ -8462,7 +8463,22 @@ void Client::TryOnClientUpdate()
 	This allows us to check any conditions immediately after the client position is updated.
 	*/
 
-	Shout("DEBUG:TryonClientUpdate :: X %.2f Y %.2f Z %.2f D: %.2f", GetX(), GetY(), GetZ(), m_DistanceSinceLastPositionCheck);
+	if (leap_increment) { 
+		if (leap_increment >= 75) { //Trigger spell on next possible position update after landing.
+			if (IsValidSpell(leap_spell_id)){
+				for (int i=0; i < EFFECT_COUNT; i++){
+					if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
+						if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i])
+							SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
+					}
+				}
+			}
+			leap_spell_id = 0;
+			leap_increment = 0; //Reset variable to end
+		}
+	}
+
+	//Shout("DEBUG:TryonClientUpdate :: X %.2f Y %.2f Z %.2f D: %.2f", GetX(), GetY(), GetZ(), m_DistanceSinceLastPositionCheck);
 }
 
 void Mob::BuffFastProcess()
@@ -8479,7 +8495,7 @@ void Mob::BuffFastProcess()
 			if (!IsFastBuffTicSpell(buffs[buffs_i].spellid))
 				continue;
 
-			DoFastBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
+			DoBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
 			// If the Mob died during DoBuffTic, then the buff we are currently processing will have been removed
 			if(buffs[buffs_i].spellid == SPELL_UNKNOWN)
 				continue;
@@ -8487,7 +8503,7 @@ void Mob::BuffFastProcess()
 			--buffs[buffs_i].ticsremaining;
 			
 			int end_time = -((spells[buffs[buffs_i].spellid].buffduration * 6) - spells[buffs[buffs_i].spellid].buffduration);
-			//Shout("DEBUG :: BuffFastProcess %i / %i", buffs[buffs_i].ticsremaining,end_time);
+			Shout("DEBUG :: BuffFastProcess %i / %i", buffs[buffs_i].ticsremaining,end_time);
 			if (buffs[buffs_i].ticsremaining == end_time) 
 				BuffFadeBySlot(buffs_i);
 
@@ -8546,9 +8562,9 @@ void Mob::ClearHasFastBuff(int exclude_slot)
 	if (!HasFastBuff())
 		return;
 
-	uint32 buff_max = GetMaxTotalSlots();
+	int buff_max = GetMaxTotalSlots();
 		
-	for(uint32 d = 0; d < buff_max; d++) {
+	for(int d = 0; d < buff_max; d++) {
 	
 		if (exclude_slot == d)
 			continue;
@@ -8582,6 +8598,58 @@ void Mob::CustomTickUpdates()
 {
 	if (GetBraveryRecast())
 		SetBraveryRecast(GetBraveryRecast() - 6);
+}
+
+void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
+{
+	if (!attacker) 
+		return;
+
+	if (damage <= 0)
+		return;
+	//Base Penalty value is 100, meaning receives no change from base damage.
+
+	if (spellbonuses.LifeShare[1]){ //Mitigation exists
+
+		int slot = -1;
+		int damage_to_reduce = 0;
+		int32 base_damage = damage;
+
+		slot = spellbonuses.LifeShare[0];
+		if(slot >= 0)
+		{
+			Mob* caster = nullptr;
+			caster = entity_list.GetMob(buffs[slot].casterid);
+
+			if (!caster){
+				BuffFadeByEffect(SE_LifeShare); //Fade if caster does not exist.
+				return;
+			}
+
+			int damage_to_reduce = damage * spellbonuses.LifeShare[1] / 100;
+
+			if(spellbonuses.LifeShare[3] && (damage_to_reduce >= buffs[slot].melee_rune)){
+				damage -= buffs[slot].melee_rune;
+				if(!TryFadeEffect(slot))
+					BuffFadeBySlot(slot);
+			}
+			else{
+				if (spellbonuses.LifeShare[3])
+					buffs[slot].melee_rune = (buffs[slot].melee_rune - damage_to_reduce);
+				
+				damage -= damage_to_reduce;
+			}
+		
+			int32 dmg_to_caster = base_damage - damage_to_reduce;
+
+			if (spellbonuses.LifeShare[2]){ //Penalty
+				if (caster){
+					dmg_to_caster = (dmg_to_caster*spellbonuses.LifeShare[2])/100;
+					caster->Damage(attacker, damage, SPELL_UNKNOWN, skill_used, false);
+				}
+			}
+		}
+	}
 }
 
 //C!Misc - Functions still in development

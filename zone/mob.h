@@ -1144,6 +1144,7 @@ public:
 	inline uint8 GetBraveryRecast() const { return  bravery_recast; }
 	void CustomTickUpdates();
 
+	void LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 
 
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED

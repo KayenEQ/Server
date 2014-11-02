@@ -466,6 +466,9 @@ struct StatBonuses {
 	int16 ScaleDamageNumhits[2];				//0: Amount of Damage Mod 1: Slot
 	int16 ChargeEffect[3];						//0: Modifier 1: Slot 2: Trigger Spell ID
 	int16 CritHitChanceFlank[HIGHEST_SKILL+2];	//i
+	int16 LifeShare[4];							//0= Buff Slot 1=Mitigation Amt 2=Percent Penalty 3=RuneAmt
+	bool DistanceRemovalFromCaster;				// bool
+	int16 IncommingCriticalMelee;				// percent chance
 };
 
 
