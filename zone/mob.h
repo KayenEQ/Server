@@ -1306,7 +1306,7 @@ protected:
 	Timer ranged_timer;
 	float attack_speed; //% increase/decrease in attack speed (not haste)
 	int8 attack_delay; //delay between attacks in 10ths of seconds
-	float slow_mitigation; // Allows for a slow mitigation (100 = 100%, 50% = 50%)
+	int16 slow_mitigation; // Allows for a slow mitigation (100 = 100%, 50% = 50%)
 	Timer tic_timer;
 	Timer fast_tic_timer; //C!Kayen
 	Timer mana_timer;
