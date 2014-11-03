@@ -604,6 +604,12 @@ void Client::CompleteConnect()
 				SendSpellEffect(NimbusEffect, 500, 0, 1, 3000, true);
 		}
 
+		//C!Kayen
+		if (IsFastBuffTicSpell(buffs[j1].spellid)){
+			BuffFadeBySlot(j1);
+			continue;
+		}
+
 		for (int x1 = 0; x1 < EFFECT_COUNT; x1++) {
 			switch (spell.effectid[x1]) {
 			case SE_IllusionCopy:

@@ -1126,6 +1126,7 @@ public:
 	bool CustomResistSpell(uint16 spell_id, Mob *caster);
 	void DoSpecialFastBuffTick();
 	bool MeleeDiscCombatRange(uint32 target_id, uint16 spell_id);
+	bool PassDiscRestriction(uint16 spell_id);
 	int16 GetScaleMitigationNumhits();
 	int16 GetScaleDamageNumhits();
 	inline void SetChargeEffect(uint32 value) { charge_effect = value; }
@@ -1145,8 +1146,8 @@ public:
 	void CustomTickUpdates();
 
 	void LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
-
-
+	int CalcDistributionModifer(int range, int min_range, int max_range, int min_mod, int max_mod);
+	
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
 	

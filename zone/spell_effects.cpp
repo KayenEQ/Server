@@ -2834,7 +2834,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					
 					int numattacks = spells[spell_id].base[i];
 
-					if (spells[spell_id].LightType) //Num hits min for random amount of attacks.
+					if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
 						numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
 	
 					if (spells[spell_id].base2[i])
@@ -2842,6 +2842,19 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 					if (spells[spell_id].HateAdded)
 						opts.hate_percent = static_cast<float>(spells[spell_id].HateAdded + 100.0f)/100.0f;
+
+					if (spells[spell_id].MinResist){
+						int ratio_modifier = 0;
+						int dmod = 0;
+						ratio_modifier = 25 - static_cast<int>(GetHPRatio());
+
+						if (ratio_modifier > 0){
+							dmod = CalcDistributionModifer(ratio_modifier, 1, 25, spells[spell_id].MinResist, spells[spell_id].MaxResist);
+							opts.damage_percent = static_cast<float>(dmod + 100.0f)/100.0f;
+						}
+						else
+							opts.damage_percent = static_cast<float>(ratio_modifier + 100.0f)/100.0f;
+					}
 
 					for(int x = 0; x < numattacks; x++){
 						if (!HasDied())

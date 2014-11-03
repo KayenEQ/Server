@@ -1140,7 +1140,7 @@ int32 Mob::CheckAggroAmount(uint16 spell_id, bool isproc)
 		// this should only be on the spell to aggro the npc not every spell
 
 	}
-	Shout("Aggro %i %i %i [%i]",AggroAmount, spells[spell_id].bonushate, nonModifiedAggro, AggroAmount + spells[spell_id].bonushate + nonModifiedAggro);
+	//Shout("DEBUG :: Aggro %i %i %i [%i]",AggroAmount, spells[spell_id].bonushate, nonModifiedAggro, AggroAmount + spells[spell_id].bonushate + nonModifiedAggro);
 	return AggroAmount + spells[spell_id].bonushate + nonModifiedAggro;
 }
 

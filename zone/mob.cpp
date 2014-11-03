@@ -7807,14 +7807,14 @@ void Mob::SetLeapEffect(uint16 spell_id){
 				if (spells[buffs[i].spellid].dispel_flag || spells[buffs[i].spellid].goodEffect)
 					continue;
 
-				for(int i = 0; i < EFFECT_COUNT; i++)
+				for(int d = 0; d < EFFECT_COUNT; d++)
 				{
-					if (spells[spell_id].effectid[i] == SE_Root){
+					if (spells[spell_id].effectid[d] == SE_Root){
 						BuffFadeBySlot(i);
 						continue;
 					}
 
-					if (spells[spell_id].effectid[i] == SE_MovementSpeed){
+					if (spells[spell_id].effectid[d] == SE_MovementSpeed){
 						BuffFadeBySlot(i);
 						continue;
 					}
@@ -8319,16 +8319,24 @@ bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	target = entity_list.GetMob(target_id);
 
 	if (target){
+
+		if (GetDiscHPRestriction(spell_id)){
+			if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
+				Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
+				return false;
+			}
+		}
+		
 		if (CombatRange(target)){
 
 			if (IsFacingMob(target)){
 				
-				if (spells[spell_id].viral_range == 1){ //1 = Must attack from behind.
+				if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
 						
 					if (BehindMob(target, GetX(), GetY()))
 						return true;
 					else{
-						Message(13, "You must be behind your target to execute this attack.");
+						Message(13, "You must be behind your target to execute this attack!");
 						return false;
 					}
 				}
@@ -8342,6 +8350,21 @@ bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
 			Message_StringID(13, TARGET_OUT_OF_RANGE);
 	}
 	return false;
+}
+
+bool Mob::PassDiscRestriction(uint16 spell_id)
+{
+	
+	if (spells[spell_id].targettype == ST_Self){
+		if (GetDiscHPRestriction(spell_id)){
+			if (static_cast<int>(GetHPRatio()) > GetDiscHPRestriction(spell_id)){
+				Message(13, "You must be weakened under %i percent health to use this ability!", GetDiscHPRestriction(spell_id));
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
 int16 Mob::GetScaleMitigationNumhits()
@@ -8650,6 +8673,19 @@ void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 			}
 		}
 	}
+}
+
+int Mob::CalcDistributionModifer(int range, int min_range, int max_range, int min_mod, int max_mod)
+{
+	int dm_range = max_range - min_range;
+	int dm_mod_interval = max_mod - min_mod;
+	int dist_from_min = range - min_range;
+
+	if (!dm_range)
+		return 0;//Saftey
+
+	int mod = min_mod + (dist_from_min * (dm_mod_interval/dm_range));
+	return mod;
 }
 
 //C!Misc - Functions still in development
