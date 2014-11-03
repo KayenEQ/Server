@@ -3114,6 +3114,15 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				newbon->IncommingCriticalMelee += effect_value;
 				break;
 
+			case SE_AbsorbMeleeDamage:{
+
+				newbon->AbsorbMeleeDamage[0] = effect_value;
+				newbon->AbsorbMeleeDamage[1] = buffslot;
+				newbon->AbsorbMeleeDamage[2] = base2;
+				newbon->AbsorbMeleeDamage[3] = max;
+				
+				break;
+			}
 		}
 	}
 }

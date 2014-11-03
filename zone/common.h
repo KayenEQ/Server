@@ -469,6 +469,7 @@ struct StatBonuses {
 	int16 LifeShare[4];							//0= Buff Slot 1=Mitigation Amt 2=Percent Penalty 3=RuneAmt
 	bool DistanceRemovalFromCaster;				// bool
 	int16 IncommingCriticalMelee;				// percent chance
+	int16 AbsorbMeleeDamage[4];					// 0 = Mitigation value 1 = Buff Slot 2 = Max mitigation per hit 3 = Rune Amt
 };
 
 

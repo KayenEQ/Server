@@ -3173,7 +3173,6 @@ int32 Mob::ReduceDamage(int32 damage)
 		}
 	}
 
-
 	if (spellbonuses.MitigateMeleeRune[0] && !DisableMeleeRune){
 		slot = spellbonuses.MitigateMeleeRune[1];
 		if(slot >= 0)
@@ -3552,6 +3551,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 			SetWpnSkillDmgBonus(skill_used, damage); //C!Kayen
 			PetLifeShare(skill_used, damage, attacker); //C!Kayen
 			LifeShare(skill_used, damage, attacker); //C!Kayen
+			AbsorbMelee(damage, attacker); //C!Kayen
 		} else {
 			int32 origdmg = damage;
 			damage = AffectMagicalDamage(damage, spell_id, iBuffTic, attacker);

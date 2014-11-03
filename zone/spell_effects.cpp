@@ -3103,6 +3103,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_AbsorbMeleeDamage:
+			{
+				buffs[buffslot].melee_rune = spells[spell_id].max[i];
+				break;
+			}
+
 			case SE_SpellAwareness:{
 
 				if (IsClient()){

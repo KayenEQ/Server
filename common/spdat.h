@@ -685,6 +685,7 @@ typedef enum {
 #define SE_LifeShare					1057 // implemented
 #define SE_DistanceRemovalFromCaster	1058 // implemented - Buff is removed from target when target moves X amount of distance away from where caster is.
 #define SE_IncommingCriticalMelee		1059 //
+#define SE_AbsorbMeleeDamage			1060 //
 // LAST
 
 

@@ -5543,7 +5543,7 @@ void Mob::CalcDestFromHeading(float heading, float distance, float MaxZDiff, flo
 	else
 		ConvertAngle = ConvertAngle - 270;
 
-	float Radian = ConvertAngle * (3.1415927 / 180);
+	float Radian = ConvertAngle * (3.1415927f / 180.0f);
 
 	float CircleX = distance * cos(Radian);
 	float CircleY = distance * sin(Radian);
@@ -6608,8 +6608,8 @@ void Mob::SpellCastingTimerDisplay()
 	if (IsCasting() && IsEngaged()){
 		
 		uint32 remain_time = GetSpellEndTime().GetRemainingTime(); 
-		int flat_time = remain_time / 1000;
-		int flat_time_cmp =  (flat_time * 1000) + 30;
+		uint32 flat_time = remain_time / 1000;
+		uint32 flat_time_cmp =  (flat_time * 1000) + 30;
 		//Shout("remain %i < flat_time_cmp %i", remain_time, flat_time_cmp);
 		if (remain_time < flat_time_cmp) {
 
@@ -8686,6 +8686,34 @@ int Mob::CalcDistributionModifer(int range, int min_range, int max_range, int mi
 
 	int mod = min_mod + (dist_from_min * (dm_mod_interval/dm_range));
 	return mod;
+}
+
+void Mob::AbsorbMelee(int32 &damage, Mob* attacker)
+{
+	if (!attacker || attacker->IsClient())
+		return;
+
+	if (!spellbonuses.AbsorbMeleeDamage[0])
+		return;
+
+	int slot = spellbonuses.AbsorbMeleeDamage[1];
+
+	if(slot >= 0)
+	{
+		damage += damage * spellbonuses.AbsorbMeleeDamage[0] / 100;
+		
+		if(spellbonuses.AbsorbMeleeDamage[3] && (damage >= buffs[slot].melee_rune)){
+			if(!TryFadeEffect(slot))
+				BuffFadeBySlot(slot);
+		}
+		else{
+			if (spellbonuses.AbsorbMeleeDamage[3]){
+				buffs[slot].melee_rune = buffs[slot].melee_rune - damage;
+			}
+		}
+
+		//Shout("DEBUG :: AbsorbMelee D %i Rune %i / %i", damage, buffs[slot].melee_rune, spellbonuses.AbsorbMeleeDamage[3]);
+	}
 }
 
 //C!Misc - Functions still in development
