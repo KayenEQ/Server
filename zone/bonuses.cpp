@@ -3123,6 +3123,10 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				
 				break;
 			}
+
+			case SE_AdjustCastTimePct:
+				newbon->AdjustCastTimePct += effect_value;
+				break;
 		}
 	}
 }

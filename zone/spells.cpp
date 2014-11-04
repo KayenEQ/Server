@@ -398,6 +398,9 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 	else
 		orgcasttime = cast_time;
 
+	if (IsNPC())//C!Kayen - NPC +/- cast time adjustments by percent
+		cast_time += cast_time*spellbonuses.AdjustCastTimePct / 100;
+
 	// we checked for spells not requiring targets above
 	if(target_id == 0) {
 		mlog(SPELLS__CASTING_ERR, "Spell Error: no target. spell=%d\n", GetName(), spell_id);
@@ -3265,6 +3268,7 @@ int Mob::AddBuff(Mob *caster, uint16 spell_id, int duration, int32 level_overrid
 	buffs[emptyslot].ExtraDIChance = 0;
 	buffs[emptyslot].RootBreakChance = 0;
 	buffs[emptyslot].focus = 0; //C!Kayen
+	buffs[emptyslot].fastticsremaining = 0; //C!Kayen
 
 	if (level_override > 0) {
 		buffs[emptyslot].UpdateClient = true;

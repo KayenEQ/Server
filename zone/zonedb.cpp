@@ -2881,6 +2881,7 @@ void ZoneDatabase::LoadBuffs(Client *client) {
         buffs[slot_id].RootBreakChance = 0;
         buffs[slot_id].UpdateClient = false;
 		buffs[slot_id].focus = 0; //C!Kayen
+		buffs[slot_id].fastticsremaining = 0; //C!Kayen
 
     }
 

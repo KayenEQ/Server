@@ -2733,6 +2733,7 @@ int32 Mob::GetActSpellCasttime(uint16 spell_id, int32 casttime) {
 		else
 			casttime -= cast_deduction;
 	}
+
 	return(casttime);
 }
 
@@ -8518,16 +8519,19 @@ void Mob::BuffFastProcess()
 			if (!IsFastBuffTicSpell(buffs[buffs_i].spellid))
 				continue;
 
+			//If I decided to keep this using regular buff timer...
+			//int remainder = buffs[buffs_i].fastticsremaining % 6;
+			//if (!remainder)
 			DoBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
-			// If the Mob died during DoBuffTic, then the buff we are currently processing will have been removed
+
 			if(buffs[buffs_i].spellid == SPELL_UNKNOWN)
 				continue;
 
-			--buffs[buffs_i].ticsremaining;
+			--buffs[buffs_i].fastticsremaining;
+			buffs[buffs_i].ticsremaining = 1 + buffs[buffs_i].fastticsremaining/6;
 			
-			int end_time = -((spells[buffs[buffs_i].spellid].buffduration * 6) - spells[buffs[buffs_i].spellid].buffduration);
-			Shout("DEBUG :: BuffFastProcess %i / %i", buffs[buffs_i].ticsremaining,end_time);
-			if (buffs[buffs_i].ticsremaining == end_time) 
+			Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
+			if (buffs[buffs_i].fastticsremaining == 0) 
 				BuffFadeBySlot(buffs_i);
 
 			if(IsClient() && !(CastToClient()->GetClientVersionBit() & BIT_SoFAndLater))

@@ -130,6 +130,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		buffs[buffslot].magic_rune = 0;
 		buffs[buffslot].numhits = 0;
 		buffs[buffslot].focus = 0; //C!Kayen
+		buffs[buffslot].fastticsremaining = 0; //C!Kayen
 
 		if(IsClient() && CastToClient()->GetClientVersionBit() & BIT_UnderfootAndLater)
 		{
@@ -189,8 +190,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 	//C!Kayen - Misc buff related checks
 	if(spells[spell_id].buffduration > 0 && buffslot >= 0){
 
-		if (IsFastBuffTicSpell(spell_id))
+		if (IsFastBuffTicSpell(spell_id)){
 			SetFastBuff(true);
+			buffs[buffslot].fastticsremaining = spells[spell_id].buffduration * 6;
+		}
 
 		//C!Kayen - always set these for all buffs.
 		buffs[buffslot].caston_x = static_cast<int32>(GetX());	
@@ -3983,6 +3986,8 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 				/* Root formula derived from extensive personal live parses - Kayen
 				ROOT has a 70% chance to do a resist check to break.
 				*/
+				if (spells[spell_id].resisttype == 0)//C!Kayen - Full duration root
+					break;
 
 				if (MakeRandomInt(0, 99) < RuleI(Spells, RootBreakCheckChance)){
 				

@@ -190,6 +190,7 @@ struct Buffs_Struct {
 	bool	client; //True if the caster is a client
 	bool	UpdateClient;
 	int16	focus; //C!Kayen - For class specific focuses that are applied when spell is initially cast.
+	int32	fastticsremaining; //C!Kayen - Count fast buff ticks
 };
 
 struct StatBonuses {
@@ -470,6 +471,7 @@ struct StatBonuses {
 	bool DistanceRemovalFromCaster;				// bool
 	int16 IncommingCriticalMelee;				// percent chance
 	int16 AbsorbMeleeDamage[4];					// 0 = Mitigation value 1 = Buff Slot 2 = Max mitigation per hit 3 = Rune Amt
+	int32 AdjustCastTimePct;					// alters NPC cast time by percent
 };
 
 
