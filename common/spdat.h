@@ -687,6 +687,8 @@ typedef enum {
 #define SE_IncommingCriticalMelee		1059 //
 #define SE_AbsorbMeleeDamage			1060 //
 #define SE_AdjustCastTimePct			1061 // ADjust NPC cast time
+#define SE_FadeCastersBuffFromAll		1062 // Fade the specified spell id from any mob where you are the caster of the buff.
+#define SE_FadeBuffFromCaster			1063 // Fades the specified spell id on the caster of the buff that is fading.
 // LAST
 
 

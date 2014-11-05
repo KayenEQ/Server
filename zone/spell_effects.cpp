@@ -4251,6 +4251,9 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 		parse->EventSpell(EVENT_SPELL_FADE, CastToNPC(), nullptr, buffs[slot].spellid, slot, &args);
 	}
 
+	uint16 _casterid = buffs[slot].casterid; //C!Kayen
+	uint16 _spell_id = buffs[slot].spellid; //C!Kayen
+
 	for (int i=0; i < EFFECT_COUNT; i++)
 	{
 		if(IsBlankSpellEffect(buffs[slot].spellid, i))
@@ -4588,7 +4591,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 				if (IsNPC() && CastToNPC()->GetSwarmOwner())
 					_caster_id = CastToNPC()->GetSwarmOwner();//If used on swarm pet get the caster id by getting swarm pets owner.
 
-				entity_list.FadeFieldBuff(_caster_id, spells[buffs[slot].spellid].base[i]);
+				entity_list.FadeCastersBuffFromAll(_caster_id, spells[buffs[slot].spellid].base[i]);
 
 				if (spells[buffs[slot].spellid].base2[i] == 1) //Limit 1 = Depop the mob with the buff when it fades (Used on swarm pets)
 					Depop();
@@ -4597,8 +4600,13 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 			}
 
 			case SE_AuraField:{
-				entity_list.FadeFieldBuff(GetID(), spells[buffs[slot].spellid].base[i]);
+				entity_list.FadeCastersBuffFromAll(GetID(), spells[buffs[slot].spellid].base[i]);
 				break;				
+			}
+
+			case SE_FadeCastersBuffFromAll: {
+				entity_list.FadeCastersBuffFromAll(GetID(), spells[buffs[slot].spellid].base[i]);
+				break;	
 			}
 		}
 	}
@@ -4673,6 +4681,8 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 		CastToClient()->FastQueuePacket(&outapp);
 	}
 
+	FadeLinkedBuff(_casterid, _spell_id);//C!Kayen - Removes a linked buff on the buff.caster when fades on target.
+	
 	if (iRecalcBonuses)
 		CalcBonuses();
 }

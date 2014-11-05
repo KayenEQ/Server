@@ -1152,6 +1152,8 @@ public:
 
 	void AbsorbMelee(int32 &damage, Mob* attacker = nullptr);
 
+	void FadeLinkedBuff(uint16 casterid, uint16 spellid);
+
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 

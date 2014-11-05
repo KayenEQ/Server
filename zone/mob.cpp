@@ -7673,7 +7673,7 @@ bool Mob::IsImmuneToSpellEffectField(uint16 spell_id)
 	return false;
 }
 
-void EntityList::FadeFieldBuff(uint16 caster_id, uint16 spell_id)
+void EntityList::FadeCastersBuffFromAll(uint16 caster_id, uint16 spell_id)
 { 
 	//Removes from all npcs the effect field buff when the effect field base spell fades.
 	if (!IsValidSpell(spell_id) || !caster_id)
@@ -7687,8 +7687,6 @@ void EntityList::FadeFieldBuff(uint16 caster_id, uint16 spell_id)
 			curmob->BuffFadeBySpellIDCaster(spell_id, caster_id);
 	}
 }
-
-
 
 void Mob::DoAuraField()
 {
@@ -8717,6 +8715,33 @@ void Mob::AbsorbMelee(int32 &damage, Mob* attacker)
 		}
 
 		//Shout("DEBUG :: AbsorbMelee D %i Rune %i / %i", damage, buffs[slot].melee_rune, spellbonuses.AbsorbMeleeDamage[3]);
+	}
+}
+
+void EntityList::FadeBuffFromCaster(uint16 caster_id, uint16 spell_id)
+{ 
+	//Removes from all npcs the effect field buff when the effect field base spell fades.
+	if (!IsValidSpell(spell_id) || !caster_id)
+		return;
+
+	Mob *curmob;
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+
+		if (curmob && curmob->GetID() == caster_id && curmob->FindBuff(spell_id))
+			curmob->BuffFadeBySpellID(spell_id);
+	}
+}
+
+void Mob::FadeLinkedBuff(uint16 casterid, uint16 spellid)
+{
+	for (int i=0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spellid].effectid[i] == SE_FadeBuffFromCaster) 
+		{
+			entity_list.FadeBuffFromCaster(casterid, spells[spellid].base[i]);
+			break;	
+		}
 	}
 }
 
