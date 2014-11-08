@@ -664,7 +664,7 @@ int32 Mob::CalcMaxMana() {
 
 int32 Mob::CalcMaxHP() {
 	max_hp = (base_hp + itembonuses.HP + spellbonuses.HP);
-	max_hp += max_hp * ((aabonuses.MaxHPChange + spellbonuses.MaxHPChange + itembonuses.MaxHPChange) / 10000);
+	max_hp += max_hp * (static_cast<float>(aabonuses.MaxHPChange + spellbonuses.MaxHPChange + itembonuses.MaxHPChange) / 10000.0f);
 	return max_hp;
 }
 
@@ -4243,7 +4243,7 @@ int16 Mob::GetSkillDmgAmt(uint16 skill)
 
 void Mob::MeleeLifeTap(int32 damage) {
 
-	int16 lifetap_amt = 0;
+	int32 lifetap_amt = 0;
 	lifetap_amt = spellbonuses.MeleeLifetap + itembonuses.MeleeLifetap + aabonuses.MeleeLifetap
 				+ spellbonuses.Vampirism + itembonuses.Vampirism + aabonuses.Vampirism;
 
@@ -7161,7 +7161,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		TempName("#");
 		for(int i = 0; i < EFFECT_COUNT; i++){
 			if (spells[spell_id].effectid[i] == SE_CastEffectFieldSpell){
-				if (IsValidSpell(spells[spell_id].base[i]));
+				if (IsValidSpell(spells[spell_id].base[i]))
 					owner->SpellOnTarget(spells[spell_id].base[i], this, false, true, 0);
 			}
 		}
@@ -7803,7 +7803,7 @@ void Mob::SetLeapEffect(uint16 spell_id){
 		for(int i = 0; i < buff_count; i++) {
 			if (IsValidSpell(buffs[i].spellid)){
 
-				if (spells[buffs[i].spellid].dispel_flag || spells[buffs[i].spellid].goodEffect)
+				if (spells[buffs[i].spellid].dispel_flag)
 					continue;
 
 				for(int d = 0; d < EFFECT_COUNT; d++)
@@ -7813,7 +7813,7 @@ void Mob::SetLeapEffect(uint16 spell_id){
 						continue;
 					}
 
-					if (spells[spell_id].effectid[d] == SE_MovementSpeed){
+					if (spells[spell_id].effectid[d] == SE_MovementSpeed && !spells[buffs[i].spellid].goodEffect){
 						BuffFadeBySlot(i);
 						continue;
 					}
@@ -7840,14 +7840,14 @@ void Mob::LeapProjectileEffect()
 
 void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 {
-	if (!attacker) 
+	if (!attacker || damage <= 0) 
 		return;
 	//Base Penalty value is 100, meaning receives no change from base damage.
 
 	if (spellbonuses.PetLifeShare[1]){
 
 		int slot = -1;
-		int damage_to_reduce = 0;
+		int32 damage_to_reduce = 0;
 		int32 base_damage = damage;
 
 		if (!GetPet()){
@@ -7858,7 +7858,7 @@ void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 		slot = spellbonuses.PetLifeShare[0];
 		if(slot >= 0)
 		{
-			int damage_to_reduce = damage * spellbonuses.PetLifeShare[1] / 100;
+			damage_to_reduce = damage * spellbonuses.PetLifeShare[1] / 100;
 
 			if(spellbonuses.PetLifeShare[3] && (damage_to_reduce >= buffs[slot].melee_rune)){
 				damage -= buffs[slot].melee_rune;
@@ -8441,8 +8441,10 @@ void Client::TryChargeHit()
 	if (!CombatRange(target))
 		return;
 
-	if (charge_effect_increment <= 200)
+	if (charge_effect_increment <= 200){
 		Message(MT_SpellFailure,"Your charge failed to gain enough momentum.");
+		AddToHateList(target, 1);
+	}
 
 	else{
 
@@ -8743,6 +8745,58 @@ void Mob::FadeLinkedBuff(uint16 casterid, uint16 spellid)
 			break;	
 		}
 	}
+}
+
+void Mob::ApplyEffectResource(uint16 spellid, int slot)
+{
+	//Limit Negative = MUST BE BELLOW THIS AMOUNT TO TRIGGER
+	//Limit Positive = MUST BE ABOVE THIS AMOUNT TO TRIGGER
+	uint16 trigger_spell_id = SPELL_UNKNOWN;
+
+	//for (int i=0; i < EFFECT_COUNT; i++)
+	//{
+		//if (spells[spellid].effectid[i] == SE_ApplyEffectResource) 
+		//{
+	 
+			int i = slot;
+
+			if (spells[spellid].max[i] == 0){
+				if (spells[spellid].base2[i] > 0){
+					if (static_cast<int>(GetHPRatio()) > spells[spellid].base2[i])
+						trigger_spell_id = spells[spellid].base[i];
+				}
+				else{
+					if (static_cast<int>(GetHPRatio()) < (spells[spellid].base2[i] * -1))
+						trigger_spell_id = spells[spellid].base[i];
+				}
+			}
+
+			else if (spells[spellid].max[i] == 1){
+				if (spells[spellid].base2[i] > 0){
+					if (static_cast<int>(GetManaRatio()) > spells[spellid].base2[i])
+						trigger_spell_id = spells[spellid].base[i];
+				}
+				else{
+					if (static_cast<int>(GetManaRatio()) < (spells[spellid].base2[i] * -1))
+						trigger_spell_id = spells[spellid].base[i];
+				}
+			}
+
+			else if (IsClient() && spells[spellid].max[i] == 2){
+				if (spells[spellid].base2[i] > 0){
+					if (CastToClient()->GetEndurancePercent() > spells[spellid].base2[i])
+						trigger_spell_id = spells[spellid].base[i];
+				}
+				else{
+					if (CastToClient()->GetEndurancePercent() < (spells[spellid].base2[i] * -1))
+						trigger_spell_id = spells[spellid].base[i];
+				}
+			}
+		//}
+	//}
+
+	if (IsValidSpell(trigger_spell_id))
+		SpellFinished(trigger_spell_id, this,10, 0, -1, spells[trigger_spell_id].ResistDiff);
 }
 
 //C!Misc - Functions still in development

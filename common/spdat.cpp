@@ -1223,6 +1223,18 @@ bool IsMeleeRangeSpellEffect(uint16 spell_id)
 	return false;
 }
 
+bool IsThrowRangeSpellEffect(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	//Range set to 101 will always be checked as InCombat range
+	if (spells[spell_id].range == 201)
+		return true;
+
+	return false;
+}
+
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 

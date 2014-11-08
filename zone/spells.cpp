@@ -3995,8 +3995,10 @@ void Mob::BuffFadeAll()
 {
 	int buff_count = GetMaxTotalSlots();
 	for (int j = 0; j < buff_count; j++) {
-		if(buffs[j].spellid != SPELL_UNKNOWN)
+		if(buffs[j].spellid != SPELL_UNKNOWN){
+			FadeLinkedBuff(buffs[j].casterid, buffs[j].spellid);//C!Kayen
 			BuffFadeBySlot(j, false);
+		}
 	}
 	//we tell BuffFadeBySlot not to recalc, so we can do it only once when were done
 	CalcBonuses();

@@ -329,7 +329,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				//This effect can also do damage by percent.
 				if (val < 0) {
 
-					if (-val > spell.max[i])
+					if (spell.max[i] && -val > spell.max[i])
 						val = -spell.max[i];
 
 					if (caster)
@@ -339,7 +339,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 				else
 				{
-					if (val > spell.max[i])
+					if (spell.max[i] && val > spell.max[i])
 						val = spell.max[i];
 
 					if(caster)
@@ -2867,6 +2867,35 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_AttackThrow:{
+				if (caster && caster->IsClient()){
+					
+					const ItemInst* RangeWeapon = caster->CastToClient()->m_inv[MainRange];
+					if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)){ 
+						caster->Message(13, "You have nothing to throw!"); 
+						break;
+					}
+					const Item_Struct* item = RangeWeapon->GetItem();
+					if(item->ItemType != ItemTypeLargeThrowing && item->ItemType != ItemTypeSmallThrowing) {
+						caster->Message(15, "You have nothing useful to throw!");
+						break;
+					}
+
+					int numattacks = spells[spell_id].base[i];
+
+					if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
+						numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
+	
+					for(int x = 0; x < numattacks; x++){
+						if (!HasDied()){
+							caster->SendItemAnimation(this, item, SkillThrowing);
+							caster->DoThrowingAttackDmg(this, RangeWeapon, item, 0, spells[spell_id].max[i],0);
+						}
+					}
+				}
+				break;
+			}
+
 			case SE_AdjustRecastTimer:
 			{
 				if (IsClient())
@@ -3109,6 +3138,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_AbsorbMeleeDamage:
 			{
 				buffs[buffslot].melee_rune = spells[spell_id].max[i];
+				break;
+			}
+
+			case SE_ApplyEffectResource:
+			{
+				ApplyEffectResource(spell_id, i);
 				break;
 			}
 
@@ -4197,6 +4232,14 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 					}
 					break;
 				}
+				break;
+			}
+
+			case SE_FadeBuffFromCaster:{
+				//Fades a linked buff that is on the caster of this buff. If caster is dead this buff should just fade.
+				if (!caster)
+					BuffFadeBySlot(slot);
+
 				break;
 			}
 
@@ -6167,7 +6210,7 @@ bool Mob::TryDivineSave()
 	{
 		SetHP(1);
 
-		int16 EffectsToTry[] =
+		int32 EffectsToTry[] =
 		{
 			aabonuses.DivineSaveChance[1],
 			itembonuses.DivineSaveChance[1],
@@ -6210,7 +6253,7 @@ bool Mob::TryDeathSave() {
 
 		int SuccessChance = 0;
 		int buffSlot = spellbonuses.DeathSave[1];
-		int16 UD_HealMod = 0;
+		int32 UD_HealMod = 0;
 		int HealAmt = 300; //Death Pact max Heal
 
 		if(buffSlot >= 0){

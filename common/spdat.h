@@ -689,6 +689,8 @@ typedef enum {
 #define SE_AdjustCastTimePct			1061 // ADjust NPC cast time
 #define SE_FadeCastersBuffFromAll		1062 // Fade the specified spell id from any mob where you are the caster of the buff.
 #define SE_FadeBuffFromCaster			1063 // Fades the specified spell id on the caster of the buff that is fading.
+#define SE_ApplyEffectResource			1064 // Apply effect if hp / mana /endurance condition is met. 
+#define SE_AttackThrow					1065 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier Max: Hit Modifer
 // LAST
 
 
@@ -959,6 +961,7 @@ bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
 bool CastFromPetOwner(uint16 spell_id); //NPC use only.
 bool IsTargetRingSpell(uint16 spell_id);
 bool IsMeleeRangeSpellEffect(uint16 spell_id);
+bool IsThrowRangeSpellEffect(uint16 spell_id);
 //Disc Hacks
 bool GetDiscLimitToBehind(uint16 spell_id);
 uint8 GetDiscHPRestriction(uint16 spell_id);
