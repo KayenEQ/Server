@@ -2704,7 +2704,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_Taunt:
 			{
 				if (IsNPC()){
-					caster->Taunt(this->CastToNPC(), false, spell.base[i]);
+					caster->Taunt(this->CastToNPC(), false, static_cast<float>(spell.base[i]));
 					
 					if (spell.base2[i] > 0)
 						CastToNPC()->SetHate(caster, (CastToNPC()->GetHateAmount(caster) + spell.base2[i]));
@@ -3985,6 +3985,8 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 
 			case SE_WipeHateList:
 			{
+				if (IsMezSpell(spell_id))
+					break;
 
 				int wipechance = spells[spell_id].base[i];
 				int bonus = 0;
