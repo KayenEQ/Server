@@ -370,6 +370,10 @@ Mob::Mob(const char* in_name,
 	nimbus_effect3 = 0;
 	m_targetable = true;
 
+	targetring_x = 0.0f;
+	targetring_y = 0.0f; 
+	targetring_z = 0.0f;
+
 	flymode = FlyMode3;
 	// Pathing
 	PathingLOSState = UnknownLOS;
@@ -396,9 +400,7 @@ Mob::Mob(const char* in_name,
 	leap_increment = 0;
 	leap_spell_id = 0;
 	leap_x = 0.0f;	leap_y = 0.0f;	leap_z = 0.0f;
-	
-	targetring_x = 0.0f; targetring_y = 0.0f; targetring_z = 0.0f;
-
+		
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_spell_id_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_increment_ring[i] = 0; }

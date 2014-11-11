@@ -287,6 +287,9 @@ public:
 	inline virtual uint32 GetNimbusEffect2() const { return nimbus_effect2; }
 	inline virtual uint32 GetNimbusEffect3() const { return nimbus_effect3; }
 	void RemoveNimbusEffect(int effectid);
+	inline float GetTargetRingX() const { return targetring_x; }
+	inline float GetTargetRingY() const { return targetring_y; }
+	inline float GetTargetRingZ() const { return targetring_z; }
 
 	//Basic Stats/Inventory
 	virtual void SetLevel(uint8 in_level, bool command = false) { level = in_level; }
@@ -1095,10 +1098,6 @@ public:
 	uint16 GetBuffSpellidBySpellGroup(int spellgroupid);
 
 	//C!Misc Inline Functions
-	inline float GetTargetRingX() const { return targetring_x; }
-	inline float GetTargetRingY() const { return targetring_y; }
-	inline float GetTargetRingZ() const { return targetring_z; }
-
 	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - PERL EXPORTED
 	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } //PERL EXPORTED
 
@@ -1489,6 +1488,10 @@ protected:
 	float tar_vz;
 	float test_vector;
 
+	float targetring_x;
+	float targetring_y;
+	float targetring_z;
+
 	uint32 m_spellHitsLeft[38]; // Used to track which spells will have their numhits incremented when spell finishes casting, 38 Buffslots
 	int flymode;
 	bool m_targetable;
@@ -1510,10 +1513,6 @@ protected:
 	float leap_x;//not used
 	float leap_y;//not used
 	float leap_z;//not used
-
-	float targetring_x;
-	float targetring_y;
-	float targetring_z;
 
 	uint32 projectile_spell_id_ring[MAX_SPELL_PROJECTILE];
 	uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];

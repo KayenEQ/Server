@@ -2994,11 +2994,11 @@ namespace Underfoot
 		IN(spell_id);
 		emu->inventoryslot = UnderfootToServerSlot(eq->inventoryslot);
 		IN(target_id);
-		IN(cs_unknown1); //C!Kayen
-		IN(cs_unknown2); //C!Kayen
-		IN(x_pos); //C!Kayen
-		IN(y_pos); //C!Kayen
-		IN(z_pos); //C!Kayen
+		IN(cs_unknown1);
+		IN(cs_unknown2);
+		IN(y_pos);
+		IN(x_pos);
+		IN(z_pos);
 
 		FINISH_DIRECT_DECODE();
 	}

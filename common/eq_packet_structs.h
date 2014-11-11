@@ -480,8 +480,8 @@ struct CastSpell_Struct
 	uint32	target_id;
 	uint32  cs_unknown1;
 	uint32  cs_unknown2;
- 	float   x_pos;
  	float   y_pos;
+ 	float   x_pos;
 	float   z_pos;
 };
 

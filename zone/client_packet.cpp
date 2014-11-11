@@ -4011,6 +4011,10 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 	}
 
 	CastSpell_Struct* castspell = (CastSpell_Struct*)app->pBuffer;
+		
+	targetring_x = castspell->x_pos;
+	targetring_y = castspell->y_pos;
+	targetring_z = castspell->z_pos;
 
 #ifdef _EQDEBUG
 	LogFile->write(EQEMuLog::Debug, "cs_unknown2: %u %i", (uint8)castspell->cs_unknown[0], castspell->cs_unknown[0]);
@@ -4042,14 +4046,10 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 			return;
 		}
 
-		targetring_x = castspell->y_pos; //C!Kayen switch X and Y!
-		targetring_y = castspell->x_pos; //C!Kayen
-		targetring_z = castspell->z_pos; //C!Kayen
-
 		CastSpell(spell_to_cast, castspell->target_id, castspell->slot);
 	}
 	/* Spell Slot or Potion Belt Slot */
-	else if ((castspell->slot == USE_ITEM_SPELL_SLOT) || (castspell->slot == POTION_BELT_SPELL_SLOT))	// ITEM or POTION cast
+	else if ((castspell->slot == USE_ITEM_SPELL_SLOT) || (castspell->slot == POTION_BELT_SPELL_SLOT) || (castspell->slot == TARGET_RING_SPELL_SLOT))	// ITEM or POTION cast
 	{
 		//discipline, using the item spell slot
 		if (castspell->inventoryslot == INVALID_INDEX) {
@@ -4102,6 +4102,10 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 					{
 						ItemInst* p_inst = (ItemInst*)inst;
 						int i = parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, nullptr, "", castspell->inventoryslot);
+
+						targetring_x = castspell->x_pos; //C!Kayen
+						targetring_y = castspell->y_pos;
+						targetring_z = castspell->z_pos;
 
 						if (i == 0) {
 							CastSpell(item->Click.Effect, castspell->target_id, castspell->slot, item->CastTime, 0, 0, castspell->inventoryslot);
@@ -8660,6 +8664,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 		IsFeared() ||
 		IsMezzed() ||
 		DivineAura() ||
+		(spells[spell_id].targettype == ST_Ring) ||
 		(IsSilenced() && !IsDiscipline(spell_id)) ||
 		(IsAmnesiad() && IsDiscipline(spell_id)) ||
 		(IsDetrimentalSpell(spell_id) && !zone->CanDoCombat())
