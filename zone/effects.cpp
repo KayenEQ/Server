@@ -795,6 +795,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			continue;
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
+
 		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
 		if (IsTargetRingSpell(spell_id) && !GetProjSpeed(spell_id)){ //C!Kayen pflag = Projectile
 			dist_targ = curmob->DistNoRoot(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ());
@@ -802,6 +803,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		else if (center){
 			dist_targ = center->DistNoRoot(*curmob);
 		}
+
 		if (dist_targ > dist2)	//make sure they are in range
 			continue;
 		if (dist_targ < min_range2)	//make sure they are in range
@@ -827,7 +829,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 				continue;
 			if (center && !center->CheckLosFN(curmob))
 				continue;
-			if  (!center && !caster->CheckLosFN(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ(), curmob->GetSize()))
+			if (!center && !caster->CheckLosFN(caster->GetTargetRingX(), caster->GetTargetRingY(), caster->GetTargetRingZ(), curmob->GetSize()))
 				continue;
 		} else { // check to stop casting beneficial ae buffs (to wit: bard songs) on enemies...
 			// This does not check faction for beneficial AE buffs..only agro and attackable.

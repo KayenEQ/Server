@@ -524,7 +524,6 @@ struct CastSpell_Struct
  	float   y_pos;
  	float   x_pos;
 	float   z_pos;
-
 };
 
 /*
