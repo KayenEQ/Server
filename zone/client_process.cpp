@@ -1953,6 +1953,7 @@ void Client::DoStaminaUpdate() {
 
 void Client::DoEnduranceRegen()
 {
+	/*
 	//C!Kayen - Warrior lose endurance per tick
 	if (GetClass() == WARRIOR){
 
@@ -1963,6 +1964,7 @@ void Client::DoEnduranceRegen()
 		SetEndurance(new_endur);
 		return;
 	}
+	*/
 
 	if(GetEndurance() >= GetMaxEndurance())
 		return;

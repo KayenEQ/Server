@@ -1998,12 +1998,14 @@ int32 Client::CalcEnduranceRegen() {
 			regen = GetMaxEndurance()*20/100; //20% per tick out of combat regen.
 	}
 
+	/*
 	if (GetClass() == WARRIOR){
 		if (AggroCount)//Incombat
 			regen = regen * (-2) ; //Drain endurance at regen rate * 2.
 		else //Out of Combat
 			regen = -(GetMaxEndurance()*10/100); //10% per tick out of combat regen.
 	}
+	*/
 	//Shout("Regen Endurance Rate %i", regen);
 	return (regen);
 }
