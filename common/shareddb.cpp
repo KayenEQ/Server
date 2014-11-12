@@ -1556,6 +1556,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 		sp[tempid].cast_while_moving = atoi(row[169]) != 0;//C!Kayen
 		sp[tempid].cast_from_crouch = atoi(row[170]);//C!Kayen
 		sp[tempid].AppEffect = atoi(row[171]);//C!Kayen
+		sp[tempid].EndurDrain = atoi(row[172]);//C!Kayen
 		
 		sp[tempid].HateAdded=atoi(row[173]);
 		sp[tempid].EndurUpkeep=atoi(row[174]);

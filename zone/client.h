@@ -1296,7 +1296,7 @@ protected:
 	uint32 recast_mem_spells[MAX_PP_MEMSPELL]; //This is Time Remaining that recast should expired at.
 	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is spell id used to refresh the spell gem early.
 	uint16 spell_cast_count[MAX_PP_MEMSPELL]; //Number of times a specific spell has been cast in a row.
-	uint16 disc_cast_count[MAX_DISCIPLINE_TIMERS]; //Number of times a specific disc has been cast in a row.
+	uint16 disc_cast_count[MAX_DISCIPLINE_TIMERS + 25]; //Number of times a specific disc has been cast in a row.
 	bool spell_awareness_enabled;
 	Timer spell_awareness_popup; //Need to addd < Spell Name> to npc casted spells.
 

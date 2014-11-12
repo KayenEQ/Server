@@ -392,6 +392,7 @@ Mob::Mob(const char* in_name,
 	for (int i = 0; i < HIGHEST_RESIST+2; i++) { Vulnerability_Mod[i] = 0; }
 
 	emoteid = 0;
+	endur_upkeep = false;
 	
 	//C!Kayen
 	momentum = 0.0f; 
@@ -7295,7 +7296,7 @@ void Client::SetSpellCastCount(int slot, uint16 spell_id, int value)
 uint16 Client::GetDiscCastCount(int slot, uint16 spell_id)
 {
 	if (spell_id == SPELL_UNKNOWN){
-		if (slot >= 0 && slot < MAX_DISCIPLINE_TIMERS)
+		if (slot >= 0 && slot < MAX_DISCIPLINE_TIMERS + 25)
 		return disc_cast_count[slot];
 	}
 
@@ -7314,7 +7315,7 @@ uint16 Client::GetDiscCastCount(int slot, uint16 spell_id)
 void Client::SetDiscCastCount(int slot, uint16 spell_id, int value)
 {
 	if (spell_id == SPELL_UNKNOWN){
-		if (slot >= 0 && slot < MAX_DISCIPLINE_TIMERS)
+		if (slot >= 0 && slot < MAX_DISCIPLINE_TIMERS + 25)
 			disc_cast_count[slot] = value;
 	}
 

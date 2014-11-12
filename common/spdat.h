@@ -691,6 +691,7 @@ typedef enum {
 #define SE_FadeBuffFromCaster			1063 // Fades the specified spell id on the caster of the buff that is fading.
 #define SE_ApplyEffectResource			1064 // Apply effect if hp / mana /endurance condition is met. 
 #define SE_AttackThrow					1065 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier Max: Hit Modifer
+#define SE_EnduranceUpkeep				1066 // Simulates endurance drain without removing buff icon.
 // LAST
 
 
@@ -786,7 +787,7 @@ struct SPDat_Spell_Struct
 /* 169 */	bool cast_while_moving; //C!Kayen
 /* 170 */	int cast_from_crouch; //C!Kayen - Mod the modifer [Start - Remain Time / 100]... (Base 100)
 /* 171 */	int AppEffect;
-/* 172 */	//int customPH;
+/* 172 */	int EndurDrain;
 
 /* 173 */	int HateAdded;
 /* 174 */	int EndurUpkeep;
