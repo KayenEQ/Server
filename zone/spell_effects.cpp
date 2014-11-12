@@ -129,12 +129,11 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 		buffs[buffslot].melee_rune = 0;
 		buffs[buffslot].magic_rune = 0;
 		buffs[buffslot].numhits = 0;
+		buffs[buffslot].focus = 0; //C!Kayen
+		buffs[buffslot].fastticsremaining = 0; //C!Kayen
 
 		if (spells[spell_id].EndurUpkeep > 0 || spells[spell_id].EndurDrain > 0)
 			SetEndurUpkeep(true);
-
-		buffs[buffslot].focus = 0; //C!Kayen
-		buffs[buffslot].fastticsremaining = 0; //C!Kayen
 
 		if(IsClient() && CastToClient()->GetClientVersionBit() & BIT_UnderfootAndLater)
 		{

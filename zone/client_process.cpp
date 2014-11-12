@@ -2011,7 +2011,7 @@ void Client::DoEnduranceUpkeep() {
 	}
 
 	if (!has_effect)
-		 SetEndurUpkeep(false);
+		SetEndurUpkeep(false);
 }
 
 void Client::CalcRestState() {

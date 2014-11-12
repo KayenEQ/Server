@@ -442,6 +442,7 @@ Mob::Mob(const char* in_name,
 	fast_buff_tick_timer.Disable();
 	stun_resilience_timer.Disable();
 	charge_effect_timer.Disable();
+
 }
 
 Mob::~Mob()
