@@ -119,7 +119,7 @@ typedef enum {
 /* 29 */	// NOT USED //No msg - 'Purple/Blue Icon' of PBAE AOE 
 /* 30 */	// NOT USED //No msg 'Teal Icon' of Target AOE 
 /* 31 */	// NOT USED //No msg - 'Purple/Blue Icon' of PBAE AOE 
-/* 32 */	ST_AECaster2 = 0x20, //ae caster hatelist maybe?
+/* 32 */	ST_AETargetHateList = 0x20,
 /* 33 */	ST_HateList = 0x21,
 /* 34 */	ST_LDoNChest_Cursed = 0x22,
 /* 35 */	ST_Muramite = 0x23, //only works on special muramites
@@ -135,6 +135,9 @@ typedef enum {
 /* 45 */	ST_Ring = 0x2d, 
 /* 46 */	ST_TargetsTarget = 0x2e, // uses the target of your target
 /* 47 */	ST_PetMaster = 0x2f, // uses the master as target
+/* 48 */	// UNKNOWN
+/* 49 */	// NOT USED
+/* 50 */	ST_TargetAENoPlayersPets = 0x32,
 
 //C!Kayen - Custom Target Types [48 - 59 buffer]
 /* 48 */	//ST_BLANK1 = 0x30,
@@ -807,7 +810,7 @@ struct SPDat_Spell_Struct
 /* 193 */	int NimbusEffect;
 /* 194 */	float directional_start; //Cone Start Angle:
 /* 195 */	float directional_end; // Cone End Angle:
-/* 196 */
+/* 196 */   bool sneak; // effect can only be used if sneaking (rogue 'Daggerfall' ect)
 /* 197 */	bool not_extendable;
 /* 198- 199 */
 /* 200 */	bool suspendable; // buff is suspended in suspended buff zones

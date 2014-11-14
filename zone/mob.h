@@ -238,7 +238,6 @@ public:
 	void CalcDestFromHeading(float heading, float distance, float MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
 	void BeamDirectional(uint16 spell_id, int16 resist_adjust);
 	void ConeDirectional(uint16 spell_id, int16 resist_adjust);
-	
 
 	//Buff
 	void BuffProcess();
@@ -1481,8 +1480,8 @@ protected:
 	//temppet
 	bool hasTempPet;
 	bool _IsTempPet;
-	bool pet_owner_client;
-	
+	bool pet_owner_client; //Flags regular and pets as belonging to a client
+
 	EGNode *_egnode; //the EG node we are in
 	float tarx;
 	float tary;

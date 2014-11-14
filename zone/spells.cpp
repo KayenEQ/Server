@@ -380,8 +380,8 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		spell.targettype == ST_Self ||
 		spell.targettype == ST_AECaster ||
 		spell.targettype == ST_Ring ||
-		spell.targettype == ST_Beam || //C!Kayen
 		spell.targettype == ST_Directional || //C!Kayen
+		spell.targettype == ST_Beam ||
 		spell.targettype == ST_TargetOptional) && target_id == 0)
 	{
 		mlog(SPELLS__CASTING, "Spell %d auto-targeted the caster. Group? %d, target type %d", spell_id, IsGroupSpell(spell_id), spell.targettype);
@@ -1651,9 +1651,48 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 			break;
 		}
 
+		case ST_AETargetHateList:
+		{
+			if (spells[spell_id].range > 0)
+			{
+				if(!spell_target)
+					return false;
+				
+				ae_center = spell_target;
+				CastAction = AETarget;
+			}
+			else {
+				spell_target = nullptr;
+				ae_center = this;
+				CastAction = CAHateList;
+			}
+			break;
+		}
+
+		case ST_AreaClientOnly:
+		case ST_AreaNPCOnly:
+		{
+			if (spells[spell_id].range > 0)
+			{
+				if(!spell_target)
+					return false;
+				
+				ae_center = spell_target;
+				CastAction = AETarget;
+			}
+			else {
+				spell_target = nullptr;
+				ae_center = this;
+				CastAction = AECaster;
+			}
+			break;
+		}
+
 		case ST_UndeadAE:	//should only affect undead...
+		case ST_SummonedAE:
 		case ST_TargetAETap:
 		case ST_AETarget:
+		case ST_TargetAENoPlayersPets:
 		{
 			if(!spell_target)
 			{
@@ -1669,6 +1708,7 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 		// Group spells
 		case ST_GroupTeleport:
 		case ST_Group:
+		case ST_GroupNoPets:
 		{
 			if(IsClient() && CastToClient()->TGB() && IsTGBCompatibleSpell(spell_id)) {
 				if( (!target) ||
@@ -2119,15 +2159,28 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			} else {
 				// regular PB AE or targeted AE spell - spell_target is null if PB
 				if(spell_target)	// this must be an AETarget spell
-				{
+				{	
+					bool cast_on_target = true;
+					if (spells[spell_id].targettype == ST_TargetAENoPlayersPets && spell_target->IsPetOwnerClient())
+						cast_on_target = false;
+					if (spells[spell_id].targettype == ST_AreaClientOnly && !spell_target->IsClient())
+						cast_on_target = false;
+					if (spells[spell_id].targettype == ST_AreaNPCOnly && !spell_target->IsNPC())
+						cast_on_target = false;
+
 					// affect the target too
-					SpellOnTarget(spell_id, spell_target, false, true, resist_adjust);
+					if (cast_on_target)
+						SpellOnTarget(spell_id, spell_target, false, true, resist_adjust);
 				}
 				if(ae_center && ae_center == this && IsBeneficialSpell(spell_id))
 					SpellOnTarget(spell_id, this);
 
 				bool affect_caster = !IsNPC();	//NPC AE spells do not affect the NPC caster
-				entity_list.AESpell(this, ae_center, spell_id, affect_caster, resist_adjust);
+
+				if (spells[spell_id].targettype == ST_AETargetHateList)
+					hate_list.SpellCast(this, spell_id, spells[spell_id].aoerange, ae_center);
+				else
+					entity_list.AESpell(this, ae_center, spell_id, affect_caster, resist_adjust);
 			}
 			break;
 		}
@@ -2185,7 +2238,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 						SpellOnTarget(spell_id, this);
 	#ifdef GROUP_BUFF_PETS
 						//pet too
-						if (GetPet() && HasPetAffinity() && !GetPet()->IsCharmed())
+						if (spells[spell_id].targettype != ST_GroupNoPets && GetPet() && HasPetAffinity() && !GetPet()->IsCharmed())
 							SpellOnTarget(spell_id, GetPet());
 	#endif
 					}
@@ -2193,7 +2246,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					SpellOnTarget(spell_id, spell_target);
 	#ifdef GROUP_BUFF_PETS
 					//pet too
-					if (spell_target->GetPet() && HasPetAffinity() && !spell_target->GetPet()->IsCharmed())
+					if (spells[spell_id].targettype != ST_GroupNoPets && spell_target->GetPet() && HasPetAffinity() && !spell_target->GetPet()->IsCharmed())
 						SpellOnTarget(spell_id, spell_target->GetPet());
 	#endif
 				}
@@ -2215,12 +2268,12 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			ConeDirectionalCustom(spell_id, resist_adjust);
 			break;
 		}
-
+ 
 		case Beam:
 		{
 			BeamDirectional(spell_id, resist_adjust);
-			break;
-		}
+ 			break;
+ 		}
 		
 		//C!Kayen - Custom Target Type [Clients use ST_Ring / NPC use ST_TargetLocation]
 		case TargetRing:{
@@ -3307,6 +3360,11 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 
 	if(spelltar->IsClient() && spelltar->CastToClient()->IsHoveringForRespawn())
 		return false;
+
+	if (spells[spell_id].sneak && IsClient() && !CastToClient()->sneaking){
+		Message_StringID(13, SNEAK_RESTRICT);
+		return false;//Fail Safe, this can cause a zone crash certain situations if you try to apply sneak effects when not sneaking.
+	}
 
 	if(IsDetrimentalSpell(spell_id) && !IsAttackAllowed(spelltar) && !IsResurrectionEffects(spell_id)) {
 		if(!IsClient() || !CastToClient()->GetGM()) {
@@ -4789,7 +4847,7 @@ void NPC::Stun(int duration) {
 
 void NPC::UnStun() {
 	Mob::UnStun();
-	SetRunAnimSpeed(this->GetRunspeed());
+	SetRunAnimSpeed(static_cast<int8>(GetRunspeed()));
 	SendPosition();
 }
 

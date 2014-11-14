@@ -784,7 +784,11 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 	bool bad = IsDetrimentalSpell(spell_id);
 	bool isnpc = caster->IsNPC();
-	const int MAX_TARGETS_ALLOWED = 4;
+	int MAX_TARGETS_ALLOWED = 4;
+
+	if (spells[spell_id].aemaxtargets)
+		MAX_TARGETS_ALLOWED = spells[spell_id].aemaxtargets;
+
 	int iCounter = 0;
 
 	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
@@ -795,6 +799,12 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (curmob == center)	//do not affect center
 			continue;
 		if (curmob == caster && !affect_caster)	//watch for caster too
+			continue;
+		if (spells[spell_id].targettype == ST_TargetAENoPlayersPets && curmob->IsPetOwnerClient())
+			continue;
+		if (spells[spell_id].targettype == ST_AreaClientOnly && !curmob->IsClient())
+			continue;
+		if (spells[spell_id].targettype == ST_AreaNPCOnly && !curmob->IsNPC())
 			continue;
 
 		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
@@ -867,9 +877,6 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			else
 				caster->SpellOnTarget(spell_id, curmob, false, true, resist_adjust);
 		}
-
-		if (!isnpc) //npcs are not target limited...
-			iCounter++;
 	}
 
 	if (maxtargets){ //C!Kayen - Max target PBAE
