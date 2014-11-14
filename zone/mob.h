@@ -235,6 +235,9 @@ public:
 	void ResourceTap(int32 damage, uint16 spell_id);
 	void TryTriggerThreshHold(int32 damage, int effect_id, Mob* attacker);
 	bool CheckSpellCategory(uint16 spell_id, int category_id, int effect_id);
+	void CalcDestFromHeading(float heading, float distance, float MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
+	void BeamDirectional(uint16 spell_id, int16 resist_adjust);
+	void ConeDirectional(uint16 spell_id, int16 resist_adjust);
 	
 
 	//Buff
@@ -674,6 +677,10 @@ public:
 	bool HadTempPets() const { return(hasTempPet); }
 	void TempPets(bool i) { hasTempPet = i; }
 	bool HasPetAffinity() { if (aabonuses.GivePetGroupTarget || itembonuses.GivePetGroupTarget || spellbonuses.GivePetGroupTarget) return true; return false; }
+	inline bool IsPetOwnerClient() const { return pet_owner_client; } 
+	inline void SetPetOwnerClient(bool value) { pet_owner_client = value; }
+	inline bool IsTempPet() const { return _IsTempPet; } 
+	inline void SetTempPet(bool value) { _IsTempPet = value; }
 
 	inline const bodyType GetBodyType() const { return bodytype; }
 	inline const bodyType GetOrigBodyType() const { return orig_bodytype; }
@@ -917,11 +924,10 @@ public:
 	//!// void Client::RefundAAType(uint32 sof_type = 0);
 	//!// uint32 Client::GetAltCurrencyItemid(uint32 alt_currency_id);
 	*/
-
+	
 	//C!Uncategorized
 	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
 	bool RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr);
-	void CalcDestFromHeading(float heading, float distance, float MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ);
 	void ClientFaceTarget(Mob* MobToFace = nullptr);
 	bool AACastSpell(uint16 spell_id, uint16 target_id);
 	bool AACastSpellResourceCheck(uint16 spell_id, uint16 target_id);
@@ -1102,13 +1108,7 @@ public:
 	//C!Misc Inline Functions
 	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - PERL EXPORTED
 	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } //PERL EXPORTED
-
-	inline bool IsTempPet() const { return TempPet; } 
-	inline void SetTempPet(bool value) { TempPet = value; }
-
-	inline bool IsTempPetClient() const { return TempPetClient; } 
-	inline void SetTempPetClient(bool value) { TempPetClient = value; }
-	
+		
 	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; } //PERL EXPORTED
 	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //PERL EXPORTED
 
@@ -1139,7 +1139,6 @@ public:
 	inline void SetFastBuff(bool value) { has_fast_buff = value; }
 	void ClearHasFastBuff(int exclude_slot);
 	
-	bool IsClientPet();
 	int16 GetCriticalChanceFlankBonus(Mob *defender, uint16 skill);
 	inline uint16 GetWarriorBraverySpell() const { return 105; }
 	inline void SetBraveryRecast(uint8 value) { bravery_recast = value; }
@@ -1156,6 +1155,8 @@ public:
 	void FadeLinkedBuff(uint16 casterid, uint16 spellid);
 
 	void ApplyEffectResource(uint16 spellid, int slot);
+
+	void ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust);
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
@@ -1479,7 +1480,9 @@ protected:
 
 	//temppet
 	bool hasTempPet;
-
+	bool _IsTempPet;
+	bool pet_owner_client;
+	
 	EGNode *_egnode; //the EG node we are in
 	float tarx;
 	float tary;
@@ -1544,8 +1547,6 @@ protected:
 	int hard_MitigateAllDamage;
 
 	bool OnlyAggroLast;
-	bool TempPet; //Need a simple way to check this (Flags the NPC as a temp pet)
-	bool TempPetClient; //Need a simple way to check this (Flags the NPC as a temp pet)
 	uint16 origin_caster_id;
 	bool AppearanceEffect;
 		

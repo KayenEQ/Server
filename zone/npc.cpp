@@ -1870,7 +1870,7 @@ void NPC::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 		SetTempPet(1);//C!Kayen - Simple mob flag
 		Client *c = entity_list.GetClientByID(GetSwarmOwner());
 			if(c) {
-				SetTempPetClient(1);//C!Kayen - Simple mob flag
+				SetPetOwnerClient(1);//C!Kayen - Simple mob flag
 				SetAllowBeneficial(1); //Allow client cast swarm pets to be heal/buffed.
 				//This is a hack to allow CLIENT swarm pets NOT to be targeted with F8. Warning: Will turn name 'Yellow'!
 				if (RuleB(Pets, SwarmPetNotTargetableWithHotKey))
@@ -1887,16 +1887,20 @@ void NPC::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 			ns->spawn.is_pet = 1;
 			if (!IsCharmed() && GetOwnerID()) {
 				Client *c = entity_list.GetClientByID(GetOwnerID());
-				if(c)
+				if(c){
 					sprintf(ns->spawn.lastName, "%s's Pet", c->GetName());
+					SetPetOwnerClient(1);
+				}
 			}
 			else if (GetSwarmOwner()) {
 				ns->spawn.bodytype = 11;
 				if(!IsCharmed())
 				{
 					Client *c = entity_list.GetClientByID(GetSwarmOwner());
-					if(c)
+					if(c){
 						sprintf(ns->spawn.lastName, "%s's Pet", c->GetName());
+						SetPetOwnerClient(1);
+					}
 				}
 			}
 		}
@@ -1905,8 +1909,10 @@ void NPC::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 			ns->spawn.is_pet = 1;
 			if (!IsCharmed() && GetOwnerID()) {
 				Client *c = entity_list.GetClientByID(GetOwnerID());
-				if(c)
+				if(c){
+					SetPetOwnerClient(1);
 					sprintf(ns->spawn.lastName, "%s's Pet", c->GetName());
+				}
 			}
 		} else
 			ns->spawn.is_pet = 0;
