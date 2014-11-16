@@ -569,6 +569,7 @@ void Client::HandleAAAction(aaID activate) {
 
 //Originally written by Branks
 //functionality rewritten by Father Nitwit
+/*
 void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, uint32 duration_override) {
 
 	//It might not be a bad idea to put these into the database, eventually..
@@ -614,7 +615,8 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 	//C!Kayen - Failsafe to disable having multiple of the same Effect Field spawned at same time.
 	if (IsEffectFieldSpell(spell_id)){
 		NPC* temp = nullptr;
-		temp = entity_list.GetNPCByNPCTypeID(pet.npc_id);
+		//BAD NEED TO FIND ALL TEMP PETS BY OWNER ON THE FEILD
+		temp = entity_list.GetTempPetByNPCTypeID(pet.npc_id, GetID(), false);
 		if (temp)
 			temp->Depop();
 	}
@@ -639,7 +641,7 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 	static const float swarm_pet_y[MAX_SWARM_PETS] = {	5, 5, -5, -5,
 														10, 10, -10, -10,
 														8, 8, -8, -8 };
-	TempPets(true);
+	SetTempPetsActive(true);
 
 	while(summon_count > 0) {
 		int pet_duration = pet.duration;
@@ -696,8 +698,139 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 	if(targ != nullptr)
 		targ->AddToHateList(this, 1, 0);
 }
+*/
+void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, uint32 duration_override, bool followme, bool sticktarg) {
 
-void Mob::TypesTemporaryPets(uint32 typesid, Mob *targ, const char *name_override, uint32 duration_override, bool followme) {
+	//It might not be a bad idea to put these into the database, eventually..
+
+	//Dook- swarms and wards
+
+	PetRecord record;
+	if(!database.GetPetEntry(spells[spell_id].teleport_zone, &record))
+	{
+		LogFile->write(EQEMuLog::Error, "Unknown swarm pet spell id: %d, check pets table", spell_id);
+		Message(13, "Unable to find data for pet %s", spells[spell_id].teleport_zone);
+		return;
+	}
+
+	AA_SwarmPet pet;
+	pet.count = 1;
+	pet.duration = 1;
+
+	for(int x = 0; x < MAX_SWARM_PETS; x++)
+	{
+		if(spells[spell_id].effectid[x] == SE_TemporaryPets || spells[spell_id].effectid[x] == SE_TemporaryPetsNoAggro) //C!Kayen
+		{
+			pet.count = spells[spell_id].base[x];
+			pet.duration = spells[spell_id].max[x];
+		}
+	}
+
+	if(IsClient())
+		pet.duration += (CastToClient()->GetFocusEffect(focusSwarmPetDuration, spell_id) / 1000);
+
+	pet.npc_id = record.npc_type;
+
+	NPCType *made_npc = nullptr;
+
+	const NPCType *npc_type = database.GetNPCType(pet.npc_id);
+	if(npc_type == nullptr) {
+		//log write
+		LogFile->write(EQEMuLog::Error, "Unknown npc type for swarm pet spell id: %d", spell_id);
+		Message(0,"Unable to find pet!");
+		return;
+	}
+
+	//C!Kayen - Failsafe to disable having multiple of the same Effect Field spawned at same time.
+	if (IsEffectFieldSpell(spell_id)){
+		NPC* temp = nullptr;
+		//BAD NEED TO FIND ALL TEMP PETS BY OWNER ON THE FEILD
+		temp = entity_list.GetTempPetByNPCTypeID(pet.npc_id, GetID(), false);
+		if (temp)
+			temp->Depop();
+	}
+
+	if(name_override != nullptr) {
+		//we have to make a custom NPC type for this name change
+		made_npc = new NPCType;
+		memcpy(made_npc, npc_type, sizeof(NPCType));
+		strcpy(made_npc->name, name_override);
+		npc_type = made_npc;
+	}
+
+	int summon_count = 0;
+	summon_count = pet.count;
+
+	if(summon_count > MAX_SWARM_PETS)
+		summon_count = MAX_SWARM_PETS;
+
+	static const float swarm_pet_x[MAX_SWARM_PETS] = {	5, -5, 5, -5,
+														10, -10, 10, -10,
+														8, -8, 8, -8 };
+	static const float swarm_pet_y[MAX_SWARM_PETS] = {	5, 5, -5, -5,
+														10, 10, -10, -10,
+														8, 8, -8, -8 };
+	while(summon_count > 0) {
+		int pet_duration = pet.duration;
+		if(duration_override > 0)
+			pet_duration = duration_override;
+
+		//this is a little messy, but the only way to do it right
+		//it would be possible to optimize out this copy for the last pet, but oh well
+		NPCType *npc_dup = nullptr;
+		if(made_npc != nullptr) {
+			npc_dup = new NPCType;
+			memcpy(npc_dup, made_npc, sizeof(NPCType));
+		}
+
+		NPC* npca = new NPC(
+				(npc_dup!=nullptr)?npc_dup:npc_type,	//make sure we give the NPC the correct data pointer
+				0,
+				GetX()+swarm_pet_x[summon_count], GetY()+swarm_pet_y[summon_count],
+				GetZ(), GetHeading(), FlyMode3);
+
+		if (followme)
+			npca->SetFollowID(GetID());
+
+		if(!npca->GetSwarmInfo()){
+			AA_SwarmPetInfo* nSI = new AA_SwarmPetInfo;
+			npca->SetSwarmInfo(nSI);
+			npca->GetSwarmInfo()->duration = new Timer(pet_duration*1000);
+		}
+		else{
+			npca->GetSwarmInfo()->duration->Start(pet_duration*1000);
+		}
+
+		//removing this prevents the pet from attacking
+		npca->GetSwarmInfo()->owner_id = GetID();
+
+		//give the pets somebody to "love"
+		if(targ != nullptr){
+			npca->AddToHateList(targ, 1000, 1000);
+			
+			if (RuleB(Spells, SwarmPetTargetLock) || sticktarg)
+				npca->GetSwarmInfo()->target = targ->GetID();
+			else
+				npca->GetSwarmInfo()->target = 0;
+		}
+
+		//we allocated a new NPC type object, give the NPC ownership of that memory
+		if(npc_dup != nullptr)
+			npca->GiveNPCTypeData(npc_dup);
+
+		entity_list.AddNPC(npca, true, true);
+
+		npca->ApplyCustomPetBonuses(this, spell_id); //C!Kayen
+
+		summon_count--;
+	}
+
+	//the target of these swarm pets will take offense to being cast on...
+	if(targ != nullptr)
+		targ->AddToHateList(this, 1, 0);
+}
+
+void Mob::TypesTemporaryPets(uint32 typesid, Mob *targ, const char *name_override, uint32 duration_override, bool followme, bool sticktarg) {
 
 	AA_SwarmPet pet;
 	pet.count = 1;
@@ -735,7 +868,6 @@ void Mob::TypesTemporaryPets(uint32 typesid, Mob *targ, const char *name_overrid
 	static const float swarm_pet_y[MAX_SWARM_PETS] = {	5, 5, -5, -5,
 														10, 10, -10, -10,
 														8, 8, -8, -8 };
-	TempPets(true);
 
 	while(summon_count > 0) {
 		int pet_duration = pet.duration;
@@ -756,6 +888,9 @@ void Mob::TypesTemporaryPets(uint32 typesid, Mob *targ, const char *name_overrid
 				GetX()+swarm_pet_x[summon_count], GetY()+swarm_pet_y[summon_count],
 				GetZ(), GetHeading(), FlyMode3);
 
+		if (followme)
+			npca->SetFollowID(GetID());
+
 		if(!npca->GetSwarmInfo()){
 			AA_SwarmPetInfo* nSI = new AA_SwarmPetInfo;
 			npca->SetSwarmInfo(nSI);
@@ -771,7 +906,11 @@ void Mob::TypesTemporaryPets(uint32 typesid, Mob *targ, const char *name_overrid
 		//give the pets somebody to "love"
 		if(targ != nullptr){
 			npca->AddToHateList(targ, 1000, 1000);
-			npca->GetSwarmInfo()->target = targ->GetID();
+
+			if (RuleB(Spells, SwarmPetTargetLock) || sticktarg)
+				npca->GetSwarmInfo()->target = targ->GetID();
+			else
+				npca->GetSwarmInfo()->target = 0;
 		}
 
 		//we allocated a new NPC type object, give the NPC ownership of that memory
@@ -930,7 +1069,7 @@ void Mob::WakeTheDead(uint16 spell_id, Mob *target, uint32 duration)
 	make_npc->d_meele_texture1 = 0;
 	make_npc->d_meele_texture2 = 0;
 
-	TempPets(true);
+	SetTempPetsActive(true);
 
 	NPC* npca = new NPC(make_npc, 0, GetX(), GetY(), GetZ(), GetHeading(), FlyMode3);
 

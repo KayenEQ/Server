@@ -363,7 +363,8 @@ Mob::Mob(const char* in_name,
 	nexthpevent = -1;
 	nextinchpevent = -1;
 
-	TempPets(false);
+	hasTempPet = false;
+	count_TempPet = 0;
 
 	m_is_running = false;
 
@@ -472,7 +473,7 @@ Mob::~Mob()
 		delete trade;
 	}
 
-	if(HadTempPets()){
+	if(HasTempPetsActive()){
 		entity_list.DestroyTempPets(this);
 	}
 	entity_list.UnMarkNPC(GetID());
@@ -5003,14 +5004,61 @@ void Mob::ClearSpecialAbilities() {
 
 void Mob::ProcessSpecialAbilities(const std::string &str) {
 	ClearSpecialAbilities();
+	Shout("TEST %s x", str);
 
 	std::vector<std::string> sp = SplitString(str, '^');
 	for(auto iter = sp.begin(); iter != sp.end(); ++iter) {
 		std::vector<std::string> sub_sp = SplitString((*iter), ',');
+		Shout("string %s", sub_sp);
 		if(sub_sp.size() >= 2) {
 			int ability = std::stoi(sub_sp[0]);
 			int value = std::stoi(sub_sp[1]);
+			Shout("ability %i value %i", ability, value);
+			SetSpecialAbility(ability, value);
+			switch(ability) {
+			case SPECATK_QUAD:
+				if(value > 0) {
+					SetSpecialAbility(SPECATK_TRIPLE, 1);
+				}
+				break;
+			case DESTRUCTIBLE_OBJECT:
+				if(value == 0) {
+					SetDestructibleObject(false);
+				} else {
+					SetDestructibleObject(true);
+				}
+				break;
+			default:
+				break;
+			}
 
+			for(size_t i = 2, p = 0; i < sub_sp.size(); ++i, ++p) {
+				if(p >= MAX_SPECIAL_ATTACK_PARAMS) {
+					break;
+				}
+
+				SetSpecialAbilityParam(ability, p, std::stoi(sub_sp[i]));
+			}
+		}
+	}
+}
+
+void Mob::ProcessSpecialAbilities2(const char* parse) {
+	ClearSpecialAbilities();
+	Shout("TEST %s x", parse);
+	std::string str;
+	str = parse;
+	//const std::string str(parse);
+	Shout("TEST %c x", str);
+
+	std::vector<std::string> sp = SplitString(str, '^');
+	for(auto iter = sp.begin(); iter != sp.end(); ++iter) {
+		std::vector<std::string> sub_sp = SplitString((*iter), ',');
+		Shout("string %c", sub_sp);
+		if(sub_sp.size() >= 2) {
+			int ability = std::stoi(sub_sp[0]);
+			int value = std::stoi(sub_sp[1]);
+			Shout("ability %i value %i", ability, value);
 			SetSpecialAbility(ability, value);
 			switch(ability) {
 			case SPECATK_QUAD:
@@ -8236,7 +8284,6 @@ void Client::RelequishFlesh(uint16 spell_id, Mob *target, const char *name_overr
 
 	static const float swarm_pet_x[MAX_SWARM_PETS] = { 5, -5, 5, -5, 10, -10, 10, -10, 8, -8, 8, -8 };
 	static const float swarm_pet_y[MAX_SWARM_PETS] = { 5, 5, -5, -5, 10, 10, -10, -10, 8, 8, -8, -8 };
-	TempPets(true);
 
 	while(summon_count > 0) {
 		NPCType *npc_dup = nullptr;
