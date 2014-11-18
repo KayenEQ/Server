@@ -187,6 +187,7 @@ struct RespawnOption
 
 const uint32 POPUPID_UPDATE_SHOWSTATSWINDOW = 1000000;
 const uint32 POPUPID_SPELL_AWARENESS = 1000001; //C!Kayen
+const uint32 POPUPID_SPELL_DISCREUSE = 1000002; //C!Kayen
 
 struct ClientReward
 {
@@ -1232,8 +1233,11 @@ public:
 	bool CastFromCrouch(uint16 spell_id = 0xffff);
 	void MarkNPCTest(Mob* Target, int Number);
 	void PopupUI();
+	void PopupUIDisc();
 	inline bool HasSpellAwareness() const { return spell_awareness_enabled; }
 	inline void SetSpellAwareness(bool value) { spell_awareness_enabled = value; }
+	inline bool HasDiscReuseAwareness() const { return disc_reuse_awareness_enabled; }
+	inline void SetDiscReuseAwareness(bool value) { disc_reuse_awareness_enabled = value; }
 	bool IsSpectralBladeEquiped();
 
 	uint16 GetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN);
@@ -1298,7 +1302,9 @@ protected:
 	uint16 spell_cast_count[MAX_PP_MEMSPELL]; //Number of times a specific spell has been cast in a row.
 	uint16 disc_cast_count[MAX_DISCIPLINE_TIMERS + 25]; //Number of times a specific disc has been cast in a row.
 	bool spell_awareness_enabled;
-	Timer spell_awareness_popup; //Need to addd < Spell Name> to npc casted spells.
+	Timer spell_awareness_popup;
+	bool disc_reuse_awareness_enabled;
+	Timer disc_reuse_awareness_popup;
 
 private:
 	eqFilterMode ClientFilters[_FilterCount];

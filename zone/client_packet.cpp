@@ -4011,10 +4011,6 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 	}
 
 	CastSpell_Struct* castspell = (CastSpell_Struct*)app->pBuffer;
-		
-	targetring_x = castspell->x_pos;
-	targetring_y = castspell->y_pos;
-	targetring_z = castspell->z_pos;
 
 	targetring_x = castspell->x_pos;
 	targetring_y = castspell->y_pos;
@@ -4049,10 +4045,6 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 			InterruptSpell();
 			return;
 		}
-
-		targetring_x = castspell->x_pos;
-		targetring_y = castspell->y_pos;
-		targetring_z = castspell->z_pos;
 
 		CastSpell(spell_to_cast, castspell->target_id, castspell->slot);
 	}
@@ -4110,10 +4102,6 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 					{
 						ItemInst* p_inst = (ItemInst*)inst;
 						int i = parse->EventItem(EVENT_ITEM_CLICK_CAST, this, p_inst, nullptr, "", castspell->inventoryslot);
-
-						targetring_x = castspell->x_pos; //C!Kayen
-						targetring_y = castspell->y_pos;
-						targetring_z = castspell->z_pos;
 
 						if (i == 0) {
 							CastSpell(item->Click.Effect, castspell->target_id, castspell->slot, item->CastTime, 0, 0, castspell->inventoryslot);

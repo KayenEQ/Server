@@ -309,10 +309,6 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 	if (IsNPC() && IsMoving() && cast_time > 0)
 		SendPosition();
 
-	//To prevent NPC ghosting when spells are cast from scripts
-	if (IsNPC() && IsMoving() && cast_time > 0)
-		SendPosition();
-
 	if(resist_adjust)
 	{
 		return(DoCastSpell(spell_id, target_id, slot, cast_time, mana_cost, oSpellWillFinish, item_slot, timer, timer_duration, type, *resist_adjust));
@@ -846,9 +842,8 @@ void Mob::InterruptSpell(uint16 message, uint16 color, uint16 spellid)
 	if(!message)
 		message = IsBardSong(spellid) ? SONG_ENDS_ABRUPTLY : INTERRUPT_SPELL;
 
-	//C!Kayen - Do not send message if discipline (If this breaks anything will need to reevaluate)
 	if (spells[spellid].IsDisciplineBuff)
-		return;
+		message = 1035; //C!Kayen - This sends nothing.
 	
 	// clients need some packets
 	if (IsClient() && message != SONG_ENDS)

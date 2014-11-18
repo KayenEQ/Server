@@ -695,6 +695,7 @@ typedef enum {
 #define SE_ApplyEffectResource			1064 // Apply effect if hp / mana /endurance condition is met. 
 #define SE_AttackThrow					1065 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier Max: Hit Modifer
 #define SE_EnduranceUpkeep				1066 // Simulates endurance drain without removing buff icon.
+#define SE_DiscReuseAwareness			1067 // implemented - Enable / Disable spell awareness popup window.
 // LAST
 
 

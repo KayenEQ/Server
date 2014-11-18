@@ -5004,16 +5004,13 @@ void Mob::ClearSpecialAbilities() {
 
 void Mob::ProcessSpecialAbilities(const std::string &str) {
 	ClearSpecialAbilities();
-	Shout("TEST %s x", str);
 
 	std::vector<std::string> sp = SplitString(str, '^');
 	for(auto iter = sp.begin(); iter != sp.end(); ++iter) {
 		std::vector<std::string> sub_sp = SplitString((*iter), ',');
-		Shout("string %s", sub_sp);
 		if(sub_sp.size() >= 2) {
 			int ability = std::stoi(sub_sp[0]);
 			int value = std::stoi(sub_sp[1]);
-			Shout("ability %i value %i", ability, value);
 			SetSpecialAbility(ability, value);
 			switch(ability) {
 			case SPECATK_QUAD:
@@ -9293,6 +9290,312 @@ void Client::PopupUI()
 	//if(strlen(WT.c_str()) < 4090) //Don't send if too mana chara [Should not every come close to max limit chara]
 		
 	SendPopupToClient("Spell Casting Awareness", WT.c_str() , POPUPID_SPELL_AWARENESS, 1, 6000);
+		
+	if (IsCastingFound)
+		spell_awareness_popup.Start(100);
+	else
+		spell_awareness_popup.Start(1000);
+
+}
+
+void Client::PopupUIDisc()
+{	
+	if (!HasDiscReuseAwareness())
+		return;
+
+	std::string WT;
+
+	// Define the types of page breaks we need
+	std::string indP = "&nbsp;";
+	std::string indS = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+	std::string indM = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+	std::string indL = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+	std::string div = " | ";
+
+	//Used colors
+	std::string bright_green = "<c \"#7CFC00\">";
+	std::string bright_red = "<c \"#FF0000\">";
+	std::string color_gold = "<c \"#FFFF66\">";
+	std::string color_grey = "<c \"#808080\">"; 
+	std::string color_white = "<c \#FFFFFF\">"; 
+	std::string color_blue = "<c \"#9999FF\">";
+
+	WT = "&nbsp;"; //Space at top
+	WT += "<br>";
+	
+	pTimerType DiscTimer;
+	uint32 remain = 0;
+	for(int i = 1; i < (35); ++i){
+
+		remain = 0;
+		DiscTimer = pTimerDisciplineReuseStart + i;
+		if(!p_timers.Expired(&database, DiscTimer, false)){ 
+			remain = p_timers.GetRemainingTime(DiscTimer);
+		}
+		
+		WT += itoa(i);
+		WT += " :: ";
+		WT += itoa(remain);
+		WT += "<br>";
+		
+	}
+
+	SendPopupToClient("Disc Reuse Awareness", WT.c_str() , POPUPID_SPELL_DISCREUSE, 1, 6000);
+
+	return;
+	//bool SendPacket = false;
+	bool IsCastingFound = false;
+
+	for(int i = 0; i < GetMaxXTargets(); ++i){
+
+		if (XTargets[i].ID){
+			
+			Mob* target = entity_list.GetMobID(XTargets[i].ID);
+			if (target) {
+				
+				//SendPacket = true;
+				
+				bool Casting = target->IsCasting();
+				bool IsTargetedAE = false;
+				bool IsInDirectionalAE = false;
+				bool IsTargetsTarget = false;
+
+				Mob* targetstarget = nullptr;
+				targetstarget = target->GetTarget();
+
+				if (targetstarget && targetstarget->GetID() == GetID())
+					IsTargetsTarget = true;
+				
+				//uint16 remain_time = 0;
+				
+				float distance = 0.0f;
+				float tae_distance = 0.0f;
+				float range = 0.0f;
+				
+				int target_type = 0;
+				int cast_time_pct = 0;
+				uint16 spell_id = SPELL_UNKNOWN;
+
+				//Dynamic text colors
+				std::string range_color = bright_green;
+				std::string tae_range_color = bright_green;
+				std::string spell_color = color_blue; //This will likely need to be revised.
+
+				if (Casting){
+					IsCastingFound = true;
+					spell_id = target->CastingSpellID();
+					cast_time_pct = (target->GetSpellEndTime().GetRemainingTime()*100 / spells[spell_id].cast_time);
+					//Shout("TEST %i %i %i %i", target->GetSpellEndTime().GetRemainingTime(), spells[spell_id ].cast_time, cast_time_pct, GetActSpellCasttime(spell_id,spells[spell_id ].cast_time));
+					//remain_time = static_cast<int>((target->GetSpellEndTime().GetRemainingTime() + 500)/1000);
+					target_type = spells[spell_id ].targettype;
+
+					//Get Range Type for NPC cast spells
+					switch(target_type) {
+
+						case ST_Self:
+							range = 0;
+							spell_color = color_gold;
+							break;
+
+						case ST_Target:
+						case ST_TargetOptional:
+						case ST_Tap:
+							range = spells[spell_id].range;
+							spell_color = bright_red;
+							break;
+
+						case ST_AECaster:
+						case ST_HateList:
+							range = spells[spell_id].aoerange;
+							spell_color = "<c \"#6A5ACD\">";
+							break;
+
+						case ST_TargetAETap:
+						case ST_AETarget:
+							range = spells[spell_id].range;
+							IsTargetedAE = true;
+							spell_color = "<c \"#2EFE64\">";
+							
+							if (targetstarget)
+								tae_distance = CalculateDistance(targetstarget->GetX(), targetstarget->GetY(), targetstarget->GetZ());
+
+							break;
+
+						case ST_Directional:
+							range = spells[spell_id].aoerange;
+							//Need to check if in directional
+							spell_color = "<c \"#008080\">";
+							if (target->SpellDirectionalTarget(spell_id, this))
+								IsInDirectionalAE = true;
+							break;
+
+						case ST_TargetLocation:
+							range = spells[spell_id].aoerange;
+							spell_color = "<c \"#FFA500\">";
+							break;
+					}
+						
+					if (target_type == ST_TargetLocation)
+						distance = CalculateDistance(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ());
+					else
+						distance = CalculateDistance(target->GetX(), target->GetY(), target->GetZ());
+
+					if (distance <= range && distance >= spells[spell_id].min_range)
+						range_color = bright_red;
+
+					if (tae_distance <= spells[spell_id].aoerange && distance >= spells[spell_id].min_range)
+						tae_range_color = bright_red;
+
+					if (target_type == ST_Directional && (!IsInDirectionalAE))
+						range_color = bright_green; //If not in directional overide: TURN GREEN
+				}
+		
+				//START OF LINE
+
+				//Are you the target's target, ! = true
+				if (IsTargetsTarget){
+					WT += bright_green;
+					WT += "[";
+					WT += "&nbsp;";
+					WT += "!";
+					WT += "&nbsp;";
+					WT += "]";
+					WT += "</c>";
+				}
+				else{
+					WT += "[";
+					WT += "&nbsp;&nbsp;&nbsp;";
+					WT += "]";
+				}
+
+
+				WT += "&nbsp;&nbsp;";	
+
+				if (Casting && spell_id != SPELL_UNKNOWN){
+
+					WT += color_gold;
+					WT += target->GetCleanName();
+					WT += "</c>";
+
+					WT += "&nbsp;&nbsp;&nbsp;";	
+					
+					//SPELL NAME
+					WT += spell_color; //This is type of spell define by target type
+					WT += "<";
+					WT += spells[spell_id].name;
+					WT += ">";
+					WT += "</c>";
+
+					WT += "&nbsp;&nbsp;&nbsp;";
+					
+					/*
+					//CAST TIME COUNT DOWN - NOW USES BAR
+					WT += heroic_color;
+					WT += "(";
+					if (remain_time >= 0)
+						WT += itoa(remain_time);
+					else
+						WT += "0";
+					WT += ")";
+					WT += "</c>";
+					
+					WT += "&nbsp;&nbsp;&nbsp;";
+					*/
+
+					//RANGE CHECK {Max YOU Min}
+					WT += "{";
+					WT += itoa(spells[spell_id].range);
+					WT += "&nbsp;";
+					WT += "::";
+					WT += "&nbsp;";
+					WT += range_color;
+					WT += itoa(distance);
+					WT += "</c>";
+					WT += "&nbsp;";
+					WT += "::";
+					WT += "&nbsp;";
+					WT += itoa(spells[spell_id].min_range);
+					WT += "}";
+
+					//Targeted AE range
+					if(IsTargetedAE){
+						WT += "&nbsp;&nbsp;&nbsp;";
+						WT += tae_range_color;
+						WT += "(";
+						WT += "&nbsp;";
+						
+						
+						if (IsTargetsTarget)
+							WT += "!";
+						else
+							WT += itoa(tae_distance);
+
+						WT += "&nbsp;";
+						WT += ")";
+						WT += "</c>";
+					}
+
+					WT += "<br>";
+
+
+					bool gold_set = true;
+					bool white_set = true;
+					for(int i = 0; i < 100; ++i){
+					
+						if (cast_time_pct > i){
+
+							if (gold_set){
+								WT += color_gold;
+								gold_set = false;
+							}
+							WT += "|";
+						
+						}
+						else {
+							if (white_set){
+								WT += "</c>";
+								WT += color_white;
+								white_set = false;
+							}
+							WT += "|";
+						}
+					}
+					WT += "</c>";
+
+					//End Casting
+				}
+				else {
+					//NOT CASTING
+					WT += color_grey;
+					WT += target->GetCleanName();
+					WT += "</c>";
+					WT += "<br>";
+					WT += color_white;
+					for(int i = 0; i < 100; ++i){
+					WT += "|";
+					}
+					WT += "</c>";
+				}
+				
+			}
+			else{
+				WT += "Error: XTarget ID exists BUT NO TARGET Found.";
+				continue;
+			}
+	
+		}//XTarget ID does not exists show blank slot.
+		else {
+			WT += "[";
+			WT += "&nbsp;&nbsp;&nbsp;";
+			WT += "]";
+		}
+
+		WT += "<br><br>";
+	}
+	
+	//if(strlen(WT.c_str()) < 4090) //Don't send if too mana chara [Should not every come close to max limit chara]
+		
+	SendPopupToClient("Spell Casting Awareness", WT.c_str() , POPUPID_SPELL_DISCREUSE, 1, 6000);
 		
 	if (IsCastingFound)
 		spell_awareness_popup.Start(100);

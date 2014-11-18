@@ -3151,7 +3151,6 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			}
 
 			case SE_SpellAwareness:{
-
 				if (IsClient()){
 					if (!CastToClient()->HasSpellAwareness()){
 						CastToClient()->SendPopupToClient("Spell Casting Awareness","Loading", POPUPID_SPELL_AWARENESS, 1, 6000);
@@ -3163,6 +3162,24 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						CastToClient()->spell_awareness_popup.Disable();
 						CastToClient()->SetSpellAwareness(false);
 						Message(15, "Spell Awareness : Disabled");
+					}
+				}
+				break;
+			}
+
+				case SE_DiscReuseAwareness:{
+
+				if (IsClient()){
+					if (!CastToClient()->HasDiscReuseAwareness()){
+						CastToClient()->SendPopupToClient("Disc Reuse Awareness","Loading", POPUPID_SPELL_DISCREUSE, 1, 6000);
+						CastToClient()->disc_reuse_awareness_popup.Start(1000);
+						CastToClient()->SetDiscReuseAwareness(true);
+						Message(15, "Disc Reuse Awareness : Enabled");
+					}
+					else {
+						CastToClient()->disc_reuse_awareness_popup.Disable();
+						CastToClient()->SetDiscReuseAwareness(false);
+						Message(15, "Disc Reuse Awareness : Disabled");
 					}
 				}
 				break;

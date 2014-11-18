@@ -590,6 +590,9 @@ bool Client::Process() {
 		if (spell_awareness_popup.Check())
 			PopupUI();
 
+		if (disc_reuse_awareness_popup.Check())
+			PopupUIDisc();
+
 		if (effect_field_timer.Check())
 			DoEffectField();
 
