@@ -4396,7 +4396,7 @@ struct ItemSerializationHeader
 /*030*/ uint16 unknown013;	// 0xffff
 /*032*/	uint32 price;
 /*036*/	uint32 merchant_slot; //1 if not a merchant item
-/*040*/	uint32 unknown020; //0
+/*040*/	uint32 scaled_value; //0
 /*044*/	uint32 instance_id; //unique instance id if not merchant item, else is merchant slot
 /*048*/	uint32 unknown028; //0
 /*052*/	uint32 last_cast_time;	// Unix Time from PP of last cast for this recast type if recast delay > 0
@@ -4692,9 +4692,9 @@ struct ItemQuaternaryBodyStruct
 struct AugmentInfo_Struct
 {
 /*000*/ uint32	itemid;			// id of the solvent needed
-/*004*/ uint8	window;			// window to display the information in
-/*005*/ uint8	unknown005[71];	// total packet length 76, all the rest were always 00
-/*076*/
+/*004*/ uint32	window;			// window to display the information in
+/*008*/ char	augment_info[64];	// total packet length 76, all the rest were always 00
+/*072*/ uint32	unknown072;
 };
 
 struct VeteranRewardItem
