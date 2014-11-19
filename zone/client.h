@@ -873,6 +873,7 @@ void    SetConsumption(int32 in_hunger, int32 in_thirst);
 	bool    TrainDiscipline(uint32 itemid);
 	void    SendDisciplineUpdate();
 	bool    UseDiscipline(uint32 spell_id, uint32 target);
+	void SendDisciplineTimer(uint32 timer_id, uint32 duration, uint16 spell_id = SPELL_UNKNOWN);
 
 	bool    CheckTitle(int titleset);
 	void    EnableTitle(int titleset);
@@ -1255,6 +1256,7 @@ void    SetConsumption(int32 in_hunger, int32 in_thirst);
 	void TryChargeHit();
 
 	void TryOnClientUpdate();
+	void AdjustDiscTimer(uint32 timer_id, uint32 duration);
 	
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);

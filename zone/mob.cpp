@@ -8474,6 +8474,7 @@ void Client::TryChargeHit()
 	if (charge_effect_increment <= 200){
 		Message(MT_SpellFailure,"Your charge failed to gain enough momentum.");
 		AddToHateList(target, 1);
+		AdjustDiscTimer(19, 40);	
 	}
 
 	else{
@@ -8508,6 +8509,28 @@ void Client::TryChargeHit()
 	SetChargeEffect(0);
 	charge_effect_increment = 0;
 	charge_effect_timer.Disable();
+}
+
+void Client::AdjustDiscTimer(uint32 timer_id, uint32 duration)
+{
+
+	pTimerType DiscTimer = pTimerDisciplineReuseStart + timer_id;
+
+	//Clear Timer
+	if (duration == 0){
+		if (GetPTimers().Enabled((uint32)DiscTimer))
+			GetPTimers().Clear(&database, (uint32)DiscTimer);
+	}
+	else
+		CastToClient()->GetPTimers().Start(DiscTimer, duration);
+
+	EQApplicationPacket *outapp = new EQApplicationPacket(OP_DisciplineTimer, sizeof(DisciplineTimer_Struct));
+	DisciplineTimer_Struct *dts = (DisciplineTimer_Struct *)outapp->pBuffer;
+	dts->TimerID = timer_id;
+	dts->Duration = duration;
+
+	QueuePacket(outapp);
+	safe_delete(outapp);
 }
 
 void Client::TryOnClientUpdate()
