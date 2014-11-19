@@ -1571,7 +1571,8 @@ XS(XS_Mob_TypesTempPet)
 {
 	dXSARGS;
 	if (items < 2 || items > 7)
-		Perl_croak(aTHX_ "Usage: Mob::TypesTempPet(THIS, typesid, name=nullptr, duration=0, follow=0, sticktarg=0, target=nullptr)");
+		Perl_croak(aTHX_ "Usage: Mob::TypesTempPet(THIS, typesid, name=nullptr, duration=0, follow=0, target=nullptr, sticktarg=0,)");
+
 	{
 		Mob *		THIS;
 		uint32		typesid = (uint32)SvUV(ST(1));
@@ -3971,7 +3972,7 @@ XS(XS_Mob_CastSpell)
             resist_adjust = (int16)SvIV(ST(6));
         }
 
-		if (resist_adjust == 0)
+		if (resist_adjust == 0)//If you do not pass resist adjust as nullptr it will ignore the spells default resist adjust
 			THIS->CastSpell(spell_id, target_id, slot, casttime, mana_cost, 0, 0xFFFFFFFF, 0xFFFFFFFF, 0, 0);
 		else
 			THIS->CastSpell(spell_id, target_id, slot, casttime, mana_cost, 0, 0xFFFFFFFF, 0xFFFFFFFF, 0, 0, &resist_adjust);
@@ -5970,31 +5971,6 @@ XS(XS_Mob_NPCSpecialAttacks)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 		THIS->NPCSpecialAttacks(parse, permtag, reset, remove);
-	}
-	XSRETURN_EMPTY;
-}
-
-XS(XS_Mob_NPCSpecialAbilities); /* prototype to pass -Wmissing-prototypes */
-XS(XS_Mob_NPCSpecialAbilities)
-{
-	dXSARGS;
-	if (items != 2)
-		Perl_croak(aTHX_ "Usage: Mob::ProcessSpecialAbilities(THIS, parse)");
-	{
-		Mob *		THIS;
-		//std::string		parse = (std::string)SvPV_nolen(ST(1));
-		Const_char*		parse = (Const_char *)SvPV_nolen(ST(1));
-
-		if (sv_derived_from(ST(0), "Mob")) {
-			IV tmp = SvIV((SV*)SvRV(ST(0)));
-			THIS = INT2PTR(Mob *,tmp);
-		}
-		else
-			Perl_croak(aTHX_ "THIS is not of type Mob");
-		if(THIS == nullptr)
-			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
-
-		THIS->ProcessSpecialAbilities(parse);
 	}
 	XSRETURN_EMPTY;
 }
@@ -8212,6 +8188,159 @@ XS(XS_Mob_GetSpellStat)
 	XSRETURN(1);
 }
 
+XS(XS_Mob_GetSpecialAbility); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_GetSpecialAbility)
+{
+	dXSARGS;
+	if(items != 2)
+		Perl_croak(aTHX_ "Usage: Mob::GetSpecialAbility(THIS, special_ability)");
+	{
+		int RETVAL;
+		Mob* THIS;
+		int ability = SvIV(ST(1));
+		dXSTARG;
+
+		if(sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetSpecialAbility(ability);
+		XSprePUSH; PUSHi((IV)RETVAL);
+	}
+	XSRETURN(1);
+}
+
+XS(XS_Mob_GetSpecialAbilityParam); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_GetSpecialAbilityParam)
+{
+	dXSARGS;
+	if(items != 3)
+		Perl_croak(aTHX_ "Usage: Mob::GetSpecialAbilityParam(THIS, special_ability, param)");
+	{
+		int RETVAL;
+		Mob* THIS;
+		int ability = SvIV(ST(1));
+		int param = SvIV(ST(2));
+		dXSTARG;
+
+		if(sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetSpecialAbilityParam(ability, param);
+		XSprePUSH; PUSHi((IV)RETVAL);
+	}
+	XSRETURN(1);
+}
+
+XS(XS_Mob_SetSpecialAbility); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_SetSpecialAbility)
+{
+	dXSARGS;
+	if(items != 3)
+		Perl_croak(aTHX_ "Usage: Mob::SetSpecialAbility(THIS, ability, value)");
+	{
+		Mob* THIS;
+		int ability = SvIV(ST(1));
+		int value = SvIV(ST(2));
+
+		if(sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->SetSpecialAbility(ability, value);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Mob_SetSpecialAbilityParam); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_SetSpecialAbilityParam)
+{
+	dXSARGS;
+	if(items != 4)
+		Perl_croak(aTHX_ "Usage: Mob::SetSpecialAbilityParam(THIS, ability, param, value)");
+	{
+		Mob* THIS;
+		int ability = SvIV(ST(1));
+		int param = SvIV(ST(2));
+		int value = SvIV(ST(3));
+
+		if(sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->SetSpecialAbilityParam(ability, param, value);
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Mob_ClearSpecialAbilities); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_ClearSpecialAbilities)
+{
+	dXSARGS;
+	if(items != 1)
+		Perl_croak(aTHX_ "Usage: Mob::ClearSpecialAbilities(THIS)");
+	{
+		Mob* THIS;
+
+		if(sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->ClearSpecialAbilities();
+	}
+	XSRETURN_EMPTY;
+}
+
+XS(XS_Mob_ProcessSpecialAbilities); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_ProcessSpecialAbilities)
+{
+	dXSARGS;
+	if(items != 2)
+		Perl_croak(aTHX_ "Usage: Mob::ProcessSpecialAbilities(THIS, str)");
+	{
+		Mob* THIS;
+		const char *str = (const char*)SvPV_nolen(ST(1));
+
+		if(sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		THIS->ProcessSpecialAbilities(str);
+	}
+	XSRETURN_EMPTY;
+}
+
 //C!Kayen Perl Functions
 XS(XS_Mob_DisableTargetSpellAnim);
 XS(XS_Mob_DisableTargetSpellAnim)
@@ -8409,7 +8538,6 @@ XS(XS_Mob_SendAppearanceEffectTest)
 	}
 	XSRETURN_EMPTY;
 }
-
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -8636,7 +8764,6 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "SendTo"), XS_Mob_SendTo, file, "$$$$");
 		newXSproto(strcpy(buf, "SendToFixZ"), XS_Mob_SendToFixZ, file, "$$$$");
 		newXSproto(strcpy(buf, "NPCSpecialAttacks"), XS_Mob_NPCSpecialAttacks, file, "$$$;$$");
-		newXSproto(strcpy(buf, "NPCSpecialAbilities"), XS_Mob_NPCSpecialAbilities, file, "$$");
 		newXSproto(strcpy(buf, "DontHealMeBefore"), XS_Mob_DontHealMeBefore, file, "$");
 		newXSproto(strcpy(buf, "DontBuffMeBefore"), XS_Mob_DontBuffMeBefore, file, "$");
 		newXSproto(strcpy(buf, "DontDotMeBefore"), XS_Mob_DontDotMeBefore, file, "$");
@@ -8708,10 +8835,18 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "DoArcheryAttackDmg"), XS_Mob_DoArcheryAttackDmg, file, "$$$$$$$");
 		newXSproto(strcpy(buf, "DoThrowingAttackDmg"), XS_Mob_DoThrowingAttackDmg, file, "$$$$$$$");
 		newXSproto(strcpy(buf, "SetDisableMelee"), XS_Mob_SetDisableMelee, file, "$$");
-		newXSproto(strcpy(buf, "IsMeleeDisabled"), XS_Mob_IsMeleeDisabled, file, "$$");
+		newXSproto(strcpy(buf, "IsMeleeDisabled"), XS_Mob_IsMeleeDisabled, file, "$");
 		newXSproto(strcpy(buf, "SetFlurryChance"), XS_Mob_SetFlurryChance, file, "$$");
 		newXSproto(strcpy(buf, "GetFlurryChance"), XS_Mob_GetFlurryChance, file, "$");
 		newXSproto(strcpy(buf, "GetSpellStat"), XS_Mob_GetSpellStat, file, "$$$$");
+
+		newXSproto(strcpy(buf, "GetSpecialAbility"), XS_Mob_GetSpecialAbility, file, "$$");
+		newXSproto(strcpy(buf, "GetSpecialAbilityParam"), XS_Mob_GetSpecialAbilityParam, file, "$$$");
+		newXSproto(strcpy(buf, "SetSpecialAbility"), XS_Mob_SetSpecialAbility, file, "$$$");
+		newXSproto(strcpy(buf, "SetSpecialAbilityParam"), XS_Mob_SetSpecialAbilityParam, file, "$$$$");
+		newXSproto(strcpy(buf, "ClearSpecialAbilities"), XS_Mob_ClearSpecialAbilities, file, "$");
+		newXSproto(strcpy(buf, "ProcessSpecialAbilities"), XS_Mob_ProcessSpecialAbilities, file, "$$");
+
 		//C!Kayen
 		newXSproto(strcpy(buf, "DisableTargetSpellAnim"), XS_Mob_DisableTargetSpellAnim, file, "$$");
 		newXSproto(strcpy(buf, "IsTargetSpellAnimDisabled"), XS_Mob_IsTargetSpellAnimDisabled, file, "$$");
@@ -8721,6 +8856,9 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "SendAppearanceEffect2"), XS_Mob_SendAppearanceEffect2, file, "$$;$$$$");
 		newXSproto(strcpy(buf, "SendAppearanceEffectTest"), XS_Mob_SendAppearanceEffectTest, file, "$$$$$");
 		
+
+
+
 	XSRETURN_YES;
 }
 

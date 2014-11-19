@@ -3444,7 +3444,6 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob* spelltar, bool reflect, bool use_r
 		parse->EventPlayer(EVENT_CAST_ON, spelltar->CastToClient(),temp1, 0);
 	}
 
-
 	mod_spell_cast(spell_id, spelltar, reflect, use_resist_adjust, resist_adjust, isproc);
 
 	// now check if the spell is allowed to land

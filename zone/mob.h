@@ -1482,8 +1482,8 @@ protected:
 
 	//temppet
 	bool hasTempPet;
-	int16 count_TempPet;
 	bool _IsTempPet;
+	int16 count_TempPet;
 	bool pet_owner_client; //Flags regular and pets as belonging to a client
 
 	EGNode *_egnode; //the EG node we are in

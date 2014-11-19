@@ -1887,7 +1887,7 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 			ns->spawn.IsMercenary = 0;
 
 		SetTempPet(true); //Simple mob flag for checking if temp pet
-		m->SetTempPetsActive(true); //Neccessary fail safe flag set if mob ever had a swarm pet to ensure they are removed when owner dies/zones.
+		m->SetTempPetsActive(true); //Neccessary fail safe flag set if mob ever had a swarm pet to ensure they are removed.
 		m->SetTempPetCount(m->GetTempPetCount() + 1);
 	
 		//Not recommended if using above (However, this will work better on older clients).
@@ -1947,6 +1947,7 @@ void NPC::ModifyNPCStat(const char *identifier, const char *newValue)
 	else if(id == "PhR") { PhR = atoi(val.c_str()); return; }
 	else if(id == "runspeed") { runspeed = (float)atof(val.c_str()); CalcBonuses(); return; }
 	else if(id == "special_attacks") { NPCSpecialAttacks(val.c_str(), 0, 1); return; }
+	else if(id == "special_abilities") { ProcessSpecialAbilities(val.c_str()); return; }
 	else if(id == "attack_speed") { attack_speed = (float)atof(val.c_str()); CalcBonuses(); return; }
 	else if(id == "atk") { ATK = atoi(val.c_str()); return; }
 	else if(id == "accuracy") { accuracy_rating = atoi(val.c_str()); return; }
@@ -2460,3 +2461,4 @@ void NPC::DepopSwarmPets()
 		}
 	}
 }
+
