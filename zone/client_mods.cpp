@@ -223,6 +223,9 @@ int32 Client::CalcHPRegen() {
 
 	regen += aabonuses.HPRegen + GroupLeadershipAAHealthRegeneration();
 
+	if (!AggroCount) //C!Kayen - Base OOC regen
+		regen = regen + (GetMaxHP()*20/100); //20% per tick out of combat regen.
+
 	return (regen * RuleI(Character, HPRegenMultiplier) / 100);
 }
 
@@ -1102,6 +1105,9 @@ int32 Client::CalcManaRegen()
 
 	//AAs
 	regen += aabonuses.ManaRegen;
+
+	if (!AggroCount) //C!Kayen - Base OOC regen
+		regen = regen + (GetMaxMana()*20/100); //20% per tick out of combat regen.
 
 	return (regen * RuleI(Character, ManaRegenMultiplier) / 100);
 }
@@ -1996,6 +2002,11 @@ int32 Client::CalcEnduranceRegen() {
 			regen = GetMaxEndurance()*1/100; //Wizard baseline endurance at 1% per tick in combat.
 		else //Out of Combat
 			regen = GetMaxEndurance()*20/100; //20% per tick out of combat regen.
+	}
+
+	if (GetClass() == WARRIOR){
+		if (!AggroCount) //Warrior OOC regen
+			regen = regen + (GetMaxEndurance()*20/100); //20% per tick out of combat regen.
 	}
 
 	/*

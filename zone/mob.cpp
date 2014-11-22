@@ -5040,51 +5040,6 @@ void Mob::ProcessSpecialAbilities(const std::string &str) {
 	}
 }
 
-void Mob::ProcessSpecialAbilities2(const char* parse) {
-	ClearSpecialAbilities();
-	Shout("TEST %s x", parse);
-	std::string str;
-	str = parse;
-	//const std::string str(parse);
-	Shout("TEST %c x", str);
-
-	std::vector<std::string> sp = SplitString(str, '^');
-	for(auto iter = sp.begin(); iter != sp.end(); ++iter) {
-		std::vector<std::string> sub_sp = SplitString((*iter), ',');
-		Shout("string %c", sub_sp);
-		if(sub_sp.size() >= 2) {
-			int ability = std::stoi(sub_sp[0]);
-			int value = std::stoi(sub_sp[1]);
-			Shout("ability %i value %i", ability, value);
-			SetSpecialAbility(ability, value);
-			switch(ability) {
-			case SPECATK_QUAD:
-				if(value > 0) {
-					SetSpecialAbility(SPECATK_TRIPLE, 1);
-				}
-				break;
-			case DESTRUCTIBLE_OBJECT:
-				if(value == 0) {
-					SetDestructibleObject(false);
-				} else {
-					SetDestructibleObject(true);
-				}
-				break;
-			default:
-				break;
-			}
-
-			for(size_t i = 2, p = 0; i < sub_sp.size(); ++i, ++p) {
-				if(p >= MAX_SPECIAL_ATTACK_PARAMS) {
-					break;
-				}
-
-				SetSpecialAbilityParam(ability, p, std::stoi(sub_sp[i]));
-			}
-		}
-	}
-}
-
 // derived from client to keep these functions more consistent
 // if anything seems weird, blame SoE
 bool Mob::IsFacingMob(Mob *other)
@@ -8349,7 +8304,7 @@ bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
 
 	if (target){
 
-		if (GetDiscHPRestriction(spell_id)){
+		if (GetDiscHPRestriction(spell_id) > 0){
 			if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
 				Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
 				return false;
@@ -8383,16 +8338,12 @@ bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
 
 bool Mob::PassDiscRestriction(uint16 spell_id)
 {
-	
-	if (spells[spell_id].targettype == ST_Self){
-		if (GetDiscHPRestriction(spell_id)){
-			if (static_cast<int>(GetHPRatio()) > GetDiscHPRestriction(spell_id)){
-				Message(13, "You must be weakened under %i percent health to use this ability!", GetDiscHPRestriction(spell_id));
-				return false;
-			}
+	if (GetDiscHPRestriction(spell_id) < 0){
+		if (static_cast<int>(GetHPRatio()) > (GetDiscHPRestriction(spell_id) * -1)){
+			Message(13, "You must be weakened under %i percent health to use this ability!", (GetDiscHPRestriction(spell_id) * -1));
+			return false;
 		}
 	}
-
 	return true;
 }
 
@@ -8473,8 +8424,8 @@ void Client::TryChargeHit()
 
 	if (charge_effect_increment <= 200){
 		Message(MT_SpellFailure,"Your charge failed to gain enough momentum.");
-		AddToHateList(target, 1);
-		AdjustDiscTimer(19, 40);	
+		target->AddToHateList(this, 1);
+		AdjustDiscTimer(19, 0);	
 	}
 
 	else{
@@ -8542,19 +8493,28 @@ void Client::TryOnClientUpdate()
 
 	if (leap_increment) { 
 		if (leap_increment >= 75) { //Trigger spell on next possible position update after landing.
-			if (IsValidSpell(leap_spell_id)){
-				for (int i=0; i < EFFECT_COUNT; i++){
-					if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
-						if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i])
-							SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
+			float dist = CalculateDistance(leap_x, leap_y,  leap_z);
+			if (dist > 40.0f) {
+				if (IsValidSpell(leap_spell_id)){
+					for (int i=0; i < EFFECT_COUNT; i++){
+						if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
+							if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i])
+								SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
+						}
 					}
 				}
 			}
+			else
+				Message(MT_SpellFailure, "Your leap failed to gather enough momentum.");
+
+			 //Reset variable to end
 			leap_spell_id = 0;
-			leap_increment = 0; //Reset variable to end
+			leap_increment = 0;
+			leap_x = 0.0f;
+			leap_y = 0.0f;
+			leap_z = 0.0f;
 		}
 	}
-
 	//Shout("DEBUG:TryonClientUpdate :: X %.2f Y %.2f Z %.2f D: %.2f", GetX(), GetY(), GetZ(), m_DistanceSinceLastPositionCheck);
 }
 
@@ -8583,7 +8543,7 @@ void Mob::BuffFastProcess()
 			--buffs[buffs_i].fastticsremaining;
 			buffs[buffs_i].ticsremaining = 1 + buffs[buffs_i].fastticsremaining/6;
 			
-			Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
+			//Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
 			if (buffs[buffs_i].fastticsremaining == 0) 
 				BuffFadeBySlot(buffs_i);
 

@@ -1239,7 +1239,7 @@ bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //All
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 
 bool GetDiscLimitToBehind(uint16 spell_id) { if (spells[spell_id].viral_range == 1) { return true; } return false;}
-uint8 GetDiscHPRestriction(uint16 spell_id) { return spells[spell_id].pvpresistbase; }
+int GetDiscHPRestriction(uint16 spell_id) { return spells[spell_id].pvpresistbase; }
 
 int GetProjCastingAnimation(uint16 spell_id) { return spells[spell_id].viral_range; }
 int GetProjTilt(uint16 spell_id) { return spells[spell_id].pvpresistbase; }

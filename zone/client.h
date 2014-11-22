@@ -712,7 +712,7 @@ public:
 	void UnscribeSpellAll(bool update_client = true);
 	void UntrainDisc(int slot, bool update_client = true);
 	void UntrainDiscAll(bool update_client = true);
-	bool SpellGlobalCheck(uint16 Spell_ID, uint16 Char_ID);
+	bool SpellGlobalCheck(uint16 Spell_ID, uint32 Char_ID);
 	uint32 GetCharMaxLevelFromQGlobal();
 
 	inline bool IsSitting() const {return (playeraction == 1);}
@@ -876,9 +876,9 @@ void SetConsumption(int32 in_hunger, int32 in_thirst);
 	void DropInst(const ItemInst* inst);
 	bool TrainDiscipline(uint32 itemid);
 	void SendDisciplineUpdate();
+	void SendDisciplineTimer(uint32 timer_id, uint32 duration);
 	bool UseDiscipline(uint32 spell_id, uint32 target);
-	void SendDisciplineTimer(uint32 timer_id, uint32 duration, uint16 spell_id = SPELL_UNKNOWN);
-
+	
 	bool CheckTitle(int titleset);
 	void EnableTitle(int titleset);
 	void RemoveTitle(int titleset);

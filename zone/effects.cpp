@@ -723,12 +723,9 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 	return(true);
 }
 
-void Client::SendDisciplineTimer(uint32 timer_id, uint32 duration, uint16 spell_id)
+void Client::SendDisciplineTimer(uint32 timer_id, uint32 duration)
 {
-	if (!timer_id && IsValidSpell(spell_id))
-		timer_id = spells[spell_id].EndurTimerIndex;
-
-	if(duration > 0 && timer_id && (timer_id < MAX_DISCIPLINE_TIMERS))
+	if (timer_id < MAX_DISCIPLINE_TIMERS)
 	{
 		EQApplicationPacket *outapp = new EQApplicationPacket(OP_DisciplineTimer, sizeof(DisciplineTimer_Struct));
 		DisciplineTimer_Struct *dts = (DisciplineTimer_Struct *)outapp->pBuffer;

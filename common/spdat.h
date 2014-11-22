@@ -977,7 +977,7 @@ bool IsMeleeRangeSpellEffect(uint16 spell_id);
 bool IsThrowRangeSpellEffect(uint16 spell_id);
 //Disc Hacks
 bool GetDiscLimitToBehind(uint16 spell_id);
-uint8 GetDiscHPRestriction(uint16 spell_id);
+int GetDiscHPRestriction(uint16 spell_id);
 //Projectile Hacks
 int GetProjCastingAnimation(uint16 spell_id);
 int GetProjArc(uint16 spell_id);
