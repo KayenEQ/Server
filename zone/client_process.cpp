@@ -1980,19 +1980,6 @@ void Client::DoStaminaUpdate() {
 
 void Client::DoEnduranceRegen()
 {
-	/*
-	//C!Kayen - Warrior lose endurance per tick
-	if (GetClass() == WARRIOR){
-
-		int new_endur = GetEndurance() + CalcEnduranceRegen();
-		if (new_endur <= 0)
-			new_endur = 10;
-
-		SetEndurance(new_endur);
-		return;
-	}
-	*/
-
 	if(GetEndurance() >= GetMaxEndurance())
 		return;
 
@@ -2015,6 +2002,9 @@ void Client::DoEnduranceUpkeep() {
 			int upkeep = spells[buffs[buffs_i].spellid].EndurUpkeep;
 			if (!upkeep)
 				upkeep = spells[buffs[buffs_i].spellid].EndurDrain; //C!Kayen
+
+			if (buffs[buffs_i].casterid != GetID()) //C!Kayen - Only drain on yourself
+				continue;
 
 			if(upkeep > 0) {
 				has_effect = true;
