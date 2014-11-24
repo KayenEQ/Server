@@ -8376,6 +8376,20 @@ int16 Mob::GetScaleDamageNumhits()
 	return 0;
 }
 
+int16 Mob::GetScaleHitChanceNumhits()
+{
+	int hitchance = spellbonuses.ScaleHitChanceNumhits[0];
+	int slot = spellbonuses.ScaleHitChanceNumhits[1];
+
+	if (hitchance && slot >= 0){
+		if (IsValidSpell(buffs[slot].spellid)){
+			int numhits = buffs[slot].numhits;
+			return (numhits * hitchance / 100);
+		}
+	}
+	return 0;
+}
+
 void Client::TryChargeEffect()
 {
 	if (!spellbonuses.ChargeEffect[0])
@@ -8909,6 +8923,34 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 			if (!target_found)
 				DirectionalFailMessage(spell_id);
 
+}
+
+void Mob::RangerGainNumHits(SkillUseTypes skill_used)
+{
+	if (!spellbonuses.RangerGainNumhitsSP[0])
+		return;
+
+	int amt = 0;
+
+	if (skill_used == Skill1HPiercing)
+		amt = spellbonuses.RangerGainNumhitsSP[0];
+	else if (skill_used == SkillBackstab)
+		amt = spellbonuses.RangerGainNumhitsSP[0] + 10;
+
+	int slot = spellbonuses.RangerGainNumhitsSP[1];
+
+	if (slot && buffs[slot].numhits && IsClient()){
+		
+		int _numhits = buffs[slot].numhits + amt;
+						
+		if (_numhits <= 0)
+			_numhits = 1; //Min
+		else if (_numhits >= spells[buffs[slot].spellid].numhits)
+			_numhits = spells[buffs[slot].spellid].numhits; //Max
+
+		buffs[slot].numhits = _numhits;
+		CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+	}
 }
 
 //C!Misc - Functions still in development

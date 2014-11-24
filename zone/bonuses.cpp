@@ -3079,6 +3079,16 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				newbon->ScaleDamageNumhits[1] = buffslot;
 				break;
 
+			case SE_ScaleHitChanceNumhits:
+				newbon->ScaleHitChanceNumhits[0] = effect_value;
+				newbon->ScaleHitChanceNumhits[1] = buffslot;
+				break;
+
+			case SE_RangerGainNumhitsSP:
+				newbon->RangerGainNumhitsSP[0] += effect_value;
+				newbon->RangerGainNumhitsSP[1] = buffslot;
+				break;
+
 			case SE_ChargeEffect:
 				newbon->ChargeEffect[0] = effect_value;
 				newbon->ChargeEffect[1] = buffslot;

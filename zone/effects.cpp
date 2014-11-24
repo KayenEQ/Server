@@ -713,7 +713,7 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 			CastSpell(spell_id, target, DISCIPLINE_SPELL_SLOT);
 			return true;
 		}
-		
+
 		SendDisciplineTimer(spells[spell_id].EndurTimerIndex, reduced_recast);
 	}
 	else

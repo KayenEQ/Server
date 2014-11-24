@@ -696,6 +696,8 @@ typedef enum {
 #define SE_AttackThrow					1065 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier Max: Hit Modifer
 #define SE_EnduranceUpkeep				1066 // Simulates endurance drain without removing buff icon.
 #define SE_DiscReuseAwareness			1067 // implemented - Enable / Disable spell awareness popup window.
+#define SE_ScaleHitChanceNumhits		1068 // implemented - Scale hit chance based on numhits Base: Damage ratio x 100
+#define SE_RangerGainNumhitsSP			1069 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
 // LAST
 
 

@@ -6128,7 +6128,7 @@ void Mob::CheckNumHitsRemaining(uint8 type, uint32 buff_slot, uint16 spell_id)
 	10: [Defensive Procs] Only count down buff of the proc that executed
 	11: [Melee Procs] Only count down the buff of the proc that executed
 	*/
-
+	
 	if (!HasNumhits())
 		return;
 

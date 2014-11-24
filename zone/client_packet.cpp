@@ -1645,7 +1645,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		}	//else, somebody from our group is already here...
 
 		if (!group)
-			database.SetGroupID(GetName(), 0, CharacterID());	//cannot re-establish group, kill it
+			database.SetGroupID(GetName(), 0, CharacterID(), false);	//cannot re-establish group, kill it
 
 	}
 	else {	//no group id
@@ -6413,7 +6413,10 @@ void Client::Handle_OP_GroupCancelInvite(const EQApplicationPacket *app)
 		safe_delete(pack);
 	}
 
-	database.SetGroupID(GetName(), 0, CharacterID());
+	if (!GetMerc())
+	{
+		database.SetGroupID(GetName(), 0, CharacterID(), false);
+	}
 	return;
 }
 
@@ -6443,7 +6446,8 @@ void Client::Handle_OP_GroupDisband(const EQApplicationPacket *app)
 	GroupGeneric_Struct* gd = (GroupGeneric_Struct*)app->pBuffer;
 
 	Raid *raid = entity_list.GetRaidByClient(this);
-	if (raid){
+	if (raid)
+	{
 		Mob* memberToDisband = nullptr;
 
 		if (!raid->IsGroupLeader(GetName()))
@@ -6510,93 +6514,80 @@ void Client::Handle_OP_GroupDisband(const EQApplicationPacket *app)
 		}
 	}
 #endif
-	if ((group->IsLeader(this) && (GetTarget() == 0 || GetTarget() == this)) || (group->GroupCount()<3)) {
+	if (group->GroupCount() < 3)
+	{
 		group->DisbandGroup();
-		if (GetMerc() != nullptr)
+		if (GetMerc())
 			GetMerc()->Suspend();
 	}
-	else {
+	else if (group->IsLeader(this) && GetTarget() == nullptr)
+	{
+		if (group->GroupCount() > 2 && GetMerc() && !GetMerc()->IsSuspended())
+		{
+			group->DisbandGroup();
+			GetMerc()->MercJoinClientGroup();
+		}
+		else
+		{
+			group->DisbandGroup();
+			if (GetMerc())
+				GetMerc()->Suspend();
+		}
+	}
+	else if (group->IsLeader(this) && GetTarget() == this)
+	{
+		LeaveGroup();
+		if (GetMerc() && !GetMerc()->IsSuspended())
+		{
+			GetMerc()->MercJoinClientGroup();
+		}
+	}
+	else
+	{
 		Mob* memberToDisband = nullptr;
 		memberToDisband = GetTarget();
 
 		if (!memberToDisband)
 			memberToDisband = entity_list.GetMob(gd->name2);
 
-		if (memberToDisband) {
-			if (group->IsLeader(this)) {
+		if (memberToDisband)
+		{
+			if (group->IsLeader(this))
+			{
 				// the group leader can kick other members out of the group...
-				//group->DelMember(memberToDisband,false);
 				if (memberToDisband->IsClient())
 				{
 					group->DelMember(memberToDisband, false);
 					Client* memberClient = memberToDisband->CastToClient();
 					Merc* memberMerc = memberToDisband->CastToClient()->GetMerc();
-					if (memberClient && memberMerc && group)
+					if (memberClient && memberMerc)
 					{
-						if (!memberMerc->IsGrouped() && !memberClient->IsGrouped()) {
-							Group *g = new Group(memberClient);
-
-							entity_list.AddGroup(g);
-
-							if (g->GetID() == 0) {
-								safe_delete(g);
-								return;
-							}
-							if (Merc::AddMercToGroup(memberMerc, g)) {
-								database.SetGroupLeaderName(g->GetID(), memberClient->GetName());
-								g->SaveGroupLeaderAA();
-								database.SetGroupID(memberClient->GetName(), g->GetID(), memberClient->CharacterID());
-								database.SetGroupID(memberMerc->GetName(), g->GetID(), memberClient->CharacterID(), true);
-								database.RefreshGroupFromDB(memberClient);
-							}
-						}
+						memberMerc->MercJoinClientGroup();
 					}
 				}
-				else if (memberToDisband->IsMerc()) {
+				else if (memberToDisband->IsMerc())
+				{
 					memberToDisband->CastToMerc()->Suspend();
 				}
 			}
-			else {
+			else
+			{
 				// ...but other members can only remove themselves
 				group->DelMember(this, false);
 
-				if (!IsGrouped() && GetMerc() != nullptr) {
-					if (!IsGrouped()) {
-						Group *g = new Group(this);
-
-						if (!g) {
-							delete g;
-							g = nullptr;
-							return;
-						}
-
-						entity_list.AddGroup(g);
-
-						if (g->GetID() == 0) {
-							safe_delete(g);
-							return;
-						}
-
-						if (Merc::AddMercToGroup(GetMerc(), g)) {
-							database.SetGroupLeaderName(g->GetID(), this->GetName());
-							g->SaveGroupLeaderAA();
-							database.SetGroupID(this->GetName(), g->GetID(), this->CharacterID());
-							database.SetGroupID(GetMerc()->GetName(), g->GetID(), this->CharacterID(), true);
-							database.RefreshGroupFromDB(this);
-						}
-						else
-						{
-							if (GetMerc())
-								GetMerc()->Depop();
-						}
-					}
+				if (GetMerc() && !GetMerc()->IsSuspended())
+				{
+					GetMerc()->MercJoinClientGroup();
 				}
 			}
 		}
 		else
+		{
 			LogFile->write(EQEMuLog::Error, "Failed to remove player from group. Unable to find player named %s in player group", gd->name2);
+		}
 	}
-	if (LFP) {
+	if (LFP)
+	{
 		// If we are looking for players, update to show we are on our own now.
 		UpdateLFP();
 	}
@@ -6626,157 +6617,22 @@ void Client::Handle_OP_GroupFollow2(const EQApplicationPacket *app)
 
 	GroupGeneric_Struct* gf = (GroupGeneric_Struct*)app->pBuffer;
 	Mob* inviter = entity_list.GetClientByName(gf->name1);
-
-	if (inviter != nullptr && inviter->IsClient()) {
-		isgrouped = true;
-		strn0cpy(gf->name1, inviter->GetName(), 64);
-		strn0cpy(gf->name2, this->GetName(), 64);
-
-		Raid* raid = entity_list.GetRaidByClient(inviter->CastToClient());
-		Raid* iraid = entity_list.GetRaidByClient(this);
-
-		//inviter has a raid don't do group stuff instead do raid stuff!
-		if (raid){
-			// Suspend the merc while in a raid (maybe a rule could be added for this)
-			if (GetMerc())
-				GetMerc()->Suspend();
-
-			uint32 groupToUse = 0xFFFFFFFF;
-			for (int x = 0; x < MAX_RAID_MEMBERS; x++){
-				if (raid->members[x].member){ //this assumes the inviter is in the zone
-					if (raid->members[x].member == inviter->CastToClient()){
-						groupToUse = raid->members[x].GroupNumber;
-						break;
-					}
-				}
-			}
-			if (iraid == raid){ //both in same raid
-				uint32 ngid = raid->GetGroup(inviter->GetName());
-				if (raid->GroupCount(ngid) < 6){
-					raid->MoveMember(GetName(), ngid);
-					raid->SendGroupDisband(this);
-					//raid->SendRaidGroupAdd(GetName(), ngid);
-					//raid->SendGroupUpdate(this);
-					raid->GroupUpdate(ngid); //break
-				}
-				return;
-			}
-			if (raid->RaidCount() < MAX_RAID_MEMBERS){
-				if (raid->GroupCount(groupToUse) < 6){
-					raid->SendRaidCreate(this);
-					raid->SendMakeLeaderPacketTo(raid->leadername, this);
-					raid->AddMember(this, groupToUse);
-					raid->SendBulkRaid(this);
-					//raid->SendRaidGroupAdd(GetName(), groupToUse);
-					//raid->SendGroupUpdate(this);
-					raid->GroupUpdate(groupToUse); //break
-					if (raid->IsLocked()) {
-						raid->SendRaidLockTo(this);
-					}
-					return;
-				}
-				else{
-					raid->SendRaidCreate(this);
-					raid->SendMakeLeaderPacketTo(raid->leadername, this);
-					raid->AddMember(this);
-					raid->SendBulkRaid(this);
-					if (raid->IsLocked()) {
-						raid->SendRaidLockTo(this);
-					}
-					return;
-				}
-			}
+	
+	// Inviter and Invitee are in the same zone
+	if (inviter != nullptr && inviter->IsClient())
+	{
+		if (GroupFollow(inviter->CastToClient()))
+		{
+			strn0cpy(gf->name1, inviter->GetName(), sizeof(gf->name1));
+			strn0cpy(gf->name2, GetName(), sizeof(gf->name2));
+			inviter->CastToClient()->QueuePacket(app);//notify inviter the client accepted
 		}
-
-		Group* group = entity_list.GetGroupByClient(inviter->CastToClient());
-
-		if (!group){
-			//Make new group
-			group = new Group(inviter);
-			if (!group)
-				return;
-			entity_list.AddGroup(group);
-
-			if (group->GetID() == 0) {
-				Message(13, "Unable to get new group id. Cannot create group.");
-				inviter->Message(13, "Unable to get new group id. Cannot create group.");
-				return;
-			}
-
-			//now we have a group id, can set inviter's id
-			database.SetGroupID(inviter->GetName(), group->GetID(), inviter->CastToClient()->CharacterID());
-			database.SetGroupLeaderName(group->GetID(), inviter->GetName());
-
-			group->UpdateGroupAAs();
-
-			//Invite the inviter into the group first.....dont ask
-			if (inviter->CastToClient()->GetClientVersion() < EQClientSoD)
-			{
-				EQApplicationPacket* outapp = new EQApplicationPacket(OP_GroupUpdate, sizeof(GroupJoin_Struct));
-				GroupJoin_Struct* outgj = (GroupJoin_Struct*)outapp->pBuffer;
-				strcpy(outgj->membername, inviter->GetName());
-				strcpy(outgj->yourname, inviter->GetName());
-				outgj->action = groupActInviteInitial; // 'You have formed the group'.
-				group->GetGroupAAs(&outgj->leader_aas);
-				inviter->CastToClient()->QueuePacket(outapp);
-				safe_delete(outapp);
-			}
-			else
-			{
-				// SoD and later
-				//
-				inviter->CastToClient()->SendGroupCreatePacket();
-
-				inviter->CastToClient()->SendGroupLeaderChangePacket(inviter->GetName());
-
-				inviter->CastToClient()->SendGroupJoinAcknowledge();
-			}
-
-		}
-		if (!group)
-			return;
-
-		inviter->CastToClient()->QueuePacket(app);//notify inviter the client accepted
-
-		if (!group->AddMember(this))
-			return;
-
-		if (inviter->CastToClient()->IsLFP()) {
-			// If the player who invited us to a group is LFP, have them update world now that we have joined
-			// their group.
-			inviter->CastToClient()->UpdateLFP();
-		}
-
-		if (GetClientVersion() >= EQClientSoD)
-			SendGroupJoinAcknowledge();
-
-		database.RefreshGroupFromDB(this);
-		group->SendHPPacketsTo(this);
-
-		// Temporary hack for SoD, as things seem to work quite differently
-		if (inviter->CastToClient()->GetClientVersion() >= EQClientSoD)
-			database.RefreshGroupFromDB(inviter->CastToClient());
-
-		// Add the merc back into the new group
-		if (GetMerc()) {
-			if (Merc::AddMercToGroup(GetMerc(), group)) {
-				database.SetGroupID(GetMerc()->GetName(), group->GetID(), inviter->CastToClient()->CharacterID(), true);
-				database.RefreshGroupFromDB(this);
-			}
-		}
-
-		//send updates to clients out of zone...
-		ServerPacket* pack = new ServerPacket(ServerOP_GroupJoin, sizeof(ServerGroupJoin_Struct));
-		ServerGroupJoin_Struct* gj = (ServerGroupJoin_Struct*)pack->pBuffer;
-		gj->gid = group->GetID();
-		gj->zoneid = zone->GetZoneID();
-		gj->instance_id = zone->GetInstanceID();
-		strcpy(gj->member_name, GetName());
-		worldserver.SendPacket(pack);
-		safe_delete(pack);
 	}
 	else if (inviter == nullptr)
 	{
+		// Inviter is in another zone - Remove merc from group now if any
+		LeaveGroup();
+		
 		ServerPacket* pack = new ServerPacket(ServerOP_GroupFollow, sizeof(ServerGroupFollow_Struct));
 		ServerGroupFollow_Struct *sgfs = (ServerGroupFollow_Struct *)pack->pBuffer;
 		sgfs->CharacterID = CharacterID();
@@ -6811,10 +6667,11 @@ void Client::Handle_OP_GroupInvite2(const EQApplicationPacket *app)
 		return;
 	}
 
-	if (Invitee) {
-		if (Invitee->IsClient()) {
-			if ((!Invitee->IsGrouped() && !Invitee->IsRaidGrouped()) ||
-				(Invitee->GetGroup() && Invitee->CastToClient()->GetMerc() && Invitee->GetGroup()->GroupCount() == 2))
+	if (Invitee)
+	{
+		if (Invitee->IsClient())
+		{
+			if(Invitee->CastToClient()->MercOnlyOrNoGroup() && !Invitee->IsRaidGrouped())
 			{
 				if (app->GetOpcode() == OP_GroupInvite2)
 				{
@@ -9523,7 +9380,8 @@ void Client::Handle_OP_MercenaryCommand(const EQApplicationPacket *app)
 		Merc* merc = GetMerc();
 		GetMercInfo().State = option;
 
-		if (merc) {
+		if (merc)
+		{
 			uint8 numStances = 0;
 
 			//get number of available stances for the current merc
@@ -9535,10 +9393,11 @@ void Client::Handle_OP_MercenaryCommand(const EQApplicationPacket *app)
 			}
 
 			MercTemplate* mercTemplate = zone->GetMercTemplate(GetMerc()->GetMercTemplateID());
-			if (mercTemplate) {
-
+			if (mercTemplate)
+			{
 				//check to see if selected option is a valid stance slot (option is the slot the stance is in, not the actual stance)
-				if (option >= 0 && option < numStances) {
+				if (option >= 0 && option < numStances)
+				{
 					merc->SetStance(mercTemplate->Stances[option]);
 					GetMercInfo().Stance = mercTemplate->Stances[option];
 
@@ -9573,6 +9432,17 @@ void Client::Handle_OP_MercenaryDataRequest(const EQApplicationPacket *app)
 	if (merchant_id == 0) {
 
 		//send info about your current merc(s)
+		if (GetMercInfo().mercid)
+		{
+			if (MERC_DEBUG > 0)
+				Message(7, "Mercenary Debug: SendMercPersonalInfo Request");
+			SendMercPersonalInfo();
+		}
+		else
+		{
+			if (MERC_DEBUG > 0)
+				Message(7, "Mercenary Debug: SendMercPersonalInfo Not Sent - MercID (%i)", GetMercInfo().mercid);
+		}
 	}
 
 	if (!RuleB(Mercs, AllowMercs)) {
@@ -9715,12 +9585,7 @@ void Client::Handle_OP_MercenaryDismiss(const EQApplicationPacket *app)
 		Message(7, "Mercenary Debug: Dismiss Request ( %i ) Received.", Command);
 
 	// Handle the dismiss here...
-	Merc* merc = GetMerc();
-	if (merc) {
-		if (CheckCanDismissMerc()) {
-			merc->Dismiss();
-		}
-	}
+	DismissMerc(GetMercInfo().mercid);
 
 }
 
@@ -9754,10 +9619,12 @@ void Client::Handle_OP_MercenaryHire(const EQApplicationPacket *app)
 
 	MercTemplate* merc_template = zone->GetMercTemplate(merc_template_id);
 
-	if (merc_template) {
+	if (merc_template)
+	{
 
 		Mob* merchant = entity_list.GetNPCByID(merchant_id);
-		if (!CheckCanHireMerc(merchant, merc_template_id)) {
+		if (!CheckCanHireMerc(merchant, merc_template_id))
+		{
 			return;
 		}
 
@@ -9772,7 +9639,8 @@ void Client::Handle_OP_MercenaryHire(const EQApplicationPacket *app)
 			SpawnMerc(merc, true);
 			merc->Save();
 
-			if (RuleB(Mercs, ChargeMercPurchaseCost)) {
+			if (RuleB(Mercs, ChargeMercPurchaseCost))
+			{
 				uint32 cost = Merc::CalcPurchaseCost(merc_template->MercTemplateID, GetLevel()) * 100; // Cost is in gold
 				TakeMoneyFromPP(cost, true);
 			}
@@ -9780,12 +9648,14 @@ void Client::Handle_OP_MercenaryHire(const EQApplicationPacket *app)
 			// 0 is approved hire request
 			SendMercMerchantResponsePacket(0);
 		}
-		else {
+		else
+		{
 			//merc failed to spawn
 			SendMercMerchantResponsePacket(3);
 		}
 	}
-	else {
+	else
+	{
 		//merc doesn't exist in db
 		SendMercMerchantResponsePacket(2);
 	}

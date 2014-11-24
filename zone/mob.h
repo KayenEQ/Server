@@ -1132,6 +1132,7 @@ public:
 	bool PassDiscRestriction(uint16 spell_id);
 	int16 GetScaleMitigationNumhits();
 	int16 GetScaleDamageNumhits();
+	int16 GetScaleHitChanceNumhits();
 	inline void SetChargeEffect(uint32 value) { charge_effect = value; }
 	inline uint32 GetChargeEffect() const { return charge_effect; }
 	
@@ -1159,6 +1160,8 @@ public:
 	void ApplyEffectResource(uint16 spellid, int slot);
 
 	void ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust);
+
+	void RangerGainNumHits(SkillUseTypes skill_used);
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
@@ -1566,6 +1569,7 @@ protected:
 	bool has_fast_buff; //Check if mob has a buff that uses fast timer.
 
 	uint8 bravery_recast;
+
 
 private:
 	void _StopSong(); //this is not what you think it is

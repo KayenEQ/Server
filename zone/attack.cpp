@@ -308,6 +308,8 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 				attacker->aabonuses.Accuracy[skillinuse] +
 				attacker->itembonuses.HitChance) / 15.0f; //Item Mod 'Accuracy'
 
+	hitBonus += GetScaleHitChanceNumhits(); //C!Kayen
+
 	hitBonus += chance_mod; //Modifier applied from casted/disc skill attacks.
 
 	if(attacker->IsNPC())
@@ -1362,11 +1364,8 @@ bool Client::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, b
 
 	MeleeLifeTap(damage);
 
-	if (damage > 0){
-		CheckNumHitsRemaining(NUMHIT_OutgoingHitSuccess);
-		if (HasSkillProcSuccess() && other && other->GetHP() > 0)
-			TrySkillProc(other, skillinuse, 0, true, Hand);
-	}
+	if (damage > 0 && HasSkillProcSuccess() && other && other->GetHP() > 0)
+		TrySkillProc(other, skillinuse, 0, true, Hand);
 
 	CommonBreakInvisible();
 
