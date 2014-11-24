@@ -308,8 +308,7 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 				attacker->aabonuses.Accuracy[skillinuse] +
 				attacker->itembonuses.HitChance) / 15.0f; //Item Mod 'Accuracy'
 
-
-	hitBonus += attacker->GetScaleHitChanceNumhits(); //C!Kayen
+	hitBonus += attacker->GetScaleHitChanceNumhits(skillinuse); //C!Kayen
 
 	hitBonus += chance_mod; //Modifier applied from casted/disc skill attacks.
 

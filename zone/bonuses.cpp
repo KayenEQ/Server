@@ -3072,16 +3072,25 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 			case SE_ScaleMitigationNumhits:
 				newbon->ScaleMitigationNumhits[0] = effect_value;
 				newbon->ScaleMitigationNumhits[1] = buffslot;
+				newbon->ScaleMitigationNumhits[2] = base2;
 				break;
 
 			case SE_ScaleDamageNumhits:
 				newbon->ScaleDamageNumhits[0] = effect_value;
 				newbon->ScaleDamageNumhits[1] = buffslot;
+				if (base2 == -1)
+					newbon->ScaleDamageNumhits[2] = HIGHEST_SKILL + 1;
+				else
+					newbon->ScaleDamageNumhits[2] = base2;
 				break;
 
 			case SE_ScaleHitChanceNumhits:
 				newbon->ScaleHitChanceNumhits[0] = effect_value;
 				newbon->ScaleHitChanceNumhits[1] = buffslot;
+				if (base2 == -1)
+					newbon->ScaleHitChanceNumhits[2] = HIGHEST_SKILL + 1;
+				else
+					newbon->ScaleHitChanceNumhits[2] = base2;
 				break;
 
 			case SE_RangerGainNumhitsSP:

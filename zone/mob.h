@@ -1131,8 +1131,8 @@ public:
 	bool MeleeDiscCombatRange(uint32 target_id, uint16 spell_id);
 	bool PassDiscRestriction(uint16 spell_id);
 	int16 GetScaleMitigationNumhits();
-	int16 GetScaleDamageNumhits();
-	float GetScaleHitChanceNumhits();
+	int16 GetScaleDamageNumhits(uint16 skill);
+	float GetScaleHitChanceNumhits(SkillUseTypes skillinuse);
 	inline void SetChargeEffect(uint32 value) { charge_effect = value; }
 	inline uint32 GetChargeEffect() const { return charge_effect; }
 	

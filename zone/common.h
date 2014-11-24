@@ -466,8 +466,8 @@ struct StatBonuses {
 	int32 FastManaRegen[4];                     //0: Flat Amount 1: Percent Max: Count
 	int16 MeleeEndurTap;
 	int16 ScaleMitigationNumhits[2];			//0: Amount of Mitigation Mod 1: Slot
-	int16 ScaleDamageNumhits[2];				//0: Amount of Damage Mod 1: Slot
-	int16 ScaleHitChanceNumhits[2];				//0: Amount of Hit Chance Mod 1: Slot
+	int16 ScaleDamageNumhits[3];				//0: Amount of Damage Mod 1: Slot 2: Skill
+	int16 ScaleHitChanceNumhits[3];				//0: Amount of Hit Chance Mod 1: Slot 2: Skill
 	int16 ChargeEffect[3];						//0: Modifier 1: Slot 2: Trigger Spell ID
 	int16 CritHitChanceFlank[HIGHEST_SKILL+2];	//i
 	int16 LifeShare[4];							//0= Buff Slot 1=Mitigation Amt 2=Percent Penalty 3=RuneAmt

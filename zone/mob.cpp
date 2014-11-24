@@ -4208,7 +4208,7 @@ int16 Mob::GetMeleeDamageMod_SE(uint16 skill)
 	if (HasShieldEquiped() && !IsOffHandAtk())
 		dmg_mod += itembonuses.ShieldEquipDmgMod[0] + spellbonuses.ShieldEquipDmgMod[0] + aabonuses.ShieldEquipDmgMod[0];
 
-	dmg_mod += GetScaleDamageNumhits(); //C!Kayen
+	dmg_mod += GetScaleDamageNumhits(skill); //C!Kayen
 
 	if(dmg_mod < -100)
 		dmg_mod = -100;
@@ -8349,43 +8349,41 @@ bool Mob::PassDiscRestriction(uint16 spell_id)
 
 int16 Mob::GetScaleMitigationNumhits()
 {
-	int mitigation = spellbonuses.ScaleMitigationNumhits[0];
+	if (!spellbonuses.ScaleMitigationNumhits[0])
+		return 0;
+
 	int slot = spellbonuses.ScaleMitigationNumhits[1];
 
-	if (mitigation && slot >= 0){
-		if (IsValidSpell(buffs[slot].spellid)){
-			int numhits = buffs[slot].numhits;
-			return (numhits * mitigation / 100);
-		}
-	}
-
+	if (slot >= 0 && IsValidSpell(buffs[slot].spellid))
+		return (buffs[slot].numhits * spellbonuses.ScaleMitigationNumhits[0] / 100);
+	
 	return 0;
 }
 
-int16 Mob::GetScaleDamageNumhits()
+int16 Mob::GetScaleDamageNumhits(uint16 skill)
 {
-	int damage = spellbonuses.ScaleDamageNumhits[0];
+	if (!spellbonuses.ScaleDamageNumhits[0])
+		return 0;
+
 	int slot = spellbonuses.ScaleDamageNumhits[1];
 
-	if (damage && slot >= 0){
-		if (IsValidSpell(buffs[slot].spellid)){
-			int numhits = buffs[slot].numhits;
-			return (numhits * damage / 100);
-		}
+	if (spellbonuses.ScaleDamageNumhits[2] == skill || spellbonuses.ScaleDamageNumhits[2] == (HIGHEST_SKILL + 1)){
+		if (slot >= 0 && IsValidSpell(buffs[slot].spellid))
+			return (buffs[slot].numhits * spellbonuses.ScaleDamageNumhits[0] / 100);
 	}
 	return 0;
 }
 
-float Mob::GetScaleHitChanceNumhits()
+float Mob::GetScaleHitChanceNumhits(SkillUseTypes skillinuse)
 {
-	int hitchance = spellbonuses.ScaleHitChanceNumhits[0];
+	if (!spellbonuses.ScaleHitChanceNumhits[0])
+		return 0;
+
 	int slot = spellbonuses.ScaleHitChanceNumhits[1];
 
-	if (hitchance && slot >= 0){
-		if (IsValidSpell(buffs[slot].spellid)){
-			int numhits = buffs[slot].numhits;
-			return static_cast<float>(numhits * hitchance / 100);
-		}
+	if (spellbonuses.ScaleHitChanceNumhits[2] == skillinuse || spellbonuses.ScaleHitChanceNumhits[2] == (HIGHEST_SKILL + 1)){
+		if (slot >= 0 && IsValidSpell(buffs[slot].spellid))
+			return static_cast<float>(buffs[slot].numhits * spellbonuses.ScaleHitChanceNumhits[0] / 100);
 	}
 	return 0;
 }
