@@ -698,6 +698,7 @@ typedef enum {
 #define SE_DiscReuseAwareness			1067 // implemented - Enable / Disable spell awareness popup window.
 #define SE_ScaleHitChanceNumhits		1068 // implemented - Scale hit chance based on numhits Base: Damage ratio x 100
 #define SE_RangerGainNumhitsSP			1069 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
+#define SE_SpinAttack					1070 // implemented
 // LAST
 
 

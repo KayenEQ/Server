@@ -609,6 +609,9 @@ bool Client::Process() {
 		if (fast_buff_tick_timer.Check() && !dead) //1 seconds
 			DoSpecialFastBuffTick();
 
+		if (spun_timer.Check())
+			SpinAttack();
+
 		//C!Kayen END
 					
 		if(spellbonuses.GravityEffect == 1) {

@@ -1872,17 +1872,18 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 {
 	//Basic settings to make sure swarm pets work properly.
 	Mob *swarmOwner = nullptr;
+
 	if  (GetSwarmOwner())
 	{
-		Mob *swarmOwner = entity_list.GetMobID(GetSwarmOwner());
+		swarmOwner = entity_list.GetMobID(GetSwarmOwner());
 	}
 	
-	if  (swarmOwner != nullptr)
+	if (swarmOwner)
 	{
 		if(swarmOwner->IsClient())
 		{
 			SetPetOwnerClient(true); //Simple flag to determine if pet belongs to a client
-			SetAllowBeneficial(1);//Allow temp pets to receive buffs and heals if owner is client.
+			SetAllowBeneficial(true);//Allow temp pets to receive buffs and heals if owner is client.
 			//This is a hack to allow CLIENT swarm pets NOT to be targeted with F8. Warning: Will turn name 'Yellow'!
 			if (RuleB(Pets, SwarmPetNotTargetableWithHotKey))
 				ns->spawn.IsMercenary = 1;

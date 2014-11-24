@@ -7856,7 +7856,7 @@ void Mob::PetLifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 		{
 			damage_to_reduce = damage * spellbonuses.PetLifeShare[1] / 100;
 
-			if(spellbonuses.PetLifeShare[3] && (damage_to_reduce >= buffs[slot].melee_rune)){
+			if(spellbonuses.PetLifeShare[3] && (damage_to_reduce >= static_cast<int32>(buffs[slot].melee_rune))){
 				damage -= buffs[slot].melee_rune;
 				if(!TryFadeEffect(slot))
 					BuffFadeBySlot(slot);
@@ -8376,7 +8376,7 @@ int16 Mob::GetScaleDamageNumhits()
 	return 0;
 }
 
-int16 Mob::GetScaleHitChanceNumhits()
+float Mob::GetScaleHitChanceNumhits()
 {
 	int hitchance = spellbonuses.ScaleHitChanceNumhits[0];
 	int slot = spellbonuses.ScaleHitChanceNumhits[1];
@@ -8384,7 +8384,7 @@ int16 Mob::GetScaleHitChanceNumhits()
 	if (hitchance && slot >= 0){
 		if (IsValidSpell(buffs[slot].spellid)){
 			int numhits = buffs[slot].numhits;
-			return (numhits * hitchance / 100);
+			return static_cast<float>(numhits * hitchance / 100);
 		}
 	}
 	return 0;
@@ -8682,7 +8682,7 @@ void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 
 			int damage_to_reduce = damage * spellbonuses.LifeShare[1] / 100;
 
-			if(spellbonuses.LifeShare[3] && (damage_to_reduce >= buffs[slot].melee_rune)){
+			if(spellbonuses.LifeShare[3] && (damage_to_reduce >= static_cast<int32>(buffs[slot].melee_rune))){
 				damage -= buffs[slot].melee_rune;
 				if(!TryFadeEffect(slot))
 					BuffFadeBySlot(slot);
@@ -8733,7 +8733,7 @@ void Mob::AbsorbMelee(int32 &damage, Mob* attacker)
 	{
 		damage += damage * spellbonuses.AbsorbMeleeDamage[0] / 100;
 		
-		if(spellbonuses.AbsorbMeleeDamage[3] && (damage >= buffs[slot].melee_rune)){
+		if(spellbonuses.AbsorbMeleeDamage[3] && (damage >= static_cast<int32>(buffs[slot].melee_rune))){
 			if(!TryFadeEffect(slot))
 				BuffFadeBySlot(slot);
 		}
@@ -8925,32 +8925,100 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 
 }
 
-void Mob::RangerGainNumHits(SkillUseTypes skill_used)
+void Mob::RangerGainNumHitsOutgoing(uint8 type, SkillUseTypes skill_used)
 {
 	if (!spellbonuses.RangerGainNumhitsSP[0])
 		return;
-
+	//Shout("Type: %i Amt %i Buff %i Max %i",type, spellbonuses.RangerGainNumhitsSP[0],spellbonuses.RangerGainNumhitsSP[1],spellbonuses.RangerGainNumhitsSP[2]);
 	int amt = 0;
+	int slot = -1;
 
-	if (skill_used == Skill1HPiercing)
-		amt = spellbonuses.RangerGainNumhitsSP[0];
-	else if (skill_used == SkillBackstab)
-		amt = spellbonuses.RangerGainNumhitsSP[0] + 10;
+	if (type == NUMHIT_OutgoingHitSuccess) {
 
-	int slot = spellbonuses.RangerGainNumhitsSP[1];
+		if (skill_used == Skill1HPiercing)
+			amt = spellbonuses.RangerGainNumhitsSP[0];
+		else if (skill_used == SkillBackstab)
+			amt = spellbonuses.RangerGainNumhitsSP[0] + 10;
 
-	if (slot && buffs[slot].numhits && IsClient()){
+		slot = spellbonuses.RangerGainNumhitsSP[1];
+
+		if (slot >= 0 && buffs[slot].numhits && IsClient()){
+
+			if (buffs[slot].numhits >= static_cast<uint16>(spellbonuses.RangerGainNumhitsSP[2]))
+				return;
 		
-		int _numhits = buffs[slot].numhits + amt;
+			int _numhits = buffs[slot].numhits + amt;
 						
-		if (_numhits <= 0)
-			_numhits = 1; //Min
-		else if (_numhits >= spells[buffs[slot].spellid].numhits)
-			_numhits = spells[buffs[slot].spellid].numhits; //Max
+			if (_numhits <= 0)
+				_numhits = 1; //Min
+			else if (_numhits >= spellbonuses.RangerGainNumhitsSP[2])
+				_numhits = spellbonuses.RangerGainNumhitsSP[2]; //Max
 
-		buffs[slot].numhits = _numhits;
-		CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+			buffs[slot].numhits = _numhits;
+
+			CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+		}
 	}
+
+	else if (type == NUMHIT_OutgoingHitAttempts){
+
+		if (skill_used == SkillArchery){
+	
+			slot = spellbonuses.RangerGainNumhitsSP[1];
+			if (slot >= 0 && buffs[slot].numhits){
+				if (--buffs[slot].numhits == 0) {
+					CastOnNumHitFade(buffs[slot].spellid);
+					if (!TryFadeEffect(slot))
+						BuffFadeBySlot(slot, true);
+				} else if (IsClient()) { // still have numhits and client, update
+					CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+				}
+			}
+		}
+	}
+}
+
+void Client::SpinAttack() {
+	
+	if (!IsStunned() || !spellbonuses.SpinAttack[0])
+	{
+		CastToClient()->SetAllowPositionUpdate(true);
+		spin_attack_increment = 0;
+		spun_timer.Disable();
+		return;
+	}
+	
+	float head = GetHeading() - 15.0f;
+
+	if (head > 510.0f)
+		head = 0.0f;
+
+	if (head < 0.0f)
+		head = 510.0f;
+
+	int anim = MakeRandomInt(0,1);
+
+	if (anim)
+		DoAnim(animPiercing);
+	else
+		DoAnim(animDualWield);
+
+	MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), head);
+
+	//This determines interval of spell trigger (5) = every 500 seconds
+	int divider = 5;
+	int remainder = 0;
+
+	if (spellbonuses.SpinAttack[1])
+		divider = spellbonuses.SpinAttack[1];
+
+	if (divider > 0)
+		remainder = spin_attack_increment % divider;
+
+	if (!remainder && IsValidSpell(spellbonuses.SpinAttack[0]))
+		SpellFinished(spellbonuses.SpinAttack[0], this,10, 0, -1, spells[spellbonuses.SpinAttack[0]].ResistDiff);
+
+	spin_attack_increment++;
 }
 
 //C!Misc - Functions still in development

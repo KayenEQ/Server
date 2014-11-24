@@ -4343,6 +4343,9 @@ void Client::Handle_OP_ClientTimeStamp(const EQApplicationPacket *app)
 
 void Client::Handle_OP_ClientUpdate(const EQApplicationPacket *app)
 {
+	if (!AllowPositionUpdate())//C!Kayen - Blocks incomming position updates.
+		return;
+
 	if (IsAIControlled())
 		return;
 

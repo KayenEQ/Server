@@ -341,6 +341,9 @@ Client::Client(EQStreamInterface* ieqs)
 	spell_awareness_popup.Disable();
 	disc_reuse_awareness_enabled = false;
 	disc_reuse_awareness_popup.Disable();
+	
+	allow_position_update = true;
+	spin_attack_increment = 0;
 
 }
 

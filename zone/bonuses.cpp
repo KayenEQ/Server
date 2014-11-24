@@ -3087,6 +3087,10 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 			case SE_RangerGainNumhitsSP:
 				newbon->RangerGainNumhitsSP[0] += effect_value;
 				newbon->RangerGainNumhitsSP[1] = buffslot;
+				
+				if (!newbon->RangerGainNumhitsSP[2] || base2 >= newbon->RangerGainNumhitsSP[2])
+					newbon->RangerGainNumhitsSP[2] = base2;
+				
 				break;
 
 			case SE_ChargeEffect:
@@ -3137,6 +3141,12 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 			case SE_AdjustCastTimePct:
 				newbon->AdjustCastTimePct += effect_value;
 				break;
+
+			case SE_SpinAttack:{
+				newbon->SpinAttack[0] = effect_value;
+				newbon->SpinAttack[1] = base2;
+				break;
+			}
 		}
 	}
 }

@@ -308,7 +308,8 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 				attacker->aabonuses.Accuracy[skillinuse] +
 				attacker->itembonuses.HitChance) / 15.0f; //Item Mod 'Accuracy'
 
-	hitBonus += GetScaleHitChanceNumhits(); //C!Kayen
+
+	hitBonus += attacker->GetScaleHitChanceNumhits(); //C!Kayen
 
 	hitBonus += chance_mod; //Modifier applied from casted/disc skill attacks.
 
@@ -3496,8 +3497,10 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 	if (spell_id == SPELL_UNKNOWN && skill_used) {
 		CheckNumHitsRemaining(NUMHIT_IncomingHitAttempts);
 
-		if (attacker)
+		if (attacker){
 			attacker->CheckNumHitsRemaining(NUMHIT_OutgoingHitAttempts);
+			attacker->RangerGainNumHitsOutgoing(NUMHIT_OutgoingHitAttempts, skill_used); //C!Kayen
+		}
 	}
 
 	if(attacker){
@@ -4812,6 +4815,7 @@ void Mob::CommonOutgoingHitSuccess(Mob* defender, int32 &damage, SkillUseTypes s
 	damage += (damage * defender->GetSkillDmgTaken(skillInUse) / 100) + (GetSkillDmgAmt(skillInUse) + defender->GetFcDamageAmtIncoming(this, 0, true, skillInUse));
 	TryCriticalHit(defender, skillInUse, damage);
 	CheckNumHitsRemaining(NUMHIT_OutgoingHitSuccess);
+	RangerGainNumHitsOutgoing(NUMHIT_OutgoingHitSuccess, skillInUse);
 }
 
 void Mob::CommonBreakInvisible()

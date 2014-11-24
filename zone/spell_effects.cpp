@@ -3150,6 +3150,19 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_SpinAttack:
+			{
+				int stun_time = spells[spell_id].buffduration * 6 * 1000;
+				Stun(stun_time);
+				if(IsClient()) {
+					CastToClient()->spin_attack_increment = 0;
+					CastToClient()->SetAllowPositionUpdate(false);
+					CastToClient()->SpinAttack();
+					spun_timer.Start(100); // spins alittle every 100 ms
+				}
+				break;
+			}
+
 			case SE_SpellAwareness:{
 				if (IsClient()){
 					if (!CastToClient()->HasSpellAwareness()){
