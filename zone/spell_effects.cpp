@@ -2838,8 +2838,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					opts.damage_percent = 1;
 					opts.hit_chance = spells[spell_id].max[i];
 					
-					int numattacks = spells[spell_id].base[i];
+					if (opts.hit_chance == 10001){//Increase hit chance only if from flank
+						if (caster->FlankMob(this,caster->GetX(), caster->GetY()))
+							opts.hit_chance = 10000;
+						else
+							opts.hit_chance = 0;
+					}
 
+					int numattacks = spells[spell_id].base[i];
 					if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
 						numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
 	
@@ -2897,6 +2903,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					}
 				}
 				break;
+			}
+
+			case SE_BackStabEffect:
+			{
+				if (caster){
+					caster->TryBackstabSpellEffect(this);
+				}
 			}
 
 			case SE_AdjustRecastTimer:
@@ -4331,6 +4344,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 	uint16 _casterid = buffs[slot].casterid; //C!Kayen
 	uint16 _spell_id = buffs[slot].spellid; //C!Kayen
+	uint16 trigger_spell_id  = SPELL_UNKNOWN; //C!Kayen;
 
 	for (int i=0; i < EFFECT_COUNT; i++)
 	{
@@ -4686,6 +4700,14 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 				entity_list.FadeCastersBuffFromAll(GetID(), spells[buffs[slot].spellid].base[i]);
 				break;	
 			}
+
+			case SE_CastOnFadeComplete: {
+				if (IsValidSpell(spells[buffs[slot].spellid].base2[i])){
+					if(MakeRandomInt(0, 100) <= spells[buffs[slot].spellid].base[i])
+						SpellFinished(spells[buffs[slot].spellid].base2[i], this, 10, 0, -1, spells[spells[buffs[slot].spellid].base2[i]].ResistDiff);
+				}
+				break;	
+			}
 		}
 	}
 
@@ -4760,6 +4782,11 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 	}
 
 	FadeLinkedBuff(_casterid, _spell_id);//C!Kayen - Removes a linked buff on the buff.caster when fades on target.
+
+	//if (IsValidSpell(trigger_spell_id)){
+		//if(MakeRandomInt(0, 100) <= spells[spell_id].base[i])
+			//caster->SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+	//}
 	
 	if (iRecalcBonuses)
 		CalcBonuses();

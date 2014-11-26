@@ -947,8 +947,12 @@ public:
 	bool InAngleMob(Mob *other = nullptr, float start_angle = 0.0f, float stop_angle = 0.0f) const;
 	inline bool LeftMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 56.0f, 124.0f); }
 	inline bool RightMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 236.0f, 304.0f); }
+	//ANGLE NOTES < 56 is FRONT AND > 90 is BEHIND [FLANK OVERLAPS WITH BEHIND? BAD IDEA?]
 	inline bool FlankMob(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
-		{ return (!other || other == this) ? true : (MobAngle(other, ourx, oury) > 56.0f && MobAngle(other, ourx, oury) > 124.0f); }
+		{ return (!other || other == this) ? true : (MobAngle(other, ourx, oury) >= 56.0f && MobAngle(other, ourx, oury) <= 124.0f); }
+	inline bool BehindMobCustom(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
+		{ return (!other || other == this) ? true : MobAngle(other, ourx, oury) > 124.0f; }
+
 	bool SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target);
 	bool SpellDirectionalTarget(uint16 spell_id, Mob *target); //Used in popup UI
 	
@@ -1162,6 +1166,9 @@ public:
 	void ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust);
 
 	void RangerGainNumHitsOutgoing(uint8 type, SkillUseTypes skill_used);
+
+	void TryBackstabSpellEffect(Mob* other);
+	void DoBackstabSpellEffect(Mob* other, bool min_damage = false);
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END

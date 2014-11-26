@@ -7930,7 +7930,7 @@ void Client::Handle_OP_Hide(const EQApplicationPacket *app)
 		else
 			hidden = true;
 	}
-	if (GetClass() == ROGUE){
+	if (GetClass() == ROGUE || GetClass() == RANGER){ //C!Kayen
 		EQApplicationPacket *outapp = new EQApplicationPacket(OP_SimpleMessage, sizeof(SimpleMessage_Struct));
 		SimpleMessage_Struct *msg = (SimpleMessage_Struct *)outapp->pBuffer;
 		msg->color = 0x010E;
@@ -12542,7 +12542,7 @@ void Client::Handle_OP_Sneak(const EQApplicationPacket *app)
 	sa_out->parameter = sneaking;
 	QueuePacket(outapp);
 	safe_delete(outapp);
-	if (GetClass() == ROGUE){
+	if (GetClass() == ROGUE || GetClass() == RANGER){ //C!Kayen
 		outapp = new EQApplicationPacket(OP_SimpleMessage, 12);
 		SimpleMessage_Struct *msg = (SimpleMessage_Struct *)outapp->pBuffer;
 		msg->color = 0x010E;

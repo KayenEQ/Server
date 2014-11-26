@@ -8317,7 +8317,7 @@ bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
 				
 				if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
 						
-					if (BehindMob(target, GetX(), GetY()))
+					if (BehindMobCustom(target, GetX(), GetY()))
 						return true;
 					else{
 						Message(13, "You must be behind your target to execute this attack!");
@@ -8635,7 +8635,7 @@ int16 Mob::GetCriticalChanceFlankBonus(Mob *defender, uint16 skill)
 	critical_chance +=	itembonuses.CritHitChanceFlank[HIGHEST_SKILL+1] + spellbonuses.CritHitChanceFlank[HIGHEST_SKILL+1] + aabonuses.CritHitChanceFlank[HIGHEST_SKILL+1] +
 						itembonuses.CritHitChanceFlank[skill] + spellbonuses.CritHitChanceFlank[skill] + aabonuses.CritHitChanceFlank[skill];
 
-	if (critical_chance && defender && FlankMob(defender)){
+	if (critical_chance && defender && FlankMob(defender, GetX(), GetY())){
 		
 		if(critical_chance < -100)
 			critical_chance = -100;
@@ -9017,6 +9017,156 @@ void Client::SpinAttack() {
 		SpellFinished(spellbonuses.SpinAttack[0], this,10, 0, -1, spells[spellbonuses.SpinAttack[0]].ResistDiff);
 
 	spin_attack_increment++;
+}
+
+void Mob::TryBackstabSpellEffect(Mob *other) {
+	
+	if(!other)
+		return;
+
+	bool bIsBehind = false;
+	bool bCanFrontalBS = false;
+
+	//make sure we have a proper weapon if we are a client.
+	if(IsClient()) {
+		const ItemInst *wpn = CastToClient()->GetInv().GetItem(MainPrimary);
+		if(!wpn || (wpn->GetItem()->ItemType != ItemType1HPiercing)){
+			Message_StringID(13, BACKSTAB_WEAPON);
+			return;
+		}
+	}
+
+	int tripleChance = itembonuses.TripleBackstab + spellbonuses.TripleBackstab + aabonuses.TripleBackstab;
+
+	if (BehindMobCustom(other, GetX(), GetY()))
+		bIsBehind = true;
+
+	else {
+		int FrontalBSChance = itembonuses.FrontalBackstabChance + spellbonuses.FrontalBackstabChance + aabonuses.FrontalBackstabChance;
+
+		if (FrontalBSChance && (FrontalBSChance > MakeRandomInt(0, 100)))
+			bCanFrontalBS = true;
+	}
+	
+	if (bIsBehind || bCanFrontalBS){ // Player is behind other OR can do Frontal Backstab
+
+		if (bCanFrontalBS) 
+			CastToClient()->Message(0,"Your fierce attack is executed with such grace, your target did not see it coming!");
+		
+		DoBackstabSpellEffect(other,false);
+		if(IsClient() && CastToClient()->CheckDoubleAttack(false))
+		{
+			if(other->GetHP() > 0)
+				DoBackstabSpellEffect(other,false);
+
+			if (tripleChance && other->GetHP() > 0 && tripleChance > MakeRandomInt(0, 100))
+				DoBackstabSpellEffect(other,false);
+			
+		}
+	}
+
+	else if(aabonuses.FrontalBackstabMinDmg || itembonuses.FrontalBackstabMinDmg || spellbonuses.FrontalBackstabMinDmg) {
+
+		//we can stab from any angle, we do min damage though.
+		DoBackstabSpellEffect(other, true);
+		if(IsClient() && CastToClient()->CheckDoubleAttack(false))
+		{
+			if(other->GetHP() > 0)
+				DoBackstabSpellEffect(other,true);
+
+			if (tripleChance && other->GetHP() > 0 && tripleChance > MakeRandomInt(0, 100))
+				DoBackstabSpellEffect(other,true);
+		}
+	}
+	else { //We do a single regular attack if we attack from the front without chaotic stab
+		Attack(other, MainPrimary, false,false,true);
+	}
+}
+
+void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
+{
+	if (!other)
+		return;
+
+	int32 ndamage = 0;
+	int32 max_hit = 0;
+	int32 min_hit = 0;
+	int32 hate = 0;
+	int32 primaryweapondamage = 0;
+	int32 backstab_dmg = 0;
+	int ReuseTime = 10;
+
+	if(IsClient()){
+		const ItemInst *wpn = nullptr;
+		wpn = CastToClient()->GetInv().GetItem(MainPrimary);
+		if(wpn) {
+			primaryweapondamage = GetWeaponDamage(other, wpn);
+			backstab_dmg = wpn->GetItem()->BackstabDmg;
+			for (int i = 0; i < EmuConstants::ITEM_COMMON_SIZE; ++i)
+			{
+				ItemInst *aug = wpn->GetAugment(i);
+				if(aug)
+				{
+					backstab_dmg += aug->GetItem()->BackstabDmg;
+				}
+			}
+		}
+	}
+	else{
+		primaryweapondamage = (GetLevel()/7)+1; // fallback incase it's a npc without a weapon, 2 dmg at 10, 10 dmg at 65
+		backstab_dmg = primaryweapondamage;
+	}
+	
+	if(primaryweapondamage > 0){
+	
+		if(level > 25){
+			max_hit = (((2*backstab_dmg) * GetDamageTable(Skill1HPiercing) / 100) * 10 * GetSkill(Skill1HPiercing) / 355) + ((level-25)/3) + 1;
+			hate = 20 * backstab_dmg * GetSkill(Skill1HPiercing) / 355;
+		}
+		else{
+			max_hit = (((2*backstab_dmg) * GetDamageTable(Skill1HPiercing) / 100) * 10 * GetSkill(Skill1HPiercing) / 355) + 1;;
+			hate = 20 * backstab_dmg * GetSkill(Skill1HPiercing) / 355;
+		}
+
+		// determine minimum hits
+		if (level < 51) {
+			min_hit = (level*15/10);
+		}
+		else {
+			min_hit = (level * ( level*5 - 105)) / 100;
+		}
+
+		if(!other->CheckHitChance(this, Skill1HPiercing, 0))	{
+			ndamage = 0;
+		}
+		else{
+			if(min_damage){
+				ndamage = min_hit;
+			}
+			else {
+				if (max_hit < min_hit)
+					max_hit = min_hit;
+
+				ndamage = max_hit;
+			}
+		}
+	}
+	else{
+		ndamage = -5;
+	}
+
+	ndamage = mod_backstab_damage(ndamage);
+	
+	uint32 Assassinate_Dmg = 0;
+	Assassinate_Dmg = TryAssassinate(other, Skill1HPiercing, ReuseTime);
+	
+	if (Assassinate_Dmg) {
+		ndamage = Assassinate_Dmg;
+		entity_list.MessageClose_StringID(this, false, 200, MT_CritMelee, ASSASSINATES, GetName());
+	}
+
+	DoSpecialAttackDamage(other, SkillBackstab, ndamage, min_hit, hate, ReuseTime, false, false);
+	DoAnim(animPiercing);
 }
 
 //C!Misc - Functions still in development

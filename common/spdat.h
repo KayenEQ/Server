@@ -699,6 +699,8 @@ typedef enum {
 #define SE_ScaleHitChanceNumhits		1068 // implemented - Scale hit chance based on numhits Base: Damage ratio x 100
 #define SE_RangerGainNumhitsSP			1069 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
 #define SE_SpinAttack					1070 // implemented
+#define SE_BackStabEffect				1071 //
+#define	SE_CastOnFadeComplete			1072 // implemented - Fade effect using spell finished to cast the spell.
 // LAST
 
 
