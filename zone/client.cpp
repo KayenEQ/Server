@@ -1905,6 +1905,9 @@ void Client::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 			if (strlen(item->IDFile) > 2)
 				ns->spawn.equipment[MaterialPrimary] = atoi(&item->IDFile[2]);
 		}
+		else if (inst->GetOrnamentationIcon() && inst->GetOrnamentationIDFile()) {
+			ns->spawn.equipment[MaterialPrimary] = inst->GetOrnamentationIDFile();
+		}
 		else {
 			item = inst->GetItem();
 			if (strlen(item->IDFile) > 2)
@@ -1916,6 +1919,9 @@ void Client::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 			item = inst->GetOrnamentationAug(ornamentationAugtype)->GetItem();
 			if (strlen(item->IDFile) > 2)
 				ns->spawn.equipment[MaterialSecondary] = atoi(&item->IDFile[2]);
+		}
+		else if (inst->GetOrnamentationIcon() && inst->GetOrnamentationIDFile()) {
+			ns->spawn.equipment[MaterialSecondary] = inst->GetOrnamentationIDFile();
 		}
 		else {
 			item = inst->GetItem();
@@ -2598,38 +2604,6 @@ void Client::LogMerchant(Client* player, Mob* merchant, uint32 quantity, uint32 
 	}
 }
 
-void Client::LogLoot(Client* player, Corpse* corpse, const Item_Struct* item){
-	char* logtext;
-	char itemid[100];
-	char itemname[100];
-	char coinloot[100];
-	if (item!=0){
-		memset(itemid,0,sizeof(itemid));
-		memset(itemname,0,sizeof(itemid));
-		itoa(item->ID,itemid,10);
-		sprintf(itemname,"%s",item->Name);
-		logtext=itemname;
-
-		strcat(logtext,"(");
-		strcat(logtext,itemid);
-		strcat(logtext,") Looted");
-		database.logevents(player->AccountName(),player->AccountID(),player->admin,player->GetName(),corpse->orgname,"Looting Item",logtext,4);
-	}
-	else{
-		if ((corpse->GetPlatinum() + corpse->GetGold() + corpse->GetSilver() + corpse->GetCopper())>0) {
-			memset(coinloot,0,sizeof(coinloot));
-			sprintf(coinloot,"%i PP %i GP %i SP %i CP",corpse->GetPlatinum(),corpse->GetGold(),corpse->GetSilver(),corpse->GetCopper());
-			logtext=coinloot;
-			strcat(logtext," Looted");
-			if (corpse->GetPlatinum()>10000)
-				database.logevents(player->AccountName(),player->AccountID(),player->admin,player->GetName(),corpse->orgname,"Excessive Loot!",logtext,9);
-			else
-				database.logevents(player->AccountName(),player->AccountID(),player->admin,player->GetName(),corpse->orgname,"Looting Money",logtext,5);
-		}
-	}
-}
-
-
 bool Client::BindWound(Mob* bindmob, bool start, bool fail){
 	EQApplicationPacket* outapp = 0;
 	if(!fail) {
@@ -2814,6 +2788,9 @@ void Client::SetMaterial(int16 in_slot, uint32 item_id) {
 				item = inst->GetOrnamentationAug(ornamentationAugtype)->GetItem();
 				m_pp.item_material[MaterialPrimary] = atoi(item->IDFile + 2);
 			}
+			else if (inst && inst->GetOrnamentationIcon() && inst->GetOrnamentationIDFile()) {
+				m_pp.item_material[MaterialPrimary] = inst->GetOrnamentationIDFile();
+			}
 			else {
 				m_pp.item_material[MaterialPrimary] = atoi(item->IDFile + 2);
 			}
@@ -2823,6 +2800,9 @@ void Client::SetMaterial(int16 in_slot, uint32 item_id) {
 			if (inst && inst->GetOrnamentationAug(ornamentationAugtype)) {
 				item = inst->GetOrnamentationAug(ornamentationAugtype)->GetItem();
 				m_pp.item_material[MaterialSecondary] = atoi(item->IDFile + 2);
+			}
+			else if (inst && inst->GetOrnamentationIcon() && inst->GetOrnamentationIDFile()) {
+				m_pp.item_material[MaterialSecondary] = inst->GetOrnamentationIDFile();
 			}
 			else {
 				m_pp.item_material[MaterialSecondary] = atoi(item->IDFile + 2);
@@ -4985,7 +4965,7 @@ void Client::SummonAndRezzAllCorpses()
 
 	entity_list.RemoveAllCorpsesByCharID(CharacterID());
 
-	int CorpseCount = database.SummonAllPlayerCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(),
+	int CorpseCount = database.SummonAllCharacterCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(),
 								GetX(), GetY(), GetZ(), GetHeading());
 	if(CorpseCount <= 0)
 	{
@@ -5023,7 +5003,7 @@ void Client::SummonAllCorpses(float dest_x, float dest_y, float dest_z, float de
 
 	entity_list.RemoveAllCorpsesByCharID(CharacterID());
 
-	int CorpseCount = database.SummonAllPlayerCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(),
+	int CorpseCount = database.SummonAllCharacterCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(),
 								dest_x, dest_y, dest_z, dest_heading);
 	if(CorpseCount <= 0)
 	{
@@ -5067,7 +5047,7 @@ void Client::DepopPlayerCorpse(uint32 dbid)
 
 void Client::BuryPlayerCorpses()
 {
-	database.BuryAllPlayerCorpses(CharacterID());
+	database.BuryAllCharacterCorpses(CharacterID());
 }
 
 void Client::NotifyNewTitlesAvailable()
@@ -5880,7 +5860,11 @@ void Client::ProcessInspectRequest(Client* requestee, Client* requester) {
 						const Item_Struct *aug_weap = inst->GetOrnamentationAug(ornamentationAugtype)->GetItem();
 						strcpy(insr->itemnames[L], item->Name);
 						insr->itemicons[L] = aug_weap->Icon;
-					} 
+					}
+					else if (inst->GetOrnamentationIcon() && inst->GetOrnamentationIDFile()) {
+						strcpy(insr->itemnames[L], item->Name);
+						insr->itemicons[L] = inst->GetOrnamentationIcon();
+					}					
 					else {
 						strcpy(insr->itemnames[L], item->Name);
 						insr->itemicons[L] = item->Icon;

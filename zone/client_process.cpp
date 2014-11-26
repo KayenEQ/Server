@@ -2216,8 +2216,8 @@ void Client::HandleRespawnFromHover(uint32 Option)
 
 				_log(SPELLS__REZ, "Found corpse. Marking corpse as rezzed.");
 
-				corpse->Rezzed(true);
-				corpse->CompleteRezz();
+				corpse->IsRezzed(true);
+				corpse->CompleteResurrection();
 			}
 		}
 		else //Not rez

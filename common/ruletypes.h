@@ -437,6 +437,7 @@ RULE_BOOL ( NPC, SmartLastFightingDelayMoving, true)
 RULE_BOOL ( NPC, ReturnNonQuestNoDropItems, false)	// Returns NO DROP items on NPCs that don't have an EVENT_TRADE sub in their script
 RULE_INT ( NPC, StartEnrageValue, 9) // % HP that an NPC will begin to enrage
 RULE_BOOL ( NPC, LiveLikeEnrage, false) // If set to true then only player controlled pets will enrage
+RULE_BOOL ( NPC, EnableMeritBasedFaction, false) // If set to true, faction will given in the same way as experience (solo/group/raid)
 RULE_CATEGORY_END()
 
 RULE_CATEGORY ( Aggro )
@@ -585,6 +586,8 @@ RULE_CATEGORY( Inventory )
 RULE_BOOL ( Inventory, EnforceAugmentRestriction, true) // Forces augment slot restrictions
 RULE_BOOL ( Inventory, EnforceAugmentUsability, true) // Forces augmented item usability
 RULE_BOOL ( Inventory, EnforceAugmentWear, true) // Forces augment wear slot validation
+RULE_BOOL ( Inventory, DeleteTransformationMold, true) //False if you want mold to last forever
+RULE_BOOL ( Inventory, AllowAnyWeaponTransformation, false) //Weapons can use any weapon transformation
 RULE_CATEGORY_END()
 
 RULE_CATEGORY( Client )

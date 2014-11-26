@@ -1308,7 +1308,7 @@ void Mob::ShowStats(Client* client)
 	}
 	else if (IsCorpse()) {
 		if (IsPlayerCorpse()) {
-			client->Message(0, "  CharID: %i  PlayerCorpse: %i", CastToCorpse()->GetCharID(), CastToCorpse()->GetDBID());
+			client->Message(0, "  CharID: %i  PlayerCorpse: %i", CastToCorpse()->GetCharID(), CastToCorpse()->GetCorpseDBID());
 		}
 		else {
 			client->Message(0, "  NPCCorpse", GetID());
@@ -2508,6 +2508,9 @@ int32 Mob::GetEquipmentMaterial(uint8 material_slot) const
 					item = inst->GetOrnamentationAug(ornamentationAugtype)->GetItem();
 					return atoi(&item->IDFile[2]);
 				}
+				else if (inst->GetOrnamentationIcon() && inst->GetOrnamentationIDFile()) {
+					return inst->GetOrnamentationIDFile();
+				}
 				else {
 					if (strlen(item->IDFile) > 2)
 						return atoi(&item->IDFile[2]);
@@ -3113,7 +3116,7 @@ void Mob::TriggerOnCast(uint32 focus_spell, uint32 spell_id, bool aa_trigger)
 
 		if(IsValidSpell(trigger_spell_id) && GetTarget()){
 			SpellFinished(trigger_spell_id, GetTarget(),10, 0, -1, spells[trigger_spell_id].ResistDiff);
-			CheckNumHitsRemaining(NUMHIT_MatchingSpells,0, focus_spell);
+			CheckNumHitsRemaining(NUMHIT_MatchingSpells,-1, focus_spell);
 		}
 	}
 }
@@ -3455,7 +3458,7 @@ void Mob::TrySympatheticProc(Mob *target, uint32 spell_id)
 					SpellFinished(focus_trigger, target, 10, 0, -1, spells[focus_trigger].ResistDiff);
 			}
 
-			CheckNumHitsRemaining(NUMHIT_MatchingSpells, 0, focus_spell);
+			CheckNumHitsRemaining(NUMHIT_MatchingSpells, -1, focus_spell);
 		}
 }
 
