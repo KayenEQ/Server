@@ -4824,7 +4824,7 @@ void Mob::CommonOutgoingHitSuccess(Mob* defender, int32 &damage, SkillUseTypes s
 	damage += (damage * defender->GetSkillDmgTaken(skillInUse) / 100) + (GetSkillDmgAmt(skillInUse) + defender->GetFcDamageAmtIncoming(this, 0, true, skillInUse));
 	TryCriticalHit(defender, skillInUse, damage);
 	CheckNumHitsRemaining(NUMHIT_OutgoingHitSuccess);
-	RangerGainNumHitsOutgoing(NUMHIT_OutgoingHitSuccess, skillInUse);
+	RangerGainNumHitsOutgoing(NUMHIT_OutgoingHitSuccess, skillInUse);//C!Kayen
 }
 
 void Mob::CommonBreakInvisible()
