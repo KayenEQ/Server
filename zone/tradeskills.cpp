@@ -24,17 +24,14 @@
 #include <netinet/in.h>	//for htonl
 #endif
 
-#include "masterentity.h"
-#include "zonedb.h"
-#include "../common/packet_functions.h"
-#include "../common/packet_dump.h"
-#include "titles.h"
-#include "string_ids.h"
 #include "../common/misc_functions.h"
-#include "../common/string_util.h"
 #include "../common/rulesys.h"
-#include "quest_parser_collection.h"
+#include "../common/string_util.h"
 #include "queryserv.h"
+#include "quest_parser_collection.h"
+#include "string_ids.h"
+#include "titles.h"
+#include "zonedb.h"
 
 extern QueryServ* QServ;
 
@@ -283,7 +280,7 @@ void Object::HandleCombine(Client* user, const NewCombine_Struct* in_combine, Ob
 	}
 
 	container = inst;
-	if (container->GetItem()->BagType == BagTypeTransformationmold) {
+	if (container->GetItem() && container->GetItem()->BagType == BagTypeTransformationmold) {
 		const ItemInst* inst = container->GetItem(0);
 		bool AllowAll = RuleB(Inventory, AllowAnyWeaponTransformation);
 		if (inst && ItemInst::CanTransform(inst->GetItem(), container->GetItem(), AllowAll)) {
@@ -304,7 +301,7 @@ void Object::HandleCombine(Client* user, const NewCombine_Struct* in_combine, Ob
 		return;
 	}
 
-	if (container->GetItem()->BagType == BagTypeDetransformationmold) {
+	if (container->GetItem() && container->GetItem()->BagType == BagTypeDetransformationmold) {
 		const ItemInst* inst = container->GetItem(0);
 		if (inst && inst->GetOrnamentationIcon() && inst->GetOrnamentationIcon()) {
 			const Item_Struct* new_weapon = inst->GetItem();
