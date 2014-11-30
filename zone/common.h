@@ -501,10 +501,14 @@ typedef struct
 	float origin_x;
 	float origin_y;
 	float origin_z;
+	float tlast_x;
+	float tlast_y;
 	uint32 ranged_id;
 	uint32 ammo_id;
+	int ammo_slot;
 	uint8 skill;
 } tProjatk;
+
 
 //eventually turn this into a typedef and
 //make DoAnim take it instead of int, to enforce its use.
