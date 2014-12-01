@@ -571,7 +571,6 @@ bool Client::Process() {
 			SpellProjectileEffect();
 
 		//C!Kayen START
-		SpellProjectileEffect2();
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
 		TryChargeHit();

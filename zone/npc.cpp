@@ -680,12 +680,13 @@ bool NPC::Process()
 			viral_timer_counter = 0;
 	}
 
+	ProjectileAttack();
+
 	if(projectile_timer.Check())
 		SpellProjectileEffect();
 
 	//C!Kayen - Start Custom Timers
 	MeleeCharge();
-	SpellProjectileEffect2();
 	SpellProjectileEffectTargetRing();
 	SpellCastingTimerDisplay();
 	

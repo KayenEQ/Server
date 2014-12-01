@@ -304,6 +304,7 @@ Mob::Mob(const char* in_name,
 		ProjectileAtk[i].ammo_id = 0;
 		ProjectileAtk[i].ammo_slot = 0;
 		ProjectileAtk[i].skill = 0;
+		ProjectileAtk[i].speed_mod = 0.0f;
 	}
 
 	memset(&itembonuses, 0, sizeof(StatBonuses));
@@ -6338,17 +6339,17 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	//Note: Field209 / powerful_flag : Used as Speed Variable (in MS > 500) and to flag TargetType Ring/Location as a Projectile
 	//Note: pvpresistbase : Used to set tilt
 
-	int bolt_id = -1;
+	int slot = -1;
 
 	//Make sure there is an avialable bolt to be cast.
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
-		if (projectile_spell_id[i] == 0){
-			bolt_id = i;
+		if (ProjectileAtk[i].target_id == 0){
+			slot = i;
 			break;
 		}
 	}
 
-	if (bolt_id < 0)
+	if (slot < 0)
 		return false;
 
 	const char *item_IDFile = spells[spell_id].player_1;
@@ -6379,11 +6380,21 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 	}
 
 	if (CheckLosFN(spell_target)) {
-		projectile_spell_id[bolt_id] = spell_id;
-		projectile_target_id[bolt_id] = spell_target->GetID();
-		projectile_x[bolt_id] = GetX(), projectile_y[bolt_id] = GetY(), projectile_z[bolt_id] = GetZ();
-		projectile_increment[bolt_id] = 1;
-		SetProjectile(true);
+		float speed_mod = speed * 0.45f; //Constant for adjusting speeds to match calculated impact time.
+		float distance = spell_target->CalculateDistance(GetX(), GetY(), GetZ());
+		float hit = 60.0f + (distance / speed_mod);
+
+		ProjectileAtk[slot].increment = 1;
+		ProjectileAtk[slot].hit_increment = static_cast<uint16>(hit); //This projected hit time if target does NOT MOVE
+		ProjectileAtk[slot].target_id = spell_target->GetID();
+		ProjectileAtk[slot].wpn_dmg = spell_id; //Store spell_id in weapon damage field
+		ProjectileAtk[slot].origin_x = GetX();
+		ProjectileAtk[slot].origin_y = GetY();
+		ProjectileAtk[slot].origin_z = GetZ();
+		ProjectileAtk[slot].skill = SkillConjuration;
+		ProjectileAtk[slot].speed_mod = speed_mod;
+
+		SetProjectileAttack(true);
 	}
 
 	SkillUseTypes skillinuse;
@@ -6424,84 +6435,6 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 
 	return true;
 }		
-
-void Mob::SpellProjectileEffect2()
-{
-	if (!HasProjectile())
-		return;;
-
-	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
-
-		if (projectile_increment[i] == 0){
-			continue;
-		}
-		
-		Mob* target = entity_list.GetMobID(projectile_target_id[i]);
-		
-		float distance = 0.0f;
-		
-		if (target) 
-				distance = target->CalculateDistance(projectile_x[i], projectile_y[i],  projectile_z[i]);
-
-		float hit = 0.0f;
-		float dist_mod = 270.0f;
-		float speed_mod = 0.0f;
-		float projectile_speed_ring = static_cast<float>(spells[projectile_spell_id[i]].powerful_flag) / 1000.0f;
-	
-		if (projectile_speed_ring >= 0.5f && projectile_speed_ring < 1.0f)
-			speed_mod = 175.0f - ((projectile_speed_ring - 0.5f) * (175.0f - 100.0f));
-		else if (projectile_speed_ring >= 1.0f && projectile_speed_ring < 2.0f)
-			speed_mod = 100.0f - ((projectile_speed_ring - 1.0f) * (100.0f - 70.0f));
-		else if (projectile_speed_ring >= 2.0f && projectile_speed_ring < 3.0f)
-			speed_mod = 70.0f - ((projectile_speed_ring - 2.0f) * (70.0f - 60.0f));
-		else if (projectile_speed_ring >= 3.0f && projectile_speed_ring < 4.0f)
-			speed_mod = 60.0f - ((projectile_speed_ring - 3.0f) * (60.0f - 50.0f));
-		else if (projectile_speed_ring >= 4.0f && projectile_speed_ring <= 5.0f)
-			speed_mod = 50.0f - ((projectile_speed_ring - 4.0f) * (50.0f - 40.0f));
-
-		dist_mod = (dist_mod * speed_mod) / 100.0f;
-		hit = (distance * dist_mod) / 100;
-
-		//Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
-		//Close Distance Modifiers
-		/*
-		if (distance <= 35 && distance > 25)
-			hit *= 1.6f;
-		if (distance <= 25 && distance > 15)
-			hit *= 1.8f;
-		if (distance <= 15) 
-			hit *= 2.0f;
-		*/
-
-		uint16 increment = static_cast<int>(hit);
-
-		if (increment <= projectile_increment[i]){
-
-			if (target && IsValidSpell(projectile_spell_id[i]))
-				SpellOnTarget(projectile_spell_id[i], target, false, true, spells[projectile_spell_id[i]].ResistDiff, true);
-
-			projectile_spell_id[i] = 0;
-			projectile_target_id[i] = 0;
-			projectile_x[i] = 0, projectile_y[i] = 0, projectile_z[i] = 0;
-			projectile_increment[i] = 0;
-			SetProjectile(false);
-		}
-
-		else {
-			projectile_increment[i]++;
-		}
-	}
-}
-
-bool Mob::ExistsProjectile()
-{
-	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
-	
-		if (projectile_increment[i])
-			return true;
-	}
-	return false;
-}
 
 //#### C!MeleeCharge
 
