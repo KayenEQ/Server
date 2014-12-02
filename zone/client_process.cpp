@@ -2053,6 +2053,7 @@ void Client::CalcRestState() {
 
 	if(RuleB(Character, RestRegenEndurance))
 		RestRegenEndurance = (GetMaxEndurance() * RuleI(Character, RestRegenPercent) / 100);
+
 }
 
 void Client::DoTracking()

@@ -3183,6 +3183,20 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_PetEffectOnOwner:
+			{
+				if (caster->IsNPC() && caster->GetOwner()){
+					Mob* owner = caster->GetOwner();
+
+					if (owner && IsValidSpell(spells[spell_id].base[i])){
+						caster->SpellFinished(spells[spell_id].base[i], owner, 10, 0, -1, spells[spell_id].ResistDiff);
+					}
+
+					pet_buff_owner_timer.Start(2000);
+				}
+				break;
+			}
+
 			case SE_SpellAwareness:{
 				if (IsClient()){
 					if (!CastToClient()->HasSpellAwareness()){
@@ -4705,6 +4719,16 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 			case SE_FadeCastersBuffFromAll: {
 				entity_list.FadeCastersBuffFromAll(GetID(), spells[buffs[slot].spellid].base[i]);
+				break;	
+			}
+
+			case SE_PetEffectOnOwner: {
+				Mob* owner = nullptr;//Fade buff from owner;
+				if (IsNPC() && GetOwner()){
+					owner = GetOwner();
+					if (owner)
+						owner->BuffFadeBySpellID(spells[buffs[slot].spellid].base[i]);
+				}
 				break;	
 			}
 

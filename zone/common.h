@@ -477,6 +477,8 @@ struct StatBonuses {
 	int32 AdjustCastTimePct;					// alters NPC cast time by percent
 	int16 RangerGainNumhitsSP[3];	            //0 = Amt Numhits added per hit 1 = Buffslot 2 = Max Numhits Gained.
 	uint16 SpinAttack[2];						// 0 = spellid of trigger spell 1= speed of spell trigger
+	bool BottomHateList;						// Sets mob to bottom of hatelist like divine aura.
+	uint16 PetEffectOnOwner;					// spell id
 };
 
 

@@ -3156,6 +3156,14 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* ne
 				newbon->SpinAttack[1] = base2;
 				break;
 			}
+
+			case SE_BottomHateList:
+				newbon->BottomHateList = true;
+				break;
+
+			case SE_PetEffectOnOwner:			
+				newbon->PetEffectOnOwner = effect_value; 
+				break;
 		}
 	}
 }

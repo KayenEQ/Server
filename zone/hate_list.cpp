@@ -321,7 +321,8 @@ Mob *HateList::GetTop(Mob *center)
 				continue;
 			}
 
-			if(cur->ent->DivineAura() || cur->ent->IsMezzed() || cur->ent->IsFeared() || cur->ent->GetOnlyAggroLast()){//C!Kayen
+			if(cur->ent->DivineAura() || cur->ent->IsMezzed() || cur->ent->IsFeared() 
+				|| cur->ent->GetOnlyAggroLast() || cur->ent->GetOnlyAggroLastSE()){//C!Kayen
 				if(hate == -1)
 				{
 					top = cur->ent;

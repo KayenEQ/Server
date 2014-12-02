@@ -701,6 +701,8 @@ typedef enum {
 #define SE_SpinAttack					1070 // implemented
 #define SE_BackStabEffect				1071 //
 #define	SE_CastOnFadeComplete			1072 // implemented - Fade effect using spell finished to cast the spell.
+#define SE_BottomHateList				1073 // Set owner to be on bottom of hatelist until fades.
+#define SE_PetEffectOnOwner				1074 // Casts a spell on owner if buff about to fade and in range
 // LAST
 
 

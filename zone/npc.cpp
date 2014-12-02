@@ -692,6 +692,9 @@ bool NPC::Process()
 	
 	if (effect_field_timer.Check())
 		DoEffectField();
+
+	if (pet_buff_owner_timer.Check())
+		DoPetEffectOnOwner();
 	
 	if (stun_resilience_timer.Check())
 		StunResilienceRegen();

@@ -1527,8 +1527,8 @@ void Mob::SendItemAnimation(Mob *to, const Item_Struct *item, SkillUseTypes skil
 	//these angle and tilt used together seem to make the arrow/knife throw as straight as I can make it
 
 	as->launch_angle = CalculateHeadingToTarget(to->GetX(), to->GetY()) * 2;
-	as->tilt = 125;
-	as->arc = 50;
+	as->tilt = 125;//125; //120
+	as->arc = 50;//50; //2
 
 
 	//fill in some unknowns, we dont know their meaning yet

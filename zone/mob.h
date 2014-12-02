@@ -1123,6 +1123,7 @@ public:
 	//C!Misc Inline Functions
 	inline bool GetOnlyAggroLast() const { return OnlyAggroLast; } //Drops to MOB to bottom of hatelist - PERL EXPORTED
 	inline void SetOnlyAggroLast(bool value) { OnlyAggroLast = value; } //PERL EXPORTED
+	inline bool GetOnlyAggroLastSE() const { return spellbonuses.BottomHateList; }
 		
 	inline bool IsTargetSpellAnimDisabled() const { return DisableTargetSpellAnimation; } //PERL EXPORTED
 	inline void DisableTargetSpellAnim(bool value) { DisableTargetSpellAnimation = value; } //PERL EXPORTED
@@ -1178,6 +1179,8 @@ public:
 
 	void TryBackstabSpellEffect(Mob* other);
 	void DoBackstabSpellEffect(Mob* other, bool min_damage = false);
+
+	void DoPetEffectOnOwner();
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
@@ -1577,6 +1580,7 @@ protected:
 		
 	Timer effect_field_timer;
 	Timer aura_field_timer;
+	Timer pet_buff_owner_timer;
 
 	Timer fast_buff_tick_timer; //used for special case
 	int fast_buff_tick_count; //used for special case

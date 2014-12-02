@@ -459,6 +459,7 @@ Mob::Mob(const char* in_name,
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
+	pet_buff_owner_timer.Disable();
 	fast_buff_tick_timer.Disable();
 	stun_resilience_timer.Disable();
 	charge_effect_timer.Disable();
@@ -7063,6 +7064,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	//1: Check for any special pet 'type' behaviors
 	const char *pettype = spells[spell_id].player_1; //Constant for each type of pet
 
+	//Enchater Pets
 	if ((strcmp(pettype, "spectral_animation")) == 0){
 		WearChange(7,owner->GetEquipmentMaterial(MaterialPrimary),0); //ENC Animation spell to set graphic same as sword.
 		WearChange(8,0,0);
@@ -7074,7 +7076,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 			TempName(WT.c_str());
 	}
 
-	if ((strcmp(pettype, "reaper")) == 0){
+	else if ((strcmp(pettype, "reaper")) == 0){
 		SpellFinished(2050, this, 10, 0, -1, spells[spell_id].ResistDiff);
 		size_divider = 2;
 		WT = owner->GetCleanName();	
@@ -7091,6 +7093,15 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 			TempName(WT.c_str());
 		SetOnlyAggroLast(true);
 		//SendSpellEffect(567, 500, 0, 1, 3000, true);
+	}
+
+	//Ranger Pets
+	else if ((strcmp(pettype, "rng_mistwalker")) == 0){
+		SpellFinished(4015, this, 10, 0, -1, spells[spell_id].ResistDiff);
+		WT = owner->GetCleanName();	
+		WT += "'s_mistwalker";
+		if (strlen(WT.c_str()) <= 64)
+			TempName(WT.c_str());
 	}
 
 	//2: Target RING - Determine if target pets spawn at location or path to location. [Limit value in SE_TemporaryPetNoAgggro]
@@ -9121,6 +9132,38 @@ void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
 
 	DoSpecialAttackDamage(other, SkillBackstab, ndamage, min_hit, hate, ReuseTime, false, false);
 	DoAnim(animPiercing);
+}
+
+void Mob::DoPetEffectOnOwner()
+{
+	//Pet will autocast buff on owner if in range, buff fades if out of range of pet
+	if (spellbonuses.PetEffectOnOwner) {
+		Mob* owner = nullptr;
+		if (IsNPC() && GetOwner())
+			owner = GetOwner();
+		
+		if (!owner)
+			return;
+			
+		uint16 spell_id = spellbonuses.PetEffectOnOwner;
+		if (IsValidSpell(spell_id)){
+
+			float dist2 = spells[spell_id].range * spells[spell_id].range;
+			float dist_targ = 0;
+			dist_targ = DistNoRoot(*owner);
+
+			if (dist_targ > dist2){
+				if (owner->FindBuff(spell_id))
+					owner->BuffFadeBySpellID(spell_id);
+			
+				return;
+			}
+			if(!owner->FindBuff(spell_id))
+				SpellFinished(spell_id, owner, 10, 0, -1, spells[spell_id].ResistDiff);
+		}
+	}
+	else
+		pet_buff_owner_timer.Disable();
 }
 
 //C!Misc - Functions still in development
