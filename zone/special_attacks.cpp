@@ -198,7 +198,7 @@ void Client::OPCombatAbility(const EQApplicationPacket *app) {
 			SetAttackTimer();
 			ThrowingAttack(GetTarget());
 			if (CheckDoubleRangedAttack())
-				RangedAttack(GetTarget(), true);
+				ThrowingAttack(GetTarget(), true);
 			return;
 		}
 		//ranged attack (archery)
@@ -596,7 +596,6 @@ void Mob::RogueBackstab(Mob* other, bool min_damage, int ReuseTime)
 			for (int i = 0; i < EmuConstants::ITEM_COMMON_SIZE; ++i)
 			{
 				ItemInst *aug = wpn->GetAugment(i);
-				if(aug)
 				{
 					backstab_dmg += aug->GetItem()->BackstabDmg;
 				}

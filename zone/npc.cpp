@@ -682,9 +682,6 @@ bool NPC::Process()
 
 	ProjectileAttack();
 
-	if(projectile_timer.Check())
-		SpellProjectileEffect();
-
 	//C!Kayen - Start Custom Timers
 	MeleeCharge();
 	SpellProjectileEffectTargetRing();

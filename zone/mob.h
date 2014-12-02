@@ -237,7 +237,6 @@ public:
 	uint16 CastingSpellID() const { return casting_spell_id; }
 	bool DoCastingChecks();
 	bool TryDispel(uint8 caster_level, uint8 buff_level, int level_modifier);
-	void SpellProjectileEffect();
 	bool TrySpellProjectile(Mob* spell_target,  uint16 spell_id, float speed = 1.5f);
 	void ResourceTap(int32 damage, uint16 spell_id);
 	void TryTriggerThreshHold(int32 damage, int effect_id, Mob* attacker);
@@ -498,6 +497,7 @@ public:
 	//Util
 	static uint32 RandomTimer(int min, int max);
 	static uint8 GetDefaultGender(uint16 in_race, uint8 in_gender = 0xFF);
+	static bool IsPlayerRace(uint16 in_race);
 	uint16 GetSkillByItemType(int ItemType);
 	uint8 GetItemTypeBySkill(SkillUseTypes skill);
 	virtual void MakePet(uint16 spell_id, const char* pettype, const char *petname = nullptr);
@@ -578,6 +578,7 @@ public:
 		uint8 in_hairstyle = 0xFF, uint8 in_luclinface = 0xFF, uint8 in_beard = 0xFF, uint8 in_aa_title = 0xFF, 
 		uint32 in_drakkin_heritage = 0xFFFFFFFF, uint32 in_drakkin_tattoo = 0xFFFFFFFF, 
 		uint32 in_drakkin_details = 0xFFFFFFFF, float in_size = -1.0f);
+	bool RandomizeFeatures(bool send_illusion = true, bool set_variables = true);
 	virtual void Stun(int duration);
 	virtual void UnStun();
 	inline void Silence(bool newval) { silenced = newval; }
@@ -851,7 +852,7 @@ public:
 	// HP Event
 	inline int GetNextHPEvent() const { return nexthpevent; }
 	void SetNextHPEvent( int hpevent );
-	void SendItemAnimation(Mob *to, const Item_Struct *item, SkillUseTypes skillInUse, float velocity = 4.0);
+	void SendItemAnimation(Mob *to, const Item_Struct *item, SkillUseTypes skillInUse, float velocity= 4.0);
 	inline int& GetNextIncHPEvent() { return nextinchpevent; }
 	void SetNextIncHPEvent( int inchpevent );
 
@@ -997,8 +998,6 @@ public:
 
 	//C!Projectile2
 	bool TrySpellProjectile2(Mob* spell_target,  uint16 spell_id);
-	inline bool HasProjectile() const { return ActiveProjectile; }
-	inline void SetProjectile(bool HasProjectile_value) { ActiveProjectile = HasProjectile_value; }
 	
 	//C!MeleeCharge - THIS NEEDS TO BE FINISHED
 	void MeleeCharge();
@@ -1361,12 +1360,6 @@ protected:
 	uint8 bardsong_slot;
 	uint32 bardsong_target_id;
 
-	Timer projectile_timer;
-	uint32 projectile_spell_id[MAX_SPELL_PROJECTILE];
-	uint16 projectile_target_id[MAX_SPELL_PROJECTILE];
-	uint16 projectile_increment[MAX_SPELL_PROJECTILE];
-	float projectile_x[MAX_SPELL_PROJECTILE], projectile_y[MAX_SPELL_PROJECTILE], projectile_z[MAX_SPELL_PROJECTILE];
-
 	bool ActiveProjectileATK;
 	tProjatk ProjectileAtk[MAX_SPELL_PROJECTILE];
 
@@ -1553,7 +1546,6 @@ protected:
 	uint32 projectile_increment_ring[MAX_SPELL_PROJECTILE];
 	uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
 	bool ActiveProjectileRing;
-	bool ActiveProjectile;
 	bool ProjectilePet;
 	bool ProjectileAESpellHitTarget; //USed with projectile target rings.
 

@@ -567,9 +567,6 @@ bool Client::Process() {
 
 		ProjectileAttack();
 
-		if(projectile_timer.Check())
-			SpellProjectileEffect();
-
 		//C!Kayen START
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();

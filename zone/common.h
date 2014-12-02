@@ -512,7 +512,6 @@ typedef struct
 	float speed_mod;
 } tProjatk;
 
-
 //eventually turn this into a typedef and
 //make DoAnim take it instead of int, to enforce its use.
 enum {	//type arguments to DoAnim
