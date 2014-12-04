@@ -738,6 +738,7 @@ public:
 	void ProjectileAttack();
 	inline bool HasProjectileAttack() const { return ActiveProjectileATK; }
 	inline void SetProjectileAttack(bool value) { ActiveProjectileATK = value; }
+	float GetRangeDistTargetSizeMod(Mob* other);
 	bool CanDoSpecialAttack(Mob *other);
 	bool Flurry(ExtraAttackOptions *opts);
 	bool Rampage(ExtraAttackOptions *opts);
@@ -1185,9 +1186,7 @@ public:
 
 	int32 GetProjectileBonusFromSpell(uint16 spell_id);
 
-	float GetRangeDistTargetSizeMod(Mob* other);
 
-	
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 
