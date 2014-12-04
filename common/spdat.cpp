@@ -1223,14 +1223,15 @@ bool IsMeleeRangeSpellEffect(uint16 spell_id)
 	return false;
 }
 
-bool IsThrowRangeSpellEffect(uint16 spell_id)
+bool IsRangeSpellEffect(uint16 spell_id)
 {
 	if (!IsValidSpell(spell_id))
 		return false;
 
-	//Range set to 101 will always be checked as InCombat range
-	if (spells[spell_id].range == 201)
-		return true;
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_AttackThrow || spells[spell_id].effectid[i] == SE_AttackArchery)
+			return true;
+	}
 
 	return false;
 }

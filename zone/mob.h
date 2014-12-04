@@ -732,8 +732,9 @@ public:
 	virtual void DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage, int32 min_damage = 1, int32 hate_override = -1, int ReuseTime = 10, bool HitChance=false, bool CanAvoid=true);
 	virtual void DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon=nullptr, const Item_Struct* AmmoItem=nullptr, uint16 weapon_damage=0, int16 chance_mod=0,int16 focus=0, int ReuseTime=0, uint32 range_id=0, int AmmoSlot=0, float speed = 4.0f);
 	virtual void DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes skillinuse, int16 chance_mod=0, int16 focus=0, bool CanRiposte=false, int ReuseTime=0);
-	virtual void DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon=nullptr, const ItemInst* Ammo=nullptr, uint16 weapon_damage=0, int16 chance_mod=0, int16 focus=0, int ReuseTime=0, uint32 range_id=0, uint32 ammo_id=0, const Item_Struct *AmmoItem=nullptr, int AmmoSlot=0, float speed= 4.0f);
-	bool TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg, const ItemInst* RangeWeapon, const ItemInst* Ammo, int AmmoSlot, float speed);
+	virtual void DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon=nullptr, const ItemInst* Ammo=nullptr, uint16 weapon_damage=0, int16 chance_mod=0, int16 focus=0, int ReuseTime=0, uint32 range_id=0, 
+		uint32 ammo_id=0, const Item_Struct *AmmoItem=nullptr, int AmmoSlot=0, float speed= 4.0f, uint16 spell_id=SPELL_UNKNOWN, int16 dmod=0);
+	bool TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg, const ItemInst* RangeWeapon, const ItemInst* Ammo, int AmmoSlot, float speed,uint16 spell_id=SPELL_UNKNOWN);
 	void ProjectileAttack();
 	inline bool HasProjectileAttack() const { return ActiveProjectileATK; }
 	inline void SetProjectileAttack(bool value) { ActiveProjectileATK = value; }
@@ -1143,6 +1144,7 @@ public:
 	void DoSpecialFastBuffTick();
 	bool MeleeDiscCombatRange(uint32 target_id, uint16 spell_id);
 	bool PassDiscRestriction(uint16 spell_id);
+	bool RangeDiscCombatRange(uint32 target_id, uint16 spell_id);
 	int16 GetScaleMitigationNumhits();
 	int16 GetScaleDamageNumhits(uint16 skill);
 	float GetScaleHitChanceNumhits(SkillUseTypes skillinuse);
@@ -1181,6 +1183,11 @@ public:
 
 	void DoPetEffectOnOwner();
 
+	int32 GetProjectileBonusFromSpell(uint16 spell_id);
+
+	float GetRangeDistTargetSizeMod(Mob* other);
+
+	
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 

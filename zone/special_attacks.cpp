@@ -764,15 +764,17 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 		}
 	}
 
-	float range = RangeItem->Range + AmmoItem->Range + 5.0f; //Fudge it a little, client will let you hit something at 0 0 0 when you are at 205 0 0
+	//float range = RangeItem->Range + AmmoItem->Range + 5.0f; //Fudge it a little, client will let you hit something at 0 0 0 when you are at 205 0 0
+	float range = RangeItem->Range + AmmoItem->Range + GetRangeDistTargetSizeMod(GetTarget());
 	mlog(COMBAT__RANGED, "Calculated bow range to be %.1f", range);
 	range *= range;
-	if(DistNoRootNoZ(*GetTarget()) > range) {
+	if(DistNoRoot(*GetTarget()) > range) {
 		mlog(COMBAT__RANGED, "Ranged attack out of range... client should catch this. (%f > %f).\n", DistNoRootNoZ(*GetTarget()), range);
-		//target is out of range, client does a message
+		Message_StringID(13,TARGET_OUT_OF_RANGE);//Client enforces range and sends the message, this is a backup just incase.
 		return;
 	}
 	else if(DistNoRootNoZ(*GetTarget()) < (RuleI(Combat, MinRangedAttackDist)*RuleI(Combat, MinRangedAttackDist))){
+		Message_StringID(15,RANGED_TOO_CLOSE);//Client enforces range and sends the message, this is a backup just incase.
 		return;
 	}
 
@@ -805,7 +807,7 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 }
 
 void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const ItemInst* Ammo, uint16 weapon_damage, int16 chance_mod, int16 focus, int ReuseTime, 
-							uint32 range_id, uint32 ammo_id, const Item_Struct *AmmoItem, int AmmoSlot, float speed) {
+							uint32 range_id, uint32 ammo_id, const Item_Struct *AmmoItem, int AmmoSlot, float speed, uint16 spell_id, int16 dmod) {
 	
 	if ((other == nullptr || 
 		((IsClient() && CastToClient()->dead) || 
@@ -828,8 +830,9 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 	this function is then run again to do the damage portion
 	*/
 	bool LaunchProjectile = false;
+	bool ProjectileImpact = false;
 	bool ProjectileMiss = false;
-
+	
 	if (RuleB(Combat, ProjectileDmgOnImpact)){
 
 		if (AmmoItem)
@@ -843,6 +846,8 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 			*/
 			
 			if (!RangeWeapon && !Ammo && range_id && ammo_id){
+				
+				ProjectileImpact = true;
 
 				if (weapon_damage == 0)
 					ProjectileMiss = true; //This indicates that MISS was originally calculated.
@@ -865,11 +870,11 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 	else if (AmmoItem)
 		SendItemAnimation(other, AmmoItem, SkillArchery);
 
-	if (ProjectileMiss || !other->CheckHitChance(this, SkillArchery, MainPrimary, chance_mod)) {
+	if (ProjectileMiss || (!ProjectileImpact && !other->CheckHitChance(this, SkillArchery, MainPrimary, chance_mod))) {
 		mlog(COMBAT__RANGED, "Ranged attack missed %s.", other->GetName());
 
 		if (LaunchProjectile){
-			TryProjectileAttack(other, AmmoItem, SkillArchery, 0, RangeWeapon, Ammo, AmmoSlot, speed);
+			TryProjectileAttack(other, AmmoItem, SkillArchery, 0, RangeWeapon, Ammo, AmmoSlot, speed, spell_id);
 			return;
 		}
 		else
@@ -894,7 +899,7 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 			WDmg = weapon_damage;
 
 		if (LaunchProjectile){//1: Shoot the Projectile once we calculate weapon damage.
-			TryProjectileAttack(other, AmmoItem, SkillArchery, WDmg, RangeWeapon, Ammo, AmmoSlot, speed);
+			TryProjectileAttack(other, AmmoItem, SkillArchery, WDmg, RangeWeapon, Ammo, AmmoSlot, speed, spell_id);
 			return;
 		}
 
@@ -963,6 +968,11 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 			if (!HeadShot)
 				other->AvoidDamage(this, TotalDmg, false);
 
+			if (dmod)
+				TotalDmg = TotalDmg*dmod/100; //C!Kayen
+
+			TotalDmg += TotalDmg * GetProjectileBonusFromSpell(spell_id) / 100;  //C!Kayen
+
 			other->MeleeMitigation(this, TotalDmg, minDmg);
 			if(TotalDmg > 0){
 				CommonOutgoingHitSuccess(other, TotalDmg, SkillArchery);
@@ -1009,7 +1019,8 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 	}
 }
 
-bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg, const ItemInst* RangeWeapon, const ItemInst* Ammo, int AmmoSlot, float speed){
+bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg, 
+							  const ItemInst* RangeWeapon, const ItemInst* Ammo, int AmmoSlot, float speed, uint16 spell_id){
 
 	if (!other)
 		return false;
@@ -1049,6 +1060,8 @@ bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes
 	ProjectileAtk[slot].ammo_slot = 0;
 	ProjectileAtk[slot].skill = skillInUse;
 	ProjectileAtk[slot].speed_mod = speed_mod;
+	ProjectileAtk[slot].spell_id = spell_id; //C!Kayen
+	ProjectileAtk[slot].dmod = other->GetSpellPowerDistanceMod(); //C!Kayen
 
 	SetProjectileAttack(true);
 
@@ -1092,8 +1105,10 @@ void Mob::ProjectileAttack()
 		if (ProjectileAtk[i].hit_increment <= ProjectileAtk[i].increment){
 
 			if (target){
-				if (ProjectileAtk[i].skill == SkillArchery)
-					DoArcheryAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0,ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_id, nullptr, ProjectileAtk[i].ammo_slot);
+				if (ProjectileAtk[i].skill == SkillArchery){
+					DoArcheryAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0,ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_id, nullptr, 
+										ProjectileAtk[i].ammo_slot,0,ProjectileAtk[i].spell_id, ProjectileAtk[i].dmod);
+				}
 				else if (ProjectileAtk[i].skill == SkillThrowing)
 					DoThrowingAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0, ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_slot);
 				else if (ProjectileAtk[i].skill == SkillConjuration && IsValidSpell(ProjectileAtk[i].wpn_dmg))
@@ -1329,10 +1344,10 @@ void Client::ThrowingAttack(Mob* other, bool CanDoubleAttack) { //old was 51
 		}
 	}
 
-	int range = item->Range +50/*Fudge it a little, client will let you hit something at 0 0 0 when you are at 205 0 0*/;
+	int range = item->Range + GetRangeDistTargetSizeMod(GetTarget());/*Fudge it a little, client will let you hit something at 0 0 0 when you are at 205 0 0*/;
 	mlog(COMBAT__RANGED, "Calculated bow range to be %.1f", range);
 	range *= range;
-	if(DistNoRootNoZ(*GetTarget()) > range) {
+	if(DistNoRoot(*GetTarget()) > range) {
 		mlog(COMBAT__RANGED, "Throwing attack out of range... client should catch this. (%f > %f).\n", DistNoRootNoZ(*GetTarget()), range);
 		//target is out of range, client does a message
 		return;
@@ -1382,6 +1397,7 @@ void Mob::DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon, const Ite
 	this function is then run again to do the damage portion
 	*/
 	bool LaunchProjectile = false;
+	bool ProjectileImpact = false;
 	bool ProjectileMiss = false;
 
 	if (RuleB(Combat, ProjectileDmgOnImpact)){
@@ -1390,6 +1406,8 @@ void Mob::DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon, const Ite
 			LaunchProjectile = true;
 		else{
 			if (!RangeWeapon && range_id){
+
+				ProjectileImpact = true;
 
 				if (weapon_damage == 0)
 					ProjectileMiss = true; //This indicates that MISS was originally calculated.
@@ -1408,7 +1426,7 @@ void Mob::DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon, const Ite
 	else if (AmmoItem)
 		SendItemAnimation(other, AmmoItem, SkillThrowing);
 
-	if (ProjectileMiss || !other->CheckHitChance(this, SkillThrowing, MainPrimary, chance_mod)){
+	if (ProjectileMiss || (!ProjectileImpact && !other->CheckHitChance(this, SkillThrowing, MainPrimary, chance_mod))){
 		mlog(COMBAT__RANGED, "Ranged attack missed %s.", other->GetName());
 		if (LaunchProjectile){
 			TryProjectileAttack(other, AmmoItem, SkillThrowing, 0, RangeWeapon, nullptr, AmmoSlot, speed);

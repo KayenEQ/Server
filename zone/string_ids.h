@@ -230,6 +230,7 @@
 #define SPELL_FIZZLE_OTHER			1218	//%1's spell fizzles!
 #define MISSED_NOTE_OTHER			1219	//A missed note brings %1's song to a close!
 #define SPELL_LEVEL_REQ				1226	//This spell only works on people who are level %1 and under.
+#define RANGED_TOO_CLOSE			12698	//Your target is too close to use a ranged weapon!!
 #define CORPSE_DECAY_NOW			1227	//This corpse is waiting to expire.
 #define SURNAME_REJECTED			1374	//Your new surname was rejected. Please try a different name.
 #define DUEL_DECLINE				1383	//%1 has declined your challenge to duel to the death.

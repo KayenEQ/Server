@@ -2912,6 +2912,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_AttackArchery:{
+				if (caster && caster->IsClient())
+					caster->CastToClient()->ArcheryAttackSpellEffect(this, spell_id, i);
+				break;
+			}
+
 			case SE_BackStabEffect:
 			{
 				if (caster){

@@ -677,7 +677,7 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 	}
 
 	//C!Kayen - Check for disciplines that require melee range to cast [Range == 101]
-	if (!PassDiscRestriction(spell_id) || (target && !MeleeDiscCombatRange(target, spell_id))){
+	if (!PassDiscRestriction(spell_id) || (target && !MeleeDiscCombatRange(target, spell_id)) || (!RangeDiscCombatRange(target, spell_id))){
 		
 		if (GetPTimers().Enabled((uint32)DiscTimer))
 			GetPTimers().Clear(&database, (uint32)DiscTimer);

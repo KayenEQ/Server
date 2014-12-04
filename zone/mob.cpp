@@ -316,6 +316,8 @@ Mob::Mob(const char* in_name,
 		ProjectileAtk[i].ammo_slot = 0;
 		ProjectileAtk[i].skill = 0;
 		ProjectileAtk[i].speed_mod = 0.0f;
+		ProjectileAtk[i].spell_id = SPELL_UNKNOWN; //C!Kayen
+		ProjectileAtk[i].dmod = 0; //C!Kayen
 	}
 
 	memset(&itembonuses, 0, sizeof(StatBonuses));
@@ -8502,6 +8504,55 @@ bool Mob::PassDiscRestriction(uint16 spell_id)
 	return true;
 }
 
+bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
+{
+	if (!IsRangeSpellEffect(spell_id))
+		return true;
+
+	Mob* target = nullptr;
+	target = entity_list.GetMob(target_id);
+
+	if (target){
+
+		if (GetDiscHPRestriction(spell_id) > 0){
+			if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
+				Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
+				return false;
+			}
+		}
+		bool InCombatRange = true;
+		
+		float range = CastToClient()->GetArcheryRange();
+		
+		range *= range;
+		if(DistNoRootNoZ(*target) > range) 
+			InCombatRange = false;
+
+		if (InCombatRange){
+
+			if (IsFacingMob(target)){
+				
+				if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
+						
+					if (BehindMobCustom(target, GetX(), GetY()))
+						return true;
+					else{
+						Message(13, "You must be behind your target to execute this attack!");
+						return false;
+					}
+				}
+				else
+					return true;
+			}
+			else
+				Message_StringID(13, CANT_SEE_TARGET);
+		}
+		else
+			Message_StringID(13, TARGET_OUT_OF_RANGE);
+	}
+	return false;
+}
+
 int16 Mob::GetScaleMitigationNumhits()
 {
 	if (!spellbonuses.ScaleMitigationNumhits[0])
@@ -9354,6 +9405,121 @@ void Mob::DoPetEffectOnOwner()
 	}
 	else
 		pet_buff_owner_timer.Disable();
+}
+
+void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
+{
+	if (!target)
+		return;
+
+	const ItemInst* RangeWeapon = m_inv[MainRange];
+	const ItemInst* Ammo = m_inv[MainAmmo];
+
+	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)) 
+		return;
+
+	if (!Ammo || !Ammo->IsType(ItemClassCommon))
+		return;
+	
+	const Item_Struct* RangeItem = RangeWeapon->GetItem();
+	const Item_Struct* AmmoItem = Ammo->GetItem();
+
+	if(RangeItem->ItemType != ItemTypeBow)
+		return;
+
+	if(AmmoItem->ItemType != ItemTypeArrow)
+		return;
+
+	float speed = 4.0;
+	int hit_chance = spells[spell_id].max[i];
+
+	int numattacks = spells[spell_id].base[i];
+
+	if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
+		numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
+	
+	for(int x = 0; x < numattacks; x++){
+		if (!HasDied()){
+			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, MainAmmo, speed, spell_id);
+		}
+	}
+}
+
+float Client::GetArcheryRange()
+{
+	const ItemInst* RangeWeapon = m_inv[MainRange];
+	const ItemInst* Ammo = m_inv[MainAmmo];
+
+	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)) 
+		return 0;
+
+	if (!Ammo || !Ammo->IsType(ItemClassCommon))
+		return 0;
+	
+	const Item_Struct* RangeItem = RangeWeapon->GetItem();
+	const Item_Struct* AmmoItem = Ammo->GetItem();
+
+	if(RangeItem->ItemType != ItemTypeBow)
+		return 0;
+
+	if(AmmoItem->ItemType != ItemTypeArrow)
+		return 0;
+
+	float range = RangeItem->Range + AmmoItem->Range + 5.0f;
+	return range;
+}
+
+int32 Mob::GetProjectileBonusFromSpell(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_AttackArchery || spells[spell_id].effectid[i] == SE_AttackThrow){
+			return spells[spell_id].base2[i];
+		}
+	}
+
+	return 0;
+}
+
+float Mob::GetRangeDistTargetSizeMod(Mob* other)
+{
+	/*
+	Range is enforced client side, therefore these numbers do not need to be 100% accurate just close enough to
+	prevent any exploitation. The range mod changes in some situations depending on if size is from spawn or from SendIllusionPacket changes.
+	At present time only calculate from spawn (it is no consistent what happens to the calc when changing it after spawn).
+	*/
+	if (!other)
+		return 0.0f;
+
+	float tsize = other->GetSize();
+
+	if (GetSize() > tsize)
+		tsize = GetSize();
+
+	float mod = 0.0f;
+	/*These are correct numbers if mob size is changed via #size (Don't know why it matters but it does)
+	if (tsize < 7)
+		mod = 16.0f;
+	else if (tsize >=7 && tsize <= 20)
+		mod = 16.0f + (0.6f * (tsize - 6.0f));
+	else if (tsize >=20 && tsize <= 60)
+		mod = 25.0f + (1.25f * (tsize - 20.0f));
+	else
+		mod = 75.0f;
+	*/
+
+	if (tsize < 10)
+		mod = 18.0f;
+	else if (tsize >=10 && tsize < 15)
+		mod = 20.0f + (4.0f * (tsize - 10.0f));
+	else if (tsize >=15 && tsize <= 20)
+		mod = 42.0f + (5.8f * (tsize - 15.0f));
+	else
+		mod = 75.0f;
+	
+	return (mod + 2.0f); //Add 2.0f as buffer to prevent any chance of failures, client enforce range check regardless.
 }
 
 //C!Misc - Functions still in development
