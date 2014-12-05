@@ -8251,10 +8251,15 @@ void Mob::DirectionalFailMessage(uint16 spell_id)
 	//Message given for failed directional abilities, message will differ based on type of spell.
 	//Message(MT_SpellFailure, "Your spell failed to find a target.");
 	
+	//if (spells[spell_id].IsDisciplineBuff)
+	//	Message(MT_SpellFailure, "No target found for this ability.");
+	//else
+	//	Message(MT_SpellFailure, "No target found for this spell.");
+
 	if (spells[spell_id].IsDisciplineBuff)
-		Message(MT_SpellFailure, "No target found for this ability.");
+		Message(MT_SpellFailure, "Your ability failed to hit a target.");
 	else
-		Message(MT_SpellFailure, "No target found for this spell.");
+		Message(MT_SpellFailure, "Your spell failed to hit a target.");
 
 }
 
@@ -8508,18 +8513,36 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 			return false;
 		}
 	}
-		
+
+	
 	float range = CastToClient()->GetArcheryRange(target);
-	float min_range = spells[spell_id].min_range * spells[spell_id].min_range;
-		
-	range *= range;
-	if(DistNoRoot(*target) > range) {
+	float range_sp = spells[spell_id].range;
+	
+	if (!range_sp)
+		range_sp = spells[spell_id].aoerange;
+
+	if (range_sp != 351.0f)//Use Default value
+		range = range_sp;
+
+	float min_range = RuleI(Combat, MinRangedAttackDist);
+	float min_range_sp = spells[spell_id].min_range;
+
+	if (min_range_sp > min_range)
+		min_range = min_range_sp;
+
+	float dist = DistNoRoot(*target);
+	Shout("Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
+	if(dist > (range * range)) {
 		Message_StringID(13, TARGET_OUT_OF_RANGE);
 		return false;
 	}
 
-	if(DistNoRoot(*target) < min_range) {
-		Message_StringID(15, RANGED_TOO_CLOSE);
+	if(dist < (min_range * min_range)) {
+		if (min_range == min_range_sp)
+			Message_StringID(13, TARGET_TOO_CLOSE);
+		else
+			Message_StringID(15, RANGED_TOO_CLOSE);
+		
 		return false;
 	}
 
@@ -9426,6 +9449,10 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	int hit_chance = spells[spell_id].max[i];
 	int16 dmgpct = spells[spell_id].base2[i];
 	int numattacks = spells[spell_id].base[i];
+	int16 dmod = -1;
+
+	if (GetSpellPowerDistanceMod())
+		dmod = 0;
 
 	if (hit_chance == 10001){//Increase hit chance only if from position
 		if (PassEffectLimitToDirection(target, spell_id)){
@@ -9459,7 +9486,7 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 		speed = MakeRandomFloat(3.5, 4.5);//So they don't all clump
 	for(int x = 0; x < numattacks; x++){
 		if (!HasDied()){
-			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, MainAmmo, speed, _spell_id, 0, dmgpct);
+			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, MainAmmo, speed, _spell_id, dmod, dmgpct);
 		}
 	}
 }
