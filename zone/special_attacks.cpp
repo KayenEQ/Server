@@ -767,13 +767,13 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 
 	float range = RangeItem->Range + AmmoItem->Range + GetRangeDistTargetSizeMod(GetTarget());
 	mlog(COMBAT__RANGED, "Calculated bow range to be %.1f", range);
-	range *= range;
-	if(DistNoRoot(*GetTarget()) > range) {
+	float dist = DistNoRoot(*GetTarget());
+	if(dist > (range * range)) {
 		mlog(COMBAT__RANGED, "Ranged attack out of range... client should catch this. (%f > %f).\n", DistNoRootNoZ(*GetTarget()), range);
 		Message_StringID(13,TARGET_OUT_OF_RANGE);//Client enforces range and sends the message, this is a backup just incase.
 		return;
 	}
-	else if(DistNoRoot(*GetTarget()) < (RuleI(Combat, MinRangedAttackDist)*RuleI(Combat, MinRangedAttackDist))){
+	else if(dist < (RuleI(Combat, MinRangedAttackDist)*RuleI(Combat, MinRangedAttackDist))){
 		Message_StringID(15,RANGED_TOO_CLOSE);//Client enforces range and sends the message, this is a backup just incase.
 		return;
 	}
@@ -790,7 +790,7 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 	}
 
 	//Shoots projectile and/or applies the archery damage
-	DoArcheryAttackDmg(GetTarget(), RangeWeapon, Ammo,0,0,0,0,0,0, AmmoItem, ammo_slot);
+	DoArcheryAttackDmg(GetTarget(), RangeWeapon, Ammo,0,0,0,0,0,0, AmmoItem, ammo_slot, 4.0f, SPELL_UNKNOWN, -1);
 
 	//EndlessQuiver AA base1 = 100% Chance to avoid consumption arrow.
 	int ChanceAvoidConsume = aabonuses.ConsumeProjectile + itembonuses.ConsumeProjectile + spellbonuses.ConsumeProjectile;
@@ -807,7 +807,7 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 }
 
 void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const ItemInst* Ammo, uint16 weapon_damage, int16 chance_mod, int16 focus, int ReuseTime, 
-							uint32 range_id, uint32 ammo_id, const Item_Struct *AmmoItem, int AmmoSlot, float speed, uint16 spell_id, int16 dmod) {
+							uint32 range_id, uint32 ammo_id, const Item_Struct *AmmoItem, int AmmoSlot, float speed, uint16 spell_id, int16 dmod, int16 dmgpct) {
 	
 	if ((other == nullptr || 
 		((IsClient() && CastToClient()->dead) || 
@@ -876,7 +876,7 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 		mlog(COMBAT__RANGED, "Ranged attack missed %s.", other->GetName());
 
 		if (LaunchProjectile){
-			TryProjectileAttack(other, AmmoItem, SkillArchery, 0, RangeWeapon, Ammo, AmmoSlot, speed, spell_id);
+			TryProjectileAttack(other, AmmoItem, SkillArchery, 0, RangeWeapon, Ammo, AmmoSlot, speed, spell_id, dmod, dmgpct);
 			return;
 		}
 		else
@@ -901,7 +901,7 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 			WDmg = weapon_damage;
 
 		if (LaunchProjectile){//1: Shoot the Projectile once we calculate weapon damage.
-			TryProjectileAttack(other, AmmoItem, SkillArchery, WDmg, RangeWeapon, Ammo, AmmoSlot, speed, spell_id);
+			TryProjectileAttack(other, AmmoItem, SkillArchery, WDmg, RangeWeapon, Ammo, AmmoSlot, speed, spell_id, dmod, dmgpct);
 			return;
 		}
 
@@ -973,7 +973,7 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 			if (dmod)
 				TotalDmg = TotalDmg*dmod/100; //C!Kayen
 
-			TotalDmg += TotalDmg * GetProjectileBonusFromSpell(spell_id) / 100;  //C!Kayen
+			TotalDmg += TotalDmg * dmgpct / 100;  //C!Kayen
 
 			other->MeleeMitigation(this, TotalDmg, minDmg);
 			if(TotalDmg > 0){
@@ -1021,8 +1021,8 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 	}
 }
 
-bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg, 
-							  const ItemInst* RangeWeapon, const ItemInst* Ammo, int AmmoSlot, float speed, uint16 spell_id){
+bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg,  const ItemInst* RangeWeapon, const ItemInst* Ammo, 
+							  int AmmoSlot, float speed, uint16 spell_id, int16 dmod, int16 dmgpct){
 
 	if (!other)
 		return false;
@@ -1045,6 +1045,9 @@ bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes
 	float distance = other->CalculateDistance(GetX(), GetY(), GetZ());
 	float hit = 60.0f + (distance / speed_mod); //Calcuation: 60 = Animation Lag, 1.8 = Speed modifier for speed of (4)
 
+	if (dmod == -1)
+		dmod = distance * 0.8f; //C!Kayen - Ranger innate Distance Damage modifier 250 ~= 2x damage (-1 is From Archery Attack)
+
 	ProjectileAtk[slot].increment = 1;
 	ProjectileAtk[slot].hit_increment = static_cast<uint16>(hit); //This projected hit time if target does NOT MOVE
 	ProjectileAtk[slot].target_id = other->GetID();
@@ -1063,7 +1066,13 @@ bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes
 	ProjectileAtk[slot].skill = skillInUse;
 	ProjectileAtk[slot].speed_mod = speed_mod;
 	ProjectileAtk[slot].spell_id = spell_id; //C!Kayen
-	ProjectileAtk[slot].dmod = other->GetSpellPowerDistanceMod(); //C!Kayen
+
+	if (dmod)
+		ProjectileAtk[slot].dmod = dmod; //C!Kayen;
+	else
+		ProjectileAtk[slot].dmod = other->GetSpellPowerDistanceMod(); //C!Kayen
+
+	ProjectileAtk[slot].dmgpct = dmgpct; //C!Kayen
 
 	SetProjectileAttack(true);
 
@@ -1109,12 +1118,15 @@ void Mob::ProjectileAttack()
 			if (target){
 				if (ProjectileAtk[i].skill == SkillArchery){
 					DoArcheryAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0,ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_id, nullptr, 
-										ProjectileAtk[i].ammo_slot,0,ProjectileAtk[i].spell_id, ProjectileAtk[i].dmod);
+										ProjectileAtk[i].ammo_slot,0,ProjectileAtk[i].spell_id, ProjectileAtk[i].dmod, ProjectileAtk[i].dmgpct);
 				}
 				else if (ProjectileAtk[i].skill == SkillThrowing)
 					DoThrowingAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0, ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_slot);
 				else if (ProjectileAtk[i].skill == SkillConjuration && IsValidSpell(ProjectileAtk[i].wpn_dmg))
 					SpellOnTarget(ProjectileAtk[i].wpn_dmg, target, false, true, spells[ProjectileAtk[i].wpn_dmg].ResistDiff, true);
+
+				if (ProjectileAtk[i].spell_id != SPELL_UNKNOWN)//C!Kayen
+					TryApplyEffectProjectileHit(ProjectileAtk[i].spell_id, target);
 			}
 			
 			ProjectileAtk[i].increment = 0;
@@ -1130,6 +1142,9 @@ void Mob::ProjectileAttack()
 			ProjectileAtk[i].ammo_slot = 0;
 			ProjectileAtk[i].skill = 0;
 			ProjectileAtk[i].speed_mod = 0.0f;
+			ProjectileAtk[i].spell_id = SPELL_UNKNOWN; //C!Kayen
+			ProjectileAtk[i].dmod = 0; //C!Kayen
+			ProjectileAtk[i].dmgpct = 0; //C!Kayen
 		}
 
 		else {

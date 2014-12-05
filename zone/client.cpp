@@ -330,6 +330,7 @@ Client::Client(EQStreamInterface* ieqs)
 	
 	allow_position_update = true;
 	spin_attack_increment = 0;
+	kb_melee_immune = false;
 
 }
 

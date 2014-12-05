@@ -2146,6 +2146,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				//C!Kayen - Foward Leap effect with trigger must have max set.
 				if (spells[spell_id].max[i] == 1)
 					SetLeapEffect(spell_id);
+
+				if (IsClient())
+					CastToClient()->SetKnockBackMeleeImmune(true); //C!Kayen - Melee MISS till next client position update.
 				
 				break;
 			}

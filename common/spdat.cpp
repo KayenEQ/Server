@@ -1239,7 +1239,16 @@ bool IsRangeSpellEffect(uint16 spell_id)
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 
+//Checked when disc is cast
 bool GetDiscLimitToBehind(uint16 spell_id) { if (spells[spell_id].viral_range == 1) { return true; } return false;}
+bool GetDiscLimitToFront(uint16 spell_id) { if (spells[spell_id].viral_range == 2) { return true; } return false;}
+bool GetDiscLimitToFlank(uint16 spell_id) { if (spells[spell_id].viral_range == 3) { return true; } return false;}
+
+//Checked after disc is cast in spell effect
+bool GetEffectLimitToBehind(uint16 spell_id) { if (spells[spell_id].viral_range == -1) { return true; } return false;}
+bool GetEffectLimitToFront(uint16 spell_id) { if (spells[spell_id].viral_range == -2) { return true; } return false;}
+bool GetEffectLimitToFlank(uint16 spell_id) { if (spells[spell_id].viral_range == -3) { return true; } return false;}
+
 int GetDiscHPRestriction(uint16 spell_id) { return spells[spell_id].pvpresistbase; }
 
 int GetProjCastingAnimation(uint16 spell_id) { return spells[spell_id].viral_range; }

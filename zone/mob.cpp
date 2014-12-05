@@ -297,27 +297,10 @@ Mob::Mob(const char* in_name,
 		ProjectileAtk[i].ammo_slot = 0;
 		ProjectileAtk[i].skill = 0;
 		ProjectileAtk[i].speed_mod = 0.0f;
-	}
-
-	ActiveProjectileATK = false;
-	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++)
-	{
-		ProjectileAtk[i].increment = 0;
-		ProjectileAtk[i].hit_increment = 0;
-		ProjectileAtk[i].target_id = 0;
-		ProjectileAtk[i].wpn_dmg = 0;
-		ProjectileAtk[i].origin_x = 0.0f;
-		ProjectileAtk[i].origin_y = 0.0f;
-		ProjectileAtk[i].origin_z = 0.0f;
-		ProjectileAtk[i].tlast_x = 0.0f;
-		ProjectileAtk[i].tlast_y = 0.0f;
-		ProjectileAtk[i].ranged_id = 0;
-		ProjectileAtk[i].ammo_id = 0;
-		ProjectileAtk[i].ammo_slot = 0;
-		ProjectileAtk[i].skill = 0;
-		ProjectileAtk[i].speed_mod = 0.0f;
 		ProjectileAtk[i].spell_id = SPELL_UNKNOWN; //C!Kayen
 		ProjectileAtk[i].dmod = 0; //C!Kayen
+		ProjectileAtk[i].dmgpct = 0; //C!Kayen
+
 	}
 
 	memset(&itembonuses, 0, sizeof(StatBonuses));
@@ -6443,7 +6426,7 @@ void Mob::SpellProjectileEffectTargetRing()
 						entity_list.AESpell(this, target, p_spell_id, false, spells[p_spell_id].ResistDiff);
 
 						if (HasProjectileAESpellHitTarget())
-							TryApplyEffectProjectileHit(p_spell_id);
+							TryApplyEffectProjectileHit(p_spell_id, this);
 						else
 							ProjectileTargetRingFailMessage(p_spell_id);
 						
@@ -6480,9 +6463,12 @@ bool Mob::ExistsProjectileRing()
 	return false;
 }
 
-void Mob::TryApplyEffectProjectileHit(uint16 spell_id)
+void Mob::TryApplyEffectProjectileHit(uint16 spell_id, Mob* target)
 {
 	if(!IsValidSpell(spell_id))
+		return;
+
+	if (!target)
 		return;
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
@@ -6490,11 +6476,11 @@ void Mob::TryApplyEffectProjectileHit(uint16 spell_id)
 			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]){
 
 				if (!GetCastFromCrouchIntervalProj())
-					SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spell_id].ResistDiff);
+					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
 
 				else {
 					for(int j = 0; j < GetCastFromCrouchIntervalProj(); j++){
-						SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spell_id].ResistDiff);
+						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
 					}
 				}
 			}
@@ -8263,7 +8249,12 @@ uint16 Mob::GetBuffSpellidBySpellGroup(int spellgroupid)
 void Mob::DirectionalFailMessage(uint16 spell_id)
 {
 	//Message given for failed directional abilities, message will differ based on type of spell.
-	Message(MT_SpellFailure, "Your spell failed to find a target.");
+	//Message(MT_SpellFailure, "Your spell failed to find a target.");
+	
+	if (spells[spell_id].IsDisciplineBuff)
+		Message(MT_SpellFailure, "No target found for this ability.");
+	else
+		Message(MT_SpellFailure, "No target found for this spell.");
 
 }
 
@@ -8459,38 +8450,34 @@ bool Mob::MeleeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	Mob* target = nullptr;
 	target = entity_list.GetMob(target_id);
 
-	if (target){
+	if (!target)
+		return false;
 
-		if (GetDiscHPRestriction(spell_id) > 0){
-			if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
-				Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
-				return false;
-			}
+	if (GetDiscHPRestriction(spell_id) > 0){
+		if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
+			Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
+			return false;
 		}
-		
-		if (CombatRange(target)){
-
-			if (IsFacingMob(target)){
-				
-				if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
-						
-					if (BehindMobCustom(target, GetX(), GetY()))
-						return true;
-					else{
-						Message(13, "You must be behind your target to execute this attack!");
-						return false;
-					}
-				}
-				else
-					return true;
-			}
-			else
-				Message_StringID(13, CANT_SEE_TARGET);
-		}
-		else
-			Message_StringID(13, TARGET_OUT_OF_RANGE);
 	}
-	return false;
+		
+	if (!CombatRange(target)){
+		Message_StringID(13, TARGET_OUT_OF_RANGE);
+		return false;
+	}
+
+	if (!IsFacingMob(target)){
+		Message_StringID(13, CANT_SEE_TARGET);
+		return false;
+	}
+				
+	if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
+		if (!BehindMobCustom(target, GetX(), GetY())){
+			Message(13, "You must be behind your target to execute this attack!");
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool Mob::PassDiscRestriction(uint16 spell_id)
@@ -8512,45 +8499,43 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	Mob* target = nullptr;
 	target = entity_list.GetMob(target_id);
 
-	if (target){
+	if (!target)
+		return false;
 
-		if (GetDiscHPRestriction(spell_id) > 0){
-			if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
-				Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
-				return false;
-			}
+	if (GetDiscHPRestriction(spell_id) > 0){
+		if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
+			Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
+			return false;
 		}
-		bool InCombatRange = true;
-		
-		float range = CastToClient()->GetArcheryRange();
-		
-		range *= range;
-		if(DistNoRootNoZ(*target) > range) 
-			InCombatRange = false;
-
-		if (InCombatRange){
-
-			if (IsFacingMob(target)){
-				
-				if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
-						
-					if (BehindMobCustom(target, GetX(), GetY()))
-						return true;
-					else{
-						Message(13, "You must be behind your target to execute this attack!");
-						return false;
-					}
-				}
-				else
-					return true;
-			}
-			else
-				Message_StringID(13, CANT_SEE_TARGET);
-		}
-		else
-			Message_StringID(13, TARGET_OUT_OF_RANGE);
 	}
-	return false;
+		
+	float range = CastToClient()->GetArcheryRange(target);
+	float min_range = spells[spell_id].min_range * spells[spell_id].min_range;
+		
+	range *= range;
+	if(DistNoRoot(*target) > range) {
+		Message_StringID(13, TARGET_OUT_OF_RANGE);
+		return false;
+	}
+
+	if(DistNoRoot(*target) < min_range) {
+		Message_StringID(15, RANGED_TOO_CLOSE);
+		return false;
+	}
+
+	if (!IsFacingMob(target)){
+		Message_StringID(13, CANT_SEE_TARGET);
+		return false;
+	}
+				
+	if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
+		if (!BehindMobCustom(target, GetX(), GetY())){
+			Message(13, "You must be behind your target to execute this attack!");
+			return false;
+		}
+	}
+
+	return true;
 }
 
 int16 Mob::GetScaleMitigationNumhits()
@@ -8708,6 +8693,9 @@ void Client::TryOnClientUpdate()
 	CHECKED AT END OF - void Client::Handle_OP_ClientUpdate(const EQApplicationPacket *app)
 	This allows us to check any conditions immediately after the client position is updated.
 	*/
+
+	if (GetKnockBackMeleeImmune())
+		SetKnockBackMeleeImmune(false);
 
 	if (leap_increment) { 
 		if (leap_increment >= 75) { //Trigger spell on next possible position update after landing.
@@ -8912,13 +8900,16 @@ void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
 
 int Mob::CalcDistributionModifer(int range, int min_range, int max_range, int min_mod, int max_mod)
 {
+	if (range > max_range)
+		range = max_range;
+
 	int dm_range = max_range - min_range;
 	int dm_mod_interval = max_mod - min_mod;
 	int dist_from_min = range - min_range;
 
 	if (!dm_range)
 		return 0;//Saftey
-
+	
 	int mod = min_mod + (dist_from_min * (dm_mod_interval/dm_range));
 	return mod;
 }
@@ -9430,22 +9421,50 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	if(AmmoItem->ItemType != ItemTypeArrow)
 		return;
 
-	float speed = 4.0;
+	float speed = 4.0f;
+	uint16 _spell_id = spell_id;
 	int hit_chance = spells[spell_id].max[i];
-
+	int16 dmgpct = spells[spell_id].base2[i];
 	int numattacks = spells[spell_id].base[i];
 
+	if (hit_chance == 10001){//Increase hit chance only if from position
+		if (PassEffectLimitToDirection(target, spell_id)){
+			hit_chance = 10000;
+		}
+		else {
+			if (IsEffectInSpell(spell_id, SE_ApplyEffectProjectileHit))
+				_spell_id = SPELL_UNKNOWN; //For proc chance requiring hit from flank.
+
+			hit_chance = 0;
+		}
+	}
+
+	if (spells[spell_id].MinResist){
+		int ratio_modifier = 0;
+		int dmod = 0;
+
+		if (PassEffectLimitToDirection(target, spell_id)){
+			ratio_modifier = 101 - static_cast<int>(target->GetHPRatio());
+			if (ratio_modifier > 0){
+				dmod = CalcDistributionModifer(ratio_modifier, 1, 100, spells[spell_id].MinResist, spells[spell_id].MaxResist);
+				dmgpct = dmod + 1;
+			}
+		}
+	}
+	
 	if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
 		numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
-	
+
+	if (spells[spell_id].targettype == ST_Directional)
+		speed = MakeRandomFloat(3.5, 4.5);//So they don't all clump
 	for(int x = 0; x < numattacks; x++){
 		if (!HasDied()){
-			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, MainAmmo, speed, spell_id);
+			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, MainAmmo, speed, _spell_id, 0, dmgpct);
 		}
 	}
 }
 
-float Client::GetArcheryRange()
+float Client::GetArcheryRange(Mob* other)
 {
 	const ItemInst* RangeWeapon = m_inv[MainRange];
 	const ItemInst* Ammo = m_inv[MainAmmo];
@@ -9465,22 +9484,25 @@ float Client::GetArcheryRange()
 	if(AmmoItem->ItemType != ItemTypeArrow)
 		return 0;
 
-	float range = RangeItem->Range + AmmoItem->Range + 5.0f;
+	float range = RangeItem->Range + AmmoItem->Range + GetRangeDistTargetSizeMod(other);
 	return range;
 }
 
-int32 Mob::GetProjectileBonusFromSpell(uint16 spell_id)
+bool Mob::PassEffectLimitToDirection(Mob* other, uint16 spell_id)
 {
-	if (!IsValidSpell(spell_id))
-		return 0;
+	if (!other)
+		return false;
 
-	for(int i = 0; i < EFFECT_COUNT; i++){
-		if (spells[spell_id].effectid[i] == SE_AttackArchery || spells[spell_id].effectid[i] == SE_AttackThrow){
-			return spells[spell_id].base2[i];
-		}
-	}
+	if (GetEffectLimitToBehind(spell_id) && !BehindMobCustom(other, GetX(), GetY()))
+		return false;
+	
+	else if (GetEffectLimitToFront(spell_id) && !InFrontMob(other, GetX(), GetY()))
+		return false;
 
-	return 0;
+	else if (GetEffectLimitToFlank(spell_id) && !FlankMob(other, GetX(), GetY()))
+		return false;
+
+	return true;
 }
 
 //C!Misc - Functions still in development

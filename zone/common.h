@@ -512,6 +512,7 @@ typedef struct
 	float speed_mod;
 	uint16 spell_id; //C!Kayen - To pull bonuses from archery/throw derived spells.
 	int16 dmod; //C!Kayen - Spell Power Distance Mod
+	int16 dmgpct; //C!Kayen
 } tProjatk;
 
 //eventually turn this into a typedef and

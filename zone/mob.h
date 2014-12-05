@@ -733,8 +733,8 @@ public:
 	virtual void DoThrowingAttackDmg(Mob* other, const ItemInst* RangeWeapon=nullptr, const Item_Struct* AmmoItem=nullptr, uint16 weapon_damage=0, int16 chance_mod=0,int16 focus=0, int ReuseTime=0, uint32 range_id=0, int AmmoSlot=0, float speed = 4.0f);
 	virtual void DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes skillinuse, int16 chance_mod=0, int16 focus=0, bool CanRiposte=false, int ReuseTime=0);
 	virtual void DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon=nullptr, const ItemInst* Ammo=nullptr, uint16 weapon_damage=0, int16 chance_mod=0, int16 focus=0, int ReuseTime=0, uint32 range_id=0, 
-		uint32 ammo_id=0, const Item_Struct *AmmoItem=nullptr, int AmmoSlot=0, float speed= 4.0f, uint16 spell_id=SPELL_UNKNOWN, int16 dmod=0);
-	bool TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg, const ItemInst* RangeWeapon, const ItemInst* Ammo, int AmmoSlot, float speed,uint16 spell_id=SPELL_UNKNOWN);
+		uint32 ammo_id=0, const Item_Struct *AmmoItem=nullptr, int AmmoSlot=0, float speed= 4.0f, uint16 spell_id=SPELL_UNKNOWN, int16 dmod=0, int16 dmgpct=0);
+	bool TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes skillInUse, uint16 weapon_dmg, const ItemInst* RangeWeapon, const ItemInst* Ammo, int AmmoSlot, float speed,uint16 spell_id=SPELL_UNKNOWN, int16 dmod = 0, int16 dmgpct=0);
 	void ProjectileAttack();
 	inline bool HasProjectileAttack() const { return ActiveProjectileATK; }
 	inline void SetProjectileAttack(bool value) { ActiveProjectileATK = value; }
@@ -993,7 +993,7 @@ public:
 	inline bool IsProjectilePet() const { return ProjectilePet; }
 	inline void SetProjectilePet(bool value) { ProjectilePet = value; }
 	bool ExistsProjectileRing();
-	void TryApplyEffectProjectileHit(uint16 spell_id);
+	void TryApplyEffectProjectileHit(uint16 spell_id, Mob* target=nullptr);
 	float CalcSpecialProjectile(uint16 spell_id);
 	inline bool HasProjectileAESpellHitTarget() const { return ProjectileAESpellHitTarget; } 
 	inline void SetProjectileAESpellHitTarget(bool value) { ProjectileAESpellHitTarget = value; } 
@@ -1184,9 +1184,7 @@ public:
 
 	void DoPetEffectOnOwner();
 
-	int32 GetProjectileBonusFromSpell(uint16 spell_id);
-
-
+	bool PassEffectLimitToDirection(Mob* other, uint16 spell_id);
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 
