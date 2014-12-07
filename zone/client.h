@@ -1236,7 +1236,7 @@ void SetConsumption(int32 in_hunger, int32 in_thirst);
 	inline void SetAllowPositionUpdate(bool value) { allow_position_update = value; }
 		
 	void ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i);
-	float GetArcheryRange(Mob* other);
+	float GetArcheryRange(Mob* other, bool ItemCheck = false);
 
 	inline bool GetKnockBackMeleeImmune() const { return kb_melee_immune; }
 	inline void SetKnockBackMeleeImmune(bool value) { kb_melee_immune = value; }

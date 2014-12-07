@@ -1236,6 +1236,18 @@ bool IsRangeSpellEffect(uint16 spell_id)
 	return false;
 }
 
+bool IsNoTargetRequiredSpell(uint16 spell_id)
+{
+	if (spells[spell_id].targettype == ST_AECaster ||
+	spells[spell_id].targettype == ST_Ring ||
+	spells[spell_id].targettype == ST_Directional ||
+	spells[spell_id].targettype == ST_Beam){
+		return true;
+	}
+
+	return false;
+}
+
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 

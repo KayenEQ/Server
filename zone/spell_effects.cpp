@@ -2924,7 +2924,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 			case SE_BackStabEffect:
 			{
 				if (caster){
-					caster->TryBackstabSpellEffect(this);
+					if (!spells[spell_id].goodEffect)
+						caster->TryBackstabSpellEffect(this);
+					else
+						caster->TryBackstabHeal(this, spell_id);
 				}
 			}
 

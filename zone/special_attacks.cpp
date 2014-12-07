@@ -172,7 +172,7 @@ void Mob::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 
 
 void Client::OPCombatAbility(const EQApplicationPacket *app) {
-	if(!GetTarget())
+	if(!GetTarget())    
 		return;
 	//make sure were actually able to use such an attack.
 	if(spellend_timer.Enabled() || IsFeared() || IsStunned() || IsMezzed() || DivineAura() || dead)

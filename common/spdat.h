@@ -704,6 +704,7 @@ typedef enum {
 #define SE_BottomHateList				1073 // Set owner to be on bottom of hatelist until fades.
 #define SE_PetEffectOnOwner				1074 // Casts a spell on owner if buff about to fade and in range
 #define SE_AttackArchery				1075 // 
+#define SE_ApplyEffectBackstab			1076 //
 
 // LAST
 
@@ -984,6 +985,8 @@ bool CastFromPetOwner(uint16 spell_id); //NPC use only.
 bool IsTargetRingSpell(uint16 spell_id);
 bool IsMeleeRangeSpellEffect(uint16 spell_id);
 bool IsRangeSpellEffect(uint16 spell_id);
+bool IsNoTargetRequiredSpell(uint16 spell_id);
+
 //Disc Hacks
 bool GetDiscLimitToBehind(uint16 spell_id);
 bool GetDiscLimitToFront(uint16 spell_id);

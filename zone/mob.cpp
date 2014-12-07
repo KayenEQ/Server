@@ -6475,12 +6475,15 @@ void Mob::TryApplyEffectProjectileHit(uint16 spell_id, Mob* target)
 		if (spells[spell_id].effectid[i] == SE_ApplyEffectProjectileHit){
 			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]){
 
+				if (!IsValidSpell(spells[spell_id].base2[i]))
+					continue;
+
 				if (!GetCastFromCrouchIntervalProj())
-					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
+					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 
 				else {
 					for(int j = 0; j < GetCastFromCrouchIntervalProj(); j++){
-						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spell_id].ResistDiff);
+						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 					}
 				}
 			}
@@ -8257,9 +8260,9 @@ void Mob::DirectionalFailMessage(uint16 spell_id)
 	//	Message(MT_SpellFailure, "No target found for this spell.");
 
 	if (spells[spell_id].IsDisciplineBuff)
-		Message(MT_SpellFailure, "Your ability failed to hit a target.");
+		Message(MT_SpellFailure, "Your ability failed to find a target in range.");
 	else
-		Message(MT_SpellFailure, "Your spell failed to hit a target.");
+		Message(MT_SpellFailure, "Your spell failed to find a target in range.");
 
 }
 
@@ -8496,70 +8499,7 @@ bool Mob::PassDiscRestriction(uint16 spell_id)
 	return true;
 }
 
-bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
-{
-	if (!IsRangeSpellEffect(spell_id))
-		return true;
 
-	Mob* target = nullptr;
-	target = entity_list.GetMob(target_id);
-
-	if (!target)
-		return false;
-
-	if (GetDiscHPRestriction(spell_id) > 0){
-		if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
-			Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
-			return false;
-		}
-	}
-
-	
-	float range = CastToClient()->GetArcheryRange(target);
-	float range_sp = spells[spell_id].range;
-	
-	if (!range_sp)
-		range_sp = spells[spell_id].aoerange;
-
-	if (range_sp != 351.0f)//Use Default value
-		range = range_sp;
-
-	float min_range = RuleI(Combat, MinRangedAttackDist);
-	float min_range_sp = spells[spell_id].min_range;
-
-	if (min_range_sp > min_range)
-		min_range = min_range_sp;
-
-	float dist = DistNoRoot(*target);
-	Shout("Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
-	if(dist > (range * range)) {
-		Message_StringID(13, TARGET_OUT_OF_RANGE);
-		return false;
-	}
-
-	if(dist < (min_range * min_range)) {
-		if (min_range == min_range_sp)
-			Message_StringID(13, TARGET_TOO_CLOSE);
-		else
-			Message_StringID(15, RANGED_TOO_CLOSE);
-		
-		return false;
-	}
-
-	if (!IsFacingMob(target)){
-		Message_StringID(13, CANT_SEE_TARGET);
-		return false;
-	}
-				
-	if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
-		if (!BehindMobCustom(target, GetX(), GetY())){
-			Message(13, "You must be behind your target to execute this attack!");
-			return false;
-		}
-	}
-
-	return true;
-}
 
 int16 Mob::GetScaleMitigationNumhits()
 {
@@ -9078,7 +9018,16 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 			std::list<Mob*> targets_in_cone; //C!Kayen - Get the targets within the cone
 			std::list<Mob*>::iterator iter;
 
-			entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, spells[spell_id].aoerange, spells[spell_id].aoerange / 2, targets_in_range);
+			float aoerange = spells[spell_id].aoerange;
+			float min_aoerange = spells[spell_id].min_range;
+
+			if (IsClient() && IsRangeSpellEffect(spell_id)){
+				min_aoerange = 0.0f; //Calculated in the archery fire as a miss.
+				if (aoerange == UseRangeFromRangedWpn())//Flags aoe range to use weapon ranage.
+					aoerange = CastToClient()->GetArcheryRange(nullptr);
+			}
+
+			entity_list.GetTargetsForConeArea(this, min_aoerange, aoerange, aoerange / 2, targets_in_range);
 			iter = targets_in_range.begin();
 
 			//C!Kayen - Allow to hit caster
@@ -9389,6 +9338,62 @@ void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
 	DoAnim(animPiercing);
 }
 
+void Mob::TryBackstabHeal(Mob* other, uint16 spell_id)
+{
+	if (!other || !IsValidSpell(spell_id))
+		return;
+
+	if(IsClient()) {
+		const ItemInst *wpn = CastToClient()->GetInv().GetItem(MainPrimary);
+		if(!wpn || (wpn->GetItem()->ItemType != ItemType1HPiercing)){
+			Message_StringID(13, BACKSTAB_WEAPON);
+			return;
+		}
+	}
+
+	bool bIsBehind = false;
+
+	if (BehindMobCustom(other, GetX(), GetY()))
+		bIsBehind = true;
+
+	TryApplyEffectBackstab(spell_id, other, bIsBehind);
+}
+
+void Mob::TryApplyEffectBackstab(uint16 spell_id, Mob* target, bool backstab)
+{
+	if(!IsValidSpell(spell_id))
+		return;
+
+	if (!target)
+		return;
+
+	if (target->GetID() == GetID() ){
+		Message_StringID(13,TRY_ATTACKING_SOMEONE);
+		return;
+	}
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_ApplyEffectBackstab){
+			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]){
+
+				if (backstab && spells[spell_id].max[i] == 1){
+					if (IsValidSpell(spells[spell_id].base2[i]))
+						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+					
+					return;
+				}
+
+				else if (!backstab && !spells[spell_id].max[i]){
+					if (IsValidSpell(spells[spell_id].base2[i]))
+						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+					
+					return;
+				}
+			}
+		}
+	}
+}
+
 void Mob::DoPetEffectOnOwner()
 {
 	//Pet will autocast buff on owner if in range, buff fades if out of range of pet
@@ -9426,6 +9431,11 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	if (!target)
 		return;
 
+	int numattacks = spells[spell_id].base[i];
+
+	if (!numattacks)
+		return;
+
 	const ItemInst* RangeWeapon = m_inv[MainRange];
 	const ItemInst* Ammo = m_inv[MainAmmo];
 
@@ -9448,11 +9458,25 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	uint16 _spell_id = spell_id;
 	int hit_chance = spells[spell_id].max[i];
 	int16 dmgpct = spells[spell_id].base2[i];
-	int numattacks = spells[spell_id].base[i];
 	int16 dmod = -1;
 
 	if (GetSpellPowerDistanceMod())
 		dmod = 0;
+
+	if (IsNoTargetRequiredSpell(spell_id)) {
+
+		//Min Distance checks for directional spells - Hit Chance -10000
+		float dist = DistNoRoot(*target);
+
+		float min_range = RuleI(Combat, MinRangedAttackDist);
+
+		if (spells[spell_id].min_range > min_range)
+			min_range = spells[spell_id].min_range;
+		
+		if (dist < min_range*min_range){
+			hit_chance = -10000; //Too close!
+		}
+	}
 
 	if (hit_chance == 10001){//Increase hit chance only if from position
 		if (PassEffectLimitToDirection(target, spell_id)){
@@ -9491,27 +9515,138 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	}
 }
 
-float Client::GetArcheryRange(Mob* other)
+bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
+{
+	if (!IsRangeSpellEffect(spell_id))
+		return true;
+
+	//Item Check for AOE effects.
+	if (spells[spell_id].aoerange){
+		if (CastToClient()->GetArcheryRange(nullptr, true) == -1)//ITEM CHECK ONLY
+			return true;
+		else
+			return false;
+	}
+
+
+	if (spells[spell_id].range != UseRangeFromRangedWpn())
+		return true;
+
+	Mob* target = nullptr;
+	target = entity_list.GetMob(target_id);
+
+	if (!target){
+		Message(13, "You must first select a target for this ability!");
+		return false;
+	}
+
+	if (GetDiscHPRestriction(spell_id) > 0){
+		if (static_cast<int>(target->GetHPRatio()) > GetDiscHPRestriction(spell_id)){
+			Message(13, "Your target must be weakened under %i percent health to execute this attack!", GetDiscHPRestriction(spell_id));
+			return false;
+		}
+	}
+
+	float range = CastToClient()->GetArcheryRange(target);
+
+	if (range == 0)
+		return false;
+	
+	float range_sp = spells[spell_id].range;
+	
+	if (!range_sp)
+		range_sp = spells[spell_id].aoerange;
+
+	if (range_sp != 351.0f)//Use Default value
+		range = range_sp;
+
+	float min_range = RuleI(Combat, MinRangedAttackDist);
+	float min_range_sp = spells[spell_id].min_range;
+
+	if (min_range_sp > min_range)
+		min_range = min_range_sp;
+
+	float dist = DistNoRoot(*target);
+	Shout("Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
+	if(dist > (range * range)) {
+		Message_StringID(13, TARGET_OUT_OF_RANGE);
+		return false;
+	}
+
+	if(dist < (min_range * min_range)) {
+		if (min_range == min_range_sp)
+			Message_StringID(13, TARGET_TOO_CLOSE);
+		else
+			Message_StringID(15, RANGED_TOO_CLOSE);
+		
+		return false;
+	}
+
+	if (!IsFacingMob(target)){
+		Message_StringID(13, CANT_SEE_TARGET);
+		return false;
+	}
+				
+	if (GetDiscLimitToBehind(spell_id)){ //1 = Must attack from behind.
+		if (!BehindMobCustom(target, GetX(), GetY())){
+			Message(13, "You must be behind your target to execute this attack!");
+			return false;
+		}
+	}
+
+	return true;
+}
+
+float Client::GetArcheryRange(Mob* other, bool ItemCheck)
 {
 	const ItemInst* RangeWeapon = m_inv[MainRange];
 	const ItemInst* Ammo = m_inv[MainAmmo];
 
-	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)) 
+	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)){ 
+		Message(13, "You must have a ranged weapon equiped!");
 		return 0;
+	}
 
-	if (!Ammo || !Ammo->IsType(ItemClassCommon))
+	if (!Ammo || !Ammo->IsType(ItemClassCommon)){
+		Message(13, "You must have ammo equiped!");
 		return 0;
+	}
 	
 	const Item_Struct* RangeItem = RangeWeapon->GetItem();
 	const Item_Struct* AmmoItem = Ammo->GetItem();
 
-	if(RangeItem->ItemType != ItemTypeBow)
+	if(!RangeItem || RangeItem->ItemType != ItemTypeBow){
+		Message(13, "You must have a ranged weapon equiped!");
 		return 0;
+	}
 
-	if(AmmoItem->ItemType != ItemTypeArrow)
+	if(!AmmoItem || AmmoItem->ItemType != ItemTypeArrow){
+		Message(13, "You must have ammo equiped!");
 		return 0;
+	}
+	
+	//Set Graphic to bow if attempting to use ability from spells/disc
+	int32 material = 0;
+	if (strlen(RangeItem->IDFile) > 2)
+		material = atoi(&RangeItem->IDFile[2]);
+	else
+		material = RangeItem->Material;
 
-	float range = RangeItem->Range + AmmoItem->Range + GetRangeDistTargetSizeMod(other);
+	if (material){
+		WearChange(MaterialPrimary, 0, 0);
+		WearChange(MaterialSecondary, material, 0);
+	}
+
+	if (ItemCheck)
+		return -1;
+	
+	float range = 0.0f;
+
+	if (other)
+		range = RangeItem->Range + AmmoItem->Range + GetRangeDistTargetSizeMod(other);
+	else
+		range = RangeItem->Range + AmmoItem->Range + 18.0f;
+	
 	return range;
 }
 
@@ -9529,6 +9664,24 @@ bool Mob::PassEffectLimitToDirection(Mob* other, uint16 spell_id)
 	else if (GetEffectLimitToFlank(spell_id) && !FlankMob(other, GetX(), GetY()))
 		return false;
 
+	return true;
+}
+
+bool Mob::TryRangerCastingConditions(uint16 spell_id, uint16 target_id)
+{
+	if (IsClient() && GetClass() == RANGER) {
+		
+		if (!RangeDiscCombatRange(target_id, spell_id))
+			return false;
+
+
+		//if (spells[spell_id].range == 351 || spells[spell_id].aoerange == 351){
+			//Shout("BOW SHOT");
+			//return false;
+			
+
+		
+	}
 	return true;
 }
 

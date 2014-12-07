@@ -1181,10 +1181,15 @@ public:
 
 	void TryBackstabSpellEffect(Mob* other);
 	void DoBackstabSpellEffect(Mob* other, bool min_damage = false);
+	void TryBackstabHeal(Mob* other, uint16 spell_id);
+	void TryApplyEffectBackstab(uint16 spell_id, Mob* other, bool backstab);
 
 	void DoPetEffectOnOwner();
 
 	bool PassEffectLimitToDirection(Mob* other, uint16 spell_id);
+
+	bool TryRangerCastingConditions(uint16 spell_id, uint16 target_id);
+	inline float UseRangeFromRangedWpn() const { return 351; }
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 

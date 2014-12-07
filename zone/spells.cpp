@@ -209,6 +209,13 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		return false;
 	}
 
+	//C!Kayen - Check various Ranger casting conditions.
+	if (!TryRangerCastingConditions(spell_id, target_id)){
+		CastToClient()->SendSpellBarEnable(spell_id);
+		InterruptSpell(173, 0x121, false);
+		return false;
+	}
+
 	if (spellbonuses.NegateIfCombat)
 		BuffFadeByEffect(SE_NegateIfCombat);
 
@@ -2046,6 +2053,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		if(dist2 > range2) {
 			//target is out of range.
 			mlog(SPELLS__CASTING, "Spell %d: Spell target is out of range (squared: %f > %f)", spell_id, dist2, range2);
+			Shout("Spell %d: Spell target is out of range (squared: %f > %f)", spell_id, dist2, range2);
+			Shout("Spell Range %.2f [%.2f] Distance %.2f", range, spells[spell_id].range, Dist(*spell_target));
 			Message_StringID(13, TARGET_OUT_OF_RANGE);
 			return(false);
 		}
@@ -2101,6 +2110,12 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				else if (spells[spell_id].targettype == ST_Target && spells[spell_id].aoerange){
 					if (!RectangleDirectional(spell_id, resist_adjust, true, spell_target))
 						return false;
+				}
+
+				//C!Kayen - AE Duration from single / self target
+				else if (spells[spell_id].AEDuration){
+					if(ae_center && ae_center->IsBeacon())
+						ae_center->CastToBeacon()->AELocationSpell(this, spell_id, resist_adjust);
 				}
 
 				else if(!SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, false)) {
