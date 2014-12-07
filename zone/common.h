@@ -572,6 +572,18 @@ struct MercData {
 	uint32	NPCID;
 };
 
+//C!Kayen - STRUCTS START
+typedef struct
+{
+	uint16 increment;
+	uint16 spell_id;
+	float origin_x;
+	float origin_y;
+	float origin_z;
+} tLeap;
+
+//C!KAyen - STRUCTS END
+
 class ItemInst;
 class Mob;
 // All data associated with a single trade

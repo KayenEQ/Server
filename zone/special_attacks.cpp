@@ -138,9 +138,9 @@ void Mob::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 
 		who->MeleeMitigation(this, max_damage, min_damage);
 
-		if(max_damage > 0) 
+		if(max_damage > 0)
 			CommonOutgoingHitSuccess(who, max_damage, skill);
-		
+
 	}
 
 	who->AddToHateList(this, hate, 0, false);
@@ -155,17 +155,17 @@ void Mob::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 		int kb_chance = 25;
 		kb_chance += kb_chance*(100-aabonuses.SpecialAttackKBProc[0])/100;
 
-		if (MakeRandomInt(0, 99) < kb_chance)
+		if (zone->random.Roll(kb_chance))
 			SpellFinished(904, who, 10, 0, -1, spells[904].ResistDiff);
 			//who->Stun(100); Kayen: This effect does not stun on live, it only moves the NPC.
 	}
 
 	if (HasSkillProcs())
 		TrySkillProc(who, skill, ReuseTime*1000);
-	
+
 	if (max_damage > 0 && HasSkillProcSuccess())
 		TrySkillProc(who, skill, ReuseTime*1000, true);
-	
+
 	if(max_damage == -3 && !who->HasDied())
 		DoRiposte(who);
 }
@@ -256,7 +256,7 @@ void Client::OPCombatAbility(const EQApplicationPacket *app) {
 					if(RuleB(Combat, UseIntervalAC))
 						ht = dmg = GetBashDamage();
 					else
-						ht = dmg = MakeRandomInt(1, GetBashDamage());
+						ht = dmg = zone->random.Int(1, GetBashDamage());
 
 				}
 			}
@@ -295,8 +295,7 @@ void Client::OPCombatAbility(const EQApplicationPacket *app) {
 
 		//Live parses show around 55% Triple 35% Double 10% Single, you will always get first hit.
 		while(AtkRounds > 0) {
-
-			if (GetTarget() && (AtkRounds == 1 || MakeRandomInt(0,100) < 75)){
+			if (GetTarget() && (AtkRounds == 1 || zone->random.Roll(75))) {
 				DoSpecialAttackDamage(GetTarget(), SkillFrenzy, max_dmg, min_dmg, max_dmg , ReuseTime, true);
 			}
 			AtkRounds--;
@@ -333,7 +332,7 @@ void Client::OPCombatAbility(const EQApplicationPacket *app) {
 						if(RuleB(Combat, UseIntervalAC))
 							ht = dmg = GetKickDamage();
 						else
-							ht = dmg = MakeRandomInt(1, GetKickDamage());
+							ht = dmg = zone->random.Int(1, GetKickDamage());
 					}
 				}
 
@@ -348,18 +347,18 @@ void Client::OPCombatAbility(const EQApplicationPacket *app) {
 			//Live AA - Technique of Master Wu
 			int wuchance = itembonuses.DoubleSpecialAttack + spellbonuses.DoubleSpecialAttack + aabonuses.DoubleSpecialAttack;
 			if (wuchance) {
-				if (wuchance >= 100 || wuchance > MakeRandomInt(0, 99)) {
+				if (wuchance >= 100 || zone->random.Roll(wuchance)) {
 					int MonkSPA [5] = { SkillFlyingKick, SkillDragonPunch, SkillEagleStrike, SkillTigerClaw, SkillRoundKick };
 					int extra = 1;
 					// always 1/4 of the double attack chance, 25% at rank 5 (100/4)
-					if (wuchance / 4 > MakeRandomInt(0, 99))
+					if (zone->random.Roll(wuchance / 4))
 						extra++;
 					// They didn't add a string ID for this.
 					std::string msg = StringFormat("The spirit of Master Wu fills you!  You gain %d additional attack(s).", extra);
 					// live uses 400 here -- not sure if it's the best for all clients though
 					SendColoredText(400, msg);
 					while (extra) {
-						MonkSpecialAttack(GetTarget(), MonkSPA[MakeRandomInt(0, 4)]);
+						MonkSpecialAttack(GetTarget(), MonkSPA[zone->random.Int(0, 4)]);
 						extra--;
 					}
 				}
@@ -484,7 +483,7 @@ int Mob::MonkSpecialAttack(Mob* other, uint8 unchecked_type)
 			if(RuleB(Combat, UseIntervalAC))
 				ht = ndamage = max_dmg;
 			else
-				ht = ndamage = MakeRandomInt(min_dmg, max_dmg);
+				ht = ndamage = zone->random.Int(min_dmg, max_dmg);
 		}
 		else{
 			ht = max_dmg;
@@ -525,15 +524,14 @@ void Mob::TryBackstab(Mob *other, int ReuseTime) {
 		//Live AA - Seized Opportunity
 		int FrontalBSChance = itembonuses.FrontalBackstabChance + spellbonuses.FrontalBackstabChance + aabonuses.FrontalBackstabChance;
 
-		if (FrontalBSChance && (FrontalBSChance > MakeRandomInt(0, 100)))
+		if (FrontalBSChance && zone->random.Roll(FrontalBSChance))
 			bCanFrontalBS = true;
 	}
-	
-	if (bIsBehind || bCanFrontalBS){ // Player is behind other OR can do Frontal Backstab
 
-		if (bCanFrontalBS) 
+	if (bIsBehind || bCanFrontalBS){ // Player is behind other OR can do Frontal Backstab
+		if (bCanFrontalBS)
 			CastToClient()->Message(0,"Your fierce attack is executed with such grace, your target did not see it coming!");
-		
+
 		RogueBackstab(other,false,ReuseTime);
 		if (level > 54) {
 			if(IsClient() && CastToClient()->CheckDoubleAttack(false))
@@ -541,14 +539,14 @@ void Mob::TryBackstab(Mob *other, int ReuseTime) {
 				if(other->GetHP() > 0)
 					RogueBackstab(other,false,ReuseTime);
 
-				if (tripleChance && other->GetHP() > 0 && tripleChance > MakeRandomInt(0, 100))
+				if (tripleChance && other->GetHP() > 0 && zone->random.Roll(tripleChance))
 					RogueBackstab(other,false,ReuseTime);
 			}
 		}
-		
+
 		if(IsClient())
 			CastToClient()->CheckIncreaseSkill(SkillBackstab, other, 10);
-		
+
 	}
 	//Live AA - Chaotic Backstab
 	else if(aabonuses.FrontalBackstabMinDmg || itembonuses.FrontalBackstabMinDmg || spellbonuses.FrontalBackstabMinDmg) {
@@ -562,7 +560,7 @@ void Mob::TryBackstab(Mob *other, int ReuseTime) {
 				if(other->GetHP() > 0)
 					RogueBackstab(other,true, ReuseTime);
 
-			if (tripleChance && other->GetHP() > 0 && tripleChance > MakeRandomInt(0, 100))
+			if (tripleChance && other->GetHP() > 0 && zone->random.Roll(tripleChance))
 					RogueBackstab(other,false,ReuseTime);
 		}
 
@@ -641,7 +639,7 @@ void Mob::RogueBackstab(Mob* other, bool min_damage, int ReuseTime)
 				if(RuleB(Combat, UseIntervalAC))
 					ndamage = max_hit;
 				else
-					ndamage = MakeRandomInt(min_hit, max_hit);
+					ndamage = zone->random.Int(min_hit, max_hit);
 			}
 		}
 	}
@@ -678,7 +676,8 @@ void Mob::RogueAssassinate(Mob* other)
 
 void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 	//conditions to use an attack checked before we are called
-
+	if (!other)
+		return;
 	//make sure the attack and ranged timers are up
 	//if the ranged timer is disabled, then they have no ranged weapon and shouldent be attacking anyhow
 	if(!CanDoubleAttack && ((attack_timer.Enabled() && !attack_timer.Check(false)) || (ranged_timer.Enabled() && !ranged_timer.Check()))) {
@@ -718,7 +717,7 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 		return;
 	}
 
-	mlog(COMBAT__RANGED, "Shooting %s with bow %s (%d) and arrow %s (%d)", GetTarget()->GetName(), RangeItem->Name, RangeItem->ID, AmmoItem->Name, AmmoItem->ID);
+	mlog(COMBAT__RANGED, "Shooting %s with bow %s (%d) and arrow %s (%d)", other->GetName(), RangeItem->Name, RangeItem->ID, AmmoItem->Name, AmmoItem->ID);
 
 	//look for ammo in inventory if we only have 1 left...
 	if(Ammo->GetCharges() == 1) {
@@ -767,9 +766,10 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 
 	float range = RangeItem->Range + AmmoItem->Range + GetRangeDistTargetSizeMod(GetTarget());
 	mlog(COMBAT__RANGED, "Calculated bow range to be %.1f", range);
-	float dist = DistNoRoot(*GetTarget());
-	if(dist > (range * range)) {
-		mlog(COMBAT__RANGED, "Ranged attack out of range... client should catch this. (%f > %f).\n", DistNoRootNoZ(*GetTarget()), range);
+	range *= range;
+	float dist = DistNoRoot(*other);
+	if(dist > range) {
+		mlog(COMBAT__RANGED, "Ranged attack out of range... client should catch this. (%f > %f).\n", dist, range);
 		Message_StringID(13,TARGET_OUT_OF_RANGE);//Client enforces range and sends the message, this is a backup just incase.
 		return;
 	}
@@ -778,7 +778,7 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 		return;
 	}
 
-	if(!IsAttackAllowed(GetTarget()) ||
+	if(!IsAttackAllowed(other) ||
 		IsCasting() ||
 		IsSitting() ||
 		(DivineAura() && !GetGM()) ||
@@ -795,7 +795,7 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 	//EndlessQuiver AA base1 = 100% Chance to avoid consumption arrow.
 	int ChanceAvoidConsume = aabonuses.ConsumeProjectile + itembonuses.ConsumeProjectile + spellbonuses.ConsumeProjectile;
 
-	if (!ChanceAvoidConsume || (ChanceAvoidConsume < 100 && MakeRandomInt(0,99) > ChanceAvoidConsume)){ 
+	if (!ChanceAvoidConsume || (ChanceAvoidConsume < 100 && zone->random.Int(0,99) > ChanceAvoidConsume)){ 
 		DeleteItemInInventory(ammo_slot, 1, true);
 		mlog(COMBAT__RANGED, "Consumed one arrow from slot %d", ammo_slot);
 	} else {
@@ -927,11 +927,10 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 
 			bool dobonus = false;
 			if(GetClass() == RANGER && GetLevel() > 50){
-				
 				int bonuschance = RuleI(Combat, ArcheryBonusChance);
 				bonuschance = mod_archery_bonus_chance(bonuschance, RangeWeapon);
 
-				if( !RuleB(Combat, UseArcheryBonusRoll) || (MakeRandomInt(1, 100) < bonuschance)){
+				if( !RuleB(Combat, UseArcheryBonusRoll) || zone->random.Roll(bonuschance)){
 					if(RuleB(Combat, ArcheryBonusRequiresStationary)){
 						if(other->IsNPC() && !other->IsMoving() && !other->IsRooted())
 							dobonus = true;
@@ -956,7 +955,7 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 			if(RuleB(Combat, UseIntervalAC))
 				TotalDmg = MaxDmg;
 			else
-				TotalDmg = MakeRandomInt(1, MaxDmg);
+				TotalDmg = zone->random.Int(1, MaxDmg);
 
 			int minDmg = 1;
 			if(GetLevel() > 25){
@@ -1264,9 +1263,9 @@ void NPC::RangedAttack(Mob* other)
 
 		if(ammo)
 			SendItemAnimation(other, ammo, SkillArchery);
-		else 
+		else
 			ProjectileAnimation(other, 0,false,0,0,0,0,GetAmmoIDfile(),skillinuse);
-	
+
 		FaceTarget(other);
 
 		if (!other->CheckHitChance(this, skillinuse, MainRange, GetSpecialAbilityParam(SPECATK_RANGED_ATK, 2)))
@@ -1282,17 +1281,17 @@ void NPC::RangedAttack(Mob* other)
 			if(WDmg > 0 || ADmg > 0)
 			{
 				mlog(COMBAT__RANGED, "Ranged attack hit %s.", other->GetName());
-			
+
 				int32 MaxDmg = max_dmg * RuleR(Combat, ArcheryNPCMultiplier); // should add a field to npc_types
 				int32 MinDmg = min_dmg * RuleR(Combat, ArcheryNPCMultiplier);
 
 				if(RuleB(Combat, UseIntervalAC))
 					TotalDmg = MaxDmg;
 				else
-					TotalDmg = MakeRandomInt(MinDmg, MaxDmg);
+					TotalDmg = zone->random.Int(MinDmg, MaxDmg);
 
 				TotalDmg += TotalDmg *  GetSpecialAbilityParam(SPECATK_RANGED_ATK, 3) / 100; //Damage modifier
-			
+
 				other->AvoidDamage(this, TotalDmg, false);
 				other->MeleeMitigation(this, TotalDmg, MinDmg);
 				if (TotalDmg > 0)
@@ -1333,7 +1332,7 @@ uint16 Mob::GetThrownDamage(int16 wDmg, int32& TotalDmg, int& minDmg) {
 	if(RuleB(Combat, UseIntervalAC))
 		TotalDmg = MaxDmg;
 	else
-		TotalDmg = MakeRandomInt(1, MaxDmg);
+		TotalDmg = zone->random.Int(1, MaxDmg);
 
 	minDmg = 1;
 	if(GetLevel() > 25){
@@ -1352,7 +1351,8 @@ uint16 Mob::GetThrownDamage(int16 wDmg, int32& TotalDmg, int& minDmg) {
 
 void Client::ThrowingAttack(Mob* other, bool CanDoubleAttack) { //old was 51
 	//conditions to use an attack checked before we are called
-
+	if (!other)
+		return;
 	//make sure the attack and ranged timers are up
 	//if the ranged timer is disabled, then they have no ranged weapon and shouldent be attacking anyhow
 	if((!CanDoubleAttack && (attack_timer.Enabled() && !attack_timer.Check(false)) || (ranged_timer.Enabled() && !ranged_timer.Check()))) {
@@ -1378,7 +1378,7 @@ void Client::ThrowingAttack(Mob* other, bool CanDoubleAttack) { //old was 51
 		return;
 	}
 
-	mlog(COMBAT__RANGED, "Throwing %s (%d) at %s", item->Name, item->ID, GetTarget()->GetName());
+	mlog(COMBAT__RANGED, "Throwing %s (%d) at %s", item->Name, item->ID, other->GetName());
 
 	if(RangeWeapon->GetCharges() == 1) {
 		//first check ammo
@@ -1400,19 +1400,20 @@ void Client::ThrowingAttack(Mob* other, bool CanDoubleAttack) { //old was 51
 		}
 	}
 
-	float range = item->Range + GetRangeDistTargetSizeMod(GetTarget());
+	float range = item->Range + GetRangeDistTargetSizeMod(other);
 	mlog(COMBAT__RANGED, "Calculated bow range to be %.1f", range);
 	range *= range;
-	if(DistNoRoot(*GetTarget()) > range) {
-		mlog(COMBAT__RANGED, "Throwing attack out of range... client should catch this. (%f > %f).\n", DistNoRootNoZ(*GetTarget()), range);
+	float dist = DistNoRoot(*other);
+	if(dist > range) {
+		mlog(COMBAT__RANGED, "Throwing attack out of range... client should catch this. (%f > %f).\n", dist, range);
 		Message_StringID(13,TARGET_OUT_OF_RANGE);//Client enforces range and sends the message, this is a backup just incase.
 		return;
 	}
-	else if(DistNoRoot(*GetTarget()) < (RuleI(Combat, MinRangedAttackDist)*RuleI(Combat, MinRangedAttackDist))){
+	else if(dist < (RuleI(Combat, MinRangedAttackDist)*RuleI(Combat, MinRangedAttackDist))){
 		Message_StringID(15,RANGED_TOO_CLOSE);//Client enforces range and sends the message, this is a backup just incase.
 	}
 
-	if(!IsAttackAllowed(GetTarget()) ||
+	if(!IsAttackAllowed(other) ||
 		IsCasting() ||
 		IsSitting() ||
 		(DivineAura() && !GetGM()) ||
@@ -1423,7 +1424,7 @@ void Client::ThrowingAttack(Mob* other, bool CanDoubleAttack) { //old was 51
 		return;
 	}
 
-	DoThrowingAttackDmg(GetTarget(), RangeWeapon, item);
+	DoThrowingAttackDmg(other, RangeWeapon, item);
 
 	//consume ammo
 	DeleteItemInInventory(ammo_slot, 1, true);
@@ -1754,7 +1755,7 @@ void NPC::DoClassAttacks(Mob *target) {
 		}
 		case WARRIOR: case WARRIORGM:{
 			if(level >= RuleI(Combat, NPCBashKickLevel)){
-				if(MakeRandomInt(0, 100) > 25){ //tested on live, warrior mobs both kick and bash, kick about 75% of the time, casting doesn't seem to make a difference.
+				if(zone->random.Roll(75)) { //tested on live, warrior mobs both kick and bash, kick about 75% of the time, casting doesn't seem to make a difference.
 					DoAnim(animKick);
 					int32 dmg = 0;
 
@@ -1766,7 +1767,7 @@ void NPC::DoClassAttacks(Mob *target) {
 							if(RuleB(Combat, UseIntervalAC))
 								dmg = GetKickDamage();
 							else
-								dmg = MakeRandomInt(1, GetKickDamage());
+								dmg = zone->random.Int(1, GetKickDamage());
 
 						}
 					}
@@ -1787,7 +1788,7 @@ void NPC::DoClassAttacks(Mob *target) {
 							if(RuleB(Combat, UseIntervalAC))
 								dmg = GetBashDamage();
 							else
-								dmg = MakeRandomInt(1, GetBashDamage());
+								dmg = zone->random.Int(1, GetBashDamage());
 						}
 					}
 
@@ -1814,8 +1815,8 @@ void NPC::DoClassAttacks(Mob *target) {
 
 			reuse = FrenzyReuseTime * 1000;
 
-			while(AtkRounds > 0) { 
-				if (GetTarget() && (AtkRounds == 1 || MakeRandomInt(0,100) < 75)){
+			while(AtkRounds > 0) {
+				if (GetTarget() && (AtkRounds == 1 || zone->random.Roll(75))) {
 					DoSpecialAttackDamage(GetTarget(), SkillFrenzy, max_dmg, min_dmg, -1 , reuse, true);
 				}
 				AtkRounds--;
@@ -1840,7 +1841,7 @@ void NPC::DoClassAttacks(Mob *target) {
 						if(RuleB(Combat, UseIntervalAC))
 							dmg = GetKickDamage();
 						else
-							dmg = MakeRandomInt(1, GetKickDamage());
+							dmg = zone->random.Int(1, GetKickDamage());
 					}
 				}
 
@@ -1865,7 +1866,7 @@ void NPC::DoClassAttacks(Mob *target) {
 						if(RuleB(Combat, UseIntervalAC))
 							dmg = GetBashDamage();
 						else
-							dmg = MakeRandomInt(1, GetBashDamage());
+							dmg = zone->random.Int(1, GetBashDamage());
 					}
 				}
 
@@ -1974,7 +1975,7 @@ void Client::DoClassAttacks(Mob *ca_target, uint16 skill, bool IsRiposte)
 					if(RuleB(Combat, UseIntervalAC))
 						dmg = GetBashDamage();
 					else
-						dmg = MakeRandomInt(1, GetBashDamage());
+						dmg = zone->random.Int(1, GetBashDamage());
 
 				}
 			}
@@ -2011,7 +2012,7 @@ void Client::DoClassAttacks(Mob *ca_target, uint16 skill, bool IsRiposte)
 		//Live parses show around 55% Triple 35% Double 10% Single, you will always get first hit.
 		while(AtkRounds > 0) {
 
-			if (GetTarget() && (AtkRounds == 1 || MakeRandomInt(0,100) < 75)){
+			if (GetTarget() && (AtkRounds == 1 || zone->random.Roll(75))) {
 				DoSpecialAttackDamage(GetTarget(), SkillFrenzy, max_dmg, min_dmg, max_dmg , ReuseTime, true);
 			}
 			AtkRounds--;
@@ -2038,7 +2039,7 @@ void Client::DoClassAttacks(Mob *ca_target, uint16 skill, bool IsRiposte)
 					if(RuleB(Combat, UseIntervalAC))
 						dmg = GetKickDamage();
 					else
-						dmg = MakeRandomInt(1, GetKickDamage());
+						dmg = zone->random.Int(1, GetKickDamage());
 				}
 			}
 
@@ -2058,17 +2059,17 @@ void Client::DoClassAttacks(Mob *ca_target, uint16 skill, bool IsRiposte)
 		//Live AA - Technique of Master Wu
 		int wuchance = itembonuses.DoubleSpecialAttack + spellbonuses.DoubleSpecialAttack + aabonuses.DoubleSpecialAttack;
 		if (wuchance) {
-			if (wuchance >= 100 || wuchance > MakeRandomInt(0, 99)) {
+			if (wuchance >= 100 || zone->random.Roll(wuchance)) {
 				int MonkSPA [5] = { SkillFlyingKick, SkillDragonPunch, SkillEagleStrike, SkillTigerClaw, SkillRoundKick };
 				int extra = 1;
-				if (wuchance / 4 > MakeRandomInt(0, 99))
+				if (zone->random.Roll(wuchance / 4))
 					extra++;
 				// They didn't add a string ID for this.
 				std::string msg = StringFormat("The spirit of Master Wu fills you!  You gain %d additional attack(s).", extra);
 				// live uses 400 here -- not sure if it's the best for all clients though
 				SendColoredText(400, msg);
 				while (extra) {
-					MonkSpecialAttack(ca_target, MonkSPA[MakeRandomInt(0, 4)]);
+					MonkSpecialAttack(ca_target, MonkSPA[zone->random.Int(0, 4)]);
 					extra--;
 				}
 			}
@@ -2120,7 +2121,7 @@ void Mob::Taunt(NPC* who, bool always_succeed, float chance_bonus) {
 
 		int32 newhate = 0;
 		float tauntchance = 50.0f;
-		
+
 		if(always_succeed)
 			tauntchance = 101.0f;
 
@@ -2152,7 +2153,7 @@ void Mob::Taunt(NPC* who, bool always_succeed, float chance_bonus) {
 
 		tauntchance /= 100.0f;
 
-		if (tauntchance > MakeRandomFloat(0, 1)) { 
+		if (tauntchance > zone->random.Real(0, 1)) {
 			if (hate_top && hate_top != this){
 				newhate = (who->GetNPCHate(hate_top) - who->GetNPCHate(this)) + 1;
 				who->CastToNPC()->AddToHateList(this, newhate);
@@ -2174,7 +2175,7 @@ void Mob::Taunt(NPC* who, bool always_succeed, float chance_bonus) {
 
 	if (HasSkillProcs())
 		TrySkillProc(who, SkillTaunt, TauntReuseTime*1000);
-	 
+
 	if (Success && HasSkillProcSuccess())
 		TrySkillProc(who, SkillTaunt, TauntReuseTime*1000, true);
 }
@@ -2208,7 +2209,7 @@ void Mob::InstillDoubt(Mob *who) {
 	//target's counters
 	value -= target->GetLevel()*4 + who->GetWIS()/4;
 
-	if (MakeRandomInt(0,99) < value) {
+	if (zone->random.Roll(value)) {
 		//temporary hack...
 		//cast fear on them... should prolly be a different spell
 		//and should be un-resistable.
@@ -2217,7 +2218,7 @@ void Mob::InstillDoubt(Mob *who) {
 	} else {
 		Message_StringID(4,NOT_SCARING);
 		//Idea from WR:
-		/* if (target->IsNPC() && MakeRandomInt(0,99) < 10 ) {
+		/* if (target->IsNPC() && zone->random.Int(0,99) < 10 ) {
 			entity_list.MessageClose(target, false, 50, MT_NPCRampage, "%s lashes out in anger!",target->GetName());
 			//should we actually do this? and the range is completely made up, unconfirmed
 			entity_list.AEAttack(target, 50);
@@ -2225,12 +2226,12 @@ void Mob::InstillDoubt(Mob *who) {
 	}
 }
 
-uint32 Mob::TryHeadShot(Mob* defender, SkillUseTypes skillInUse) { 
+uint32 Mob::TryHeadShot(Mob* defender, SkillUseTypes skillInUse) {
 	//Only works on YOUR target.
-	if(defender && (defender->GetBodyType() == BT_Humanoid) && !defender->IsClient() 
+	if(defender && (defender->GetBodyType() == BT_Humanoid) && !defender->IsClient()
 		&& (skillInUse == SkillArchery) && (GetTarget() == defender)) {
-		
-		uint32 HeadShot_Dmg = aabonuses.HeadShot[1] + spellbonuses.HeadShot[1] + itembonuses.HeadShot[1]; 
+
+		uint32 HeadShot_Dmg = aabonuses.HeadShot[1] + spellbonuses.HeadShot[1] + itembonuses.HeadShot[1];
 		uint8 HeadShot_Level = 0; //Get Highest Headshot Level
 		HeadShot_Level = aabonuses.HSLevel;
 		if (HeadShot_Level < spellbonuses.HSLevel)
@@ -2238,9 +2239,9 @@ uint32 Mob::TryHeadShot(Mob* defender, SkillUseTypes skillInUse) {
 		else if (HeadShot_Level < itembonuses.HSLevel)
 			HeadShot_Level = itembonuses.HSLevel;
 
-		if(HeadShot_Dmg && HeadShot_Level && (defender->GetLevel() <= HeadShot_Level)){ 
+		if(HeadShot_Dmg && HeadShot_Level && (defender->GetLevel() <= HeadShot_Level)){
 			float ProcChance = GetSpecialProcChances(MainRange);
-			if(ProcChance > MakeRandomFloat(0,1)) 
+			if(zone->random.Roll(ProcChance))
 				return HeadShot_Dmg;
 		}
 	}
@@ -2269,7 +2270,7 @@ float Mob::GetSpecialProcChances(uint16 hand)
 	} else {
 		/*PRE 2014 CHANGE Dev Quote - "Elidroth SOE:Proc chance is a function of your base hardcapped Dexterity / 35 + Heroic Dexterity / 25.
 		Kayen: Most reports suggest a ~ 6% chance to Headshot which consistent with above.*/
-		
+
 		ProcChance = (static_cast<float>(mydex/35) + static_cast<float>(itembonuses.HeroicDEX / 25))/100.0f;
 	}
 
@@ -2280,9 +2281,9 @@ uint32 Mob::TryAssassinate(Mob* defender, SkillUseTypes skillInUse, uint16 Reuse
 
 	if(defender && (defender->GetBodyType() == BT_Humanoid) && !defender->IsClient() &&
 		(skillInUse == SkillBackstab || skillInUse == SkillThrowing)) {
-		
+
 		uint32 Assassinate_Dmg = aabonuses.Assassinate[1] + spellbonuses.Assassinate[1] + itembonuses.Assassinate[1];
-		
+
 		uint8 Assassinate_Level = 0; //Get Highest Headshot Level
 		Assassinate_Level = aabonuses.AssassinateLevel;
 		if (Assassinate_Level < spellbonuses.AssassinateLevel)
@@ -2300,13 +2301,13 @@ uint32 Mob::TryAssassinate(Mob* defender, SkillUseTypes skillInUse, uint16 Reuse
 
 		if(Assassinate_Dmg && Assassinate_Level && (defender->GetLevel() <= Assassinate_Level)){
 			float ProcChance = 0.0f;
-			
+
 			if (skillInUse == SkillThrowing)
 				ProcChance = GetSpecialProcChances(MainRange);
 			else
 				ProcChance = GetAssassinateProcChances(ReuseTime);
 
-			if(ProcChance > MakeRandomFloat(0,1)) 
+			if(zone->random.Roll(ProcChance))
 				return Assassinate_Dmg;
 		}
 	}
@@ -2326,7 +2327,7 @@ float Mob::GetAssassinateProcChances(uint16 ReuseTime)
 
 	if (RuleB(Combat, AdjustSpecialProcPerMinute)) {
 		ProcChance = (static_cast<float>(ReuseTime*1000) *
-				RuleR(Combat, AvgSpecialProcsPerMinute) / 60000.0f); 
+				RuleR(Combat, AvgSpecialProcsPerMinute) / 60000.0f);
 		ProcBonus += (10 + (static_cast<float>(mydex/10) + static_cast<float>(itembonuses.HeroicDEX /10)))/100.0f;
 		ProcChance += ProcChance * ProcBonus / 100.0f;
 
@@ -2388,7 +2389,7 @@ void Mob::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 			}
 		}
 
-		ApplySpecialAttackMod(skillinuse, max_hit, min_hit); 
+		ApplySpecialAttackMod(skillinuse, max_hit, min_hit);
 		min_hit += min_hit * GetMeleeMinDamageMod_SE(skillinuse) / 100;
 
 		if(max_hit < min_hit)
@@ -2397,8 +2398,8 @@ void Mob::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 		if(RuleB(Combat, UseIntervalAC))
 			damage = max_hit;
 		else
-			damage = MakeRandomInt(min_hit, max_hit);
-		
+			damage = zone->random.Int(min_hit, max_hit);
+
 		if(!other->CheckHitChance(this, skillinuse, Hand, chance_mod)) {
 			damage = 0;
 		} else {
@@ -2436,7 +2437,7 @@ void Mob::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 		int kb_chance = 25;
 		kb_chance += kb_chance*(100-aabonuses.SpecialAttackKBProc[0])/100;
 
-		if (MakeRandomInt(0, 99) < kb_chance)
+		if (zone->random.Roll(kb_chance))
 			SpellFinished(904, other, 10, 0, -1, spells[904].ResistDiff);
 	}
 

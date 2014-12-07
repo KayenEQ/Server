@@ -1025,14 +1025,21 @@ void Client::BuyAA(AA_Action* action)
 	}
 
 	uint32 real_cost;
+	uint8 req_level;
 	std::map<uint32, AALevelCost_Struct>::iterator RequiredLevel = AARequiredLevelAndCost.find(action->ability);
 
 	if(RequiredLevel != AARequiredLevelAndCost.end())
 	{
 		real_cost = RequiredLevel->second.Cost;
+		req_level = RequiredLevel->second.Level;
 	}
-	else
+	else {
 		real_cost = aa2->cost + (aa2->cost_inc * cur_level);
+		req_level = aa2->class_type + (aa2->level_inc * cur_level);
+	}
+
+	if (req_level > GetLevel())
+		return; //Cheater trying to Buy AA...
 		
 	//C!Kayen - Subject to change. Set which AA Type will use which alt currency	
 	uint32 alt_currency_type = 0;
@@ -1568,21 +1575,22 @@ bool ZoneDatabase::LoadAAEffects2() {
 
 	return true;
 }
+
 void Client::ResetAA(){
-	RefundAA(); 
+	RefundAA();
 	uint32 i;
-	for(i=0;i<MAX_PP_AA_ARRAY;i++){
+	for (i=0; i < MAX_PP_AA_ARRAY; i++) {
 		aa[i]->AA = 0;
 		aa[i]->value = 0;
 		m_pp.aa_array[MAX_PP_AA_ARRAY].AA = 0;
-		m_pp.aa_array[MAX_PP_AA_ARRAY].value = 0; 
+		m_pp.aa_array[MAX_PP_AA_ARRAY].value = 0;
 	}
 
 	std::map<uint32,uint8>::iterator itr;
-	for(itr=aa_points.begin();itr!=aa_points.end();++itr)
+	for(itr = aa_points.begin(); itr != aa_points.end(); ++itr)
 		aa_points[itr->first] = 0;
 
-		for(int i = 0; i < _maxLeaderAA; ++i)
+	for(int i = 0; i < _maxLeaderAA; ++i)
 		m_pp.leader_abilities.ranks[i] = 0;
 
 	m_pp.group_leadership_points = 0;
@@ -1591,10 +1599,23 @@ void Client::ResetAA(){
 	m_pp.raid_leadership_exp = 0;
 
 	database.DeleteCharacterAAs(this->CharacterID());
-	SaveAA(); 
+	SaveAA();
+	SendClearAA();
+	SendAAList();
 	SendAATable();
+	SendAAStats();
 	database.DeleteCharacterLeadershipAAs(this->CharacterID());
-	Kick();
+	// undefined for these clients
+	if (GetClientVersionBit() & BIT_TitaniumAndEarlier)
+		Kick();
+}
+
+void Client::SendClearAA()
+{
+	EQApplicationPacket *outapp = new EQApplicationPacket(OP_ClearLeadershipAbilities, 0);
+	FastQueuePacket(&outapp);
+	outapp = new EQApplicationPacket(OP_ClearAA, 0);
+	FastQueuePacket(&outapp);
 }
 
 int Client::GroupLeadershipAAHealthEnhancement()

@@ -300,7 +300,6 @@ Mob::Mob(const char* in_name,
 		ProjectileAtk[i].spell_id = SPELL_UNKNOWN; //C!Kayen
 		ProjectileAtk[i].dmod = 0; //C!Kayen
 		ProjectileAtk[i].dmgpct = 0; //C!Kayen
-
 	}
 
 	memset(&itembonuses, 0, sizeof(StatBonuses));
@@ -416,9 +415,12 @@ Mob::Mob(const char* in_name,
 	momentum = 0.0f; 
 	for (int i = 0; i < HIGHEST_SKILL+2; i++) { WpnSkillDmgBonus[i] = 0; }
 	for (int i = 0; i < HIGHEST_RESIST+2; i++) { SpellResistTypeDmgBonus[i] = 0; }
-	leap_increment = 0;
-	leap_spell_id = 0;
-	leap_x = 0.0f;	leap_y = 0.0f;	leap_z = 0.0f;
+
+	leap.increment = 0;
+	leap.spell_id = SPELL_UNKNOWN;
+	leap.origin_x = 0.0f;
+	leap.origin_y = 0.0f;
+	leap.origin_z = 0.0f;
 		
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_spell_id_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
@@ -1647,157 +1649,157 @@ bool Mob::RandomizeFeatures(bool send_illusion, bool set_variables)
 		uint32 DrakkinDetails = 0xFFFFFFFF;
 
 		// Set some common feature settings
-		EyeColor1 = MakeRandomInt(0, 9);
-		EyeColor2 = MakeRandomInt(0, 9);
-		LuclinFace = MakeRandomInt(0, 7);
+		EyeColor1 = zone->random.Int(0, 9);
+		EyeColor2 = zone->random.Int(0, 9);
+		LuclinFace = zone->random.Int(0, 7);
 
 		// Adjust all settings based on the min and max for each feature of each race and gender
 		switch (GetRace())
 		{
 			case 1:	// Human
-				HairColor = MakeRandomInt(0, 19);
+				HairColor = zone->random.Int(0, 19);
 				if (Gender == 0) {
 					BeardColor = HairColor;
-					HairStyle = MakeRandomInt(0, 3);
-					Beard = MakeRandomInt(0, 5);
+					HairStyle = zone->random.Int(0, 3);
+					Beard = zone->random.Int(0, 5);
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 2:	// Barbarian
-				HairColor = MakeRandomInt(0, 19);
-				LuclinFace = MakeRandomInt(0, 87);
+				HairColor = zone->random.Int(0, 19);
+				LuclinFace = zone->random.Int(0, 87);
 				if (Gender == 0) {
 					BeardColor = HairColor;
-					HairStyle = MakeRandomInt(0, 3);
-					Beard = MakeRandomInt(0, 5);
+					HairStyle = zone->random.Int(0, 3);
+					Beard = zone->random.Int(0, 5);
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 3: // Erudite
 				if (Gender == 0) {
-					BeardColor = MakeRandomInt(0, 19);
-					Beard = MakeRandomInt(0, 5);
-					LuclinFace = MakeRandomInt(0, 57);
+					BeardColor = zone->random.Int(0, 19);
+					Beard = zone->random.Int(0, 5);
+					LuclinFace = zone->random.Int(0, 57);
 				}
 				if (Gender == 1) {
-					LuclinFace = MakeRandomInt(0, 87);
+					LuclinFace = zone->random.Int(0, 87);
 				}
 				break;
 			case 4: // WoodElf
-				HairColor = MakeRandomInt(0, 19);
+				HairColor = zone->random.Int(0, 19);
 				if (Gender == 0) {
-					HairStyle = MakeRandomInt(0, 3);
+					HairStyle = zone->random.Int(0, 3);
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 5: // HighElf
-				HairColor = MakeRandomInt(0, 14);
+				HairColor = zone->random.Int(0, 14);
 				if (Gender == 0) {
-					HairStyle = MakeRandomInt(0, 3);
-					LuclinFace = MakeRandomInt(0, 37);
+					HairStyle = zone->random.Int(0, 3);
+					LuclinFace = zone->random.Int(0, 37);
 					BeardColor = HairColor;
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 6: // DarkElf
-				HairColor = MakeRandomInt(13, 18);
+				HairColor = zone->random.Int(13, 18);
 				if (Gender == 0) {
-					HairStyle = MakeRandomInt(0, 3);
-					LuclinFace = MakeRandomInt(0, 37);
+					HairStyle = zone->random.Int(0, 3);
+					LuclinFace = zone->random.Int(0, 37);
 					BeardColor = HairColor;
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 7: // HalfElf
-				HairColor = MakeRandomInt(0, 19);
+				HairColor = zone->random.Int(0, 19);
 				if (Gender == 0) {
-					HairStyle = MakeRandomInt(0, 3);
-					LuclinFace = MakeRandomInt(0, 37);
+					HairStyle = zone->random.Int(0, 3);
+					LuclinFace = zone->random.Int(0, 37);
 					BeardColor = HairColor;
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 8: // Dwarf
-				HairColor = MakeRandomInt(0, 19);
+				HairColor = zone->random.Int(0, 19);
 				BeardColor = HairColor;
 				if (Gender == 0) {
-					HairStyle = MakeRandomInt(0, 3);
-					Beard = MakeRandomInt(0, 5);
+					HairStyle = zone->random.Int(0, 3);
+					Beard = zone->random.Int(0, 5);
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
-					LuclinFace = MakeRandomInt(0, 17);
+					HairStyle = zone->random.Int(0, 2);
+					LuclinFace = zone->random.Int(0, 17);
 				}
 				break;
 			case 9: // Troll
-				EyeColor1 = MakeRandomInt(0, 10);
-				EyeColor2 = MakeRandomInt(0, 10);
+				EyeColor1 = zone->random.Int(0, 10);
+				EyeColor2 = zone->random.Int(0, 10);
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 3);
-					HairColor = MakeRandomInt(0, 23);
+					HairStyle = zone->random.Int(0, 3);
+					HairColor = zone->random.Int(0, 23);
 				}
 				break;
 			case 10: // Ogre
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 3);
-					HairColor = MakeRandomInt(0, 23);
+					HairStyle = zone->random.Int(0, 3);
+					HairColor = zone->random.Int(0, 23);
 				}
 				break;
 			case 11: // Halfling
-				HairColor = MakeRandomInt(0, 19);
+				HairColor = zone->random.Int(0, 19);
 				if (Gender == 0) {
 					BeardColor = HairColor;
-					HairStyle = MakeRandomInt(0, 3);
-					Beard = MakeRandomInt(0, 5);
+					HairStyle = zone->random.Int(0, 3);
+					Beard = zone->random.Int(0, 5);
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 12: // Gnome
-				HairColor = MakeRandomInt(0, 24);
+				HairColor = zone->random.Int(0, 24);
 				if (Gender == 0) {
 					BeardColor = HairColor;
-					HairStyle = MakeRandomInt(0, 3);
-					Beard = MakeRandomInt(0, 5);
+					HairStyle = zone->random.Int(0, 3);
+					Beard = zone->random.Int(0, 5);
 				}
 				if (Gender == 1) {
-					HairStyle = MakeRandomInt(0, 2);
+					HairStyle = zone->random.Int(0, 2);
 				}
 				break;
 			case 128: // Iksar
 			case 130: // VahShir
 				break;
 			case 330: // Froglok
-				LuclinFace = MakeRandomInt(0, 9);
+				LuclinFace = zone->random.Int(0, 9);
 			case 522: // Drakkin
-				HairColor = MakeRandomInt(0, 3);
+				HairColor = zone->random.Int(0, 3);
 				BeardColor = HairColor;
-				EyeColor1 = MakeRandomInt(0, 11);
-				EyeColor2 = MakeRandomInt(0, 11);
-				LuclinFace = MakeRandomInt(0, 6);
-				DrakkinHeritage = MakeRandomInt(0, 6);
-				DrakkinTattoo = MakeRandomInt(0, 7);
-				DrakkinDetails = MakeRandomInt(0, 7);
+				EyeColor1 = zone->random.Int(0, 11);
+				EyeColor2 = zone->random.Int(0, 11);
+				LuclinFace = zone->random.Int(0, 6);
+				DrakkinHeritage = zone->random.Int(0, 6);
+				DrakkinTattoo = zone->random.Int(0, 7);
+				DrakkinDetails = zone->random.Int(0, 7);
 				if (Gender == 0) {
-					Beard = MakeRandomInt(0, 12);
-					HairStyle = MakeRandomInt(0, 8);
+					Beard = zone->random.Int(0, 12);
+					HairStyle = zone->random.Int(0, 8);
 				}
 				if (Gender == 1) {
-					Beard = MakeRandomInt(0, 3);
-					HairStyle = MakeRandomInt(0, 7);
+					Beard = zone->random.Int(0, 3);
+					HairStyle = zone->random.Int(0, 7);
 				}
 				break;
 			default:
@@ -2636,7 +2638,7 @@ uint32 Mob::RandomTimer(int min,int max) {
 	int r = 14000;
 	if(min != 0 && max != 0 && min < max)
 	{
-		r = MakeRandomInt(min, max);
+		r = zone->random.Int(min, max);
 	}
 	return r;
 }
@@ -3034,7 +3036,7 @@ void Mob::ExecWeaponProc(const ItemInst *inst, uint16 spell_id, Mob *on) {
 	if(IsClient())
 		twinproc_chance = CastToClient()->GetFocusEffect(focusTwincast, spell_id);
 
-	if(twinproc_chance && (MakeRandomInt(0,99) < twinproc_chance))
+	if(twinproc_chance && zone->random.Roll(twinproc_chance))
 		twinproc = true;
 
 	if (IsBeneficialSpell(spell_id)) {
@@ -3363,7 +3365,7 @@ bool Mob::TrySpellTrigger(Mob *target, uint32 spell_id, int effect)
 {
 	if(!target || !IsValidSpell(spell_id))
 		return false;
-	
+
 	int spell_trig = 0;
 	// Count all the percentage chances to trigger for all effects
 	for(int i = 0; i < EFFECT_COUNT; i++)
@@ -3379,7 +3381,7 @@ bool Mob::TrySpellTrigger(Mob *target, uint32 spell_id, int effect)
 		{
 			if (spells[spell_id].effectid[i] == SE_SpellTrigger)
 			{
-				if(MakeRandomInt(0, trig_chance) <= spells[spell_id].base[i])
+				if(zone->random.Int(0, trig_chance) <= spells[spell_id].base[i])
 				{
 					// If we trigger an effect then its over.
 					if (IsValidSpell(spells[spell_id].base2[i])){
@@ -3399,7 +3401,7 @@ bool Mob::TrySpellTrigger(Mob *target, uint32 spell_id, int effect)
 	// if the chances don't add to 100, then each effect gets a chance to fire, chance for no trigger as well.
 	else
 	{
-		if(MakeRandomInt(0, 100) <= spells[spell_id].base[effect])
+		if(zone->random.Int(0, 100) <= spells[spell_id].base[effect])
 		{
 			if (IsValidSpell(spells[spell_id].base2[effect])){
 				SpellFinished(spells[spell_id].base2[effect], target, 10, 0, -1, spells[spells[spell_id].base2[effect]].ResistDiff);
@@ -3504,7 +3506,7 @@ void Mob::TryTwincast(Mob *caster, Mob *target, uint32 spell_id)
 
 		if (focus > 0)
 		{
-			if(MakeRandomInt(0, 100) <= focus)
+			if(zone->random.Roll(focus))
 			{
 				Message(MT_Spells,"You twincast %s!",spells[spell_id].name);
 				SpellFinished(spell_id, target, 10, 0, -1, spells[spell_id].ResistDiff);
@@ -3523,7 +3525,7 @@ void Mob::TryTwincast(Mob *caster, Mob *target, uint32 spell_id)
 				int32 focus = CalcFocusEffect(focusTwincast, buffs[i].spellid, spell_id);
 				if(focus > 0)
 				{
-					if(MakeRandomInt(0, 100) <= focus)
+					if(zone->random.Roll(focus))
 					{
 						SpellFinished(spell_id, target, 10, 0, -1, spells[spell_id].ResistDiff);
 					}
@@ -4309,7 +4311,7 @@ void Mob::TrySpellOnKill(uint8 level, uint16 spell_id)
 				{
 					if (IsValidSpell(spells[spell_id].base2[i]) && spells[spell_id].max[i] <= level)
 					{
-						if(MakeRandomInt(0,99) < spells[spell_id].base[i])
+						if(zone->random.Roll(spells[spell_id].base[i]))
 							SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 					}
 				}
@@ -4324,17 +4326,17 @@ void Mob::TrySpellOnKill(uint8 level, uint16 spell_id)
 	for(int i = 0; i < MAX_SPELL_TRIGGER*3; i+=3) {
 
 		if(aabonuses.SpellOnKill[i] && IsValidSpell(aabonuses.SpellOnKill[i]) && (level >= aabonuses.SpellOnKill[i + 2])) {
-			if(MakeRandomInt(0, 99) < static_cast<int>(aabonuses.SpellOnKill[i + 1]))
+			if(zone->random.Roll(static_cast<int>(aabonuses.SpellOnKill[i + 1])))
 				SpellFinished(aabonuses.SpellOnKill[i], this, 10, 0, -1, spells[aabonuses.SpellOnKill[i]].ResistDiff);
 		}
 
 		if(itembonuses.SpellOnKill[i] && IsValidSpell(itembonuses.SpellOnKill[i]) && (level >= itembonuses.SpellOnKill[i + 2])){
-			if(MakeRandomInt(0, 99) < static_cast<int>(itembonuses.SpellOnKill[i + 1]))
+			if(zone->random.Roll(static_cast<int>(itembonuses.SpellOnKill[i + 1])))
 				SpellFinished(itembonuses.SpellOnKill[i], this, 10, 0, -1, spells[aabonuses.SpellOnKill[i]].ResistDiff);
 		}
 
 		if(spellbonuses.SpellOnKill[i] && IsValidSpell(spellbonuses.SpellOnKill[i]) && (level >= spellbonuses.SpellOnKill[i + 2])) {
-			if(MakeRandomInt(0, 99) < static_cast<int>(spellbonuses.SpellOnKill[i + 1]))
+			if(zone->random.Roll(static_cast<int>(spellbonuses.SpellOnKill[i + 1])))
 				SpellFinished(spellbonuses.SpellOnKill[i], this, 10, 0, -1, spells[aabonuses.SpellOnKill[i]].ResistDiff);
 		}
 
@@ -4351,19 +4353,19 @@ bool Mob::TrySpellOnDeath()
 
 	for(int i = 0; i < MAX_SPELL_TRIGGER*2; i+=2) {
 		if(IsClient() && aabonuses.SpellOnDeath[i] && IsValidSpell(aabonuses.SpellOnDeath[i])) {
-			if(MakeRandomInt(0, 99) < static_cast<int>(aabonuses.SpellOnDeath[i + 1])) {
+			if(zone->random.Roll(static_cast<int>(aabonuses.SpellOnDeath[i + 1]))) {
 				SpellFinished(aabonuses.SpellOnDeath[i], this, 10, 0, -1, spells[aabonuses.SpellOnDeath[i]].ResistDiff);
 			}
 		}
 
 		if(itembonuses.SpellOnDeath[i] && IsValidSpell(itembonuses.SpellOnDeath[i])) {
-			if(MakeRandomInt(0, 99) < static_cast<int>(itembonuses.SpellOnDeath[i + 1])) {
+			if(zone->random.Roll(static_cast<int>(itembonuses.SpellOnDeath[i + 1]))) {
 				SpellFinished(itembonuses.SpellOnDeath[i], this, 10, 0, -1, spells[itembonuses.SpellOnDeath[i]].ResistDiff);
 			}
 		}
 
 		if(spellbonuses.SpellOnDeath[i] && IsValidSpell(spellbonuses.SpellOnDeath[i])) {
-			if(MakeRandomInt(0, 99) < static_cast<int>(spellbonuses.SpellOnDeath[i + 1])) {
+			if(zone->random.Roll(static_cast<int>(spellbonuses.SpellOnDeath[i + 1]))) {
 				SpellFinished(spellbonuses.SpellOnDeath[i], this, 10, 0, -1, spells[spellbonuses.SpellOnDeath[i]].ResistDiff);
 				}
 			}
@@ -4532,7 +4534,7 @@ bool Mob::TryReflectSpell(uint32 spell_id)
 
 	int chance = itembonuses.reflect_chance + spellbonuses.reflect_chance + aabonuses.reflect_chance;
 
-	if(chance && MakeRandomInt(0, 99) < chance)
+	if(chance && zone->random.Roll(chance))
 		return true;
 
 	return false;
@@ -6473,7 +6475,7 @@ void Mob::TryApplyEffectProjectileHit(uint16 spell_id, Mob* target)
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_ApplyEffectProjectileHit){
-			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]){
+			if(zone->random.Int(0, 100) <= spells[spell_id].base[i]){
 
 				if (!IsValidSpell(spells[spell_id].base2[i]))
 					continue;
@@ -7364,7 +7366,7 @@ void Mob::TryCastonSpellCastCountAmt(int slot, uint16 spell_id)
 			uint16 cast_count = CastToClient()->GetSpellCastCount(-1, spell_id);
 			if (cast_count == (spells[spell_id].max[i])){
 				if (IsValidSpell(spells[spell_id].base2[i])){
-					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+					if(zone->random.Int(0, 100) <= spells[spell_id].base[i]) {
 						SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 						return;
 					}
@@ -7476,7 +7478,7 @@ uint32 Client::TryCastonDiscCastCountAmt(int slot, uint16 spell_id, uint32 reduc
 		{
 			if (cast_count == (spells[spell_id].max[i])){
 				if (IsValidSpell(spells[spell_id].base2[i])){
-					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+					if(zone->random.Int(0, 100) <= spells[spell_id].base[i]) {
 						SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 						reset_count = true;
 					}
@@ -7490,7 +7492,7 @@ uint32 Client::TryCastonDiscCastCountAmt(int slot, uint16 spell_id, uint32 reduc
 			//Shout("DEBUG::TryCastonDiscCastCountAmt [%i] Cast Count %i B: %i L: %i M: %i", reduced_recast, cast_count, spells[spell_id].base[i],spells[spell_id].base2[i],spells[spell_id].max[i]);
 			if (cast_count == (spells[spell_id].max[i])){
 				if (spells[spell_id].base2[i]){ //Modifer to recast timer.
-					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+					if(zone->random.Int(0, 100) <= spells[spell_id].base[i]) {
 						_reduced_recast += (_reduced_recast * spells[spell_id].base2[i])/100;
 						reset_count = true;
 					}
@@ -7504,7 +7506,7 @@ uint32 Client::TryCastonDiscCastCountAmt(int slot, uint16 spell_id, uint32 reduc
 			//Shout("DEBUG:: TryCastonDiscCastCountAmt [%i] Cast Count %i B: %i L: %i M: %i", reduced_recast, cast_count, spells[spell_id].base[i],spells[spell_id].base2[i],spells[spell_id].max[i]);
 			if (cast_count != spells[spell_id].max[i]){
 				if (spells[spell_id].base2[i]){ //Modifer to recast timer.
-					if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]) {
+					if(zone->random.Int(0, 100) <= spells[spell_id].base[i]) {
 						_reduced_recast += (_reduced_recast * spells[spell_id].base2[i])/100;
 
 						if (!spells[spell_id].max[i])
@@ -7537,7 +7539,7 @@ void Mob::TryCastonSpellFinished(Mob *target, uint16 spell_id)
 	{
 		if (spells[spell_id].effectid[i] == SE_TryCastonSpellFinished)
 		{
-			if(MakeRandomInt(1, 100) <= spells[spell_id].base[i])
+			if(zone->random.Int(1, 100) <= spells[spell_id].base[i])
 			{
 				if(target)
 					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
@@ -7934,11 +7936,11 @@ void Mob::SetLeapEffect(uint16 spell_id){
 	if(IsClient())
 	{
 		BuffFadeByEffect(SE_Levitate);
-		leap_spell_id = spell_id;
-		leap_x = GetX();
-		leap_y = GetY();
-		leap_z = GetZ();
-		leap_increment = 1;
+		leap.spell_id = spell_id;
+		leap.origin_x = GetX();
+		leap.origin_y = GetY();
+		leap.origin_z = GetZ();
+		leap.increment = 1;
 
 		//Break deterimental snares and roots.
 		int buff_count = GetMaxTotalSlots();
@@ -7971,10 +7973,10 @@ void Mob::LeapProjectileEffect()
 	//Using 8 pushback and 30 pushup results in a distance ~ 56 which takes about 75 increments
 	//Trigger is set on TryOnClientUpdate when increment = 75
 
-	if (!leap_increment)
+	if (!leap.increment)
 		return;
 
-	leap_increment++;
+	leap.increment++;
 	return;
 }
 
@@ -8660,15 +8662,15 @@ void Client::TryOnClientUpdate()
 	if (GetKnockBackMeleeImmune())
 		SetKnockBackMeleeImmune(false);
 
-	if (leap_increment) { 
-		if (leap_increment >= 75) { //Trigger spell on next possible position update after landing.
-			float dist = CalculateDistance(leap_x, leap_y,  leap_z);
+	if (leap.increment) { 
+		if (leap.increment >= 75) { //Trigger spell on next possible position update after landing.
+			float dist = CalculateDistance(leap.origin_x, leap.origin_y,  leap.origin_z);
 			if (dist > 40.0f) {
-				if (IsValidSpell(leap_spell_id)){
+				if (IsValidSpell(leap.spell_id)){
 					for (int i=0; i < EFFECT_COUNT; i++){
-						if(spells[leap_spell_id].effectid[i] == SE_CastOnLeap){
-							if (IsValidSpell(spells[leap_spell_id].base[i]) && leap_spell_id != spells[leap_spell_id].base[i])
-								SpellFinished(spells[leap_spell_id].base[i], this, 10, 0, -1, spells[leap_spell_id].ResistDiff);
+						if(spells[leap.spell_id].effectid[i] == SE_CastOnLeap){
+							if (IsValidSpell(spells[leap.spell_id].base[i]) && leap.spell_id != spells[leap.spell_id].base[i])
+								SpellFinished(spells[leap.spell_id].base[i], this, 10, 0, -1, spells[spells[leap.spell_id].base[i]].ResistDiff);
 						}
 					}
 				}
@@ -8677,11 +8679,11 @@ void Client::TryOnClientUpdate()
 				Message(MT_SpellFailure, "Your leap failed to gather enough momentum.");
 
 			 //Reset variable to end
-			leap_spell_id = 0;
-			leap_increment = 0;
-			leap_x = 0.0f;
-			leap_y = 0.0f;
-			leap_z = 0.0f;
+			leap.spell_id = SPELL_UNKNOWN;
+			leap.increment = 0;
+			leap.origin_x = 0.0f;
+			leap.origin_y = 0.0f;
+			leap.origin_z = 0.0f;
 		}
 	}
 	//Shout("DEBUG:TryonClientUpdate :: X %.2f Y %.2f Z %.2f D: %.2f", GetX(), GetY(), GetZ(), m_DistanceSinceLastPositionCheck);
@@ -9163,7 +9165,7 @@ void Client::SpinAttack() {
 	if (head < 0.0f)
 		head = 510.0f;
 
-	int anim = MakeRandomInt(0,1);
+	int anim = zone->random.Int(0,1);
 
 	if (anim)
 		DoAnim(animPiercing);
@@ -9213,7 +9215,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 	else {
 		int FrontalBSChance = itembonuses.FrontalBackstabChance + spellbonuses.FrontalBackstabChance + aabonuses.FrontalBackstabChance;
 
-		if (FrontalBSChance && (FrontalBSChance > MakeRandomInt(0, 100)))
+		if (FrontalBSChance && (FrontalBSChance > zone->random.Int(0, 100)))
 			bCanFrontalBS = true;
 	}
 	
@@ -9228,7 +9230,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 			if(other->GetHP() > 0)
 				DoBackstabSpellEffect(other,false);
 
-			if (tripleChance && other->GetHP() > 0 && tripleChance > MakeRandomInt(0, 100))
+			if (tripleChance && other->GetHP() > 0 && tripleChance > zone->random.Int(0, 100))
 				DoBackstabSpellEffect(other,false);
 			
 		}
@@ -9243,7 +9245,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 			if(other->GetHP() > 0)
 				DoBackstabSpellEffect(other,true);
 
-			if (tripleChance && other->GetHP() > 0 && tripleChance > MakeRandomInt(0, 100))
+			if (tripleChance && other->GetHP() > 0 && tripleChance > zone->random.Int(0, 100))
 				DoBackstabSpellEffect(other,true);
 		}
 	}
@@ -9374,7 +9376,7 @@ void Mob::TryApplyEffectBackstab(uint16 spell_id, Mob* target, bool backstab)
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_ApplyEffectBackstab){
-			if(MakeRandomInt(0, 100) <= spells[spell_id].base[i]){
+			if(zone->random.Int(0, 100) <= spells[spell_id].base[i]){
 
 				if (backstab && spells[spell_id].max[i] == 1){
 					if (IsValidSpell(spells[spell_id].base2[i]))
@@ -9504,10 +9506,10 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	}
 	
 	if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
-		numattacks = MakeRandomInt(spells[spell_id].LightType, spells[spell_id].base[i]);
+		numattacks = zone->random.Int(spells[spell_id].LightType, spells[spell_id].base[i]);
 
 	if (spells[spell_id].targettype == ST_Directional)
-		speed = MakeRandomFloat(3.5, 4.5);//So they don't all clump
+		speed = zone->random.Real(3.5, 4.5);//So they don't all clump
 	for(int x = 0; x < numattacks; x++){
 		if (!HasDied()){
 			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, MainAmmo, speed, _spell_id, dmod, dmgpct);

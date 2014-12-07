@@ -1544,11 +1544,7 @@ protected:
 	int32 WpnSkillDmgBonus[HIGHEST_SKILL+2];
 	int32 SpellResistTypeDmgBonus[HIGHEST_RESIST+2];
 	
-	int leap_increment;
-	uint16 leap_spell_id;
-	float leap_x;//not used
-	float leap_y;//not used
-	float leap_z;//not used
+	tProjatk leap;
 
 	uint32 projectile_spell_id_ring[MAX_SPELL_PROJECTILE];
 	uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];
