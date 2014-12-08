@@ -580,7 +580,7 @@ typedef struct
 	float origin_x;
 	float origin_y;
 	float origin_z;
-} tLeap;
+} tLeap; //Leap spell effect
 
 //C!KAyen - STRUCTS END
 

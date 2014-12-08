@@ -1189,7 +1189,8 @@ public:
 	bool PassEffectLimitToDirection(Mob* other, uint16 spell_id);
 
 	bool TryRangerCastingConditions(uint16 spell_id, uint16 target_id);
-	inline float UseRangeFromRangedWpn() const { return 351; }
+	inline float UseRangeFromRangedWpn() const { return 351.0f; }
+
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 

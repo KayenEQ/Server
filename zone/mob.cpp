@@ -9675,14 +9675,6 @@ bool Mob::TryRangerCastingConditions(uint16 spell_id, uint16 target_id)
 		
 		if (!RangeDiscCombatRange(target_id, spell_id))
 			return false;
-
-
-		//if (spells[spell_id].range == 351 || spells[spell_id].aoerange == 351){
-			//Shout("BOW SHOT");
-			//return false;
-			
-
-		
 	}
 	return true;
 }
