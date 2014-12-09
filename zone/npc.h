@@ -135,9 +135,6 @@ public:
 	void CalcNPCRegen();
 	void CalcNPCDamage();
 
-	int32 GetActSpellDamage(uint16 spell_id, int32 value, Mob* target = nullptr);
-	int32 GetActSpellHealing(uint16 spell_id, int32 value, Mob* target = nullptr);
-
 	virtual void SetTarget(Mob* mob);
 	virtual uint16 GetSkill(SkillUseTypes skill_num) const { if (skill_num <= HIGHEST_SKILL) { return skills[skill_num]; } return 0; }
 
@@ -406,6 +403,7 @@ public:
 
 	bool IsRaidTarget() const { return raid_target; };
 
+
 	//C!Kayen - START
 	void ApplyCustomPetBonuses(Mob* owner, uint16 spell_id);
 
@@ -448,6 +446,8 @@ protected:
 	virtual bool AICastSpell(Mob* tar, uint8 iChance, uint16 iSpellTypes);
 	virtual bool AIDoSpellCast(uint8 i, Mob* tar, int32 mana_cost, uint32* oDontDoAgainBefore = 0);
 	AISpellsVar_Struct AISpellVar;
+	int16 GetFocusEffect(focusType type, uint16 spell_id);
+	
 	
 	uint32	npc_spells_effects_id;
 	std::vector<AISpellsEffects_Struct> AIspellsEffects;

@@ -1128,8 +1128,7 @@ int32 Mob::CheckAggroAmount(uint16 spell_id, bool isproc)
 
 		int HateMod = RuleI(Aggro, SpellAggroMod);
 
-		if (IsClient())
-			HateMod += CastToClient()->GetFocusEffect(focusSpellHateMod, spell_id);
+		HateMod += GetFocusEffect(focusSpellHateMod, spell_id);
 
 		HateMod += spellbonuses.SpellAggroMod + itembonuses.SpellAggroMod + aabonuses.SpellAggroMod; //C!Kayen
 
@@ -1180,8 +1179,7 @@ int32 Mob::CheckHealAggroAmount(uint16 spell_id, uint32 heal_possible)
 	if (AggroAmount > 0) {
 		int HateMod = RuleI(Aggro, SpellAggroMod);
 
-		if (IsClient())
-			HateMod += CastToClient()->GetFocusEffect(focusSpellHateMod, spell_id);
+		HateMod += GetFocusEffect(focusSpellHateMod, spell_id);
 
 		//Live AA - Spell casting subtlety
 		//HateMod += aabonuses.hatemod + spellbonuses.hatemod + itembonuses.hatemod; //C!Kayen
