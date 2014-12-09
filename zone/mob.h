@@ -1191,6 +1191,8 @@ public:
 	bool TryRangerCastingConditions(uint16 spell_id, uint16 target_id);
 	inline float UseRangeFromRangedWpn() const { return 351.0f; }
 
+	void BalanceResourceEffect(uint16 spell_id, int e);
+
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 

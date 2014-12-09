@@ -9679,6 +9679,20 @@ bool Mob::TryRangerCastingConditions(uint16 spell_id, uint16 target_id)
 	return true;
 }
 
+void Mob::BalanceResourceEffect(uint16 spell_id, int e)
+{
+	if (!IsValidSpell(spell_id))
+		return;
+
+	int mod = spells[spell_id].base2[e];
+
+	int amt = (GetManaPercent() + CastToClient()->GetEndurancePercent()) / 2;
+	amt += amt * mod / 100;
+
+	SetMana((GetMaxMana() * amt / 100));
+	CastToClient()->SetEndurance((CastToClient()->GetMaxEndurance() * amt / 100));
+}
+
 //C!Misc - Functions still in development
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){

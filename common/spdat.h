@@ -688,7 +688,7 @@ typedef enum {
 #define SE_LifeShare					1057 // implemented
 #define SE_DistanceRemovalFromCaster	1058 // implemented - Buff is removed from target when target moves X amount of distance away from where caster is.
 #define SE_IncommingCriticalMelee		1059 //
-#define SE_AbsorbMeleeDamage			1060 //
+#define SE_AbsorbMeleeDamage			1060 // implemented
 #define SE_AdjustCastTimePct			1061 // ADjust NPC cast time
 #define SE_FadeCastersBuffFromAll		1062 // Fade the specified spell id from any mob where you are the caster of the buff.
 #define SE_FadeBuffFromCaster			1063 // Fades the specified spell id on the caster of the buff that is fading.
@@ -699,12 +699,14 @@ typedef enum {
 #define SE_ScaleHitChanceNumhits		1068 // implemented - Scale hit chance based on numhits Base: Damage ratio x 100
 #define SE_RangerGainNumhitsSP			1069 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
 #define SE_SpinAttack					1070 // implemented
-#define SE_BackStabEffect				1071 //
+#define SE_BackStabEffect				1071 // implemented
 #define	SE_CastOnFadeComplete			1072 // implemented - Fade effect using spell finished to cast the spell.
-#define SE_BottomHateList				1073 // Set owner to be on bottom of hatelist until fades.
-#define SE_PetEffectOnOwner				1074 // Casts a spell on owner if buff about to fade and in range
-#define SE_AttackArchery				1075 // 
-#define SE_ApplyEffectBackstab			1076 //
+#define SE_BottomHateList				1073 // implemented Set owner to be on bottom of hatelist until fades.
+#define SE_PetEffectOnOwner				1074 // implemented Casts a spell on owner if buff about to fade and in range
+#define SE_AttackArchery				1075 // implemented
+#define SE_ApplyEffectBackstab			1076 // implemented
+#define SE_BalanceResource				1077 // implemented
+#define SE_AdjustDiscTimer				1078 // implemented - Base: Timer Limit: Duration
 
 // LAST
 

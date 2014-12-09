@@ -3210,6 +3210,20 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				break;
 			}
 
+			case SE_BalanceResource:
+			{
+				if (caster->IsClient())
+					caster->BalanceResourceEffect(spell_id, i);
+				break;
+			}
+
+			case SE_AdjustDiscTimer:
+			{
+				if (caster->IsClient())
+					caster->CastToClient()->AdjustDiscTimer(spells[spell_id].base[i], spells[spell_id].base2[i]);
+				break;
+			}
+
 			case SE_SpellAwareness:{
 				if (IsClient()){
 					if (!CastToClient()->HasSpellAwareness()){
