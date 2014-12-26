@@ -15,13 +15,15 @@
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
-#include "../common/debug.h"
-#include "../common/types.h"
-#include "entity.h"
-#include "masterentity.h"
+
 #include "../common/spdat.h"
-#include "../common/misc_functions.h"
 #include "../common/string_util.h"
+#include "../common/types.h"
+
+#include "client.h"
+#include "entity.h"
+#include "mob.h"
+#include "trap.h"
 
 /*
 
@@ -313,8 +315,8 @@ void Trap::CreateHiddenTrigger()
 	make_npc->gender = 0;
 	make_npc->loottable_id = 0;
 	make_npc->npc_spells_id = 0;
-	make_npc->d_meele_texture1 = 0;
-	make_npc->d_meele_texture2 = 0;
+	make_npc->d_melee_texture1 = 0;
+	make_npc->d_melee_texture2 = 0;
 	make_npc->trackable = 0;
 	make_npc->level = level;
 	strcpy(make_npc->special_abilities, "19,1^20,1^24,1^25,1");

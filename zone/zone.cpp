@@ -35,6 +35,7 @@
 #include "../common/rulesys.h"
 #include "../common/seperator.h"
 #include "../common/string_util.h"
+
 #include "client_logs.h"
 #include "guild_mgr.h"
 #include "map.h"
@@ -48,8 +49,8 @@
 #include "spawngroup.h"
 #include "water_map.h"
 #include "worldserver.h"
-#include "zone_config.h"
 #include "zone.h"
+#include "zone_config.h"
 
 #ifdef _WINDOWS
 #define snprintf	_snprintf
@@ -2231,7 +2232,10 @@ void Zone::LoadNPCEmotes(LinkedList<NPC_Emote_Struct*>* NPCEmoteList)
 }
 
 void Zone::ReloadWorld(uint32 Option){
-	if(Option == 1){
+	if (Option == 0) {
+		entity_list.ClearAreas();
+		parse->ReloadQuests();
+	} else if(Option == 1) {
 		zone->Repop(0);
 		entity_list.ClearAreas();
 		parse->ReloadQuests();

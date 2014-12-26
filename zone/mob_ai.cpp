@@ -15,24 +15,24 @@
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
+
 #include "../common/debug.h"
-#include <iostream>
-#include <iomanip>
-#include <stdlib.h>
-#include <math.h>
-#include <algorithm>
-#include "npc.h"
-#include "masterentity.h"
-#include "npc_ai.h"
-#include "map.h"
-#include "../common/moremath.h"
-#include "string_ids.h"
-#include "../common/misc_functions.h"
-#include "../common/string_util.h"
-#include "../common/rulesys.h"
 #include "../common/features.h"
+#include "../common/rulesys.h"
+#include "../common/string_util.h"
+
+#include "client.h"
+#include "entity.h"
+#include "map.h"
+#include "mob.h"
+#include "npc.h"
 #include "quest_parser_collection.h"
+#include "string_ids.h"
 #include "water_map.h"
+
+#include <algorithm>
+#include <iostream>
+#include <math.h>
 
 extern EntityList entity_list;
 
@@ -1088,7 +1088,7 @@ void Mob::AI_Process() {
 	{
 		// we are prevented from getting here if we are blind and don't have a target in range
 		// from above, so no extra blind checks needed
-		if (IsRooted() || IsBlind())
+		if ((IsRooted() && !GetSpecialAbility(IGNORE_ROOT_AGGRO_RULES)) || IsBlind())
 			SetTarget(hate_list.GetClosest(this));
 		else
 		{
@@ -2341,7 +2341,6 @@ create table npc_spells_entries (
 
 bool IsSpellInList(DBnpcspells_Struct* spell_list, int16 iSpellID);
 bool IsSpellEffectInList(DBnpcspellseffects_Struct* spelleffect_list, uint16 iSpellEffectID, int32 base, int32 limit, int32 max);
-bool Compare_AI_Spells(AISpells_Struct i, AISpells_Struct j);
 
 bool NPC::AI_AddNPCSpells(uint32 iDBSpellsID) {
 	// ok, this function should load the list, and the parent list then shove them into the struct and sort
@@ -2466,7 +2465,9 @@ bool NPC::AI_AddNPCSpells(uint32 iDBSpellsID) {
 				spell_list->entries[i].resist_adjust);
 		}
 	}
-	std::sort(AIspells.begin(), AIspells.end(), Compare_AI_Spells);
+	std::sort(AIspells.begin(), AIspells.end(), [](const AISpells_Struct& a, const AISpells_Struct& b) {
+		return a.priority > b.priority;
+	});
 
 	if (IsValidSpell(attack_proc_spell))
 		AddProcToWeapon(attack_proc_spell, true, proc_chance);
@@ -2606,11 +2607,6 @@ bool IsSpellInList(DBnpcspells_Struct* spell_list, int16 iSpellID) {
 	return false;
 }
 
-bool Compare_AI_Spells(AISpells_Struct i, AISpells_Struct j)
-{
-	return(i.priority > j.priority);
-}
-
 // adds a spell to the list, taking into account priority and resorting list as needed.
 void NPC::AddSpellToNPCList(int16 iPriority, int16 iSpellID, uint16 iType,
 							int16 iManaCost, int32 iRecastDelay, int16 iResistAdjust)
@@ -2738,7 +2734,7 @@ DBnpcspells_Struct* ZoneDatabase::GetNPCSpells(uint32 iDBSpellsID) {
         npc_spells_cache[iDBSpellsID]->attack_proc = tmpattack_proc;
         npc_spells_cache[iDBSpellsID]->proc_chance = tmpproc_chance;
         npc_spells_cache[iDBSpellsID]->range_proc = tmprange_proc;
-        npc_spells_cache[iDBSpellsID]->rproc_chance = tmpdproc_chance;
+        npc_spells_cache[iDBSpellsID]->rproc_chance = tmprproc_chance;
         npc_spells_cache[iDBSpellsID]->defensive_proc = tmpdefensive_proc;
         npc_spells_cache[iDBSpellsID]->dproc_chance = tmpdproc_chance;
         npc_spells_cache[iDBSpellsID]->fail_recast = tmppfail_recast;

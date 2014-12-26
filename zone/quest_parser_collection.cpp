@@ -19,14 +19,13 @@
 #include "../common/debug.h"
 #include "../common/misc_functions.h"
 #include "../common/features.h"
+
 #include "quest_parser_collection.h"
 #include "quest_interface.h"
 #include "zone.h"
 #include "questmgr.h"
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
 
 extern Zone* zone;
 extern void MapOpcodes();
@@ -201,6 +200,9 @@ bool QuestParserCollection::SpellHasQuestSub(uint32 spell_id, QuestEventID evt) 
 }
 
 bool QuestParserCollection::ItemHasQuestSub(ItemInst *itm, QuestEventID evt) {
+	if (itm == nullptr)
+		return false;
+
 	std::string item_script;
 	if(itm->GetItem()->ScriptFileID != 0) {
 		item_script = "script_";
@@ -351,6 +353,8 @@ int QuestParserCollection::EventPlayerGlobal(QuestEventID evt, Client *client, s
 
 int QuestParserCollection::EventItem(QuestEventID evt, Client *client, ItemInst *item, Mob *mob, std::string data, uint32 extra_data,
 									 std::vector<EQEmu::Any> *extra_pointers) {
+	// needs pointer validation check on 'item' argument
+	
 	std::string item_script;
 	if(item->GetItem()->ScriptFileID != 0) {
 		item_script = "script_";

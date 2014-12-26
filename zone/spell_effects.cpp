@@ -23,9 +23,11 @@
 #include "../common/rulesys.h"
 #include "../common/skills.h"
 #include "../common/spdat.h"
+
 #include "quest_parser_collection.h"
 #include "string_ids.h"
 #include "worldserver.h"
+
 #include <math.h>
 
 #ifndef WIN32
@@ -1945,10 +1947,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-								effect_value -= buffs[j].counters;
-								buffs[j].counters = 0;
-								BuffFadeBySlot(j);
 							}
+							effect_value -= buffs[j].counters;
+							buffs[j].counters = 0;
+							BuffFadeBySlot(j);
 						} else {
 							buffs[j].counters -= effect_value;
 							effect_value = 0;
@@ -1975,15 +1977,15 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 							continue;
 						if (effect_value >= static_cast<int>(buffs[j].counters))
 						{
-							if (caster){
+							if (caster) {
 								CuredEffect(); //C!Kayen
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-								effect_value -= buffs[j].counters;
-								buffs[j].counters = 0;
-								BuffFadeBySlot(j);
 							}
+							effect_value -= buffs[j].counters;
+							buffs[j].counters = 0;
+							BuffFadeBySlot(j);
 						}
 						else
 						{
@@ -2012,15 +2014,15 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 							continue;
 						if (effect_value >= static_cast<int>(buffs[j].counters))
 						{
-							if (caster){
+							if (caster) {
 								CuredEffect(); //C!Kayen
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-								effect_value -= buffs[j].counters;
-								buffs[j].counters = 0;
-								BuffFadeBySlot(j);
 							}
+							effect_value -= buffs[j].counters;
+							buffs[j].counters = 0;
+							BuffFadeBySlot(j);
 						}
 						else
 						{
@@ -2048,15 +2050,15 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						if (CalculateCorruptionCounters(buffs[j].spellid) == 0)
 							continue;
 						if (effect_value >= static_cast<int>(buffs[j].counters)) {
-							if (caster){
+							if (caster) {
 								CuredEffect(); //C!Kayen
 								caster->Message(MT_Spells,"You have cured your target of %s!",spells[buffs[j].spellid].name);
 								caster->CastOnCurer(buffs[j].spellid);
 								CastOnCure(buffs[j].spellid);
-								effect_value -= buffs[j].counters;
-								buffs[j].counters = 0;
-								BuffFadeBySlot(j);
 							}
+							effect_value -= buffs[j].counters;
+							buffs[j].counters = 0;
+							BuffFadeBySlot(j);
 						} else {
 							buffs[j].counters -= effect_value;
 							effect_value = 0;

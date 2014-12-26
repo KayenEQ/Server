@@ -31,7 +31,7 @@
 
 #include "../common/features.h"
 #include "../common/guilds.h"
-#include "../common/spdat.h"
+
 #include "guild_mgr.h"
 #include "net.h"
 #include "petitions.h"
@@ -44,6 +44,10 @@
 	#define snprintf	_snprintf
 	#define strncasecmp	_strnicmp
 	#define strcasecmp	_stricmp
+#endif
+
+#ifdef BOTS
+#include "bot.h"
 #endif
 
 extern Zone *zone;
@@ -2633,7 +2637,7 @@ void EntityList::FindPathsToAllNPCs()
 	while (it != npc_list.end()) {
 		Map::Vertex Node0 = zone->pathing->GetPathNodeCoordinates(0, false);
 		Map::Vertex Dest(it->second->GetX(), it->second->GetY(), it->second->GetZ());
-		std::list<int> Route = zone->pathing->FindRoute(Node0, Dest);
+		std::deque<int> Route = zone->pathing->FindRoute(Node0, Dest);
 		if (Route.size() == 0)
 			printf("Unable to find a route to %s\n", it->second->GetName());
 		else
@@ -2932,11 +2936,6 @@ void EntityList::SignalMobsByNPCID(uint32 snpc, int signal_id)
 	}
 }
 
-bool tracking_compare(const std::pair<Mob *, float> &a, const std::pair<Mob *, float> &b)
-{
-	return a.first->GetSpawnTimeStamp() > b.first->GetSpawnTimeStamp();
-}
-
 bool EntityList::MakeTrackPacket(Client *client)
 {
 	std::list<std::pair<Mob *, float> > tracking_list;
@@ -2954,8 +2953,6 @@ bool EntityList::MakeTrackPacket(Client *client)
 	if (distance < 300)
 		distance = 300;
 
-	Group *g = client->GetGroup();
-
 	for (auto it = mob_list.cbegin(); it != mob_list.cend(); ++it) {
 		if (!it->second || it->second == client || !it->second->IsTrackable() ||
 				it->second->IsInvisible(client))
@@ -2968,7 +2965,10 @@ bool EntityList::MakeTrackPacket(Client *client)
 		tracking_list.push_back(std::make_pair(it->second, MobDistance));
 	}
 
-	tracking_list.sort(tracking_compare);
+	tracking_list.sort(
+		[](const std::pair<Mob *, float> &a, const std::pair<Mob *, float> &b) {
+			return a.first->GetSpawnTimeStamp() > b.first->GetSpawnTimeStamp();
+		});
 	EQApplicationPacket *outapp = new EQApplicationPacket(OP_Track, sizeof(Track_Struct) * tracking_list.size());
 	Tracking_Struct *outtrack = (Tracking_Struct *)outapp->pBuffer;
 	outapp->priority = 6;
@@ -2976,15 +2976,13 @@ bool EntityList::MakeTrackPacket(Client *client)
 	int index = 0;
 	for (auto it = tracking_list.cbegin(); it != tracking_list.cend(); ++it, ++index) {
 		Mob *cur_entity = it->first;
-		outtrack->Entrys[index].entityid = cur_entity->GetID();
+		outtrack->Entrys[index].entityid = (uint32)cur_entity->GetID();
 		outtrack->Entrys[index].distance = it->second;
 		outtrack->Entrys[index].level = cur_entity->GetLevel();
-		outtrack->Entrys[index].NPC = !cur_entity->IsClient();
-		if (g && cur_entity->IsClient() && g->IsGroupMember(cur_entity->CastToMob()))
-			outtrack->Entrys[index].GroupMember = 1;
-		else
-			outtrack->Entrys[index].GroupMember = 0;
+		outtrack->Entrys[index].is_npc = !cur_entity->IsClient();
 		strn0cpy(outtrack->Entrys[index].name, cur_entity->GetName(), sizeof(outtrack->Entrys[index].name));
+		outtrack->Entrys[index].is_pet = cur_entity->IsPet();
+		outtrack->Entrys[index].is_merc = cur_entity->IsMerc();
 	}
 
 	client->QueuePacket(outapp);

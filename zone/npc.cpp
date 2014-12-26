@@ -267,8 +267,10 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, float x, float y, float z, float 
 	if(!IsMerc())
 		AI_Start();
 
-	d_meele_texture1 = d->d_meele_texture1;
-	d_meele_texture2 = d->d_meele_texture2;
+	d_melee_texture1 = d->d_melee_texture1;
+	d_melee_texture2 = d->d_melee_texture2;
+	herosforgemodel = d->herosforgemodel;
+
 	ammo_idfile = d->ammo_idfile;
 	memset(equipment, 0, sizeof(equipment));
 	prim_melee_type = d->prim_melee_type;
@@ -276,9 +278,9 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, float x, float y, float z, float 
 	ranged_type = d->ranged_type;
 
 	// If Melee Textures are not set, set attack type to Hand to Hand as default
-	if(!d_meele_texture1)
+	if(!d_melee_texture1)
 		prim_melee_type = 28;
-	if(!d_meele_texture2)
+	if(!d_melee_texture2)
 		sec_melee_type = 28;
 
 	//give NPCs skill values...
@@ -482,7 +484,7 @@ void NPC::CheckMinMaxLevel(Mob *them)
 		if(themlevel < (*cur)->min_level || themlevel > (*cur)->max_level)
 		{
 			material = Inventory::CalcMaterialFromSlot((*cur)->equip_slot);
-			if(material != 0xFF)
+			if (material != _MaterialInvalid)
 				SendWearChange(material);
 
 			cur = itemlist.erase(cur);
@@ -514,7 +516,11 @@ void NPC::QueryLoot(Client* to) {
 	for(; cur != end; ++cur) {
 		const Item_Struct* item = database.GetItem((*cur)->item_id);
 		if (item)
-			if (to->GetClientVersion() >= EQClientRoF)
+			if (to->GetClientVersion() >= EQClientRoF2)
+			{
+				to->Message(0, "minlvl: %i maxlvl: %i %i: %c%06X00000000000000000000000000000000000000000000000000%s%c", (*cur)->min_level, (*cur)->max_level, (int)item->ID, 0x12, item->ID, item->Name, 0x12);
+			}
+			else if (to->GetClientVersion() >= EQClientRoF)
 			{
 				to->Message(0, "minlvl: %i maxlvl: %i %i: %c%06X0000000000000000000000000000000000000000000000000%s%c",(*cur)->min_level, (*cur)->max_level, (int) item->ID,0x12, item->ID, item->Name, 0x12);
 			}
@@ -949,8 +955,8 @@ NPC* NPC::SpawnNPC(const char* spawncommand, float in_x, float in_y, float in_z,
 		npc_type->texture = atoi(sep.arg[3]);
 		npc_type->light = 0;
 		npc_type->runspeed = 1.25;
-		npc_type->d_meele_texture1 = atoi(sep.arg[7]);
-		npc_type->d_meele_texture2 = atoi(sep.arg[8]);
+		npc_type->d_melee_texture1 = atoi(sep.arg[7]);
+		npc_type->d_melee_texture2 = atoi(sep.arg[8]);
 		npc_type->merchanttype = atoi(sep.arg[9]);
 		npc_type->bodytype = atoi(sep.arg[10]);
 
@@ -982,7 +988,7 @@ NPC* NPC::SpawnNPC(const char* spawncommand, float in_x, float in_y, float in_z,
 			client->Message(0, "Current/Max HP: %i", npc->max_hp);
 			client->Message(0, "Gender: %u", npc->gender);
 			client->Message(0, "Class: %u", npc->class_);
-			client->Message(0, "Weapon Item Number: %u/%u", npc->d_meele_texture1, npc->d_meele_texture2);
+			client->Message(0, "Weapon Item Number: %u/%u", npc->d_melee_texture1, npc->d_melee_texture2);
 			client->Message(0, "MerchantID: %u", npc->MerchantType);
 			client->Message(0, "Bodytype: %u", npc->bodytype);
 		}
@@ -1347,19 +1353,22 @@ int32 NPC::GetEquipmentMaterial(uint8 material_slot) const
 	if (material_slot >= _MaterialCount)
 		return 0;
 
-	int inv_slot = Inventory::CalcSlotFromMaterial(material_slot);
-	if (inv_slot == -1)
+	int16 invslot = Inventory::CalcSlotFromMaterial(material_slot);
+	if (invslot == INVALID_INDEX)
 		return 0;
-	if(equipment[inv_slot] == 0) {
-		switch(material_slot) {
+
+	if (equipment[invslot] == 0)
+	{
+		switch(material_slot)
+		{
 		case MaterialHead:
 			return helmtexture;
 		case MaterialChest:
 			return texture;
 		case MaterialPrimary:
-			return d_meele_texture1;
+			return d_melee_texture1;
 		case MaterialSecondary:
-			return d_meele_texture2;
+			return d_melee_texture2;
 		default:
 			//they have nothing in the slot, and its not a special slot... they get nothing.
 			return(0);
@@ -1367,7 +1376,7 @@ int32 NPC::GetEquipmentMaterial(uint8 material_slot) const
 	}
 
 	//they have some loot item in this slot, pass it up to the default handler
-	return(Mob::GetEquipmentMaterial(material_slot));
+	return (Mob::GetEquipmentMaterial(material_slot));
 }
 
 uint32 NPC::GetMaxDamage(uint8 tlevel)
@@ -1875,32 +1884,32 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 {
 	//Basic settings to make sure swarm pets work properly.
 	Mob *swarmOwner = nullptr;
-
 	if  (GetSwarmOwner())
 	{
 		swarmOwner = entity_list.GetMobID(GetSwarmOwner());
 	}
-	
-	if (swarmOwner)
+
+	if  (swarmOwner != nullptr)
 	{
 		if(swarmOwner->IsClient())
 		{
 			SetPetOwnerClient(true); //Simple flag to determine if pet belongs to a client
-			SetAllowBeneficial(true);//Allow temp pets to receive buffs and heals if owner is client.
-			//This is a hack to allow CLIENT swarm pets NOT to be targeted with F8. Warning: Will turn name 'Yellow'!
-			if (RuleB(Pets, SwarmPetNotTargetableWithHotKey))
-				ns->spawn.IsMercenary = 1;
+			SetAllowBeneficial(1);//Allow temp pets to receive buffs and heals if owner is client.
+			//This will allow CLIENT swarm pets NOT to be targeted with F8.
+			ns->spawn.targetable_with_hotkey = 0;
+			no_target_hotkey = 1;
 		}
 		else
 		{
 			//NPC cast swarm pets should still be targetable with F8.
-			ns->spawn.IsMercenary = 0;
+			ns->spawn.targetable_with_hotkey = 1;
+			no_target_hotkey = 0;
 		}
 
 		SetTempPet(true); //Simple mob flag for checking if temp pet
 		swarmOwner->SetTempPetsActive(true); //Necessary fail safe flag set if mob ever had a swarm pet to ensure they are removed.
 		swarmOwner->SetTempPetCount(swarmOwner->GetTempPetCount() + 1);
-	
+
 		//Not recommended if using above (However, this will work better on older clients).
 		if (RuleB(Pets, UnTargetableSwarmPet))
 		{
@@ -1908,7 +1917,7 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 			if(!IsCharmed() && swarmOwner->IsClient())
 				sprintf(ns->spawn.lastName, "%s's Pet", swarmOwner->GetName());
 		}
-	} 
+	}
 	else if(GetOwnerID())
 	{
 		ns->spawn.is_pet = 1;
@@ -1964,6 +1973,7 @@ void NPC::ModifyNPCStat(const char *identifier, const char *newValue)
 	else if(id == "special_attacks") { NPCSpecialAttacks(val.c_str(), 0, 1); return; }
 	else if(id == "special_abilities") { ProcessSpecialAbilities(val.c_str()); return; }
 	else if(id == "attack_speed") { attack_speed = (float)atof(val.c_str()); CalcBonuses(); return; }
+	else if(id == "attack_delay") { attack_delay = atoi(val.c_str()); CalcBonuses(); return; }	
 	else if(id == "atk") { ATK = atoi(val.c_str()); return; }
 	else if(id == "accuracy") { accuracy_rating = atoi(val.c_str()); return; }
 	else if(id == "avoidance") { avoidance_rating = atoi(val.c_str()); return; }
@@ -2157,10 +2167,10 @@ uint32 NPC::GetSpawnPointID() const
 void NPC::NPCSlotTexture(uint8 slot, uint16 texture)
 {
 	if (slot == 7) {
-		d_meele_texture1 = texture;
+		d_melee_texture1 = texture;
 	}
 	else if (slot == 8) {
-		d_meele_texture2 = texture;
+		d_melee_texture2 = texture;
 	}
 	else if (slot < 6) {
 		// Reserved for texturing individual armor slots

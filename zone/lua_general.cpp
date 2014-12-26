@@ -1354,8 +1354,8 @@ void lua_create_npc(luabind::adl::object table, float x, float y, float z, float
 	LuaCreateNPCParse(max_dmg, uint32, 4);
 	LuaCreateNPCParse(attack_count, int16, 0);
 	LuaCreateNPCParseString(special_abilities, 512, "");
-	LuaCreateNPCParse(d_meele_texture1, uint16, 0);
-	LuaCreateNPCParse(d_meele_texture2, uint16, 0);
+	LuaCreateNPCParse(d_melee_texture1, uint16, 0);
+	LuaCreateNPCParse(d_melee_texture2, uint16, 0);
 	LuaCreateNPCParseString(ammo_idfile, 32, "");
 	LuaCreateNPCParse(prim_melee_type, uint8, 0);
 	LuaCreateNPCParse(sec_melee_type, uint8, 0);
@@ -1759,7 +1759,6 @@ luabind::scope lua_register_client_version() {
 		.enum_("constants")
 		[
 			luabind::value("Unknown", static_cast<int>(EQClientUnknown)),
-			luabind::value("62", static_cast<int>(EQClient62)),
 			luabind::value("Titanium", static_cast<int>(EQClientTitanium)),
 			luabind::value("SoF", static_cast<int>(EQClientSoF)),
 			luabind::value("SoD", static_cast<int>(EQClientSoD)),

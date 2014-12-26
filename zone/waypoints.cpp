@@ -21,13 +21,15 @@
 #endif
 
 #include "../common/features.h"
-#include "../common/misc_functions.h"
 #include "../common/rulesys.h"
 #include "../common/string_util.h"
+#include "../common/misc_functions.h"
+
 #include "map.h"
 #include "npc.h"
 #include "quest_parser_collection.h"
 #include "water_map.h"
+
 #include <math.h>
 #include <stdlib.h>
 
@@ -389,7 +391,9 @@ void NPC::GetClosestWaypoint(std::list<wplist> &wp_list, int count, float m_x, f
 		w_dist.index = i;
 		distances.push_back(w_dist);
 	}
-	distances.sort(wp_distance_pred);
+	distances.sort([](const wp_distance& a, const wp_distance& b) {
+		return a.dist < b.dist;
+	});
 
 	std::list<wp_distance>::iterator iter = distances.begin();
 	for(int i = 0; i < count; ++i)
@@ -692,7 +696,7 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 		{
 			Map::Vertex dest(x_pos, y_pos, z_pos);
 
-			float newz = zone->zonemap->FindBestZ(dest, nullptr); + 2.0f;
+			float newz = zone->zonemap->FindBestZ(dest, nullptr) + 2.0f;
 
 			mlog(AI__WAYPOINTS, "BestZ returned %4.3f at %4.3f, %4.3f, %4.3f", newz,x_pos,y_pos,z_pos);
 
