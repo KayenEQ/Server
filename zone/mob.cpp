@@ -593,7 +593,7 @@ float Mob::_GetMovementSpeed(int mod) const
 	// http://everquest.allakhazam.com/db/item.html?item=1721;page=1;howmany=50#m10822246245352
 	if (IsRooted())
 		return 0.0f;
-	if (IsPseudoRooted())
+	else if (IsPseudoRooted())
 		return 0.000001f;
 
 	float speed_mod = runspeed;

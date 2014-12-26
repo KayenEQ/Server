@@ -707,11 +707,13 @@ typedef enum {
 #define SE_ApplyEffectBackstab			1076 // implemented
 #define SE_BalanceResource				1077 // implemented
 #define SE_AdjustDiscTimer				1078 // implemented - Base: Timer Limit: Duration
+#define SE_RemoveBuffOnFadeComplete		1079 // implemented
 
 // LAST
 
 
 #define DF_Permanent			50
+#define DF_INVIS				100
 
 // solar: note this struct is historical, we don't actually need it to be
 // aligned to anything, but for maintaining it it is kept in the order that

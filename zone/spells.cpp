@@ -2752,6 +2752,9 @@ int CalcBuffDuration_formula(int level, int formula, int duration)
 		case 50:	// lucy says this is unlimited?
 			return 72000;	// 5 days
 
+		case 100:
+			return duration; //C!Kayen
+
 		case 3600:
 			return duration ? duration : 3600;
 
@@ -5375,12 +5378,16 @@ void Client::SendBuffNumHitPacket(Buffs_Struct &buff, int slot)
 	bi->entries[0].buff_slot = slot;
 	bi->entries[0].spell_id = buff.spellid;
 
-	if (spells[buff.spellid].buffdurationformula == DF_Permanent)//C!Kayen - DO NOT SHOW DURATION
+	if (spells[buffs[slot].spellid].buffdurationformula == DF_Permanent || spells[buffs[slot].spellid].buffdurationformula == DF_INVIS)//C!Kayen - DO NOT SHOW DURATION
 		bi->entries[0].tics_remaining = 0xFFFFFFFF;
 	else
 		bi->entries[0].tics_remaining = buff.ticsremaining;
 
-	bi->entries[0].num_hits = buff.numhits;
+	if (spells[buffs[slot].spellid].buffdurationformula == DF_INVIS)
+		bi->entries[0].num_hits = 0;
+	else
+		bi->entries[0].num_hits = buff.numhits;
+	
 	FastQueuePacket(&outapp);
 }
 
@@ -5465,12 +5472,16 @@ EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target)
 			buff->entries[index].buff_slot = i;
 			buff->entries[index].spell_id = buffs[i].spellid;
 
-			if (spells[buffs[i].spellid].buffdurationformula == DF_Permanent)//C!Kayen - DO NOT SHOW DURATION
+			if (spells[buffs[i].spellid].buffdurationformula == DF_Permanent || spells[buffs[i].spellid].buffdurationformula == DF_INVIS)//C!Kayen - DO NOT SHOW DURATION
 				buff->entries[index].tics_remaining = 0xFFFFFFFF;
 			else
 				buff->entries[index].tics_remaining = buffs[i].ticsremaining;
 			
-			buff->entries[index].num_hits = buffs[i].numhits;
+			if (spells[buffs[i].spellid].buffdurationformula == DF_INVIS)
+				buff->entries[index].num_hits = 0;
+			else
+				buff->entries[index].num_hits = buffs[i].numhits;
+			
 			++index;
 		}
 	}

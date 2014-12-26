@@ -3137,11 +3137,19 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 						
 						if (_numhits <= 0)
 							_numhits = 1; //Min
-						else if (_numhits >= spells[spells[spell_id].base[i]].numhits)
-							_numhits = spells[spells[spell_id].base[i]].numhits; //Max
-
+						else {
+							if (spellbonuses.RangerGainNumhitsSP[3] == spells[spell_id].base[i]){
+								if (_numhits >= spellbonuses.RangerGainNumhitsSP[2])
+									_numhits = spellbonuses.RangerGainNumhitsSP[2]; //Max
+							}
+							else if	(_numhits >= spells[spells[spell_id].base[i]].numhits)
+								_numhits = spells[spells[spell_id].base[i]].numhits; //Max
+						}
+												
 						buffs[slot].numhits = _numhits;
-						CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+
+						if (IsClient())
+							CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
 					}
 				}
 				break;
@@ -4743,6 +4751,16 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 				}
 				break;	
 			}
+
+			case SE_RemoveBuffOnFadeComplete: {
+				if (IsValidSpell(spells[buffs[slot].spellid].base2[i])){
+					if(zone->random.Int(0, 100) <= spells[buffs[slot].spellid].base[i]){
+						if (FindBuff(spells[buffs[slot].spellid].base2[i]))
+							BuffFadeBySpellID(spells[buffs[slot].spellid].base2[i]);
+					}
+				}
+				break;
+			 }
 		}
 	}
 
@@ -4817,11 +4835,6 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 	}
 
 	FadeLinkedBuff(_casterid, _spell_id);//C!Kayen - Removes a linked buff on the buff.caster when fades on target.
-
-	//if (IsValidSpell(trigger_spell_id)){
-		//if(MakeRandomInt(0, 100) <= spells[spell_id].base[i])
-			//caster->SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
-	//}
 	
 	if (iRecalcBonuses)
 		CalcBonuses();

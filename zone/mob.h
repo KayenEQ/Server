@@ -1179,6 +1179,7 @@ public:
 	void ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust);
 
 	void RangerGainNumHitsOutgoing(uint8 type, SkillUseTypes skill_used);
+	inline uint16 GetBowAffinitySpellID() const { return 108; }
 
 	void TryBackstabSpellEffect(Mob* other);
 	void DoBackstabSpellEffect(Mob* other, bool min_damage = false);
@@ -1191,6 +1192,7 @@ public:
 
 	bool TryRangerCastingConditions(uint16 spell_id, uint16 target_id);
 	inline float UseRangeFromRangedWpn() const { return 351.0f; }
+
 
 	void BalanceResourceEffect(uint16 spell_id, int e);
 
