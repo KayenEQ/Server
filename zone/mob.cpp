@@ -405,7 +405,7 @@ Mob::Mob(const char* in_name,
 	PathingRouteUpdateTimerLong = new Timer(RuleI(Pathing, RouteUpdateFrequencyLong));
 	DistractedFromGrid = false;
 	PathingTraversedNodes = 0;
-	hate_list.SetOwner(this);
+	hate_list.SetHateOwner(this);
 
 	m_AllowBeneficial = false;
 	m_DisableMelee = false;
@@ -2614,8 +2614,8 @@ bool Mob::RemoveFromHateList(Mob* mob)
 	bool bFound = false;
 	if(IsEngaged())
 	{
-		bFound = hate_list.RemoveEnt(mob);
-		if(hate_list.IsEmpty())
+		bFound = hate_list.RemoveEntFromHateList(mob);
+		if(hate_list.IsHateListEmpty())
 		{
 			AI_Event_NoLongerEngaged();
 			zone->DelAggroMob();
@@ -2623,7 +2623,7 @@ bool Mob::RemoveFromHateList(Mob* mob)
 	}
 	if(GetTarget() == mob)
 	{
-		SetTarget(hate_list.GetTop(this));
+		SetTarget(hate_list.GetEntWithMostHateOnList(this));
 	}
 
 	return bFound;
@@ -2633,12 +2633,12 @@ void Mob::WipeHateList()
 {
 	if(IsEngaged())
 	{
-		hate_list.Wipe();
+		hate_list.WipeHateList();
 		AI_Event_NoLongerEngaged();
 	}
 	else
 	{
-		hate_list.Wipe();
+		hate_list.WipeHateList();
 	}
 }
 
@@ -3560,7 +3560,7 @@ void Mob::TryTriggerOnValueAmount(bool IsHP, bool IsMana, bool IsEndur, bool IsP
 						}
 
 						else if (IsPet){
-							int count = hate_list.SummonedPetCount(this);
+							int count = hate_list.GetSummonedPetCountOnHateList(this);
 							if ((base2 >= 220 && base2 <= 250) && count >= (base2 - 220)){
 								use_spell = true;
 							}

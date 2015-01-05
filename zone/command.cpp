@@ -2616,117 +2616,93 @@ void command_peekinv(Client *c, const Seperator *sep)
 	}
 
 	Client* targetClient = c->GetTarget()->CastToClient();
-	const ItemInst* instMain = nullptr;
-	const ItemInst* instSub = nullptr;
-	const Item_Struct* itemData = nullptr;
-	char* itemLinkCore = nullptr;
-	std::string itemLink;
+	const ItemInst* inst_main = nullptr;
+	const ItemInst* inst_sub = nullptr;
+	const Item_Struct* item_data = nullptr;
+	std::string item_link;
+	Client::TextLink linker;
+	linker.SetLinkType(linker.linkItemInst);
+	linker.SetClientVersion(c->GetClientVersion());
 
 	c->Message(0, "Displaying inventory for %s...", targetClient->GetName());
 
 	// worn
 	for (int16 indexMain = EmuConstants::EQUIPMENT_BEGIN; (scopeWhere & peekWorn) && (indexMain <= EmuConstants::EQUIPMENT_END); ++indexMain) {
-		instMain = targetClient->GetInv().GetItem(indexMain);
-		itemData = (instMain ? instMain->GetItem() : nullptr);
-		itemLinkCore = nullptr;
+		inst_main = targetClient->GetInv().GetItem(indexMain);
+		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+		linker.SetItemInst(inst_main);
 
-		if (itemData)
-			c->MakeItemLink(itemLinkCore, instMain);
+		item_link = linker.GenerateLink();
 
-		itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
-
-		c->Message((itemData == 0), "WornSlot: %i, Item: %i (%s), Charges: %i",
-			indexMain, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
-
-		safe_delete_array(itemLinkCore);
+		c->Message((item_data == nullptr), "WornSlot: %i, Item: %i (%s), Charges: %i",
+			indexMain, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 	}
 
 	if ((scopeWhere & peekWorn) && (targetClient->GetClientVersion() >= EQClientSoF)) {
-		instMain = targetClient->GetInv().GetItem(MainPowerSource);
-		itemData = (instMain ? instMain->GetItem() : nullptr);
-		itemLinkCore = nullptr;
-		
-		if (itemData)
-			c->MakeItemLink(itemLinkCore, instMain);
-		
-		itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
+		inst_main = targetClient->GetInv().GetItem(MainPowerSource);
+		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+		linker.SetItemInst(inst_main);
 
-		c->Message((itemData == 0), "WornSlot: %i, Item: %i (%s), Charges: %i",
-			MainPowerSource, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+		item_link = linker.GenerateLink();
 
-		safe_delete_array(itemLinkCore);
+		c->Message((item_data == nullptr), "WornSlot: %i, Item: %i (%s), Charges: %i",
+			MainPowerSource, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 	}
 
 	// inv
 	for (int16 indexMain = EmuConstants::GENERAL_BEGIN; (scopeWhere & peekInv) && (indexMain <= EmuConstants::GENERAL_END); ++indexMain) {
-		instMain = targetClient->GetInv().GetItem(indexMain);
-		itemData = (instMain ? instMain->GetItem() : nullptr);
-		itemLinkCore = nullptr;
+		inst_main = targetClient->GetInv().GetItem(indexMain);
+		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+		linker.SetItemInst(inst_main);
 
-		if (itemData)
-			c->MakeItemLink(itemLinkCore, instMain);
-		
-		itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
-		
-		c->Message((itemData == 0), "InvSlot: %i, Item: %i (%s), Charges: %i",
-			indexMain, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+		item_link = linker.GenerateLink();
 
-		safe_delete_array(itemLinkCore);
+		c->Message((item_data == nullptr), "InvSlot: %i, Item: %i (%s), Charges: %i",
+			indexMain, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 
-		for (uint8 indexSub = SUB_BEGIN; instMain && instMain->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
-			instSub = instMain->GetItem(indexSub);
-			itemData = (instSub ? instSub->GetItem() : nullptr);
-			itemLinkCore = nullptr;
+		for (uint8 indexSub = SUB_BEGIN; inst_main && inst_main->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
+			inst_sub = inst_main->GetItem(indexSub);
+			item_data = (inst_sub == nullptr) ? nullptr : inst_sub->GetItem();
+			linker.SetItemInst(inst_sub);
 
-			if (itemData)
-				c->MakeItemLink(itemLinkCore, instSub);
-			
-			itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instSub->GetItem()->Name, 0x12) : "null");
-			
-			c->Message((itemData == 0), "  InvBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
-				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instSub->GetCharges()));
+			item_link = linker.GenerateLink();
 
-			safe_delete_array(itemLinkCore);
+			c->Message((item_data == nullptr), "  InvBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
+				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_sub == nullptr) ? 0 : inst_sub->GetCharges()));
 		}
 	}
 
 	// cursor
 	if (scopeWhere & peekCursor) {
 		if (targetClient->GetInv().CursorEmpty()) {
+			linker.SetItemInst(nullptr);
+
+			item_link = linker.GenerateLink();
+
 			c->Message(1, "CursorSlot: %i, Item: %i (%s), Charges: %i",
-				MainCursor, 0, "null", 0);
+				MainCursor, 0, item_link.c_str(), 0);
 		}
 		else {
 			int cursorDepth = 0;
 			for (iter_queue it = targetClient->GetInv().cursor_begin(); (it != targetClient->GetInv().cursor_end()); ++it, ++cursorDepth) {
-				instMain = *it;
-				itemData = (instMain ? instMain->GetItem() : nullptr);
-				itemLinkCore = nullptr;
+				inst_main = *it;
+				item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+				linker.SetItemInst(inst_main);
 
-				if (itemData)
-					c->MakeItemLink(itemLinkCore, instMain);
-				
-				itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
-				
-				c->Message((itemData == 0), "CursorSlot: %i, Depth: %i, Item: %i (%s), Charges: %i",
-					MainCursor, cursorDepth, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+				item_link = linker.GenerateLink();
 
-				safe_delete_array(itemLinkCore);
+				c->Message((item_data == nullptr), "CursorSlot: %i, Depth: %i, Item: %i (%s), Charges: %i",
+					MainCursor, cursorDepth, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 
-				for (uint8 indexSub = SUB_BEGIN; (cursorDepth == 0) && instMain && instMain->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
-					instSub = instMain->GetItem(indexSub);
-					itemData = (instSub ? instSub->GetItem() : nullptr);
-					itemLinkCore = nullptr;
+				for (uint8 indexSub = SUB_BEGIN; (cursorDepth == 0) && inst_main && inst_main->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
+					inst_sub = inst_main->GetItem(indexSub);
+					item_data = (inst_sub == nullptr) ? nullptr : inst_sub->GetItem();
+					linker.SetItemInst(inst_sub);
 
-					if (itemData)
-						c->MakeItemLink(itemLinkCore, instSub);
-					
-					itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instSub->GetItem()->Name, 0x12) : "null");
-					
-					c->Message((itemData == 0), "  CursorBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
-						Inventory::CalcSlotId(MainCursor, indexSub), MainCursor, indexSub, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instSub->GetCharges()));
+					item_link = linker.GenerateLink();
 
-					safe_delete_array(itemLinkCore);
+					c->Message((item_data == nullptr), "  CursorBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
+						Inventory::CalcSlotId(MainCursor, indexSub), MainCursor, indexSub, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_sub == nullptr) ? 0 : inst_sub->GetCharges()));
 				}
 			}
 		}
@@ -2734,116 +2710,81 @@ void command_peekinv(Client *c, const Seperator *sep)
 
 	// trib
 	for (int16 indexMain = EmuConstants::TRIBUTE_BEGIN; (scopeWhere & peekTrib) && (indexMain <= EmuConstants::TRIBUTE_END); ++indexMain) {
-		instMain = targetClient->GetInv().GetItem(indexMain);
-		itemData = (instMain ? instMain->GetItem() : nullptr);
-		itemLinkCore = nullptr;
+		inst_main = targetClient->GetInv().GetItem(indexMain);
+		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+		linker.SetItemInst(inst_main);
 
-		if (itemData)
-			c->MakeItemLink(itemLinkCore, instMain);
-		
-		itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
-		
-		c->Message((itemData == 0), "TributeSlot: %i, Item: %i (%s), Charges: %i",
-			indexMain, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+		item_link = linker.GenerateLink();
 
-		safe_delete_array(itemLinkCore);
+		c->Message((item_data == nullptr), "TributeSlot: %i, Item: %i (%s), Charges: %i",
+			indexMain, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 	}
 
 	// bank
 	for (int16 indexMain = EmuConstants::BANK_BEGIN; (scopeWhere & peekBank) && (indexMain <= EmuConstants::BANK_END); ++indexMain) {
-		instMain = targetClient->GetInv().GetItem(indexMain);
-		itemData = (instMain ? instMain->GetItem() : nullptr);
-		itemLinkCore = nullptr;
+		inst_main = targetClient->GetInv().GetItem(indexMain);
+		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+		linker.SetItemInst(inst_main);
 
-		if (itemData)
-			c->MakeItemLink(itemLinkCore, instMain);
-		
-		itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null" );
-		
-		c->Message((itemData == 0), "BankSlot: %i, Item: %i (%s), Charges: %i",
-			indexMain, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+		item_link = linker.GenerateLink();
 
-		safe_delete_array(itemLinkCore);
+		c->Message((item_data == nullptr), "BankSlot: %i, Item: %i (%s), Charges: %i",
+			indexMain, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 
-		for (uint8 indexSub = SUB_BEGIN; instMain && instMain->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
-			instSub = instMain->GetItem(indexSub);
-			itemData = (instSub ? instSub->GetItem() : nullptr);
-			itemLinkCore = nullptr;
+		for (uint8 indexSub = SUB_BEGIN; inst_main && inst_main->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
+			inst_sub = inst_main->GetItem(indexSub);
+			item_data = (inst_sub == nullptr) ? nullptr : inst_sub->GetItem();
+			linker.SetItemInst(inst_sub);
 
-			if (itemData)
-				c->MakeItemLink(itemLinkCore, instSub);
-			
-			itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instSub->GetItem()->Name, 0x12) : "null");
-			
-			c->Message((itemData == 0), "  BankBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
-				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instSub->GetCharges()));
+			item_link = linker.GenerateLink();
 
-			safe_delete_array(itemLinkCore);
+			c->Message((item_data == nullptr), "  BankBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
+				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_sub == nullptr) ? 0 : inst_sub->GetCharges()));
 		}
 	}
 
 	for (int16 indexMain = EmuConstants::SHARED_BANK_BEGIN; (scopeWhere & peekBank) && (indexMain <= EmuConstants::SHARED_BANK_END); ++indexMain) {
-		instMain = targetClient->GetInv().GetItem(indexMain);
-		itemData = (instMain ? instMain->GetItem() : nullptr);
-		itemLinkCore = nullptr;
+		inst_main = targetClient->GetInv().GetItem(indexMain);
+		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+		linker.SetItemInst(inst_main);
 
-		if (itemData)
-			c->MakeItemLink(itemLinkCore, instMain);
+		item_link = linker.GenerateLink();
 		
-		itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
-		
-		c->Message((itemData == 0), "SharedBankSlot: %i, Item: %i (%s), Charges: %i",
-			indexMain, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+		c->Message((item_data == nullptr), "SharedBankSlot: %i, Item: %i (%s), Charges: %i",
+			indexMain, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 
-		safe_delete_array(itemLinkCore);
+		for (uint8 indexSub = SUB_BEGIN; inst_main && inst_main->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
+			inst_sub = inst_main->GetItem(indexSub);
+			item_data = (inst_sub == nullptr) ? nullptr : inst_sub->GetItem();
+			linker.SetItemInst(inst_sub);
 
-		for (uint8 indexSub = SUB_BEGIN; instMain && instMain->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
-			instSub = instMain->GetItem(indexSub);
-			itemData = (instSub ? instSub->GetItem() : nullptr);
-			itemLinkCore = nullptr;
+			item_link = linker.GenerateLink();
 
-			if (itemData)
-				c->MakeItemLink(itemLinkCore, instSub);
-			
-			itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instSub->GetItem()->Name, 0x12) : "null");
-			
-			c->Message((itemData == 0), "  SharedBankBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
-				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instSub->GetCharges()));
-
-			safe_delete_array(itemLinkCore);
+			c->Message((item_data == nullptr), "  SharedBankBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
+				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_sub == nullptr) ? 0 : inst_sub->GetCharges()));
 		}
 	}
 
 	// trade
 	for (int16 indexMain = EmuConstants::TRADE_BEGIN; (scopeWhere & peekTrade) && (indexMain <= EmuConstants::TRADE_END); ++indexMain) {
-		instMain = targetClient->GetInv().GetItem(indexMain);
-		itemData = (instMain ? instMain->GetItem() : nullptr);
-		itemLinkCore = nullptr;
+		inst_main = targetClient->GetInv().GetItem(indexMain);
+		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+		linker.SetItemInst(inst_main);
 
-		if (itemData)
-			c->MakeItemLink(itemLinkCore, instMain);
-		
-		itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
-		
-		c->Message((itemData == 0), "TradeSlot: %i, Item: %i (%s), Charges: %i",
-			indexMain, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+		item_link = linker.GenerateLink();
 
-		safe_delete_array(itemLinkCore);
+		c->Message((item_data == nullptr), "TradeSlot: %i, Item: %i (%s), Charges: %i",
+			indexMain, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 
-		for (uint8 indexSub = SUB_BEGIN; instMain && instMain->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
-			instSub = instMain->GetItem(indexSub);
-			itemData = (instSub ? instSub->GetItem() : nullptr);
-			itemLinkCore = nullptr;
+		for (uint8 indexSub = SUB_BEGIN; inst_main && inst_main->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
+			inst_sub = inst_main->GetItem(indexSub);
+			item_data = (inst_sub == nullptr) ? nullptr : inst_sub->GetItem();
+			linker.SetItemInst(inst_sub);
 
-			if (itemData)
-				c->MakeItemLink(itemLinkCore, instSub);
-			
-			itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instSub->GetItem()->Name, 0x12) : "null");
-			
-			c->Message((itemData == 0), "  TradeBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
-				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instSub->GetCharges()));
+			item_link = linker.GenerateLink();
 
-			safe_delete_array(itemLinkCore);
+			c->Message((item_data == nullptr), "  TradeBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
+				Inventory::CalcSlotId(indexMain, indexSub), indexMain, indexSub, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_sub == nullptr) ? 0 : inst_sub->GetCharges()));
 		}
 	}
 
@@ -2858,34 +2799,24 @@ void command_peekinv(Client *c, const Seperator *sep)
 			c->Message(0, "[WorldObject DBID: %i (entityid: %i)]", objectTradeskill->GetDBID(), objectTradeskill->GetID());
 
 			for (int16 indexMain = MAIN_BEGIN; indexMain < EmuConstants::MAP_WORLD_SIZE; ++indexMain) {
-				instMain = objectTradeskill->GetItem(indexMain);
-				itemData = (instMain ? instMain->GetItem() : nullptr);
-				itemLinkCore = nullptr;
+				inst_main = objectTradeskill->GetItem(indexMain);
+				item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
+				linker.SetItemInst(inst_main);
 
-				if (itemData)
-					c->MakeItemLink(itemLinkCore, instMain);
-				
-				itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instMain->GetItem()->Name, 0x12) : "null");
-				
-				c->Message((itemData == 0), "WorldSlot: %i, Item: %i (%s), Charges: %i",
-					(EmuConstants::WORLD_BEGIN + indexMain), ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instMain->GetCharges()));
+				item_link = linker.GenerateLink();
 
-				safe_delete_array(itemLinkCore);
+				c->Message((item_data == nullptr), "WorldSlot: %i, Item: %i (%s), Charges: %i",
+					(EmuConstants::WORLD_BEGIN + indexMain), ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 
-				for (uint8 indexSub = SUB_BEGIN; instMain && instMain->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
-					instSub = instMain->GetItem(indexSub);
-					itemData = (instSub ? instSub->GetItem() : nullptr);
-					itemLinkCore = nullptr;
+				for (uint8 indexSub = SUB_BEGIN; inst_main && inst_main->IsType(ItemClassContainer) && (indexSub < EmuConstants::ITEM_CONTAINER_SIZE); ++indexSub) {
+					inst_sub = inst_main->GetItem(indexSub);
+					item_data = (inst_sub == nullptr) ? nullptr : inst_sub->GetItem();
+					linker.SetItemInst(inst_sub);
 
-					if (itemData)
-						c->MakeItemLink(itemLinkCore, instSub);
-					
-					itemLink = (itemLinkCore ? StringFormat("%c%s%s%c", 0x12, itemLinkCore, instSub->GetItem()->Name, 0x12) : "null");
-					
-					c->Message((itemData == 0), "  WorldBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
-						INVALID_INDEX, indexMain, indexSub, ((itemData == 0) ? 0 : itemData->ID), itemLink.c_str(), ((itemData == 0) ? 0 : instSub->GetCharges()));
+					item_link = linker.GenerateLink();
 
-					safe_delete_array(itemLinkCore);
+					c->Message((item_data == nullptr), "  WorldBagSlot: %i (Slot #%i, Bag #%i), Item: %i (%s), Charges: %i",
+						INVALID_INDEX, indexMain, indexSub, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_sub == nullptr) ? 0 : inst_sub->GetCharges()));
 				}
 			}
 		}
@@ -5634,75 +5565,64 @@ void command_givemoney(Client *c, const Seperator *sep)
 
 void command_itemsearch(Client *c, const Seperator *sep)
 {
-	if (sep->arg[1][0] == 0)
+	if (sep->arg[1][0] == 0) {
 		c->Message(0, "Usage: #itemsearch [search string]");
+	}
 	else
 	{
 		const char *search_criteria=sep->argplus[1];
 
-		const Item_Struct* item = 0;
+		const Item_Struct* item = nullptr;
+		std::string item_link;
+		Client::TextLink linker;
+		linker.SetLinkType(linker.linkItemData);
+		linker.SetClientVersion(c->GetClientVersion());
+
 		if (Seperator::IsNumber(search_criteria)) {
 			item = database.GetItem(atoi(search_criteria));
-			if (item)
-				if (c->GetClientVersion() >= EQClientRoF2)
-				{
-					c->Message(0, "  %i: %c%06X00000000000000000000000000000000000000000000000000%s%c", (int)item->ID, 0x12, item->ID, item->Name, 0x12);
-				}
-				else if (c->GetClientVersion() >= EQClientRoF)
-				{
-					c->Message(0, "  %i: %c%06X0000000000000000000000000000000000000000000000000%s%c",(int) item->ID,0x12, item->ID, item->Name, 0x12);
-				}
-				else if (c->GetClientVersion() >= EQClientSoF)
-				{
-					c->Message(0, "  %i: %c%06X00000000000000000000000000000000000000000000%s%c",(int) item->ID,0x12, item->ID, item->Name, 0x12);
-				}
-				else
-				{
-					c->Message(0, "  %i: %c%06X000000000000000000000000000000000000000%s%c",(int) item->ID,0x12, item->ID, item->Name, 0x12);
-				}
-			else
+			if (item) {
+				linker.SetItemData(item);
+
+				item_link = linker.GenerateLink();
+
+				c->Message(0, "%u: %s", item->ID, item_link.c_str());
+			}
+			else {
 				c->Message(0, "Item #%s not found", search_criteria);
+			}
+
 			return;
 		}
 
-		int count = 0;
+		int count = NOT_USED;
 		char sName[64];
 		char sCriteria[255];
 		strn0cpy(sCriteria, search_criteria, sizeof(sCriteria));
 		strupr(sCriteria);
 		char* pdest;
-		uint32 it = 0;
+		uint32 it = NOT_USED;
 		while ((item = database.IterateItems(&it))) {
 			strn0cpy(sName, item->Name, sizeof(sName));
 			strupr(sName);
 			pdest = strstr(sName, sCriteria);
 			if (pdest != nullptr) {
-				if (c->GetClientVersion() >= EQClientRoF2)
-				{
-					c->Message(0, "  %i: %c%06X00000000000000000000000000000000000000000000000000%s%c", (int)item->ID, 0x12, item->ID, item->Name, 0x12);
-				}
-				else if (c->GetClientVersion() >= EQClientRoF)
-				{
-					c->Message(0, "  %i: %c%06X0000000000000000000000000000000000000000000000000%s%c",(int) item->ID,0x12, item->ID, item->Name, 0x12);
-				}
-				else if (c->GetClientVersion() >= EQClientSoF)
-				{
-					c->Message(0, "  %i: %c%06X00000000000000000000000000000000000000000000%s%c",(int) item->ID,0x12, item->ID, item->Name, 0x12);
-				}
-				else
-				{
-					c->Message(0, "  %i: %c%06X000000000000000000000000000000000000000%s%c",(int) item->ID,0x12, item->ID, item->Name, 0x12);
-				}
-				count++;
+				linker.SetItemData(item);
+
+				item_link = linker.GenerateLink();
+
+				c->Message(0, "%u: %s", item->ID, item_link.c_str());
+
+				++count;
 			}
+
 			if (count == 50)
 				break;
 		}
+
 		if (count == 50)
 			c->Message(0, "50 items shown...too many results.");
 		else
 			c->Message(0, "%i items found", count);
-
 	}
 }
 
@@ -8658,8 +8578,8 @@ void command_aggrozone(Client *c, const Seperator *sep) {
 	if (!m)
 		return;
 
-	int hate = atoi(sep->arg[1]); //should default to 0 if we don't enter anything
-	entity_list.AggroZone(m,hate);
+	uint32 hate = atoi(sep->arg[1]); //should default to 0 if we don't enter anything
+	entity_list.AggroZone(m, hate);
 	c->Message(0, "Train to you! Last chance to go invulnerable...");
 }
 

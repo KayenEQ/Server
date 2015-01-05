@@ -2576,7 +2576,7 @@ namespace RoF
 		strn0cpy(general->player_name, raid_create->leader_name, 64);
 
 		dest->FastQueuePacket(&outapp_create);
-		delete[] __emu_buffer;
+		safe_delete(inapp);
 	}
 
 	ENCODE(OP_RaidUpdate)
@@ -2643,7 +2643,7 @@ namespace RoF
 			dest->FastQueuePacket(&outapp);
 		}
 
-		delete[] __emu_buffer;
+		safe_delete(inapp);
 	}
 
 	ENCODE(OP_ReadBook)
@@ -2900,7 +2900,7 @@ namespace RoF
 		{
 			eq->entries[i] = emu->entries[i];
 		}
-		eq->entries[21] = 0;
+		eq->entries[21] = 1;
 
 		FINISH_ENCODE();
 	}
@@ -5485,7 +5485,6 @@ namespace RoF
 
 	static inline uint32 ServerToRoFCorpseSlot(uint32 ServerCorpse)
 	{
-		//uint32 RoFCorpse;
 		return (ServerCorpse + 1);
 	}
 
@@ -5626,7 +5625,6 @@ namespace RoF
 
 	static inline uint32 RoFToServerCorpseSlot(uint32 RoFCorpse)
 	{
-		//uint32 ServerCorpse;
 		return (RoFCorpse - 1);
 	}
 }

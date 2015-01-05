@@ -243,7 +243,7 @@ struct Membership_Setting_Struct
 struct Membership_Details_Struct
 {
 /*0000*/ uint32 membership_setting_count;	// Seen 66
-/*0016*/ Membership_Setting_Struct settings[66]; // 792 Bytes
+/*0016*/ Membership_Setting_Struct settings[72]; // 864 Bytes
 /*0012*/ uint32 race_entry_count;	// Seen 15
 /*1044*/ Membership_Entry_Struct membership_races[15]; // 120 Bytes
 /*0012*/ uint32 class_entry_count;	// Seen 15
@@ -260,7 +260,7 @@ struct Membership_Struct
 /*004*/ uint32 races;	// Seen ff ff 01 00
 /*008*/ uint32 classes;	// Seen ff ff 01 01
 /*012*/ uint32 entrysize; // Seen 22
-/*016*/ int32 entries[22]; // Most -1, 1, and 0 for Gold Status
+/*016*/ int32 entries[25]; // Most -1, 1, and 0 for Gold Status
 /*104*/
 };
 
@@ -1843,8 +1843,8 @@ struct LootingItem_Struct {
 /*000*/	uint32	lootee;
 /*004*/	uint32	looter;
 /*008*/	uint16	slot_id;
-/*010*/	uint16	unknown10;
-/*012*/	uint32	auto_loot;
+/*010*/	uint16	unknown10; // slot_id is probably uint32
+/*012*/	int32	auto_loot;
 /*016*/	uint32	unknown16;
 /*020*/
 };
@@ -4352,7 +4352,7 @@ struct ItemSerializationHeader
 /*025*/	uint8  slot_type;	// 0 = normal, 1 = bank, 2 = shared bank, 9 = merchant, 20 = ?
 /*026*/	uint16 main_slot;
 /*028*/ uint16 sub_slot;
-/*030*/ uint16 unknown013;	// 0xffff
+/*030*/ uint16 aug_slot;	// 0xffff
 /*032*/	uint32 price;
 /*036*/	uint32 merchant_slot; //1 if not a merchant item
 /*040*/	uint32 scaled_value; //0
@@ -4381,15 +4381,14 @@ struct EvolvingItem {
 
 struct ItemSerializationHeaderFinish
 {
-/*079*/	uint32 ornamentIcon;
-/*083*/	int32 unknowna1;	// 0xffffffff
-/*087*/	uint32 ornamentHeroModel;	// 0
-/*091*/	uint8 unknown063;	// 0
-/*092*/	uint32 unknowna3;	// 0
-/*096*/	int32 unknowna4;	// 0xffffffff
-/*100*/	uint32 unknowna5;	// 0
-/*104*/	uint8 ItemClass; //0, 1, or 2
-/*105*/
+	uint32 ornamentIcon;
+	int32 unknowna1;	// 0xffffffff
+	uint32 ornamentHeroModel;
+	int32 unknown063;	// 0
+	uint8 Copied;		// Copied Flag - Possibly for items copied during server transfer?
+	int32 unknowna4;	// 0xffffffff
+	int32 unknowna5;	// 0
+	uint8 ItemClass; //0, 1, or 2
 };
 
 struct ItemBodyStruct
@@ -4493,7 +4492,7 @@ struct ItemSecondaryBodyStruct
 	// swapped augrestrict and augdistiller positions
 	// (this swap does show the proper augment restrictions in Item Information window now)
 	// unsure what the purpose of augdistiller is at this time -U 3/17/2014
-	uint32 augdistiller;	// New to December 10th 2012 client - NEW
+	int32 augrestrict2;	// New to December 10th 2012 client - Hidden Aug Restriction
 	uint32 augrestrict;
 	AugSlotStruct augslots[6];
 
@@ -4598,7 +4597,7 @@ struct ItemQuaternaryBodyStruct
 	uint8 quest_item;
 	uint32 Power; // Enables "Power" percentage field used by Power Sources
 	uint32 Purity;
-	uint8  unknown16;	// RoF2
+	uint8  unknown16;	// RoF
 	uint32 BackstabDmg;
 	uint32 DSMitigation;
 	int32 HeroicStr;
@@ -4620,15 +4619,19 @@ struct ItemQuaternaryBodyStruct
 	uint8 unknown18;	//Power Source Capacity or evolve filename?
 	uint32 evolve_string; // Some String, but being evolution related is just a guess
 	uint8 unknown19;
-	uint32 unknown20;	// Bard Stuff?
-	//uint32 unknown21;
-	uint8 unknown22;
+	uint16 unknown20;
+	uint8 unknown21;
+	uint8 Heirloom;		// Heirloom Flag
+	uint8 Placeable;	// Placeable Flag
+	uint8 unknown22b;
+	uint8 unknown22c;
+	uint8 unknown22d;
 	uint32 unknown23;
 	uint32 unknown24;
 	uint32 unknown25;
 	float unknown26;
 	float unknown27;
-	uint32 unknown_RoF26;	// 0 New to March 21 2012 client
+	uint32 unknown_RoF_6;	// 0 New to March 21 2012 client
 	uint32 unknown28;	// 0xffffffff
 	uint16 unknown29;
 	uint32 unknown30;	// 0xffffffff
@@ -4639,9 +4642,15 @@ struct ItemQuaternaryBodyStruct
 	uint32 unknown35;
 	uint32 unknown36;
 	uint32 unknown37;
-	uint32 unknown_RoF27;
-	uint32 unknown_RoF28;
-	uint8 unknown37a;	// (guessed position) New to RoF2
+	uint8 NoZone;		// No Zone Flag - Item will disappear upon zoning?
+	uint8 unknown_RoF_7b; // Maybe Uint32 ?
+	uint8 unknown_RoF_7c;
+	uint8 unknown_RoF_7d;
+	uint8 unknown_RoF_8a;
+	uint8 NoGround;		// No Ground Flag - Item cannot be dropped on the ground?
+	uint8 unknown_RoF_8c;
+	uint8 unknown_RoF_8d;
+	uint8 unknown37a;	// New to RoF2 - Probably variable length string
 	uint8 unknown38;	// 0
 	uint8 unknown39;	// 1
 	uint32 subitem_count;

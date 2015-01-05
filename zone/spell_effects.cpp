@@ -2718,7 +2718,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					caster->Taunt(this->CastToNPC(), false, static_cast<float>(spell.base[i]));
 					
 					if (spell.base2[i] > 0)
-						CastToNPC()->SetHate(caster, (CastToNPC()->GetHateAmount(caster) + spell.base2[i]));
+						CastToNPC()->SetHateAmountOnEnt(caster, (CastToNPC()->GetHateAmount(caster) + spell.base2[i]));
 				}
 				break;
 			}
@@ -2749,7 +2749,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					if (new_hate <= 0)
 						new_hate = 1;
 
-					CastToNPC()->SetHate(caster, new_hate);
+					CastToNPC()->SetHateAmountOnEnt(caster, new_hate);
 				}
 				break;
 			}
@@ -2770,9 +2770,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					}else{
 						int32 newhate = GetHateAmount(caster) + effect_value;
 						if (newhate < 1)
-							SetHate(caster,1);
+							SetHateAmountOnEnt(caster,1);
 						else
-							SetHate(caster,newhate);
+							SetHateAmountOnEnt(caster,newhate);
 						}
 				}
 				break;
@@ -3065,9 +3065,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 				}else{ //Reduce Hate to pet's owner.
 					int32 newhate = GetHateAmount(owner) + effect_value;
 					if (newhate < 1) 
-						SetHate(owner,1);
+						SetHateAmountOnEnt(owner,1);
 					else 
-						SetHate(owner,newhate);
+						SetHateAmountOnEnt(owner,newhate);
 				}
 				
 				break;
@@ -4058,9 +4058,9 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 					}else{
 						int32 newhate = GetHateAmount(caster) + effect_value;
 						if (newhate < 1) {
-							SetHate(caster,1);
+							SetHateAmountOnEnt(caster,1);
 						} else {
-							SetHate(caster,newhate);
+							SetHateAmountOnEnt(caster,newhate);
 						}
 					}
 				}
@@ -4244,11 +4244,11 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 			case SE_AddHateOverTimePct:
 			{				
 				if (IsNPC()){
-					int32 new_hate = CastToNPC()->GetHateAmount(caster) * (100 + spell.base[i]) / 100;
+					uint32 new_hate = CastToNPC()->GetHateAmount(caster) * (100 + spell.base[i]) / 100;
 					if (new_hate <= 0)
 						new_hate = 1;
 					
-					CastToNPC()->SetHate(caster, new_hate);
+					CastToNPC()->SetHateAmountOnEnt(caster, new_hate);
 				}
 				break;
 			}
@@ -7084,7 +7084,7 @@ bool Mob::PassCastRestriction(bool UseCastRestriction,  int16 value, bool IsDama
 
 		//Limit to amount of pets
 		if (value >= 221 && value <= 249){
-			int count = hate_list.SummonedPetCount(this);
+			int count = hate_list.GetSummonedPetCountOnHateList(this);
 	
 			for (int base2_value = 221; base2_value <= 249; ++base2_value){
 				if (value == base2_value){

@@ -506,36 +506,28 @@ void NPC::ClearItemList() {
 	itemlist.clear();
 }
 
-void NPC::QueryLoot(Client* to) {
-	int x = 0;
+void NPC::QueryLoot(Client* to)
+{
 	to->Message(0, "Coin: %ip %ig %is %ic", platinum, gold, silver, copper);
 
-	ItemList::iterator cur,end;
-	cur = itemlist.begin();
-	end = itemlist.end();
-	for(; cur != end; ++cur) {
+	int x = 0;
+	for(ItemList::iterator cur = itemlist.begin(); cur != itemlist.end(); ++cur, ++x) {
 		const Item_Struct* item = database.GetItem((*cur)->item_id);
-		if (item)
-			if (to->GetClientVersion() >= EQClientRoF2)
-			{
-				to->Message(0, "minlvl: %i maxlvl: %i %i: %c%06X00000000000000000000000000000000000000000000000000%s%c", (*cur)->min_level, (*cur)->max_level, (int)item->ID, 0x12, item->ID, item->Name, 0x12);
-			}
-			else if (to->GetClientVersion() >= EQClientRoF)
-			{
-				to->Message(0, "minlvl: %i maxlvl: %i %i: %c%06X0000000000000000000000000000000000000000000000000%s%c",(*cur)->min_level, (*cur)->max_level, (int) item->ID,0x12, item->ID, item->Name, 0x12);
-			}
-			else if (to->GetClientVersion() >= EQClientSoF)
-			{
-				to->Message(0, "minlvl: %i maxlvl: %i %i: %c%06X00000000000000000000000000000000000000000000%s%c",(*cur)->min_level, (*cur)->max_level, (int) item->ID,0x12, item->ID, item->Name, 0x12);
-			}
-			else
-			{
-				to->Message(0, "minlvl: %i maxlvl: %i %i: %c%06X000000000000000000000000000000000000000%s%c",(*cur)->min_level, (*cur)->max_level, (int) item->ID,0x12, item->ID, item->Name, 0x12);
-			}
-		else
+		if (item == nullptr) {
 			LogFile->write(EQEMuLog::Error, "Database error, invalid item");
-		x++;
+			continue;
+		}
+
+		Client::TextLink linker;
+		linker.SetLinkType(linker.linkItemData);
+		linker.SetItemData(item);
+		linker.SetClientVersion(to->GetClientVersion());
+
+		auto item_link = linker.GenerateLink();
+		
+		to->Message(0, "%s, ID: %u, Level: (min: %u, max: %u)", item_link.c_str(), item->ID, (*cur)->min_level, (*cur)->max_level);
 	}
+
 	to->Message(0, "%i items on %s.", x, GetName());
 }
 

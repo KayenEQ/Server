@@ -3422,9 +3422,9 @@ void Bot::AI_Process() {
 			rest_timer.Disable();
 
 		if(IsRooted())
-			SetTarget(hate_list.GetClosest(this));
+			SetTarget(hate_list.GetClosestEntOnHateList(this));
 		else
-			SetTarget(hate_list.GetTop(this));
+			SetTarget(hate_list.GetEntWithMostHateOnList(this));
 
 		if(!GetTarget())
 			return;
@@ -3791,9 +3791,9 @@ void Bot::PetAIProcess() {
 	if (IsEngaged()) {
 
 		if (botPet->IsRooted())
-			botPet->SetTarget(hate_list.GetClosest(botPet));
+			botPet->SetTarget(hate_list.GetClosestEntOnHateList(botPet));
 		else
-			botPet->SetTarget(hate_list.GetTop(botPet));
+			botPet->SetTarget(hate_list.GetEntWithMostHateOnList(botPet));
 
 		// Let's check if we have a los with our target.
 		// If we don't, our hate_list is wiped.
@@ -5854,7 +5854,7 @@ bool Bot::Death(Mob *killerMob, int32 damage, uint16 spell_id, SkillUseTypes att
 
 	Save();
 
-	Mob *give_exp = hate_list.GetDamageTop(this);
+	Mob *give_exp = hate_list.GetDamageTopOnHateList(this);
 	Client *give_exp_client = nullptr;
 
 	if(give_exp && give_exp->IsClient())
@@ -6008,7 +6008,7 @@ void Bot::Damage(Mob *from, int32 damage, uint16 spell_id, SkillUseTypes attack_
 	}
 }
 
-void Bot::AddToHateList(Mob* other, int32 hate, int32 damage, bool iYellForHelp, bool bFrenzy, bool iBuffTic)
+void Bot::AddToHateList(Mob* other, uint32 hate /*= 0*/, int32 damage /*= 0*/, bool iYellForHelp /*= true*/, bool bFrenzy /*= false*/, bool iBuffTic /*= false*/)
 {
 	Mob::AddToHateList(other, hate, damage, iYellForHelp, bFrenzy, iBuffTic);
 }
@@ -11699,106 +11699,47 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				const char* equipped[EmuConstants::EQUIPMENT_SIZE] = {"Charm", "Left Ear", "Head", "Face", "Right Ear", "Neck", "Shoulders", "Arms", "Back",
 					"Left Wrist", "Right Wrist", "Range", "Hands", "Primary Hand", "Secondary Hand",
 					"Left Finger", "Right Finger", "Chest", "Legs", "Feet", "Waist", "Ammo" };
-				const ItemInst* item1 = nullptr;
-				const Item_Struct* item2 = nullptr;
+				
+				const ItemInst* inst = nullptr;
+				const Item_Struct* item = nullptr;
 				bool is2Hweapon = false;
-				for(int i = EmuConstants::EQUIPMENT_BEGIN; i <= EmuConstants::EQUIPMENT_END; ++i)
-				{
+				
+				std::string item_link;
+				Client::TextLink linker;
+				linker.SetLinkType(linker.linkItemInst);
+				linker.SetClientVersion(c->GetClientVersion());
+
+				for(int i = EmuConstants::EQUIPMENT_BEGIN; i <= EmuConstants::EQUIPMENT_END; ++i) {
 					if((i == MainSecondary) && is2Hweapon) {
 						continue;
 					}
 
-					item1 = b->CastToBot()->GetBotItem(i);
-					if(item1)
-						item2 = item1->GetItem();
+					inst = b->CastToBot()->GetBotItem(i);
+					if (inst)
+						item = inst->GetItem();
 					else
-						item2 = nullptr;
+						item = nullptr;
 
 					if(!TempErrorMessage.empty()) {
 						c->Message(13, "Database Error: %s", TempErrorMessage.c_str());
 						return;
 					}
-					if(item2 == 0) {
+					if(item == nullptr) {
 						c->Message(15, "I need something for my %s (Item %i)", equipped[i], i);
 						continue;
 					}
-					if((i == MainPrimary) && ((item2->ItemType == ItemType2HSlash) || (item2->ItemType == ItemType2HBlunt) || (item2->ItemType == ItemType2HPiercing))) {
+					if((i == MainPrimary) && ((item->ItemType == ItemType2HSlash) || (item->ItemType == ItemType2HBlunt) || (item->ItemType == ItemType2HPiercing))) {
 						is2Hweapon = true;
 					}
 
-					char* itemLink = 0;
-					if((i == MainCharm) || (i == MainRange) || (i == MainPrimary) || (i == MainSecondary) || (i == MainAmmo)) {
-						if (c->GetClientVersion() >= EQClientSoF)
-						{
-							MakeAnyLenString(&itemLink, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%05X" "%08X",
-								0,
-								item2->ID,
-								item1->GetAugmentItemID(0),
-								item1->GetAugmentItemID(1),
-								item1->GetAugmentItemID(2),
-								item1->GetAugmentItemID(3),
-								item1->GetAugmentItemID(4),
-								0,
-								0,
-								0,
-								0,
-								0
-								);
-							c->Message(15, "Using %c%s%s%c in my %s (Item %i)", 0x12, itemLink, item2->Name, 0x12, equipped[i], i);
-						}
-						else
-						{
-							MakeAnyLenString(&itemLink, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%08X",
-								0,
-								item2->ID,
-								item1->GetAugmentItemID(0),
-								item1->GetAugmentItemID(1),
-								item1->GetAugmentItemID(2),
-								item1->GetAugmentItemID(3),
-								item1->GetAugmentItemID(4),
-								0,
-								0,
-								0,
-								0);
-							c->Message(15, "Using %c%s%s%c in my %s (Item %i)", 0x12, itemLink, item2->Name, 0x12, equipped[i], i);
-						}
-					}
-					else {
-						if (c->GetClientVersion() >= EQClientSoF)
-						{
-							MakeAnyLenString(&itemLink, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%05X" "%08X",
-								0,
-								item2->ID,
-								item1->GetAugmentItemID(0),
-								item1->GetAugmentItemID(1),
-								item1->GetAugmentItemID(2),
-								item1->GetAugmentItemID(3),
-								item1->GetAugmentItemID(4),
-								0,
-								0,
-								0,
-								0,
-								0
-								);
-							c->Message(15, "Using %c%s%s%c in my %s (Item %i)", 0x12, itemLink, item2->Name, 0x12, equipped[i], i);
-						}
-						else
-						{
-							MakeAnyLenString(&itemLink, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%08X",
-								0,
-								item2->ID,
-								item1->GetAugmentItemID(0),
-								item1->GetAugmentItemID(1),
-								item1->GetAugmentItemID(2),
-								item1->GetAugmentItemID(3),
-								item1->GetAugmentItemID(4),
-								0,
-								0,
-								0,
-								0);
-							c->Message(15, "Using %c%s%s%c in my %s (Item %i)", 0x12, itemLink, item2->Name, 0x12, equipped[i], i);
-						}
-					}
+					// I could not find a difference between the criteria positive code and the criteria negative code..
+					// ..so, I deleted the check (old criteria: i = { MainCharm, MainRange, MainPrimary, MainSecondary, MainAmmo })
+					
+					linker.SetItemInst(inst);
+
+					item_link = linker.GenerateLink();
+
+					c->Message(15, "Using %s in my %s (Item %i)", item_link.c_str(), equipped[i], i);
 				}
 			}
 			else {

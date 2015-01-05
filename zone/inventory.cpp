@@ -926,7 +926,7 @@ bool Client::TryStacking(ItemInst* item, uint8 type, bool try_worn, bool try_cur
 bool Client::AutoPutLootInInventory(ItemInst& inst, bool try_worn, bool try_cursor, ServerLootItem_Struct** bag_item_data)
 {
 	// #1: Try to auto equip
-	if (try_worn && inst.IsEquipable(GetBaseRace(), GetClass()) && inst.GetItem()->ReqLevel<=level && !inst.GetItem()->Attuneable && inst.GetItem()->ItemType != ItemTypeAugmentation)
+	if (try_worn && inst.IsEquipable(GetBaseRace(), GetClass()) && inst.GetItem()->ReqLevel<=level && (!inst.GetItem()->Attuneable || inst.IsAttuned()) && inst.GetItem()->ItemType != ItemTypeAugmentation)
 	{
 		// too messy as-is... <watch>
 		for (int16 i = EmuConstants::EQUIPMENT_BEGIN; i < MainPowerSource; i++) // originally (i < 22)
@@ -1027,105 +1027,113 @@ void Client::MoveItemCharges(ItemInst &from, int16 to_slot, uint8 type)
 	}
 }
 
-bool Client::MakeItemLink(char* &ret_link, const ItemInst *inst) {
+// TODO: needs clean-up to save references
+bool MakeItemLink(char* &ret_link, const Item_Struct *item, uint32 aug0, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5, uint8 evolving, uint8 evolvedlevel) {
 	//we're sending back the entire "link", minus the null characters & item name
 	//that way, we can use it for regular links & Task links
 	//note: initiator needs to pass us ret_link
 
-/*
+	/*
 	--- Usage ---
 	Chat: "%c" "%s" "%s" "%c", 0x12, ret_link, inst->GetItem()->name, 0x12
 	Task: "<a WndNotify=\"27," "%s" "\">" "%s" "</a>", ret_link, inst->GetItem()->name
-		<a WndNotify="27,00960F000000000000000000000000000000000000000">Master's Book of Wood Elven Culture</a>
-		http://eqitems.13th-floor.org/phpBB2/viewtopic.php?p=510#510
-*/
+	<a WndNotify="27,00960F000000000000000000000000000000000000000">Master's Book of Wood Elven Culture</a>
+	http://eqitems.13th-floor.org/phpBB2/viewtopic.php?p=510#510
+	*/
 
-	if (!inst) //have to have an item to make the link
+	if (!item) //have to have an item to make the link
 		return false;
 
-	const Item_Struct* item = inst->GetItem();
 	//format:
 	//0	itemid	aug1	aug2	aug3	aug4	aug5	evolving?	loregroup	evolved level	hash
 	//0	00000	00000	00000	00000	00000	00000	0			0000		0				00000000
 	//length:
 	//1	5		5		5		5		5		5		1			4			1				8		= 45
 	//evolving item info: http://eqitems.13th-floor.org/phpBB2/viewtopic.php?t=145#558
-	uint8 evolving = 0;
-	uint16 loregroup = 0;
-	uint8 evolvedlevel = 0;
-	int hash = 0;
+
 	//int hash = GetItemLinkHash(inst);	//eventually this will work (currently crashes zone), but for now we'll skip the extra overhead
-	if (GetClientVersion() >= EQClientRoF2)
-	{
-		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%01X" "%1X" "%04X" "%1X" "%05X" "%08X",
+	int hash = NOT_USED;
+	
+	// Tested with UF and RoF..there appears to be a problem with using non-augment arguments below...
+	// Currently, enabling them causes misalignments in what the client expects. I haven't looked
+	// into it further to determine the cause..but, the function is setup to accept the parameters.
+	// Note: some links appear with '00000' in front of the name..so, it's likely we need to send
+	// some additional information when certain parameters are true -U
+	//switch (GetClientVersion()) {
+	switch (0) {
+	case EQClientRoF2:
+		// This operator contains 14 parameter masks..but, only 13 parameter values.
+		// Even so, the client link appears ok... Need to figure out the discrepancy -U
+		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%1X" "%04X" "%1X" "%05X" "%08X",
 			0,
 			item->ID,
-			inst->GetAugmentItemID(0),
-			inst->GetAugmentItemID(1),
-			inst->GetAugmentItemID(2),
-			inst->GetAugmentItemID(3),
-			inst->GetAugmentItemID(4),
-			inst->GetAugmentItemID(5),
-			evolving,
-			loregroup,
-			evolvedlevel,
+			aug0,
+			aug1,
+			aug2,
+			aug3,
+			aug4,
+			aug5,
+			0,//evolving,
+			0,//item->LoreGroup,
+			0,//evolvedlevel,
 			0,
 			hash
 			);
-	}
-	else if (GetClientVersion() >= EQClientRoF)
-	{
+		return true;
+	case EQClientRoF:
 		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%05X" "%08X",
 			0,
 			item->ID,
-			inst->GetAugmentItemID(0),
-			inst->GetAugmentItemID(1),
-			inst->GetAugmentItemID(2),
-			inst->GetAugmentItemID(3),
-			inst->GetAugmentItemID(4),
-			inst->GetAugmentItemID(5),
-			evolving,
-			loregroup,
-			evolvedlevel,
+			aug0,
+			aug1,
+			aug2,
+			aug3,
+			aug4,
+			aug5,
+			0,//evolving,
+			0,//item->LoreGroup,
+			0,//evolvedlevel,
 			0,
 			hash
-		);
-	}
-	else if (GetClientVersion() >= EQClientSoF)
-	{
+			);
+		return true;
+	case EQClientUnderfoot:
+	case EQClientSoD:
+	case EQClientSoF:
 		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%05X" "%08X",
 			0,
 			item->ID,
-			inst->GetAugmentItemID(0),
-			inst->GetAugmentItemID(1),
-			inst->GetAugmentItemID(2),
-			inst->GetAugmentItemID(3),
-			inst->GetAugmentItemID(4),
-			evolving,
-			loregroup,
-			evolvedlevel,
+			aug0,
+			aug1,
+			aug2,
+			aug3,
+			aug4,
+			0,//evolving,
+			0,//item->LoreGroup,
+			0,//evolvedlevel,
 			0,
 			hash
-		);
-	}
-	else
-	{
+			);
+		return true;
+	case EQClientTitanium:
 		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%08X",
 			0,
 			item->ID,
-			inst->GetAugmentItemID(0),
-			inst->GetAugmentItemID(1),
-			inst->GetAugmentItemID(2),
-			inst->GetAugmentItemID(3),
-			inst->GetAugmentItemID(4),
-			evolving,
-			loregroup,
-			evolvedlevel,
+			aug0,
+			aug1,
+			aug2,
+			aug3,
+			aug4,
+			0,//evolving,
+			0,//item->LoreGroup,
+			0,//evolvedlevel,
 			hash
-		);
+			);
+		return true;
+	case EQClient62:
+	default:
+		return false;
 	}
-
-	return true;
 }
 
 int Client::GetItemLinkHash(const ItemInst* inst) {
@@ -1216,6 +1224,7 @@ int Client::GetItemLinkHash(const ItemInst* inst) {
 	return hash;
 }
 
+// This appears to still be in use... The core of this should be incorporated into class Client::TextLink
 void Client::SendItemLink(const ItemInst* inst, bool send_to_all)
 {
 /*

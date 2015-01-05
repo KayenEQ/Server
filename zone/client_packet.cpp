@@ -1369,7 +1369,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	database.LoadCharacterFactionValues(cid, factionvalues);
 
 	/* Load Character Account Data: Temp until I move */
-	query = StringFormat("SELECT `status`, `name`, `lsaccount_id`, `gmspeed`, `revoked`, `hideme` FROM `account` WHERE `id` = %u", this->AccountID());
+	query = StringFormat("SELECT `status`, `name`, `lsaccount_id`, `gmspeed`, `revoked`, `hideme`, `time_creation` FROM `account` WHERE `id` = %u", this->AccountID());
 	auto results = database.QueryDatabase(query);
 	for (auto row = results.begin(); row != results.end(); ++row) {
 		admin = atoi(row[0]);
@@ -1378,7 +1378,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		gmspeed = atoi(row[3]);
 		revoked = atoi(row[4]);
 		gmhideme = atoi(row[5]);
-		if (account_creation){ account_creation = atoul(row[6]); }
+		account_creation = atoul(row[6]);
 	}
 
 	/* Load Character Data */
@@ -1393,7 +1393,8 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 
 		if (LFP){ LFP = atoi(row[0]); }
 		if (LFG){ LFG = atoi(row[1]); }
-		if (firstlogon){ firstlogon = atoi(row[3]); }
+		if (row[3])
+			firstlogon = atoi(row[3]);
 	}
 
 	if (RuleB(Character, SharedBankPlat))
@@ -5236,7 +5237,7 @@ void Client::Handle_OP_DeleteSpawn(const EQApplicationPacket *app)
 	entity_list.QueueClients(this, outapp, false);
 	safe_delete(outapp);
 
-	hate_list.RemoveEnt(this->CastToMob());
+	hate_list.RemoveEntFromHateList(this->CastToMob());
 
 	Disconnect();
 	return;
@@ -9189,12 +9190,6 @@ void Client::Handle_OP_LootItem(const EQApplicationPacket *app)
 		LogFile->write(EQEMuLog::Error, "Wrong size: OP_LootItem, size=%i, expected %i", app->size, sizeof(LootingItem_Struct));
 		return;
 	}
-	/*
-	**	fixed the looting code so that it sends the correct opcodes
-	**	and now correctly removes the looted item the player selected
-	**	as well as gives the player the proper item.
-	**	Also fixed a few UI lock ups that would occur.
-	*/
 
 	EQApplicationPacket* outapp = 0;
 	Entity* entity = entity_list.GetID(*((uint16*)app->pBuffer));

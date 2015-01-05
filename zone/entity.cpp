@@ -2027,13 +2027,16 @@ void EntityList::RemoveAllNPCs()
 
 void EntityList::RemoveAllMercs()
 {
+	// doesn't clear the data
 	merc_list.clear();
 }
 
 void EntityList::RemoveAllGroups()
 {
-	while (group_list.size())
+	while (group_list.size()) {
+		safe_delete(group_list.front());
 		group_list.pop_front();
+	}
 #if EQDEBUG >= 5
 	CheckGroupList (__FILE__, __LINE__);
 #endif
@@ -2041,8 +2044,10 @@ void EntityList::RemoveAllGroups()
 
 void EntityList::RemoveAllRaids()
 {
-	while (raid_list.size())
+	while (raid_list.size()) {
+		safe_delete(raid_list.front());
 		raid_list.pop_front();
+	}
 }
 
 void EntityList::RemoveAllDoors()
@@ -2252,7 +2257,8 @@ bool EntityList::RemoveGroup(uint32 delete_id)
 	while(iterator != group_list.end())
 	{
 		if((*iterator)->GetID() == delete_id) {
-			group_list.remove (*iterator);
+			safe_delete(*iterator);
+			group_list.remove(*iterator);
 #if EQDEBUG >= 5
 	CheckGroupList (__FILE__, __LINE__);
 #endif
@@ -2275,7 +2281,8 @@ bool EntityList::RemoveRaid(uint32 delete_id)
 	while(iterator != raid_list.end())
 	{
 		if((*iterator)->GetID() == delete_id) {
-			raid_list.remove (*iterator);
+			safe_delete(*iterator);
+			raid_list.remove(*iterator);
 			return true;
 		}
 		++iterator;
@@ -2435,7 +2442,7 @@ void EntityList::RemoveFromHateLists(Mob *mob, bool settoone)
 			if (!settoone)
 				it->second->RemoveFromHateList(mob);
 			else
-				it->second->SetHate(mob, 1);
+				it->second->SetHateAmountOnEnt(mob, 1);
 		}
 		++it;
 	}
@@ -2819,7 +2826,7 @@ void EntityList::DoubleAggro(Mob *who)
 	auto it = npc_list.begin();
 	while (it != npc_list.end()) {
 		if (it->second->CheckAggro(who))
-			it->second->SetHate(who, it->second->CastToNPC()->GetHateAmount(who),
+			it->second->SetHateAmountOnEnt(who, it->second->CastToNPC()->GetHateAmount(who),
 					it->second->CastToNPC()->GetHateAmount(who) * 2);
 		++it;
 	}
@@ -2830,7 +2837,7 @@ void EntityList::HalveAggro(Mob *who)
 	auto it = npc_list.begin();
 	while (it != npc_list.end()) {
 		if (it->second->CastToNPC()->CheckAggro(who))
-			it->second->CastToNPC()->SetHate(who, it->second->CastToNPC()->GetHateAmount(who) / 2);
+			it->second->CastToNPC()->SetHateAmountOnEnt(who, it->second->CastToNPC()->GetHateAmount(who) / 2);
 		++it;
 	}
 }
@@ -2845,9 +2852,9 @@ void EntityList::Evade(Mob *who)
 			amt = it->second->CastToNPC()->GetHateAmount(who);
 			amt -= flatval;
 			if (amt > 0)
-				it->second->CastToNPC()->SetHate(who, amt);
+				it->second->CastToNPC()->SetHateAmountOnEnt(who, amt);
 			else
-				it->second->CastToNPC()->SetHate(who, 0);
+				it->second->CastToNPC()->SetHateAmountOnEnt(who, 0);
 		}
 		++it;
 	}
@@ -2915,7 +2922,7 @@ void EntityList::ClearZoneFeignAggro(Client *targ)
 	}
 }
 
-void EntityList::AggroZone(Mob *who, int hate)
+void EntityList::AggroZone(Mob *who, uint32 hate)
 {
 	auto it = npc_list.begin();
 	while (it != npc_list.end()) {
@@ -3648,7 +3655,7 @@ void EntityList::AddTempPetsToHateList(Mob *owner, Mob* other, bool bFrenzy)
 		if (n->GetSwarmInfo()) {
 			if (n->GetSwarmInfo()->owner_id == owner->GetID()) {
 				if (!n->GetSpecialAbility(IMMUNE_AGGRO))
-					n->hate_list.Add(other, 0, 0, bFrenzy);
+					n->hate_list.AddEntToHateList(other, 0, 0, bFrenzy);
 			}
 		}
 		++it;
