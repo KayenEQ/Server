@@ -505,7 +505,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 
 					if(!target_zone) {
 #ifdef SPELL_EFFECT_SPAM
-						LogFile->write(EQEMuLog::Debug, "Succor/Evacuation Spell In Same Zone.");
+						LogFile->write(EQEmuLog::Debug, "Succor/Evacuation Spell In Same Zone.");
 #endif
 							if(IsClient())
 								CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), x, y, z, heading, 0, EvacToSafeCoords);
@@ -514,7 +514,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					}
 					else {
 #ifdef SPELL_EFFECT_SPAM
-						LogFile->write(EQEMuLog::Debug, "Succor/Evacuation Spell To Another Zone.");
+						LogFile->write(EQEmuLog::Debug, "Succor/Evacuation Spell To Another Zone.");
 #endif
 						if(IsClient())
 							CastToClient()->MovePC(target_zone, x, y, z, heading);
@@ -1816,7 +1816,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial)
 					}
 					else {
 						Message_StringID(4, TARGET_NOT_FOUND);
-						LogFile->write(EQEMuLog::Error, "%s attempted to cast spell id %u with spell effect SE_SummonCorpse, but could not cast target into a Client object.", GetCleanName(), spell_id);
+						LogFile->write(EQEmuLog::Error, "%s attempted to cast spell id %u with spell effect SE_SummonCorpse, but could not cast target into a Client object.", GetCleanName(), spell_id);
 					}
 				}
 
@@ -3834,7 +3834,7 @@ snare has both of them negative, yet their range should work the same:
 				result = ubase * (caster_level * (formula - 2000) + 1);
 			}
 			else
-				LogFile->write(EQEMuLog::Debug, "Unknown spell effect value forumula %d", formula);
+				LogFile->write(EQEmuLog::Debug, "Unknown spell effect value forumula %d", formula);
 		}
 	}
 
@@ -3983,14 +3983,16 @@ void Mob::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 			{
 				effect_value = CalcSpellEffectValue(spell_id, i, caster_level, caster, ticsremaining);
 				//Handle client cast DOTs here.
-				if (caster && effect_value < 0 && IsDetrimentalSpell(spell_id)){
+				if (caster && effect_value < 0){
 					
-					if (caster->IsClient()){
-						if (!caster->CastToClient()->GetFeigned())
+					if (IsDetrimentalSpell(spell_id)){
+						if (caster->IsClient()){
+							if (!caster->CastToClient()->GetFeigned())
+								AddToHateList(caster, -effect_value);
+						}
+						else if (!IsClient()) //Allow NPC's to generate hate if casted on other NPC's.
 							AddToHateList(caster, -effect_value);
 					}
-					else if (!IsClient()) //Allow NPC's to generate hate if casted on other NPC's.
-						AddToHateList(caster, -effect_value);
 
 					effect_value = caster->GetActDoTDamage(spell_id, effect_value, this, buffs[slot].focus);
 
@@ -5476,7 +5478,7 @@ int16 Mob::CalcFocusEffect(focusType type, uint16 focus_id, uint16 spell_id, boo
 						return 0;
 					break;
 				default:
-					LogFile->write(EQEMuLog::Normal, "CalcFocusEffect: unknown limit spelltype %d", focus_spell.base[i]);
+					LogFile->write(EQEmuLog::Normal, "CalcFocusEffect: unknown limit spelltype %d", focus_spell.base[i]);
 			}
 			break;
 
@@ -5815,7 +5817,7 @@ int16 Mob::CalcFocusEffect(focusType type, uint16 focus_id, uint16 spell_id, boo
 		//this spits up a lot of garbage when calculating spell focuses
 		//since they have all kinds of extra effects on them.
 		default:
-			LogFile->write(EQEMuLog::Normal, "CalcFocusEffect: unknown effectid %d", focus_spell.effectid[i]);
+			LogFile->write(EQEmuLog::Normal, "CalcFocusEffect: unknown effectid %d", focus_spell.effectid[i]);
 #endif
 		}
 		
@@ -6303,7 +6305,7 @@ int16 NPC::GetFocusEffect(focusType type, uint16 spell_id) {
 	return realTotal + realTotal2;
 }
 
-void Mob::CheckNumHitsRemaining(uint8 type, int32 buff_slot, uint16 spell_id)
+void Mob::CheckNumHitsRemaining(NumHit type, int32 buff_slot, uint16 spell_id)
 {
 	/*
 	Field 175 = numhits type
@@ -6330,7 +6332,7 @@ void Mob::CheckNumHitsRemaining(uint8 type, int32 buff_slot, uint16 spell_id)
 	if (IsValidSpell(spell_id)) {
 		for (int d = 0; d < buff_max; d++) {
 			if (buffs[d].spellid == spell_id && buffs[d].numhits > 0 &&
-					spells[buffs[d].spellid].numhitstype == type) {
+			    spells[buffs[d].spellid].numhitstype == static_cast<int>(type)) {
 				if (--buffs[d].numhits == 0) {
 					CastOnNumHitFade(buffs[d].spellid);
 					if (!TryFadeEffect(d))
@@ -6340,7 +6342,7 @@ void Mob::CheckNumHitsRemaining(uint8 type, int32 buff_slot, uint16 spell_id)
 				}
 			}
 		}
-	} else if (type == NUMHIT_MatchingSpells) {
+	} else if (type == NumHit::MatchingSpells) {
 		if (buff_slot >= 0) {
 			if (--buffs[buff_slot].numhits == 0) {
 				CastOnNumHitFade(buffs[buff_slot].spellid);
@@ -6369,7 +6371,7 @@ void Mob::CheckNumHitsRemaining(uint8 type, int32 buff_slot, uint16 spell_id)
 	} else {
 		for (int d = 0; d < buff_max; d++) {
 			if (IsValidSpell(buffs[d].spellid) && buffs[d].numhits > 0 &&
-					spells[buffs[d].spellid].numhitstype == type) {
+			    spells[buffs[d].spellid].numhitstype == static_cast<int>(type)) {
 				if (--buffs[d].numhits == 0) {
 					CastOnNumHitFade(buffs[d].spellid);
 					if (!TryFadeEffect(d))
@@ -6633,7 +6635,7 @@ int32 Mob::GetFcDamageAmtIncoming(Mob *caster, uint32 spell_id, bool use_skill, 
 					}
 					if ((!limit_exists) || (limit_exists && skill_found)){
 						dmg += temp_dmg;
-						CheckNumHitsRemaining(NUMHIT_MatchingSpells,i);
+						CheckNumHitsRemaining(NumHit::MatchingSpells, i);
 					}
 				}
 
@@ -6641,7 +6643,7 @@ int32 Mob::GetFcDamageAmtIncoming(Mob *caster, uint32 spell_id, bool use_skill, 
 					int32 focus = caster->CalcFocusEffect(focusFcDamageAmtIncoming, buffs[i].spellid, spell_id);
 					if(focus){
 						dmg += focus;
-						CheckNumHitsRemaining(NUMHIT_MatchingSpells,i);
+						CheckNumHitsRemaining(NumHit::MatchingSpells, i);
 					}
 				}
 			}
@@ -6693,7 +6695,7 @@ int32 Mob::GetFocusIncoming(focusType type, int effect, Mob *caster, uint32 spel
 			value = tmp_focus;
 
 			if (tmp_buffslot >= 0)
-				CheckNumHitsRemaining(NUMHIT_MatchingSpells, tmp_buffslot);
+				CheckNumHitsRemaining(NumHit::MatchingSpells, tmp_buffslot);
 		}
 
 	
@@ -7230,31 +7232,30 @@ bool Mob::TrySpellProjectile(Mob* spell_target,  uint16 spell_id, float speed){
 	return true;
 }
 
-void Mob::ResourceTap(int32 damage, uint16 spellid){
+void Mob::ResourceTap(int32 damage, uint16 spellid)
+{
 	//'this' = caster
 	if (!IsValidSpell(spellid))
 		return;
 
-	for (int i = 0; i <= EFFECT_COUNT; i++)
-	{
-		if (spells[spellid].effectid[i] == SE_ResourceTap){
-		
-			damage += (damage * spells[spellid].base[i])/100;
+	for (int i = 0; i < EFFECT_COUNT; i++) {
+		if (spells[spellid].effectid[i] == SE_ResourceTap) {
+			damage += (damage * spells[spellid].base[i]) / 100;
 
 			if (spells[spellid].max[i] && (damage > spells[spellid].max[i]))
 				damage = spells[spellid].max[i];
 
-			if (spells[spellid].base2[i] == 0){ //HP Tap
+			if (spells[spellid].base2[i] == 0) { // HP Tap
 				if (damage > 0)
 					HealDamage(damage);
 				else
-					Damage(this, -damage,0, SkillEvocation,false);
+					Damage(this, -damage, 0, SkillEvocation, false);
 			}
 
-			if (spells[spellid].base2[i] == 1)  //Mana Tap
+			if (spells[spellid].base2[i] == 1) // Mana Tap
 				SetMana(GetMana() + damage);
 
-			if (spells[spellid].base2[i] == 2 && IsClient())  //Endurance Tap
+			if (spells[spellid].base2[i] == 2 && IsClient()) // Endurance Tap
 				CastToClient()->SetEndurance(CastToClient()->GetEndurance() + damage);
 		}
 	}

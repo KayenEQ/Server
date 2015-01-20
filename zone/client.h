@@ -400,10 +400,10 @@ public:
 
 	inline const char* GetLastName() const { return lastname; }
 
-	inline float ProximityX() const { return(proximity_x); }
-	inline float ProximityY() const { return(proximity_y); }
-	inline float ProximityZ() const { return(proximity_z); }
-	inline void ClearAllProximities() { entity_list.ProcessMove(this, FLT_MAX, FLT_MAX, FLT_MAX); proximity_x = FLT_MAX; proximity_y = FLT_MAX; proximity_z = FLT_MAX; }
+	inline float ProximityX() const { return m_Proximity.m_X; }
+	inline float ProximityY() const { return m_Proximity.m_Y; }
+	inline float ProximityZ() const { return m_Proximity.m_Z; }
+	inline void ClearAllProximities() { entity_list.ProcessMove(this, xyz_location(FLT_MAX, FLT_MAX, FLT_MAX)); m_Proximity = xyz_location(FLT_MAX,FLT_MAX,FLT_MAX); }
 
 	/*
 			Begin client modifiers
@@ -430,6 +430,7 @@ public:
 	inline virtual int32 GetPR() const { return PR; }
 	inline virtual int32 GetCR() const { return CR; }
 	inline virtual int32 GetCorrup() const { return Corrup; }
+	inline virtual int32 GetPhR() const { return PhR; }
 
 	int32 GetMaxStat() const;
 	int32 GetMaxResist() const;
@@ -454,6 +455,7 @@ public:
 	inline uint8 GetBaseAGI() const { return m_pp.AGI; }
 	inline uint8 GetBaseWIS() const { return m_pp.WIS; }
 	inline uint8 GetBaseCorrup() const { return 15; } // Same for all
+	inline uint8 GetBasePhR() const { return 0; } // Guessing at 0 as base
 
 	inline virtual int32 GetHeroicSTR() const { return itembonuses.HeroicSTR; }
 	inline virtual int32 GetHeroicSTA() const { return itembonuses.HeroicSTA; }
@@ -468,6 +470,7 @@ public:
 	inline virtual int32 GetHeroicPR() const { return itembonuses.HeroicPR; }
 	inline virtual int32 GetHeroicCR() const { return itembonuses.HeroicCR; }
 	inline virtual int32 GetHeroicCorrup() const { return itembonuses.HeroicCorrup; }
+	inline virtual int32 GetHeroicPhR() const { return 0; } // Heroic PhR not implemented yet
 	// Mod2
 	inline virtual int32 GetShielding() const { return itembonuses.MeleeMitigation; }
 	inline virtual int32 GetSpellShield() const { return itembonuses.SpellShield; }
@@ -579,7 +582,7 @@ public:
 	void GoToBind(uint8 bindnum = 0);
 	void GoToSafeCoords(uint16 zone_id, uint16 instance_id);
 	void Gate();
-	void SetBindPoint(int to_zone = -1, int to_instance = 0, float new_x = 0.0f, float new_y = 0.0f, float new_z = 0.0f);
+	void SetBindPoint(int to_zone = -1, int to_instance = 0, const xyz_location& location = xyz_location::Origin());
 	void SetStartZone(uint32 zoneid, float x = 0.0f, float y =0.0f, float z = 0.0f);
 	uint32 GetStartZone(void);
 	void MovePC(const char* zonename, float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
@@ -834,19 +837,18 @@ public:
 		void SetProxyItemID(uint32 proxyItemID) { m_ProxyItemID = proxyItemID; } // mainly for saylinks..but, not limited to
 		void SetProxyText(const char* proxyText) { m_ProxyText = proxyText; } // overrides standard text use
 		void SetTaskUse() { m_TaskUse = true; }
-		void SetClientVersion(EQClientVersion clientVersion) { m_ClientVersion = EQLimits::ValidateClientVersion(clientVersion); }
 
 		std::string GenerateLink();
 		bool LinkError() { return m_Error; }
 
-		const char* GetLink();		// contains full format: '/12x' '<LinkBody>' '<LinkText>' '/12x'
-		const char* GetLinkBody();	// contains format: '<LinkBody>'
-		const char* GetLinkText();	// contains format: '<LinkText>'
-		std::string GetLinkString();
-		std::string GetLinkBodyString();
-		std::string GetLinkTextString();
+		std::string GetLink() { return m_Link; }			// contains full string format: '/12x' '<LinkBody>' '<LinkText>' '/12x'
+		std::string GetLinkBody() { return m_LinkBody; }	// contains string format: '<LinkBody>'
+		std::string GetLinkText() { return m_LinkText; }	// contains string format: '<LinkText>'
 
 		void Reset();
+
+		static bool DegenerateLinkBody(TextLinkBody_Struct& textLinkBodyStruct, const std::string& textLinkBody);
+		static bool GenerateLinkBody(std::string& textLinkBody, const TextLinkBody_Struct& textLinkBodyStruct);
 
 	private:
 		void generate_body();
@@ -859,10 +861,10 @@ public:
 		uint32 m_ProxyItemID;
 		const char* m_ProxyText;
 		bool m_TaskUse;
+		TextLinkBody_Struct m_LinkBodyStruct;
 		std::string m_Link;
 		std::string m_LinkBody;
 		std::string m_LinkText;
-		EQClientVersion m_ClientVersion;
 		bool m_Error;
 	};
 
@@ -1078,7 +1080,7 @@ public:
 	void DoItemEnterZone();
 	bool DoItemEnterZone(uint32 slot_x, uint32 slot_y); // behavior change: 'slot_y' is now [RANGE]_END and not [RANGE]_END + 1
 	void SummonAndRezzAllCorpses();
-	void SummonAllCorpses(float dest_x, float dest_y, float dest_z, float dest_heading);
+	void SummonAllCorpses(const xyz_heading& position);
 	void DepopAllCorpses();
 	void DepopPlayerCorpse(uint32 dbid);
 	void BuryPlayerCorpses();
@@ -1296,6 +1298,11 @@ public:
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);
 	//C!Kayen - END
 
+	//Command #Tune functions
+	virtual int32 Tune_GetMeleeMitDmg(Mob* GM, Mob *attacker, int32 damage, int32 minhit, float mit_rating, float atk_rating);
+	int32 GetMeleeDamage(Mob* other, bool GetMinDamage = false);
+
+
 protected:
 	friend class Mob;
 	void CalcItemBonuses(StatBonuses* newbon);
@@ -1312,11 +1319,10 @@ protected:
 
 	Mob* bind_sight_target;
 
-	Map::Vertex aa_los_me;
-	Map::Vertex aa_los_them;
+	xyz_heading m_AutoAttackPosition;
+	xyz_location m_AutoAttackTargetLocation;
 	Mob *aa_los_them_mob;
 	bool los_status;
-	float aa_los_me_heading;
 	bool los_status_facing;
 	QGlobalCache *qGlobals;
 
@@ -1484,9 +1490,8 @@ private:
 	void DoZoneSuccess(ZoneChange_Struct *zc, uint16 zone_id, uint32 instance_id, float dest_x, float dest_y, float dest_z, float dest_h, int8 ignore_r);
 	void ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z, float heading, uint8 ignorerestrictions, ZoneMode zm);
 	void ProcessMovePC(uint32 zoneID, uint32 instance_id, float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
-	float zonesummon_x;
-	float zonesummon_y;
-	float zonesummon_z;
+
+	xyz_location m_ZoneSummonLocation;
 	uint16 zonesummon_id;
 	uint8 zonesummon_ignorerestrictions;
 	ZoneMode zone_mode;
@@ -1525,10 +1530,7 @@ private:
 	Timer RespawnFromHoverTimer;
 	Timer merc_timer;
 
-	float proximity_x;
-	float proximity_y;
-	float proximity_z;
-
+    xyz_location m_Proximity;
 
 	void BulkSendInventoryItems();
 

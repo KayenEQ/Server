@@ -61,19 +61,19 @@ PathManager* PathManager::LoadPathFile(const char* ZoneName)
 
 		if(Ret->loadPaths(PathFile))
 		{
-			LogFile->write(EQEMuLog::Status, "Path File %s loaded.", ZonePathFileName);
+			LogFile->write(EQEmuLog::Status, "Path File %s loaded.", ZonePathFileName);
 
 		}
 		else
 		{
-			LogFile->write(EQEMuLog::Error, "Path File %s failed to load.", ZonePathFileName);
+			LogFile->write(EQEmuLog::Error, "Path File %s failed to load.", ZonePathFileName);
 			safe_delete(Ret);
 		}
 		fclose(PathFile);
 	}
 	else
 	{
-		LogFile->write(EQEMuLog::Error, "Path File %s not found.", ZonePathFileName);
+		LogFile->write(EQEmuLog::Error, "Path File %s not found.", ZonePathFileName);
 	}
 
 	return Ret;
@@ -103,18 +103,18 @@ bool PathManager::loadPaths(FILE *PathFile)
 
 	if(strncmp(Magic, "EQEMUPATH", 9))
 	{
-		LogFile->write(EQEMuLog::Error, "Bad Magic String in .path file.");
+		LogFile->write(EQEmuLog::Error, "Bad Magic String in .path file.");
 		return false;
 	}
 
 	fread(&Head, sizeof(Head), 1, PathFile);
 
-	LogFile->write(EQEMuLog::Status, "Path File Header: Version %ld, PathNodes %ld",
+	LogFile->write(EQEmuLog::Status, "Path File Header: Version %ld, PathNodes %ld",
 				(long)Head.version, (long)Head.PathNodeCount);
 
 	if(Head.version != 2)
 	{
-		LogFile->write(EQEMuLog::Error, "Unsupported path file version.");
+		LogFile->write(EQEmuLog::Error, "Unsupported path file version.");
 		return false;
 	}
 
@@ -138,7 +138,7 @@ bool PathManager::loadPaths(FILE *PathFile)
 		{
 			if(PathNodes[i].Neighbours[j].id > MaxNodeID)
 			{
-				LogFile->write(EQEMuLog::Error, "Path Node %i, Neighbour %i (%i) out of range.", i, j, PathNodes[i].Neighbours[j].id);
+				LogFile->write(EQEmuLog::Error, "Path Node %i, Neighbour %i (%i) out of range.", i, j, PathNodes[i].Neighbours[j].id);
 
 				PathFileValid = false;
 			}
@@ -587,8 +587,8 @@ void PathManager::SpawnPathNodes()
 		npc_type->CHA = 150;
 
 		npc_type->findable = 1;
-
-		NPC* npc = new NPC(npc_type, 0, PathNodes[i].v.x, PathNodes[i].v.y, PathNodes[i].v.z, 0, FlyMode1);
+        auto position = xyz_heading(PathNodes[i].v.x, PathNodes[i].v.y, PathNodes[i].v.z, 0.0f);
+		NPC* npc = new NPC(npc_type, nullptr, position, FlyMode1);
 		npc->GiveNPCTypeData(npc_type);
 
 		entity_list.AddNPC(npc, true, true);
@@ -1197,12 +1197,14 @@ bool PathManager::NoHazardsAccurate(Map::Vertex From, Map::Vertex To)
 
 		if (zone->watermap)
 		{
-			if (zone->watermap->InLiquid(From.x, From.y, From.z) || zone->watermap->InLiquid(To.x, To.y, To.z))
+            auto from = xyz_location(From.x, From.y, From.z);
+            auto to = xyz_location(To.x, To.y, To.z);
+			if (zone->watermap->InLiquid(from) || zone->watermap->InLiquid(to))
 			{
 				break;
 			}
-
-			if (zone->watermap->InLiquid(TestPoint.x, TestPoint.y, NewZ))
+            auto testPointNewZ = xyz_location(TestPoint.x, TestPoint.y, NewZ);
+			if (zone->watermap->InLiquid(testPointNewZ))
 			{
 				Map::Vertex TestPointWater(TestPoint.x, TestPoint.y, NewZ - 0.5f);
 				Map::Vertex TestPointWaterDest = TestPointWater;
@@ -1574,7 +1576,8 @@ int32 PathManager::AddNode(float x, float y, float z, float best_z, int32 reques
 		npc_type->CHA = 150;
 		npc_type->findable = 1;
 
-		NPC* npc = new NPC(npc_type, 0, new_node.v.x, new_node.v.y, new_node.v.z, 0, FlyMode1);
+        auto position = xyz_heading(new_node.v.x, new_node.v.y, new_node.v.z, 0.0f);
+		NPC* npc = new NPC(npc_type, nullptr, position, FlyMode1);
 		npc->GiveNPCTypeData(npc_type);
 		entity_list.AddNPC(npc, true, true);
 
@@ -1634,7 +1637,8 @@ int32 PathManager::AddNode(float x, float y, float z, float best_z, int32 reques
 		npc_type->CHA = 150;
 		npc_type->findable = 1;
 
-		NPC* npc = new NPC(npc_type, 0, new_node.v.x, new_node.v.y, new_node.v.z, 0, FlyMode1);
+        auto position = xyz_heading(new_node.v.x, new_node.v.y, new_node.v.z, 0.0f);
+		NPC* npc = new NPC(npc_type, nullptr, position, FlyMode1);
 		npc->GiveNPCTypeData(npc_type);
 		entity_list.AddNPC(npc, true, true);
 

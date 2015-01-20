@@ -1616,7 +1616,7 @@ XS(XS_Mob_TypesTempPet)
 		else
 			Perl_croak(aTHX_ "target is not of type Mob");
 
-		
+
 		if (items < 7)
 			sticktarg = false;
 		else {
@@ -2934,6 +2934,32 @@ XS(XS_Mob_GetCorruption)
 	XSRETURN(1);
 }
 
+XS(XS_Mob_GetPhR); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_GetPhR)
+{
+	dXSARGS;
+	if (items != 1)
+		Perl_croak(aTHX_ "Usage: Mob::GetPhR(THIS)");
+	{
+		Mob *		THIS;
+		int32		RETVAL;
+		dXSTARG;
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *, tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if (THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+		RETVAL = THIS->GetPhR();
+		XSprePUSH; PUSHi((IV)RETVAL);
+	}
+	XSRETURN(1);
+}
+
 XS(XS_Mob_GetMaxSTR); /* prototype to pass -Wmissing-prototypes */
 XS(XS_Mob_GetMaxSTR)
 {
@@ -3526,7 +3552,7 @@ XS(XS_Mob_GetWaypointX)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = THIS->GetCWPX();
+		RETVAL = THIS->GetCurrentWayPoint().m_X;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -3552,7 +3578,7 @@ XS(XS_Mob_GetWaypointY)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = THIS->GetCWPY();
+		RETVAL = THIS->GetCurrentWayPoint().m_Y;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -3578,7 +3604,7 @@ XS(XS_Mob_GetWaypointZ)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = THIS->GetCWPZ();
+		RETVAL = THIS->GetCurrentWayPoint().m_Z;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -3604,7 +3630,7 @@ XS(XS_Mob_GetWaypointH)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		RETVAL = THIS->GetCWPH();
+		RETVAL = THIS->GetCurrentWayPoint().m_Heading;
 		XSprePUSH; PUSHn((double)RETVAL);
 	}
 	XSRETURN(1);
@@ -7637,10 +7663,7 @@ XS(XS_Mob_SetDeltas)
 		Perl_croak(aTHX_ "Usage: Mob::SetDeltas(THIS, delta_x, delta_y, delta_z, delta_h)");
 	{
 		Mob *		THIS;
-		float		delta_x = (float)SvNV(ST(1));
-		float		delta_y = (float)SvNV(ST(2));
-		float		delta_z = (float)SvNV(ST(3));
-		float		delta_h = (float)SvNV(ST(4));
+		auto delta = xyz_heading((float)SvNV(ST(1)), (float)SvNV(ST(2)), (float)SvNV(ST(3)), (float)SvNV(ST(4)));
 
 		if (sv_derived_from(ST(0), "Mob")) {
 			IV tmp = SvIV((SV*)SvRV(ST(0)));
@@ -7651,7 +7674,7 @@ XS(XS_Mob_SetDeltas)
 		if(THIS == nullptr)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
-		THIS->SetDeltas(delta_x, delta_y, delta_z, delta_h);
+		THIS->SetDelta(delta);
 	}
 	XSRETURN_EMPTY;
 }
@@ -8660,7 +8683,8 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "GetDR"), XS_Mob_GetDR, file, "$");
 		newXSproto(strcpy(buf, "GetPR"), XS_Mob_GetPR, file, "$");
 		newXSproto(strcpy(buf, "GetCR"), XS_Mob_GetCR, file, "$");
-		newXSproto(strcpy(buf, "GetCorruption"), XS_Mob_GetCR, file, "$");
+		newXSproto(strcpy(buf, "GetCorruption"), XS_Mob_GetCorruption, file, "$");
+		newXSproto(strcpy(buf, "GetPhR"), XS_Mob_GetPhR, file, "$");
 		newXSproto(strcpy(buf, "GetMaxSTR"), XS_Mob_GetMaxSTR, file, "$");
 		newXSproto(strcpy(buf, "GetMaxSTA"), XS_Mob_GetMaxSTA, file, "$");
 		newXSproto(strcpy(buf, "GetMaxDEX"), XS_Mob_GetMaxDEX, file, "$");

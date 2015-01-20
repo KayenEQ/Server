@@ -1,5 +1,50 @@
 EQEMu Changelog (Started on Sept 24, 2003 15:50)
 -------------------------------------------------------
+== 01/15/2015 ==
+Uleat: Attempted fix for elusive inventory bug:
+  - Removed 'iter_queue' typedef and converted lcast to explicit or auto defines
+  - Reworked several functions that manipulate the cursor queue
+  - Found/corrected one occurrence of post-processing iterator incrementing in an ItemInstQueue handler
+  - Added many scope declarations in code that handles inventory manipulation (loose macros are bad...)
+Uleat: Added Item_Struct pointer checks to ItemInst methods that did not have them
+Uleat: Changed IsEquippable(race,class) to use bit-wise 'and' (&) over '(x%2)==1' in conditional check.
+Uleat: Changed DyeArmor() assignment of 'armor_color' to use bit-wise 'or' and bit-shifting (|,<<) over multiplication and addition (*,+).
+
+== 01/13/2015 ==
+Uleat: Placed an upper limit on the cursor queue save loop.
+Trevius: (RoF2) Guild invites now add new members as members instead of recruits, and /guild chat works properly.
+Trevius: (RoF2) Guild Promote is now functional.
+
+== 01/12/2015 ==
+Uleat: Fix for OP_FormattedMessage text link server crashes
+Uleat: Added text link translators for OP_TaskDescription (RoF+ -- all clients current)
+Uleat: Fix for load_bots.sql using '\\' as a delimiter (Changed to '$$')
+
+== 01/11/2015 ==
+Uleat: Added text link translators for OP_TaskDescription (Ti thru UF..RoF+ in-work)
+
+== 01/10/2015 ==
+Uleat: Added text link translators for OP_Emote
+
+== 01/09/2015 ==
+Uleat: Added text link translators for OP_FormattedMessage
+
+== 01/08/2015 ==
+Trevius: Added some extra checks and clean-up related to Groups and Mercenaries. 
+
+== 01/07/2015 ==
+Uleat: Excluded text link body from message scrambling in Client::GarbleMessage()
+Trevius: Mercenaries now load directly from tables only.  The vwMercNpcTypes view is no longer required and can be deleted.
+Trevius: Query fix for group_leaders table.  This may resolve some crashes/bugs related to Mercs/Bots and Groups.
+
+== 01/06/2015 ==
+Trevius: Changed the pet command #defines to be based on RoF2 list of pet commands and added decodes to Titanium, SoF and SoD.
+Trevius: (RoF+) The /pet focus on/off and /pet hold on/off commands are now functional.
+Trevius: Added defines for all remaining pet commands and some support for them as well.
+
+== 01/05/2015 ==
+Uleat: Fixed (added translators for) item/text links. Only 'OP_ChannelMessage' and 'OP_SpecialMesg' are currently handled..more text channels will be added as the need arises.
+
 == 01/03/2015 ==
 Trevius: (RoF2) /shield (shielding) and /key (key ring) are both now functional after opcode updates.
 

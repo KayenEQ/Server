@@ -174,7 +174,7 @@ bool Client::Process() {
 				GetMerc()->Save();
 				GetMerc()->Depop();
 			}
-			
+
 			Raid *myraid = entity_list.GetRaidByClient(this);
 			if (myraid)
 			{
@@ -340,41 +340,31 @@ bool Client::Process() {
 			if(aa_los_them_mob)
 			{
 				if(auto_attack_target != aa_los_them_mob ||
-					aa_los_me.x != GetX() ||
-					aa_los_me.y != GetY() ||
-					aa_los_me.z != GetZ() ||
-					aa_los_them.x != aa_los_them_mob->GetX() ||
-					aa_los_them.y != aa_los_them_mob->GetY() ||
-					aa_los_them.z != aa_los_them_mob->GetZ())
+					m_AutoAttackPosition.m_X != GetX() ||
+					m_AutoAttackPosition.m_Y != GetY() ||
+					m_AutoAttackPosition.m_Z != GetZ() ||
+					m_AutoAttackTargetLocation.m_X != aa_los_them_mob->GetX() ||
+					m_AutoAttackTargetLocation.m_Y != aa_los_them_mob->GetY() ||
+					m_AutoAttackTargetLocation.m_Z != aa_los_them_mob->GetZ())
 				{
 					aa_los_them_mob = auto_attack_target;
-					aa_los_me.x = GetX();
-					aa_los_me.y = GetY();
-					aa_los_me.z = GetZ();
-					aa_los_them.x = aa_los_them_mob->GetX();
-					aa_los_them.y = aa_los_them_mob->GetY();
-					aa_los_them.z = aa_los_them_mob->GetZ();
+					m_AutoAttackPosition = GetPosition();
+					m_AutoAttackTargetLocation = aa_los_them_mob->GetPosition();
 					los_status = CheckLosFN(auto_attack_target);
-					aa_los_me_heading = GetHeading();
 					los_status_facing = IsFacingMob(aa_los_them_mob);
 				}
 				// If only our heading changes, we can skip the CheckLosFN call
 				// but above we still need to update los_status_facing
-				if (aa_los_me_heading != GetHeading()) {
-					aa_los_me_heading = GetHeading();
+				if (m_AutoAttackPosition.m_Heading != GetHeading()) {
+					m_AutoAttackPosition.m_Heading = GetHeading();
 					los_status_facing = IsFacingMob(aa_los_them_mob);
 				}
 			}
 			else
 			{
 				aa_los_them_mob = auto_attack_target;
-				aa_los_me.x = GetX();
-				aa_los_me.y = GetY();
-				aa_los_me.z = GetZ();
-				aa_los_me_heading = GetHeading();
-				aa_los_them.x = aa_los_them_mob->GetX();
-				aa_los_them.y = aa_los_them_mob->GetY();
-				aa_los_them.z = aa_los_them_mob->GetZ();
+				m_AutoAttackPosition = GetPosition();
+				m_AutoAttackTargetLocation = aa_los_them_mob->GetPosition();
 				los_status = CheckLosFN(auto_attack_target);
 				los_status_facing = IsFacingMob(aa_los_them_mob);
 			}
@@ -529,9 +519,7 @@ bool Client::Process() {
 				else
 				{
 					animation = 0;
-					delta_x = 0;
-					delta_y = 0;
-					delta_z = 0;
+					m_Delta = xyz_heading(0.0f, 0.0f, 0.0f, m_Delta.m_Heading);
 					SendPosUpdate(2);
 				}
 			}
@@ -821,32 +809,32 @@ void Client::OnDisconnect(bool hard_disconnect) {
 		if (MyRaid)
 			MyRaid->MemberZoned(this);
 
-		parse->EventPlayer(EVENT_DISCONNECT, this, "", 0); 
+		parse->EventPlayer(EVENT_DISCONNECT, this, "", 0);
 
 		/* QS: PlayerLogConnectDisconnect */
 		if (RuleB(QueryServ, PlayerLogConnectDisconnect)){
 			std::string event_desc = StringFormat("Disconnect :: in zoneid:%i instid:%i", this->GetZoneID(), this->GetInstanceID());
 			QServ->PlayerLogEvent(Player_Log_Connect_State, this->CharacterID(), event_desc);
-		} 
+		}
 	}
 
-	Mob *Other = trade->With(); 
+	Mob *Other = trade->With();
 	if(Other)
 	{
-		mlog(TRADING__CLIENT, "Client disconnected during a trade. Returning their items."); 
+		mlog(TRADING__CLIENT, "Client disconnected during a trade. Returning their items.");
 		FinishTrade(this);
 
 		if(Other->IsClient())
 			Other->CastToClient()->FinishTrade(Other);
 
 		/* Reset both sides of the trade */
-		trade->Reset(); 
+		trade->Reset();
 		Other->trade->Reset();
 	}
 
 	database.SetFirstLogon(CharacterID(), 0); //We change firstlogon status regardless of if a player logs out to zone or not, because we only want to trigger it on their first login from world.
 
-	/* Remove ourself from all proximities */ 
+	/* Remove ourself from all proximities */
 	ClearAllProximities();
 
 	EQApplicationPacket *outapp = new EQApplicationPacket(OP_LogoutReply);
@@ -1071,7 +1059,7 @@ void Client::BulkSendMerchantInventory(int merchant_id, int npcid) {
 		// Account for merchant lists with gaps.
 		if (ml.slot >= i) {
 			if (ml.slot > i)
-				LogFile->write(EQEMuLog::Debug, "(WARNING) Merchantlist contains gap at slot %d. Merchant: %d, NPC: %d", i, merchant_id, npcid);
+				LogFile->write(EQEmuLog::Debug, "(WARNING) Merchantlist contains gap at slot %d. Merchant: %d, NPC: %d", i, merchant_id, npcid);
 			i = ml.slot + 1;
 		}
 	}
@@ -1235,7 +1223,7 @@ void Client::OPMemorizeSpell(const EQApplicationPacket* app)
 {
 	if(app->size != sizeof(MemorizeSpell_Struct))
 	{
-		LogFile->write(EQEMuLog::Error,"Wrong size on OP_MemorizeSpell. Got: %i, Expected: %i", app->size, sizeof(MemorizeSpell_Struct));
+		LogFile->write(EQEmuLog::Error,"Wrong size on OP_MemorizeSpell. Got: %i, Expected: %i", app->size, sizeof(MemorizeSpell_Struct));
 		DumpPacket(app);
 		return;
 	}
@@ -1591,7 +1579,7 @@ void Client::OPMoveCoin(const EQApplicationPacket* app)
 				if (from_bucket == &m_pp.platinum_shared)
 					amount_to_add = 0 - amount_to_take;
 
-				database.SetSharedPlatinum(AccountID(),amount_to_add); 
+				database.SetSharedPlatinum(AccountID(),amount_to_add);
 			}
 		}
 		else{
@@ -1777,7 +1765,7 @@ void Client::OPGMTrainSkill(const EQApplicationPacket *app)
 			}
 
 			SetSkill(skill, t_level);
-		} else { 
+		} else {
 			switch(skill) {
 			case SkillBrewing:
 			case SkillMakePoison:
@@ -1978,7 +1966,7 @@ void Client::DoEnduranceUpkeep() {
 		return;
 	
 	int upkeep_sum = 0;
-	int cost_redux = spellbonuses.EnduranceReduction + itembonuses.EnduranceReduction + aabonuses.EnduranceReduction; //C!Kayen
+	int cost_redux = spellbonuses.EnduranceReduction + itembonuses.EnduranceReduction + aabonuses.EnduranceReduction;
 	
 	bool has_effect = false;
 	uint32 buffs_i;
@@ -2172,9 +2160,9 @@ void Client::HandleRespawnFromHover(uint32 Option)
 
 			if (corpse)
 			{
-				x_pos = corpse->GetX();
-				y_pos = corpse->GetY();
-				z_pos = corpse->GetZ();
+				m_Position.m_X = corpse->GetX();
+				m_Position.m_Y = corpse->GetY();
+				m_Position.m_Z = corpse->GetZ();
 			}
 
 			EQApplicationPacket* outapp = new EQApplicationPacket(OP_ZonePlayerToBind, sizeof(ZonePlayerToBind_Struct) + 10);
@@ -2227,10 +2215,10 @@ void Client::HandleRespawnFromHover(uint32 Option)
 			SetMana(GetMaxMana());
 			SetEndurance(GetMaxEndurance());
 
-			x_pos = chosen->x;
-			y_pos = chosen->y;
-			z_pos = chosen->z;
-			heading = chosen->heading;
+			m_Position.m_X = chosen->x;
+			m_Position.m_Y = chosen->y;
+			m_Position.m_Z = chosen->z;
+			m_Position.m_Heading = chosen->heading;
 
 			ClearHover();
 			entity_list.RefreshClientXTargets(this);
@@ -2240,7 +2228,7 @@ void Client::HandleRespawnFromHover(uint32 Option)
 		//After they've respawned into the same zone, trigger EVENT_RESPAWN
 		parse->EventPlayer(EVENT_RESPAWN, this, static_cast<std::string>(itoa(Option)), is_rez ? 1 : 0);
 
-		//Pop Rez option from the respawn options list; 
+		//Pop Rez option from the respawn options list;
 		//easiest way to make sure it stays at the end and
 		//doesn't disrupt adding/removing scripted options
 		respawn_options.pop_back();

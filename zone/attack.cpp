@@ -61,7 +61,7 @@ bool Mob::AttackAnimation(SkillUseTypes &skillinuse, int Hand, const ItemInst* w
 	if (weapon && weapon->IsType(ItemClassCommon)) {
 		const Item_Struct* item = weapon->GetItem();
 #if EQDEBUG >= 11
-			LogFile->write(EQEMuLog::Debug, "Weapon skill:%i", item->ItemType);
+			LogFile->write(EQEmuLog::Debug, "Weapon skill:%i", item->ItemType);
 #endif
 		switch (item->ItemType)
 		{
@@ -192,7 +192,7 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 		chancetohit += RuleR(Combat, NPCBonusHitChance);
 
 #if ATTACK_DEBUG>=11
-		LogFile->write(EQEMuLog::Debug, "CheckHitChance(%s) attacked by %s", defender->GetName(), attacker->GetName());
+		LogFile->write(EQEmuLog::Debug, "CheckHitChance(%s) attacked by %s", defender->GetName(), attacker->GetName());
 #endif
 	mlog(COMBAT__TOHIT,"CheckHitChance(%s) attacked by %s", defender->GetName(), attacker->GetName());
 
@@ -336,7 +336,7 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 	//agains a garunteed riposte (for example) discipline... for now, garunteed hit wins
 
 	#if EQDEBUG>=11
-		LogFile->write(EQEMuLog::Debug, "3 FINAL calculated chance to hit is: %5.2f", chancetohit);
+		LogFile->write(EQEmuLog::Debug, "3 FINAL calculated chance to hit is: %5.2f", chancetohit);
 	#endif
 
 	//
@@ -1137,7 +1137,7 @@ bool Client::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, b
 {
 	if (!other) {
 		SetTarget(nullptr);
-		LogFile->write(EQEMuLog::Error, "A null Mob object was passed to Client::Attack() for evaluation!");
+		LogFile->write(EQEmuLog::Error, "A null Mob object was passed to Client::Attack() for evaluation!");
 		return false;
 	}
 
@@ -1701,7 +1701,7 @@ bool NPC::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, bool
 
 	if (!other) {
 		SetTarget(nullptr);
-		LogFile->write(EQEMuLog::Error, "A null Mob object was passed to NPC::Attack() for evaluation!");
+		LogFile->write(EQEmuLog::Error, "A null Mob object was passed to NPC::Attack() for evaluation!");
 		return false;
 	}
 
@@ -2053,7 +2053,7 @@ bool NPC::Death(Mob* killerMob, int32 damage, uint16 spell, SkillUseTypes attack
 	{
 		zone->DelAggroMob();
 #if EQDEBUG >= 11
-		LogFile->write(EQEMuLog::Debug,"NPC::Death() Mobs currently Aggro %i", zone->MobsAggroCount());
+		LogFile->write(EQEmuLog::Debug,"NPC::Death() Mobs currently Aggro %i", zone->MobsAggroCount());
 #endif
 	}
 	SetHP(0);
@@ -2488,7 +2488,7 @@ void Mob::AddToHateList(Mob* other, uint32 hate /*= 0*/, int32 damage /*= 0*/, b
 	}
 
 	if(IsNPC() && CastToNPC()->IsUnderwaterOnly() && zone->HasWaterMap()) {
-		if(!zone->watermap->InLiquid(other->GetX(), other->GetY(), other->GetZ())) {
+		if(!zone->watermap->InLiquid(other->GetPosition())) {
 			return;
 		}
 	}
@@ -3370,8 +3370,7 @@ int32 Mob::ReduceAllDamage(int32 damage)
 	}
 
 	damage += (damage*(GetOpportunityMitigation() + spellbonuses.MitigateAllDamage + itembonuses.MitigateAllDamage))/100; //C!Kayen - Use to mitigate final damage.
-
-	CheckNumHitsRemaining(NUMHIT_IncomingDamage);
+	CheckNumHitsRemaining(NumHit::IncomingDamage);
 
 	return(damage);
 }
@@ -3487,11 +3486,11 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 	}
 
 	if (spell_id == SPELL_UNKNOWN && skill_used) {
-		CheckNumHitsRemaining(NUMHIT_IncomingHitAttempts);
+		CheckNumHitsRemaining(NumHit::IncomingHitAttempts);
 
 		if (attacker){
-			attacker->CheckNumHitsRemaining(NUMHIT_OutgoingHitAttempts);
-			attacker->RangerGainNumHitsOutgoing(NUMHIT_OutgoingHitAttempts, skill_used); //C!Kayen
+			attacker->CheckNumHitsRemaining(NumHit::OutgoingHitAttempts);
+			attacker->RangerGainNumHitsOutgoing(NumHit::OutgoingHitAttempts, skill_used); //C!Kayen
 		}
 	}
 
@@ -3578,7 +3577,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 		}
 
 		if (skill_used)
-			CheckNumHitsRemaining(NUMHIT_IncomingHitSuccess);
+			CheckNumHitsRemaining(NumHit::IncomingHitSuccess);
 
 		if(IsClient() && CastToClient()->sneaking){
 			CastToClient()->sneaking = false;
@@ -3931,7 +3930,7 @@ void Mob::TryDefensiveProc(const ItemInst* weapon, Mob *on, uint16 hand) {
 
 	if (!on) {
 		SetTarget(nullptr);
-		LogFile->write(EQEMuLog::Error, "A null Mob object was passed to Mob::TryDefensiveProc for evaluation!");
+		LogFile->write(EQEmuLog::Error, "A null Mob object was passed to Mob::TryDefensiveProc for evaluation!");
 		return;
 	}
 
@@ -3952,7 +3951,8 @@ void Mob::TryDefensiveProc(const ItemInst* weapon, Mob *on, uint16 hand) {
 					float chance = ProcChance * (static_cast<float>(DefensiveProcs[i].chance)/100.0f);
 					if (zone->random.Roll(chance)) {
 						ExecWeaponProc(nullptr, DefensiveProcs[i].spellID, on);
-						CheckNumHitsRemaining(NUMHIT_DefensiveSpellProcs,0,DefensiveProcs[i].base_spellID);
+						CheckNumHitsRemaining(NumHit::DefensiveSpellProcs, 0,
+								      DefensiveProcs[i].base_spellID);
 					}
 				}
 			}
@@ -3962,7 +3962,7 @@ void Mob::TryDefensiveProc(const ItemInst* weapon, Mob *on, uint16 hand) {
 void Mob::TryWeaponProc(const ItemInst* weapon_g, Mob *on, uint16 hand) {
 	if(!on) {
 		SetTarget(nullptr);
-		LogFile->write(EQEMuLog::Error, "A null Mob object was passed to Mob::TryWeaponProc for evaluation!");
+		LogFile->write(EQEmuLog::Error, "A null Mob object was passed to Mob::TryWeaponProc for evaluation!");
 		return;
 	}
 
@@ -4128,7 +4128,8 @@ void Mob::TrySpellProc(const ItemInst *inst, const Item_Struct *weapon, Mob *on,
 							"Spell proc %d procing spell %d (%.2f percent chance)",
 							i, SpellProcs[i].spellID, chance);
 					ExecWeaponProc(nullptr, SpellProcs[i].spellID, on);
-					CheckNumHitsRemaining(NUMHIT_OffensiveSpellProcs, 0, SpellProcs[i].base_spellID);
+					CheckNumHitsRemaining(NumHit::OffensiveSpellProcs, 0,
+							      SpellProcs[i].base_spellID);
 				} else {
 					mlog(COMBAT__PROCS,
 							"Spell proc %d failed to proc %d (%.2f percent chance)",
@@ -4144,7 +4145,8 @@ void Mob::TrySpellProc(const ItemInst *inst, const Item_Struct *weapon, Mob *on,
 							"Ranged proc %d procing spell %d (%.2f percent chance)",
 							i, RangedProcs[i].spellID, chance);
 					ExecWeaponProc(nullptr, RangedProcs[i].spellID, on);
-					CheckNumHitsRemaining(NUMHIT_OffensiveSpellProcs, 0, RangedProcs[i].base_spellID);
+					CheckNumHitsRemaining(NumHit::OffensiveSpellProcs, 0,
+							      RangedProcs[i].base_spellID);
 				} else {
 					mlog(COMBAT__PROCS,
 							"Ranged proc %d failed to proc %d (%.2f percent chance)",
@@ -4516,7 +4518,7 @@ void Mob::TrySkillProc(Mob *on, uint16 skill, uint16 ReuseTime, bool Success, ui
 
 	if (!on) {
 		SetTarget(nullptr);
-		LogFile->write(EQEMuLog::Error, "A null Mob object was passed to Mob::TrySkillProc for evaluation!");
+		LogFile->write(EQEmuLog::Error, "A null Mob object was passed to Mob::TrySkillProc for evaluation!");
 		return;
 	}
 
@@ -4566,7 +4568,8 @@ void Mob::TrySkillProc(Mob *on, uint16 skill, uint16 ReuseTime, bool Success, ui
 							float final_chance = chance * (ProcMod / 100.0f);
 							if (zone->random.Roll(final_chance)) {
 								ExecWeaponProc(nullptr, proc_spell_id, on);
-								CheckNumHitsRemaining(NUMHIT_OffensiveSpellProcs,0, base_spell_id);
+								CheckNumHitsRemaining(NumHit::OffensiveSpellProcs, 0,
+										      base_spell_id);
 								CanProc = false;
 								break;
 							}
@@ -4812,8 +4815,8 @@ void Mob::CommonOutgoingHitSuccess(Mob* defender, int32 &damage, SkillUseTypes s
 	ApplyMeleeDamageBonus(skillInUse, damage);
 	damage += (damage * defender->GetSkillDmgTaken(skillInUse) / 100) + (GetSkillDmgAmt(skillInUse) + defender->GetFcDamageAmtIncoming(this, 0, true, skillInUse));
 	TryCriticalHit(defender, skillInUse, damage);
-	CheckNumHitsRemaining(NUMHIT_OutgoingHitSuccess);
-	RangerGainNumHitsOutgoing(NUMHIT_OutgoingHitSuccess, skillInUse);//C!Kayen
+	CheckNumHitsRemaining(NumHit::OutgoingHitSuccess);
+	RangerGainNumHitsOutgoing(NumHit::OutgoingHitSuccess, skillInUse);//C!Kayen
 }
 
 void Mob::CommonBreakInvisible()

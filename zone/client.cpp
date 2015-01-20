@@ -75,10 +75,7 @@ Client::Client(EQStreamInterface* ieqs)
 	0,	// npctypeid
 	0,	// size
 	0.7,	// runspeed
-	0,	// heading
-	0,	// x
-	0,	// y
-	0,	// z
+	xyz_heading::Origin(),
 	0,	// light
 	0xFF,	// texture
 	0xFF,	// helmtexture
@@ -144,7 +141,11 @@ Client::Client(EQStreamInterface* ieqs)
 	RespawnFromHoverTimer(0),
 	merc_timer(RuleI(Mercs, UpkeepIntervalMS)),
 	ItemTickTimer(10000),
-	ItemQuestTimer(500)
+	ItemQuestTimer(500),
+	m_Proximity(FLT_MAX, FLT_MAX, FLT_MAX), //arbitrary large number
+	m_ZoneSummonLocation(-2.0f,-2.0f,-2.0f),
+	m_AutoAttackPosition(0.0f, 0.0f, 0.0f, 0.0f),
+	m_AutoAttackTargetLocation(0.0f, 0.0f, 0.0f)
 {
 	for(int cf=0; cf < _FilterCount; cf++)
 		ClientFilters[cf] = FilterShow;
@@ -190,16 +191,10 @@ Client::Client(EQStreamInterface* ieqs)
 	auto_attack = false;
 	auto_fire = false;
 	linkdead_timer.Disable();
-	zonesummon_x = -2;
-	zonesummon_y = -2;
-	zonesummon_z = -2;
 	zonesummon_id = 0;
 	zonesummon_ignorerestrictions = 0;
 	zoning = false;
 	zone_mode = ZoneUnsolicited;
-	proximity_x = FLT_MAX;	//arbitrary large number
-	proximity_y = FLT_MAX;
-	proximity_z = FLT_MAX;
 	casting_spell_id = 0;
 	npcflag = false;
 	npclevel = 0;
@@ -268,13 +263,6 @@ Client::Client(EQStreamInterface* ieqs)
 	m_AssistExemption = 0;
 	m_CheatDetectMoved = false;
 	CanUseReport = true;
-	aa_los_me.x = 0;
-	aa_los_me.y = 0;
-	aa_los_me.z = 0;
-	aa_los_me_heading = 0;
-	aa_los_them.x = 0;
-	aa_los_them.y = 0;
-	aa_los_them.z = 0;
 	aa_los_them_mob = nullptr;
 	los_status = false;
 	los_status_facing = false;
@@ -356,7 +344,7 @@ Client::~Client() {
 		ToggleBuyerMode(false);
 
 	if(conn_state != ClientConnectFinished) {
-		LogFile->write(EQEMuLog::Debug, "Client '%s' was destroyed before reaching the connected state:", GetName());
+		LogFile->write(EQEmuLog::Debug, "Client '%s' was destroyed before reaching the connected state:", GetName());
 		ReportConnectingState();
 	}
 
@@ -402,9 +390,9 @@ Client::~Client() {
 	{
 		m_pp.zone_id = m_pp.binds[0].zoneId;
 		m_pp.zoneInstance = m_pp.binds[0].instance_id;
-		x_pos = m_pp.binds[0].x;
-		y_pos = m_pp.binds[0].y;
-		z_pos = m_pp.binds[0].z;
+		m_Position.m_X = m_pp.binds[0].x;
+		m_Position.m_Y = m_pp.binds[0].y;
+		m_Position.m_Z = m_pp.binds[0].z;
 	}
 
 	// we save right now, because the client might be zoning and the world
@@ -454,31 +442,31 @@ void Client::SendLogoutPackets() {
 void Client::ReportConnectingState() {
 	switch(conn_state) {
 	case NoPacketsReceived:		//havent gotten anything
-		LogFile->write(EQEMuLog::Debug, "Client has not sent us an initial zone entry packet.");
+		LogFile->write(EQEmuLog::Debug, "Client has not sent us an initial zone entry packet.");
 		break;
 	case ReceivedZoneEntry:		//got the first packet, loading up PP
-		LogFile->write(EQEMuLog::Debug, "Client sent initial zone packet, but we never got their player info from the database.");
+		LogFile->write(EQEmuLog::Debug, "Client sent initial zone packet, but we never got their player info from the database.");
 		break;
 	case PlayerProfileLoaded:	//our DB work is done, sending it
-		LogFile->write(EQEMuLog::Debug, "We were sending the player profile, tributes, tasks, spawns, time and weather, but never finished.");
+		LogFile->write(EQEmuLog::Debug, "We were sending the player profile, tributes, tasks, spawns, time and weather, but never finished.");
 		break;
 	case ZoneInfoSent:		//includes PP, tributes, tasks, spawns, time and weather
-		LogFile->write(EQEMuLog::Debug, "We successfully sent player info and spawns, waiting for client to request new zone.");
+		LogFile->write(EQEmuLog::Debug, "We successfully sent player info and spawns, waiting for client to request new zone.");
 		break;
 	case NewZoneRequested:	//received and sent new zone request
-		LogFile->write(EQEMuLog::Debug, "We received client's new zone request, waiting for client spawn request.");
+		LogFile->write(EQEmuLog::Debug, "We received client's new zone request, waiting for client spawn request.");
 		break;
 	case ClientSpawnRequested:	//client sent ReqClientSpawn
-		LogFile->write(EQEMuLog::Debug, "We received the client spawn request, and were sending objects, doors, zone points and some other stuff, but never finished.");
+		LogFile->write(EQEmuLog::Debug, "We received the client spawn request, and were sending objects, doors, zone points and some other stuff, but never finished.");
 		break;
 	case ZoneContentsSent:		//objects, doors, zone points
-		LogFile->write(EQEMuLog::Debug, "The rest of the zone contents were successfully sent, waiting for client ready notification.");
+		LogFile->write(EQEmuLog::Debug, "The rest of the zone contents were successfully sent, waiting for client ready notification.");
 		break;
 	case ClientReadyReceived:	//client told us its ready, send them a bunch of crap like guild MOTD, etc
-		LogFile->write(EQEMuLog::Debug, "We received client ready notification, but never finished Client::CompleteConnect");
+		LogFile->write(EQEmuLog::Debug, "We received client ready notification, but never finished Client::CompleteConnect");
 		break;
 	case ClientConnectFinished:	//client finally moved to finished state, were done here
-		LogFile->write(EQEMuLog::Debug, "Client is successfully connected.");
+		LogFile->write(EQEmuLog::Debug, "Client is successfully connected.");
 		break;
 	};
 }
@@ -528,11 +516,11 @@ bool Client::Save(uint8 iCommitNow) {
 		return false;
 
 	/* Wrote current basics to PP for saves */
-	m_pp.x = x_pos;
-	m_pp.y = y_pos;
-	m_pp.z = z_pos;
+	m_pp.x = m_Position.m_X;
+	m_pp.y = m_Position.m_Y;
+	m_pp.z = m_Position.m_Z;
 	m_pp.guildrank = guildrank;
-	m_pp.heading = heading;
+	m_pp.heading = m_Position.m_Heading;
 
 	/* Mana and HP */
 	if (GetHP() <= 0) {
@@ -549,8 +537,10 @@ bool Client::Save(uint8 iCommitNow) {
 	database.SaveCharacterCurrency(CharacterID(), &m_pp);
 
 	/* Save Current Bind Points */
-	database.SaveCharacterBindPoint(CharacterID(), m_pp.binds[0].zoneId, m_pp.binds[0].instance_id, m_pp.binds[0].x, m_pp.binds[0].y, m_pp.binds[0].z, 0, 0); /* Regular bind */
-	database.SaveCharacterBindPoint(CharacterID(), m_pp.binds[4].zoneId, m_pp.binds[4].instance_id, m_pp.binds[4].x, m_pp.binds[4].y, m_pp.binds[4].z, 0, 1); /* Home Bind */
+	auto regularBindPosition = xyz_heading(m_pp.binds[0].x, m_pp.binds[0].y, m_pp.binds[0].z, 0.0f);
+	auto homeBindPosition = xyz_heading(m_pp.binds[4].x, m_pp.binds[4].y, m_pp.binds[4].z, 0.0f);
+	database.SaveCharacterBindPoint(CharacterID(), m_pp.binds[0].zoneId, m_pp.binds[0].instance_id, regularBindPosition, 0); /* Regular bind */
+	database.SaveCharacterBindPoint(CharacterID(), m_pp.binds[4].zoneId, m_pp.binds[4].instance_id, homeBindPosition, 1); /* Home Bind */
 
 	/* Save Character Buffs */
 	database.SaveBuffs(this);
@@ -667,7 +657,7 @@ bool Client::SendAllPackets() {
 			eqs->FastQueuePacket((EQApplicationPacket **)&cp->app, cp->ack_req);
 		iterator.RemoveCurrent();
 #if EQDEBUG >= 6
-		LogFile->write(EQEMuLog::Normal, "Transmitting a packet");
+		LogFile->write(EQEmuLog::Normal, "Transmitting a packet");
 #endif
 	}
 	return true;
@@ -718,7 +708,7 @@ void Client::ChannelMessageReceived(uint8 chan_num, uint8 language, uint8 lang_s
 
 
 	#if EQDEBUG >= 11
-		LogFile->write(EQEMuLog::Debug,"Client::ChannelMessageReceived() Channel:%i message:'%s'", chan_num, message);
+		LogFile->write(EQEmuLog::Debug,"Client::ChannelMessageReceived() Channel:%i message:'%s'", chan_num, message);
 	#endif
 
 	if (targetname == nullptr) {
@@ -1934,7 +1924,7 @@ void Client::ReadBook(BookRequest_Struct *book) {
 
 	if (booktxt2[0] != '\0') {
 #if EQDEBUG >= 6
-		LogFile->write(EQEMuLog::Normal,"Client::ReadBook() textfile:%s Text:%s", txtfile, booktxt2.c_str());
+		LogFile->write(EQEmuLog::Normal,"Client::ReadBook() textfile:%s Text:%s", txtfile, booktxt2.c_str());
 #endif
 		EQApplicationPacket* outapp = new EQApplicationPacket(OP_ReadBook, length + sizeof(BookText_Struct));
 
@@ -2128,7 +2118,7 @@ void Client::AddMoneyToPP(uint64 copper, bool updateclient){
 
 	SaveCurrency();
 
-	LogFile->write(EQEMuLog::Debug, "Client::AddMoneyToPP() %s should have: plat:%i gold:%i silver:%i copper:%i", GetName(), m_pp.platinum, m_pp.gold, m_pp.silver, m_pp.copper);
+	LogFile->write(EQEmuLog::Debug, "Client::AddMoneyToPP() %s should have: plat:%i gold:%i silver:%i copper:%i", GetName(), m_pp.platinum, m_pp.gold, m_pp.silver, m_pp.copper);
 }
 
 void Client::EVENT_ITEM_ScriptStopReturn(){
@@ -2168,7 +2158,7 @@ void Client::AddMoneyToPP(uint32 copper, uint32 silver, uint32 gold, uint32 plat
 	SaveCurrency();
 
 #if (EQDEBUG>=5)
-		LogFile->write(EQEMuLog::Debug, "Client::AddMoneyToPP() %s should have: plat:%i gold:%i silver:%i copper:%i",
+		LogFile->write(EQEmuLog::Debug, "Client::AddMoneyToPP() %s should have: plat:%i gold:%i silver:%i copper:%i",
 			GetName(), m_pp.platinum, m_pp.gold, m_pp.silver, m_pp.copper);
 #endif
 }
@@ -2387,7 +2377,7 @@ uint16 Client::GetMaxSkillAfterSpecializationRules(SkillUseTypes skillid, uint16
 
 				Save();
 
-				LogFile->write(EQEMuLog::Normal, "Reset %s's caster specialization skills to 1. "
+				LogFile->write(EQEmuLog::Normal, "Reset %s's caster specialization skills to 1. "
 								"Too many specializations skills were above 50.", GetCleanName());
 			}
 
@@ -2830,8 +2820,8 @@ void Client::Message_StringID(uint32 type, uint32 string_id, const char* message
 	if (GetFilter(FilterDamageShields) == FilterHide && type == MT_DS)
 		return;
 
-	int i, argcount, length;
-	char *bufptr;
+	int i = 0, argcount = 0, length = 0;
+	char *bufptr = nullptr;
 	const char *message_arg[9] = {0};
 
 	if(type==MT_Emote)
@@ -2843,7 +2833,6 @@ void Client::Message_StringID(uint32 type, uint32 string_id, const char* message
 		return;
 	}
 
-	i = 0;
 	message_arg[i++] = message1;
 	message_arg[i++] = message2;
 	message_arg[i++] = message3;
@@ -2854,10 +2843,12 @@ void Client::Message_StringID(uint32 type, uint32 string_id, const char* message
 	message_arg[i++] = message8;
 	message_arg[i++] = message9;
 
-	for(argcount = length = 0; message_arg[argcount]; argcount++)
+	for(; message_arg[argcount]; ++argcount)
 		length += strlen(message_arg[argcount]) + 1;
 
-	EQApplicationPacket* outapp = new EQApplicationPacket(OP_FormattedMessage, length+13);
+	length += 1;
+
+	EQApplicationPacket* outapp = new EQApplicationPacket(OP_FormattedMessage, sizeof(FormattedMessage_Struct) + length);
 	FormattedMessage_Struct *fm = (FormattedMessage_Struct *)outapp->pBuffer;
 	fm->string_id = string_id;
 	fm->type = type;
@@ -2868,6 +2859,8 @@ void Client::Message_StringID(uint32 type, uint32 string_id, const char* message
 		bufptr += strlen(message_arg[i]) + 1;
 	}
 
+	// since we're moving the pointer the 0 offset is correct
+	bufptr[0] = '\0';
 
 	if(distance>0)
 		entity_list.QueueCloseClients(this,outapp,false,distance);
@@ -2942,8 +2935,8 @@ void Client::FilteredMessage_StringID(Mob *sender, uint32 type, eqFilterType fil
 	if (!FilteredMessageCheck(sender, filter))
 		return;
 
-	int i, argcount, length;
-	char *bufptr;
+	int i = 0, argcount = 0, length = 0;
+	char *bufptr = nullptr;
 	const char *message_arg[9] = {0};
 
 	if (type == MT_Emote)
@@ -2954,7 +2947,6 @@ void Client::FilteredMessage_StringID(Mob *sender, uint32 type, eqFilterType fil
 		return;
 	}
 
-	i = 0;
 	message_arg[i++] = message1;
 	message_arg[i++] = message2;
 	message_arg[i++] = message3;
@@ -2965,10 +2957,12 @@ void Client::FilteredMessage_StringID(Mob *sender, uint32 type, eqFilterType fil
 	message_arg[i++] = message8;
 	message_arg[i++] = message9;
 
-	for (argcount = length = 0; message_arg[argcount]; argcount++)
+	for (; message_arg[argcount]; ++argcount)
 		length += strlen(message_arg[argcount]) + 1;
 
-	EQApplicationPacket *outapp = new EQApplicationPacket(OP_FormattedMessage, length+13);
+	length += 1;
+
+	EQApplicationPacket *outapp = new EQApplicationPacket(OP_FormattedMessage, sizeof(FormattedMessage_Struct) + length);
 	FormattedMessage_Struct *fm = (FormattedMessage_Struct *)outapp->pBuffer;
 	fm->string_id = string_id;
 	fm->type = type;
@@ -2977,6 +2971,9 @@ void Client::FilteredMessage_StringID(Mob *sender, uint32 type, eqFilterType fil
 		strcpy(bufptr, message_arg[i]);
 		bufptr += strlen(message_arg[i]) + 1;
 	}
+
+	// since we're moving the pointer the 0 offset is correct
+	bufptr[0] = '\0';
 
 	QueuePacket(outapp);
 	safe_delete(outapp);
@@ -3693,7 +3690,7 @@ void Client::Sacrifice(Client *caster)
 
 void Client::SendOPTranslocateConfirm(Mob *Caster, uint16 SpellID) {
 
-	if(!Caster || PendingTranslocate) 
+	if(!Caster || PendingTranslocate)
 		return;
 
 	const SPDat_Spell_Struct &Spell = spells[SpellID];
@@ -4146,7 +4143,7 @@ bool Client::GroupFollow(Client* inviter) {
 		{
 			GetMerc()->MercJoinClientGroup();
 		}
-		
+
 		if (inviter->IsLFP())
 		{
 			// If the player who invited us to a group is LFP, have them update world now that we have joined their group.
@@ -4567,14 +4564,14 @@ void Client::HandleLDoNOpen(NPC *target)
 	{
 		if(target->GetClass() != LDON_TREASURE)
 		{
-			LogFile->write(EQEMuLog::Debug, "%s tried to open %s but %s was not a treasure chest.",
+			LogFile->write(EQEmuLog::Debug, "%s tried to open %s but %s was not a treasure chest.",
 				GetName(), target->GetName(), target->GetName());
 			return;
 		}
 
 		if(DistNoRootNoZ(*target) > RuleI(Adventure, LDoNTrapDistanceUse))
 		{
-			LogFile->write(EQEMuLog::Debug, "%s tried to open %s but %s was out of range",
+			LogFile->write(EQEmuLog::Debug, "%s tried to open %s but %s was out of range",
 				GetName(), target->GetName(), target->GetName());
 			Message(13, "Treasure chest out of range.");
 			return;
@@ -4810,8 +4807,7 @@ void Client::SummonAndRezzAllCorpses()
 
 	entity_list.RemoveAllCorpsesByCharID(CharacterID());
 
-	int CorpseCount = database.SummonAllCharacterCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(),
-								GetX(), GetY(), GetZ(), GetHeading());
+	int CorpseCount = database.SummonAllCharacterCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(), GetPosition());
 	if(CorpseCount <= 0)
 	{
 		Message(clientMessageYellow, "You have no corpses to summnon.");
@@ -4826,13 +4822,11 @@ void Client::SummonAndRezzAllCorpses()
 	Message(clientMessageYellow, "All your corpses have been summoned to your feet and have received a 100% resurrection.");
 }
 
-void Client::SummonAllCorpses(float dest_x, float dest_y, float dest_z, float dest_heading)
+void Client::SummonAllCorpses(const xyz_heading& position)
 {
-
-	if(dest_x == 0 && dest_y == 0 && dest_z == 0 && dest_heading == 0)
-	{
-		dest_x = GetX(); dest_y = GetY(); dest_z = GetZ(); dest_heading = GetHeading();
-	}
+    auto summonLocation = position;
+	if(position.isOrigin() && position.m_Heading == 0.0f)
+        summonLocation = GetPosition();
 
 	ServerPacket *Pack = new ServerPacket(ServerOP_DepopAllPlayersCorpses, sizeof(ServerDepopAllPlayersCorpses_Struct));
 
@@ -4848,12 +4842,7 @@ void Client::SummonAllCorpses(float dest_x, float dest_y, float dest_z, float de
 
 	entity_list.RemoveAllCorpsesByCharID(CharacterID());
 
-	int CorpseCount = database.SummonAllCharacterCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(),
-								dest_x, dest_y, dest_z, dest_heading);
-	if(CorpseCount <= 0)
-	{
-		return;
-	}
+	database.SummonAllCharacterCorpses(CharacterID(), zone->GetZoneID(), zone->GetInstanceID(), summonLocation);
 }
 
 void Client::DepopAllCorpses()
@@ -5317,7 +5306,7 @@ void Client::SendRewards()
                                     "ORDER BY reward_id", AccountID());
     auto results = database.QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in Client::SendRewards(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in Client::SendRewards(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
 		return;
     }
 
@@ -5385,7 +5374,7 @@ bool Client::TryReward(uint32 claim_id) {
                                     AccountID(), claim_id);
     auto results = database.QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in Client::TryReward(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in Client::TryReward(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
 		return false;
     }
 
@@ -5412,7 +5401,7 @@ bool Client::TryReward(uint32 claim_id) {
                             AccountID(), claim_id);
         auto results = database.QueryDatabase(query);
 		if(!results.Success())
-			LogFile->write(EQEMuLog::Error, "Error in Client::TryReward(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
+			LogFile->write(EQEmuLog::Error, "Error in Client::TryReward(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
 	}
 	else {
         query = StringFormat("UPDATE account_rewards SET amount = (amount-1) "
@@ -5420,7 +5409,7 @@ bool Client::TryReward(uint32 claim_id) {
                             AccountID(), claim_id);
         auto results = database.QueryDatabase(query);
 		if(!results.Success())
-			LogFile->write(EQEMuLog::Error, "Error in Client::TryReward(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
+			LogFile->write(EQEmuLog::Error, "Error in Client::TryReward(): %s (%s)", query.c_str(), results.ErrorMessage().c_str());
 	}
 
 	InternalVeteranReward ivr = (*iter);
@@ -6234,7 +6223,7 @@ void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_overrid
 	PetRecord record;
 	if(!database.GetPetEntry(spells[spell_id].teleport_zone, &record))
 	{
-		LogFile->write(EQEMuLog::Error, "Unknown doppelganger spell id: %d, check pets table", spell_id);
+		LogFile->write(EQEmuLog::Error, "Unknown doppelganger spell id: %d, check pets table", spell_id);
 		Message(13, "Unable to find data for pet %s", spells[spell_id].teleport_zone);
 		return;
 	}
@@ -6248,7 +6237,7 @@ void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_overrid
 
 	const NPCType *npc_type = database.GetNPCType(pet.npc_id);
 	if(npc_type == nullptr) {
-		LogFile->write(EQEMuLog::Error, "Unknown npc type for doppelganger spell id: %d", spell_id);
+		LogFile->write(EQEmuLog::Error, "Unknown npc type for doppelganger spell id: %d", spell_id);
 		Message(0,"Unable to find pet!");
 		return;
 	}
@@ -6272,6 +6261,7 @@ void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_overrid
 	made_npc->DR = GetDR();
 	made_npc->PR = GetPR();
 	made_npc->Corrup = GetCorrup();
+	made_npc->PhR = GetPhR();
 	// looks
 	made_npc->texture = GetEquipmentMaterial(MaterialChest);
 	made_npc->helmtexture = GetEquipmentMaterial(MaterialHead);
@@ -6300,8 +6290,11 @@ void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_overrid
 	if(summon_count > MAX_SWARM_PETS)
 		summon_count = MAX_SWARM_PETS;
 
-	static const float swarm_pet_x[MAX_SWARM_PETS] = { 5, -5, 5, -5, 10, -10, 10, -10, 8, -8, 8, -8 };
-	static const float swarm_pet_y[MAX_SWARM_PETS] = { 5, 5, -5, -5, 10, 10, -10, -10, 8, 8, -8, -8 };
+	static const xy_location swarmPetLocations[MAX_SWARM_PETS] = {
+        xy_location(5, 5), xy_location(-5, 5), xy_location(5, -5), xy_location(-5, -5),
+		xy_location(10, 10), xy_location(-10, 10), xy_location(10, -10), xy_location(-10, -10),
+        xy_location(8, 8), xy_location(-8, 8), xy_location(8, -8), xy_location(-8, -8)
+    };
 
 	while(summon_count > 0) {
 		NPCType *npc_dup = nullptr;
@@ -6313,8 +6306,8 @@ void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_overrid
 		NPC* npca = new NPC(
 				(npc_dup!=nullptr)?npc_dup:npc_type,	//make sure we give the NPC the correct data pointer
 				0,
-				GetX()+swarm_pet_x[summon_count], GetY()+swarm_pet_y[summon_count],
-				GetZ(), GetHeading(), FlyMode3);
+				GetPosition()+swarmPetLocations[summon_count],
+				FlyMode3);
 
 		if(!npca->GetSwarmInfo()){
 			AA_SwarmPetInfo* nSI = new AA_SwarmPetInfo;
@@ -6369,7 +6362,7 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 
 	// Set Class
 	std::string class_Name = itoa(GetClass());
-	std::string class_List[] = { "WAR", "CLR", "PAL", "RNG", "SK", "DRU", "MNK", "BRD", "ROG", "SHM", "NEC", "WIZ", "MAG", "ENC", "BST", "BER" };
+	std::string class_List[] = { "WAR", "CLR", "PAL", "RNG", "SHD", "DRU", "MNK", "BRD", "ROG", "SHM", "NEC", "WIZ", "MAG", "ENC", "BST", "BER" };
 
 	if(GetClass() < 17 && GetClass() > 0) { class_Name = class_List[GetClass()-1]; }
 
@@ -6457,7 +6450,7 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 	/*===========================*/
 	std::string		regen_row_header = "";
 	std::string		regen_row_color = "";
-		std::string		base_regen_field = "";
+	std::string		base_regen_field = "";
 	std::string		base_regen_spacing = "";
 	std::string		item_regen_field = "";
 	std::string		item_regen_spacing = "";
@@ -6618,8 +6611,11 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 			}
 			case 6: {
 				a_stat_name = " CHA: ";
+				a_resist_name = "PhR: "; // Not implemented for clients yet
 				a_stat = itoa(GetCHA());
 				h_stat = itoa(GetHeroicCHA());
+				a_resist = itoa(GetPhR());
+				h_resist_field = itoa(GetHeroicPhR());
 				break;
 			}
 			default: { break; }
@@ -6634,8 +6630,9 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 		for(int h = a_resist.size(); h < max_stat_value_len; h++) { a_resist_spacing += " . "; }
 
 		stat_field += indP + a_stat_name + a_stat_spacing + a_stat + heroic_color + h_stat + "</c>";
+		stat_field += h_stat_spacing + a_resist_name + a_resist_spacing + a_resist + heroic_color + h_resist_field + "</c>";
 		if(stat_row_counter < 6) {
-			stat_field += h_stat_spacing + a_resist_name + a_resist_spacing + a_resist + heroic_color + h_resist_field + "</c><br>";
+			stat_field += "<br>";
 		}
 	}
 	/*##########################################################
@@ -6844,7 +6841,7 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 	client->Message(0, " Haste: %i / %i (Item: %i + Spell: %i + Over: %i)", GetHaste(), RuleI(Character, HasteCap), itembonuses.haste, spellbonuses.haste + spellbonuses.hastetype2, spellbonuses.hastetype3 + ExtraHaste);
 	client->Message(0, " STR: %i  STA: %i  DEX: %i  AGI: %i  INT: %i  WIS: %i  CHA: %i", GetSTR(), GetSTA(), GetDEX(), GetAGI(), GetINT(), GetWIS(), GetCHA());
 	client->Message(0, " hSTR: %i  hSTA: %i  hDEX: %i  hAGI: %i  hINT: %i  hWIS: %i  hCHA: %i", GetHeroicSTR(), GetHeroicSTA(), GetHeroicDEX(), GetHeroicAGI(), GetHeroicINT(), GetHeroicWIS(), GetHeroicCHA());
-	client->Message(0, " MR: %i  PR: %i  FR: %i  CR: %i  DR: %i Corruption: %i", GetMR(), GetPR(), GetFR(), GetCR(), GetDR(), GetCorrup());
+	client->Message(0, " MR: %i  PR: %i  FR: %i  CR: %i  DR: %i Corruption: %i PhR: %i", GetMR(), GetPR(), GetFR(), GetCR(), GetDR(), GetCorrup(), GetPhR());
 	client->Message(0, " hMR: %i  hPR: %i  hFR: %i  hCR: %i  hDR: %i hCorruption: %i", GetHeroicMR(), GetHeroicPR(), GetHeroicFR(), GetHeroicCR(), GetHeroicDR(), GetHeroicCorrup());
 	client->Message(0, " Shielding: %i  Spell Shield: %i  DoT Shielding: %i Stun Resist: %i  Strikethrough: %i  Avoidance: %i  Accuracy: %i  Combat Effects: %i", GetShielding(), GetSpellShield(), GetDoTShield(), GetStunResist(), GetStrikeThrough(), GetAvoidance(), GetAccuracy(), GetCombatEffects());
 	client->Message(0, " Heal Amt.: %i  Spell Dmg.: %i  Clairvoyance: %i DS Mitigation: %i", GetHealAmt(), GetSpellDmg(), GetClair(), GetDSMit());
@@ -7338,7 +7335,7 @@ void Client::SendMercPersonalInfo()
 	uint32 altCurrentType = 19; //TODO: Implement alternate currency purchases involving mercs!
 
 	MercTemplate *mercData = &zone->merc_templates[GetMercInfo().MercTemplateID];
-	
+
 	int stancecount = 0;
 	stancecount += zone->merc_stance_list[GetMercInfo().MercTemplateID].size();
 	if(stancecount > MAX_MERC_STANCES || mercCount > MAX_MERC || mercTypeCount > MAX_MERC_GRADES)
@@ -7440,7 +7437,7 @@ void Client::SendMercPersonalInfo()
 		}
 		if (MERC_DEBUG > 0)
 			Message(7, "Mercenary Debug: SendMercPersonalInfo Send Successful");
-			
+
 		SendMercMerchantResponsePacket(0);
 	}
 	else
@@ -7482,8 +7479,17 @@ void Client::GarbleMessage(char *message, uint8 variance)
 {
 	// Garble message by variance%
 	const char alpha_list[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"; // only change alpha characters for now
+	const char delimiter = 0x12;
+	int delimiter_count = 0;
 
 	for (size_t i = 0; i < strlen(message); i++) {
+		// Client expects hex values inside of a text link body
+		if (message[i] == delimiter) {
+			if (!(delimiter_count & 1)) { i += EmuConstants::TEXT_LINK_BODY_LENGTH; }
+			++delimiter_count;
+			continue;
+		}
+
 		uint8 chance = (uint8)zone->random.Int(0, 115); // variation just over worst possible scrambling
 		if (isalpha(message[i]) && (chance <= variance)) {
 			uint8 rand_char = (uint8)zone->random.Int(0,51); // choose a random character from the alpha list
@@ -8158,7 +8164,7 @@ void Client::Consume(const Item_Struct *item, uint8 type, int16 slot, bool auto_
            entity_list.MessageClose_StringID(this, true, 50, 0, EATING_MESSAGE, GetName(), item->Name);
 
 #if EQDEBUG >= 5
-       LogFile->write(EQEMuLog::Debug, "Eating from slot:%i", (int)slot);
+       LogFile->write(EQEmuLog::Debug, "Eating from slot:%i", (int)slot);
 #endif
    }
    else
@@ -8175,7 +8181,7 @@ void Client::Consume(const Item_Struct *item, uint8 type, int16 slot, bool auto_
             entity_list.MessageClose_StringID(this, true, 50, 0, DRINKING_MESSAGE, GetName(), item->Name);
 
 #if EQDEBUG >= 5
-        LogFile->write(EQEMuLog::Debug, "Drinking from slot:%i", (int)slot);
+        LogFile->write(EQEmuLog::Debug, "Drinking from slot:%i", (int)slot);
 #endif
    }
 }
@@ -8288,69 +8294,25 @@ std::string Client::TextLink::GenerateLink()
 	generate_body();
 	generate_text();
 	
-	if (m_LinkBody.length() && m_LinkText.length()) {
-		m_Link.append(StringFormat("%c", 0x12));
+	if ((m_LinkBody.length() == EmuConstants::TEXT_LINK_BODY_LENGTH) && (m_LinkText.length() > 0)) {
+		m_Link.push_back(0x12);
 		m_Link.append(m_LinkBody);
 		m_Link.append(m_LinkText);
-		m_Link.append(StringFormat("%c", 0x12));
+		m_Link.push_back(0x12);
 	}
 
 	if ((m_Link.length() == 0) || (m_Link.length() > 250)) {
 		m_Error = true;
 		m_Link = "<LINKER ERROR>";
-		_log(CHANNELS__ERROR, "TextLink::GenerateLink() failed to generate a useable text link (LinkType: %i, Lengths: {l: %u, b: %u, t: %u})",
+		_log(CHANNELS__ERROR, "TextLink::GenerateLink() failed to generate a useable text link (LinkType: %i, Lengths: {link: %u, body: %u, text: %u})",
 			m_LinkType, m_Link.length(), m_LinkBody.length(), m_LinkText.length());
+#if EQDEBUG >= 5
+		_log(CHANNELS__ERROR, ">> LinkBody: %s", m_LinkBody.c_str());
+		_log(CHANNELS__ERROR, ">> LinkText: %s", m_LinkText.c_str());
+#endif
 	}
 
 	return m_Link;
-}
-
-const char* Client::TextLink::GetLink()
-{
-	if (m_Link.length() == 0)
-		return nullptr;
-
-	return m_Link.c_str();
-}
-
-const char* Client::TextLink::GetLinkBody()
-{
-	if (m_LinkBody.length() == 0)
-		return nullptr;
-
-	return m_LinkBody.c_str();
-}
-
-const char* Client::TextLink::GetLinkText()
-{
-	if (m_LinkText.length() == 0)
-		return nullptr;
-
-	return m_LinkText.c_str();
-}
-
-std::string Client::TextLink::GetLinkString()
-{
-	if (m_Link.length() == 0)
-		return "";
-
-	return m_Link;
-}
-
-std::string Client::TextLink::GetLinkBodyString()
-{
-	if (m_LinkBody.length() == 0)
-		return "";
-
-	return m_LinkBody;
-}
-
-std::string Client::TextLink::GetLinkTextString()
-{
-	if (m_LinkText.length() == 0)
-		return "";
-
-	return m_LinkText;
 }
 
 void Client::TextLink::Reset()
@@ -8365,108 +8327,93 @@ void Client::TextLink::Reset()
 	m_Link.clear();
 	m_LinkBody.clear();
 	m_LinkText.clear();
-	m_ClientVersion = EQClientUnknown;
 	m_Error = false;
 }
 
 void Client::TextLink::generate_body()
 {
-	enum { field_0 = 0, field_1, field_2, field_3, field_4, field_5, field_6, field_7, field_8, field_9, field_10, field_11, field_12, field_13 };
-	static const int field_count = 14;
-	static const bool field_use[_EQClientCount][field_count] = {
-		// 6.2:  MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X"              "%1X" "%04X" "%1X"        "%08X"
-		// SoF:  MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X"              "%1X" "%04X" "%1X" "%05X" "%08X"
-		// RoF:  MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X"       "%1X" "%04X" "%1X" "%05X" "%08X"
-		// RoF2: MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%1X" "%04X" "%1X" "%05X" "%08X"
+	/*
+	Current server mask: EQClientRoF2
+	
+	RoF2: "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%02X" "%05X" "%08X" (56)
+	RoF:  "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X"  "%05X" "%08X" (55)
+	SoF:  "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X"        "%1X" "%04X" "%1X"  "%05X" "%08X" (50)
+	6.2:  "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X"        "%1X" "%04X" "%1X"         "%08X" (45)
+	*/
 
-//(RoF2)  %01x   %05x   %05x   %05x   %05x   %05x   %05x   %05x   %01x   %01x   %04x   %01x   %05x   %08x
-		{  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true }, // EQClientUnknown
-		{  true,  true,  true,  true,  true,  true,  true, false, false,  true,  true,  true, false,  true }, // EQClient6.2
-		{  true,  true,  true,  true,  true,  true,  true, false, false,  true,  true,  true, false,  true }, // EQClientTitanium
-		{  true,  true,  true,  true,  true,  true,  true, false, false,  true,  true,  true,  true,  true }, // EQClientSoF
-		{  true,  true,  true,  true,  true,  true,  true, false, false,  true,  true,  true,  true,  true }, // EQClientSoD
-		{  true,  true,  true,  true,  true,  true,  true, false, false,  true,  true,  true,  true,  true }, // EQClientUnderfoot
-		{  true,  true,  true,  true,  true,  true,  true,  true, false,  true,  true,  true,  true,  true }, // EQClientRoF
-		{  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true } // EQClientRoF2
-	};
+	memset(&m_LinkBodyStruct, 0, sizeof(TextLinkBody_Struct));
 	
-/*%01X*/	uint8 unknown_0 = NOT_USED;
-/*%05X*/	uint32 item_id = NOT_USED;
-/*%05X*/	uint32 augment_0 = NOT_USED;
-/*%05X*/	uint32 augment_1 = NOT_USED;
-/*%05X*/	uint32 augment_2 = NOT_USED;
-/*%05X*/	uint32 augment_3 = NOT_USED;
-/*%05X*/	uint32 augment_4 = NOT_USED;
-/*%05X*/	uint32 augment_5 = NOT_USED;
-/*%01X*/	uint8 unknown_8 = NOT_USED;
-/*%01X*/	uint8 unknown_9 = NOT_USED;
-/*%04X*/	uint32 unknown_10 = NOT_USED;
-/*%01X*/	uint8 unknown_11 = NOT_USED;
-/*%05X*/	uint32 unknown_12 = NOT_USED;
-/*%08X*/	int hash = NOT_USED;
-	
+	const Item_Struct* item_data = nullptr;
+
 	switch (m_LinkType) {
 	case linkBlank:
 		break;
 	case linkItemData:
-		if (m_ItemData != nullptr) {
-			item_id = m_ItemData->ID;
-			// TODO: add hash call
-		}
+		if (m_ItemData == nullptr) { break; }
+		m_LinkBodyStruct.item_id = m_ItemData->ID;
+		m_LinkBodyStruct.evolve_group = m_ItemData->LoreGroup; // this probably won't work for all items
+		//m_LinkBodyStruct.evolve_level = m_ItemData->EvolvingLevel;
+		// TODO: add hash call
 		break;
 	case linkLootItem:
-		if (m_LootData != nullptr) {
-			const Item_Struct* item_data = database.GetItem(m_LootData->item_id);
-			if (item_data == nullptr) { break; }
-			item_id = item_data->ID;
-			augment_0 = m_LootData->aug_1;
-			augment_1 = m_LootData->aug_2;
-			augment_2 = m_LootData->aug_3;
-			augment_3 = m_LootData->aug_4;
-			augment_4 = m_LootData->aug_5;
-			augment_5 = m_LootData->aug_6;
-			// TODO: add hash call
-		}
+		if (m_LootData == nullptr) { break; }
+		item_data = database.GetItem(m_LootData->item_id);
+		if (item_data == nullptr) { break; }
+		m_LinkBodyStruct.item_id = item_data->ID;
+		m_LinkBodyStruct.augment_1 = m_LootData->aug_1;
+		m_LinkBodyStruct.augment_2 = m_LootData->aug_2;
+		m_LinkBodyStruct.augment_3 = m_LootData->aug_3;
+		m_LinkBodyStruct.augment_4 = m_LootData->aug_4;
+		m_LinkBodyStruct.augment_5 = m_LootData->aug_5;
+		m_LinkBodyStruct.augment_6 = m_LootData->aug_6;
+		m_LinkBodyStruct.evolve_group = item_data->LoreGroup; // see note above
+		//m_LinkBodyStruct.evolve_level = item_data->EvolvingLevel;
+		// TODO: add hash call
 		break;
 	case linkItemInst:
-		if (m_ItemInst != nullptr) {
-			if (m_ItemInst->GetItem() == nullptr) { break; }
-			item_id = m_ItemInst->GetItem()->ID;
-			augment_0 = m_ItemInst->GetAugmentItemID(0);
-			augment_1 = m_ItemInst->GetAugmentItemID(1);
-			augment_2 = m_ItemInst->GetAugmentItemID(2);
-			augment_3 = m_ItemInst->GetAugmentItemID(3);
-			augment_4 = m_ItemInst->GetAugmentItemID(4);
-			augment_5 = m_ItemInst->GetAugmentItemID(5);
-			// TODO: add hash call
-		}
+		if (m_ItemInst == nullptr) { break; }
+		if (m_ItemInst->GetItem() == nullptr) { break; }
+		m_LinkBodyStruct.item_id = m_ItemInst->GetItem()->ID;
+		m_LinkBodyStruct.augment_1 = m_ItemInst->GetAugmentItemID(0);
+		m_LinkBodyStruct.augment_2 = m_ItemInst->GetAugmentItemID(1);
+		m_LinkBodyStruct.augment_3 = m_ItemInst->GetAugmentItemID(2);
+		m_LinkBodyStruct.augment_4 = m_ItemInst->GetAugmentItemID(3);
+		m_LinkBodyStruct.augment_5 = m_ItemInst->GetAugmentItemID(4);
+		m_LinkBodyStruct.augment_6 = m_ItemInst->GetAugmentItemID(5);
+		m_LinkBodyStruct.is_evolving = (m_ItemInst->IsEvolving() ? 1 : 0);
+		m_LinkBodyStruct.evolve_group = m_ItemInst->GetItem()->LoreGroup; // see note above
+		m_LinkBodyStruct.evolve_level = m_ItemInst->GetEvolveLvl();
+		m_LinkBodyStruct.ornament_icon = m_ItemInst->GetOrnamentationIcon();
+		// TODO: add hash call
 		break;
 	default:
 		break;
 	}
 	
 	if (m_ProxyItemID != NOT_USED) {
-		item_id = m_ProxyItemID;
+		m_LinkBodyStruct.item_id = m_ProxyItemID;
 	}
 
 	if (m_TaskUse) {
-		hash = 0x0000000014505DC2;
+		m_LinkBodyStruct.hash = 0x14505DC2;
 	}
 
-	if (field_use[m_ClientVersion][field_0]) { m_LinkBody.append(StringFormat("%01x", unknown_0)); }
-	if (field_use[m_ClientVersion][field_1]) { m_LinkBody.append(StringFormat("%05x", item_id)); }
-	if (field_use[m_ClientVersion][field_2]) { m_LinkBody.append(StringFormat("%05x", augment_0)); }
-	if (field_use[m_ClientVersion][field_3]) { m_LinkBody.append(StringFormat("%05x", augment_1)); }
-	if (field_use[m_ClientVersion][field_4]) { m_LinkBody.append(StringFormat("%05x", augment_2)); }
-	if (field_use[m_ClientVersion][field_5]) { m_LinkBody.append(StringFormat("%05x", augment_3)); }
-	if (field_use[m_ClientVersion][field_6]) { m_LinkBody.append(StringFormat("%05x", augment_4)); }
-	if (field_use[m_ClientVersion][field_7]) { m_LinkBody.append(StringFormat("%05x", augment_5)); }
-	if (field_use[m_ClientVersion][field_8]) { m_LinkBody.append(StringFormat("%01x", unknown_8)); }
-	if (field_use[m_ClientVersion][field_9]) { m_LinkBody.append(StringFormat("%01x", unknown_9)); }
-	if (field_use[m_ClientVersion][field_10]) { m_LinkBody.append(StringFormat("%04x", unknown_10)); }
-	if (field_use[m_ClientVersion][field_11]) { m_LinkBody.append(StringFormat("%01x", unknown_11)); }
-	if (field_use[m_ClientVersion][field_12]) { m_LinkBody.append(StringFormat("%05x", unknown_12)); }
-	if (field_use[m_ClientVersion][field_13]) { m_LinkBody.append(StringFormat("%08x", hash)); }
+	m_LinkBody = StringFormat(
+		"%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%02X" "%05X" "%08X",
+		(0x0F & m_LinkBodyStruct.unknown_1),
+		(0x000FFFFF & m_LinkBodyStruct.item_id),
+		(0x000FFFFF & m_LinkBodyStruct.augment_1),
+		(0x000FFFFF & m_LinkBodyStruct.augment_2),
+		(0x000FFFFF & m_LinkBodyStruct.augment_3),
+		(0x000FFFFF & m_LinkBodyStruct.augment_4),
+		(0x000FFFFF & m_LinkBodyStruct.augment_5),
+		(0x000FFFFF & m_LinkBodyStruct.augment_6),
+		(0x0F & m_LinkBodyStruct.is_evolving),
+		(0x0000FFFF & m_LinkBodyStruct.evolve_group),
+		(0xFF & m_LinkBodyStruct.evolve_level),
+		(0x000FFFFF & m_LinkBodyStruct.ornament_icon),
+		(0xFFFFFFFF & m_LinkBodyStruct.hash)
+		);
 }
 
 void Client::TextLink::generate_text()
@@ -8476,35 +8423,74 @@ void Client::TextLink::generate_text()
 		return;
 	}
 
+	const Item_Struct* item_data = nullptr;
+
 	switch (m_LinkType) {
 	case linkBlank:
 		break;
 	case linkItemData:
-		if (m_ItemData != nullptr) {
-			m_LinkText = m_ItemData->Name;
-			return;
-		}
-		break;
+		if (m_ItemData == nullptr) { break; }
+		m_LinkText = m_ItemData->Name;
+		return;
 	case linkLootItem:
-		if (m_LootData != nullptr) {
-			const Item_Struct* item_data = database.GetItem(m_LootData->item_id);
-			if (item_data != nullptr) {
-				m_LinkText = item_data->Name;
-				return;
-			}
-		}
-		break;
+		if (m_LootData == nullptr) { break; }
+		item_data = database.GetItem(m_LootData->item_id);
+		if (item_data == nullptr) { break; }
+		m_LinkText = item_data->Name;
+		return;
 	case linkItemInst:
-		if (m_ItemInst != nullptr) {
-			if (m_ItemInst->GetItem() != nullptr) {
-				m_LinkText = m_ItemInst->GetItem()->Name;
-				return;
-			}
-		}
-		break;
+		if (m_ItemInst == nullptr) { break; }
+		if (m_ItemInst->GetItem() == nullptr) { break; }
+		m_LinkText = m_ItemInst->GetItem()->Name;
+		return;
 	default:
 		break;
 	}
 
 	m_LinkText = "null";
+}
+
+bool Client::TextLink::DegenerateLinkBody(TextLinkBody_Struct& textLinkBodyStruct, const std::string& textLinkBody)
+{
+	memset(&textLinkBodyStruct, 0, sizeof(TextLinkBody_Struct));
+	if (textLinkBody.length() != EmuConstants::TEXT_LINK_BODY_LENGTH) { return false; }
+
+	textLinkBodyStruct.unknown_1 = (uint8)strtol(textLinkBody.substr(0, 1).c_str(), nullptr, 16);
+	textLinkBodyStruct.item_id = (uint32)strtol(textLinkBody.substr(1, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.augment_1 = (uint32)strtol(textLinkBody.substr(6, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.augment_2 = (uint32)strtol(textLinkBody.substr(11, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.augment_3 = (uint32)strtol(textLinkBody.substr(16, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.augment_4 = (uint32)strtol(textLinkBody.substr(21, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.augment_5 = (uint32)strtol(textLinkBody.substr(26, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.augment_6 = (uint32)strtol(textLinkBody.substr(31, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.is_evolving = (uint8)strtol(textLinkBody.substr(36, 1).c_str(), nullptr, 16);
+	textLinkBodyStruct.evolve_group = (uint32)strtol(textLinkBody.substr(37, 4).c_str(), nullptr, 16);
+	textLinkBodyStruct.evolve_level = (uint8)strtol(textLinkBody.substr(41, 2).c_str(), nullptr, 16);
+	textLinkBodyStruct.ornament_icon = (uint32)strtol(textLinkBody.substr(43, 5).c_str(), nullptr, 16);
+	textLinkBodyStruct.hash = (int)strtol(textLinkBody.substr(48, 8).c_str(), nullptr, 16);
+
+	return true;
+}
+
+bool Client::TextLink::GenerateLinkBody(std::string& textLinkBody, const TextLinkBody_Struct& textLinkBodyStruct)
+{
+	textLinkBody = StringFormat(
+		"%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%02X" "%05X" "%08X",
+		(0x0F & textLinkBodyStruct.unknown_1),
+		(0x000FFFFF & textLinkBodyStruct.item_id),
+		(0x000FFFFF & textLinkBodyStruct.augment_1),
+		(0x000FFFFF & textLinkBodyStruct.augment_2),
+		(0x000FFFFF & textLinkBodyStruct.augment_3),
+		(0x000FFFFF & textLinkBodyStruct.augment_4),
+		(0x000FFFFF & textLinkBodyStruct.augment_5),
+		(0x000FFFFF & textLinkBodyStruct.augment_6),
+		(0x0F & textLinkBodyStruct.is_evolving),
+		(0x0000FFFF & textLinkBodyStruct.evolve_group),
+		(0xFF & textLinkBodyStruct.evolve_level),
+		(0x000FFFFF & textLinkBodyStruct.ornament_icon),
+		(0xFFFFFFFF & textLinkBodyStruct.hash)
+		);
+
+	if (textLinkBody.length() != EmuConstants::TEXT_LINK_BODY_LENGTH) { return false; }
+	return true;
 }

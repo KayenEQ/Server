@@ -428,7 +428,9 @@ int command_init(void) {
 		command_add("merchant_close_shop", "Closes a merchant shop", 100, command_merchantcloseshop) ||
 		command_add("close_shop", nullptr, 100, command_merchantcloseshop) ||
 		command_add("shownumhits", "Shows buffs numhits for yourself.", 0, command_shownumhits) ||
+		command_add("tune", "Calculate ideal statical values related to combat.", 100, command_tune) ||
 		command_add("refundaatype", "- Refunds your target's AA points, will disconnect them in the process as well.", 100, command_refundaatype) //C!Kayen
+
 		)
 	{
 		command_deinit();
@@ -446,14 +448,14 @@ int command_init(void) {
 		{
 			cur->second->access = itr->second;
 #if EQDEBUG >=5
-			LogFile->write(EQEMuLog::Debug, "command_init(): - Command '%s' set to access level %d." , cur->first.c_str(), itr->second);
+			LogFile->write(EQEmuLog::Debug, "command_init(): - Command '%s' set to access level %d." , cur->first.c_str(), itr->second);
 #endif
 		}
 		else
 		{
 #ifdef COMMANDS_WARNINGS
 			if(cur->second->access == 0)
-				LogFile->write(EQEMuLog::Status, "command_init(): Warning: Command '%s' defaulting to access level 0!" , cur->first.c_str());
+				LogFile->write(EQEmuLog::Status, "command_init(): Warning: Command '%s' defaulting to access level 0!" , cur->first.c_str());
 #endif
 		}
 	}
@@ -498,7 +500,7 @@ int command_add(const char *command_string, const char *desc, int access, CmdFun
 	std::string cstr(command_string);
 
 	if(commandlist.count(cstr) != 0) {
-		LogFile->write(EQEMuLog::Error, "command_add() - Command '%s' is a duplicate - check command.cpp." , command_string);
+		LogFile->write(EQEmuLog::Error, "command_add() - Command '%s' is a duplicate - check command.cpp." , command_string);
 		return(-1);
 	}
 
@@ -572,12 +574,12 @@ int command_realdispatch(Client *c, const char *message)
 
 #ifdef COMMANDS_LOGGING
 	if(cur->access >= COMMANDS_LOGGING_MIN_STATUS) {
-		LogFile->write(EQEMuLog::Commands, "%s (%s) used command: %s (target=%s)", c->GetName(), c->AccountName(), message, c->GetTarget()?c->GetTarget()->GetName():"NONE");
+		LogFile->write(EQEmuLog::Commands, "%s (%s) used command: %s (target=%s)", c->GetName(), c->AccountName(), message, c->GetTarget()?c->GetTarget()->GetName():"NONE");
 	}
 #endif
 
 	if(cur->function == nullptr) {
-		LogFile->write(EQEMuLog::Error, "Command '%s' has a null function\n", cstr.c_str());
+		LogFile->write(EQEmuLog::Error, "Command '%s' has a null function\n", cstr.c_str());
 		return(-1);
 	} else {
 		//dispatch C++ command
@@ -1349,7 +1351,7 @@ void command_viewpetition(Client *c, const Seperator *sep)
     if (!results.Success())
         return;
 
-    LogFile->write(EQEMuLog::Normal,"View petition request from %s, petition number: %i", c->GetName(), atoi(sep->argplus[1]) );
+    LogFile->write(EQEmuLog::Normal,"View petition request from %s, petition number: %i", c->GetName(), atoi(sep->argplus[1]) );
 
     if (results.RowCount() == 0) {
         c->Message(13,"There was an error in your request: ID not found! Please check the Id and try again.");
@@ -1374,7 +1376,7 @@ void command_petitioninfo(Client *c, const Seperator *sep)
     if (!results.Success())
         return;
 
-    LogFile->write(EQEMuLog::Normal,"Petition information request from %s, petition number:", c->GetName(), atoi(sep->argplus[1]) );
+    LogFile->write(EQEmuLog::Normal,"Petition information request from %s, petition number:", c->GetName(), atoi(sep->argplus[1]) );
 
     if (results.RowCount() == 0) {
 		c->Message(13,"There was an error in your request: ID not found! Please check the Id and try again.");
@@ -1400,7 +1402,7 @@ void command_delpetition(Client *c, const Seperator *sep)
 	if (!results.Success())
         return;
 
-    LogFile->write(EQEMuLog::Normal,"Delete petition request from %s, petition number:", c->GetName(), atoi(sep->argplus[1]) );
+    LogFile->write(EQEmuLog::Normal,"Delete petition request from %s, petition number:", c->GetName(), atoi(sep->argplus[1]) );
 
 }
 
@@ -1623,7 +1625,7 @@ void command_permaclass(Client *c, const Seperator *sep)
 		c->Message(0,"Target is not a client.");
 	else {
 		c->Message(0, "Setting %s's class...Sending to char select.", t->GetName());
-		LogFile->write(EQEMuLog::Normal,"Class change request from %s for %s, requested class:%i", c->GetName(), t->GetName(), atoi(sep->arg[1]) );
+		LogFile->write(EQEmuLog::Normal,"Class change request from %s for %s, requested class:%i", c->GetName(), t->GetName(), atoi(sep->arg[1]) );
 		t->SetBaseClass(atoi(sep->arg[1]));
 		t->Save();
 		t->Kick();
@@ -1645,7 +1647,7 @@ void command_permarace(Client *c, const Seperator *sep)
 		c->Message(0,"Target is not a client.");
 	else {
 		c->Message(0, "Setting %s's race - zone to take effect",t->GetName());
-		LogFile->write(EQEMuLog::Normal,"Permanant race change request from %s for %s, requested race:%i", c->GetName(), t->GetName(), atoi(sep->arg[1]) );
+		LogFile->write(EQEmuLog::Normal,"Permanant race change request from %s for %s, requested race:%i", c->GetName(), t->GetName(), atoi(sep->arg[1]) );
 		uint32 tmp = Mob::GetDefaultGender(atoi(sep->arg[1]), t->GetBaseGender());
 		t->SetBaseRace(atoi(sep->arg[1]));
 		t->SetBaseGender(tmp);
@@ -1669,7 +1671,7 @@ void command_permagender(Client *c, const Seperator *sep)
 		c->Message(0,"Target is not a client.");
 	else {
 		c->Message(0, "Setting %s's gender - zone to take effect",t->GetName());
-		LogFile->write(EQEMuLog::Normal,"Permanant gender change request from %s for %s, requested gender:%i", c->GetName(), t->GetName(), atoi(sep->arg[1]) );
+		LogFile->write(EQEmuLog::Normal,"Permanant gender change request from %s for %s, requested gender:%i", c->GetName(), t->GetName(), atoi(sep->arg[1]) );
 		t->SetBaseGender(atoi(sep->arg[1]));
 		t->Save();
 		t->SendIllusionPacket(atoi(sep->arg[1]));
@@ -1839,14 +1841,7 @@ void command_itemtest(Client *c, const Seperator *sep)
 void command_gassign(Client *c, const Seperator *sep)
 {
 	if (sep->IsNumber(1) && c->GetTarget() && c->GetTarget()->IsNPC())
-	{
-		database.AssignGrid(
-			c,
-			(c->GetTarget()->CastToNPC()->org_x),
-			(c->GetTarget()->CastToNPC()->org_y),
-			atoi(sep->arg[1])
-		);
-	}
+		database.AssignGrid(c, c->GetTarget()->CastToNPC()->m_SpawnPoint, atoi(sep->arg[1]));
 	else
 		c->Message(0,"Usage: #gassign [num] - must have an npc target!");
 }
@@ -2011,7 +2006,7 @@ void command_dbspawn2(Client *c, const Seperator *sep)
 {
 
 	if (sep->IsNumber(1) && sep->IsNumber(2) && sep->IsNumber(3)) {
-		LogFile->write(EQEMuLog::Normal,"Spawning database spawn");
+		LogFile->write(EQEmuLog::Normal,"Spawning database spawn");
 		uint16 cond = 0;
 		int16 cond_min = 0;
 		if(sep->IsNumber(4)) {
@@ -2019,7 +2014,7 @@ void command_dbspawn2(Client *c, const Seperator *sep)
 			if(sep->IsNumber(5))
 				cond_min = atoi(sep->arg[5]);
 		}
-		database.CreateSpawn2(c, atoi(sep->arg[1]), zone->GetShortName(), c->GetHeading(), c->GetX(), c->GetY(), c->GetZ(), atoi(sep->arg[2]), atoi(sep->arg[3]), cond, cond_min);
+		database.CreateSpawn2(c, atoi(sep->arg[1]), zone->GetShortName(), c->GetPosition(), atoi(sep->arg[2]), atoi(sep->arg[3]), cond, cond_min);
 	}
 	else {
 		c->Message(0, "Usage: #dbspawn2 spawngroup respawn variance [condition_id] [condition_min]");
@@ -2098,10 +2093,12 @@ void command_wp(Client *c, const Seperator *sep)
 		if (wp == 0) //default to highest if it's left blank, or we enter 0
 			wp = database.GetHighestWaypoint(zone->GetZoneID(), atoi(sep->arg[2])) + 1;
 		if (strcasecmp("-h",sep->arg[5]) == 0) {
-			database.AddWP(c, atoi(sep->arg[2]),wp, c->GetX(), c->GetY(), c->GetZ(), atoi(sep->arg[3]),zone->GetZoneID(), c->GetHeading());
+			database.AddWP(c, atoi(sep->arg[2]),wp, c->GetPosition(), atoi(sep->arg[3]),zone->GetZoneID());
 		}
 		else {
-			database.AddWP(c, atoi(sep->arg[2]),wp, c->GetX(), c->GetY(), c->GetZ(), atoi(sep->arg[3]),zone->GetZoneID(), -1);
+            auto position = c->GetPosition();
+            position.m_Heading = -1;
+			database.AddWP(c, atoi(sep->arg[2]),wp, position, atoi(sep->arg[3]),zone->GetZoneID());
 		}
 	}
 	else if (strcasecmp("delete",sep->arg[1]) == 0)
@@ -2331,7 +2328,7 @@ void command_setlanguage(Client *c, const Seperator *sep)
 	}
 	else
 	{
-		LogFile->write(EQEMuLog::Normal,"Set language request from %s, target:%s lang_id:%i value:%i", c->GetName(), c->GetTarget()->GetName(), atoi(sep->arg[1]), atoi(sep->arg[2]) );
+		LogFile->write(EQEmuLog::Normal,"Set language request from %s, target:%s lang_id:%i value:%i", c->GetName(), c->GetTarget()->GetName(), atoi(sep->arg[1]), atoi(sep->arg[2]) );
 		uint8 langid = (uint8)atoi(sep->arg[1]);
 		uint8 value = (uint8)atoi(sep->arg[2]);
 		c->GetTarget()->CastToClient()->SetLanguageSkill( langid, value );
@@ -2356,7 +2353,7 @@ void command_setskill(Client *c, const Seperator *sep)
 		c->Message(0, "       x = 0 to %d", HIGHEST_CAN_SET_SKILL);
 	}
 	else {
-		LogFile->write(EQEMuLog::Normal,"Set skill request from %s, target:%s skill_id:%i value:%i", c->GetName(), c->GetTarget()->GetName(), atoi(sep->arg[1]), atoi(sep->arg[2]) );
+		LogFile->write(EQEmuLog::Normal,"Set skill request from %s, target:%s skill_id:%i value:%i", c->GetName(), c->GetTarget()->GetName(), atoi(sep->arg[1]), atoi(sep->arg[2]) );
 		int skill_num = atoi(sep->arg[1]);
 		uint16 skill_value = atoi(sep->arg[2]);
 		if(skill_num < HIGHEST_SKILL)
@@ -2376,7 +2373,7 @@ void command_setskillall(Client *c, const Seperator *sep)
 	}
 	else {
 		if (c->Admin() >= commandSetSkillsOther || c->GetTarget()==c || c->GetTarget()==0) {
-			LogFile->write(EQEMuLog::Normal,"Set ALL skill request from %s, target:%s", c->GetName(), c->GetTarget()->GetName());
+			LogFile->write(EQEmuLog::Normal,"Set ALL skill request from %s, target:%s", c->GetName(), c->GetTarget()->GetName());
 			uint16 level = atoi(sep->arg[1]);
 			for(SkillUseTypes skill_num=Skill1HBlunt;skill_num <= HIGHEST_SKILL;skill_num=(SkillUseTypes)(skill_num+1)) {
 				c->GetTarget()->CastToClient()->SetSkill(skill_num, level);
@@ -2466,10 +2463,10 @@ void command_spawn(Client *c, const Seperator *sep)
 		}
 	}
 	#if EQDEBUG >= 11
-		LogFile->write(EQEMuLog::Debug,"#spawn Spawning:");
+		LogFile->write(EQEmuLog::Debug,"#spawn Spawning:");
 	#endif
 
-	NPC* npc = NPC::SpawnNPC(sep->argplus[1], c->GetX(), c->GetY(), c->GetZ(), c->GetHeading(), c);
+	NPC* npc = NPC::SpawnNPC(sep->argplus[1], c->GetPosition(), c);
 	if (!npc) {
 		c->Message(0, "Format: #spawn name race level material hp gender class priweapon secweapon merchantid bodytype - spawns a npc those parameters.");
 		c->Message(0, "Name Format: NPCFirstname_NPCLastname - All numbers in a name are stripped and \"_\" characters become a space.");
@@ -2528,7 +2525,7 @@ void command_npctypespawn(Client *c, const Seperator *sep)
 		const NPCType* tmp = 0;
 		if ((tmp = database.GetNPCType(atoi(sep->arg[1])))) {
 			//tmp->fixedZ = 1;
-			NPC* npc = new NPC(tmp, 0, c->GetX(), c->GetY(), c->GetZ(), c->GetHeading(), FlyMode3);
+			NPC* npc = new NPC(tmp, 0, c->GetPosition(), FlyMode3);
 			if (npc && sep->IsNumber(2))
 				npc->SetNPCFactionID(atoi(sep->arg[2]));
 
@@ -2591,7 +2588,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 		peekTrade = 0x20,
 		peekWorld = 0x40
 	} ;
-	
+
 	if (!c->GetTarget() || !c->GetTarget()->IsClient()) {
 		c->Message(0, "You must have a PC target selected for this command");
 		return;
@@ -2622,7 +2619,6 @@ void command_peekinv(Client *c, const Seperator *sep)
 	std::string item_link;
 	Client::TextLink linker;
 	linker.SetLinkType(linker.linkItemInst);
-	linker.SetClientVersion(c->GetClientVersion());
 
 	c->Message(0, "Displaying inventory for %s...", targetClient->GetName());
 
@@ -2684,7 +2680,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 		}
 		else {
 			int cursorDepth = 0;
-			for (iter_queue it = targetClient->GetInv().cursor_begin(); (it != targetClient->GetInv().cursor_end()); ++it, ++cursorDepth) {
+			for (auto it = targetClient->GetInv().cursor_begin(); (it != targetClient->GetInv().cursor_end()); ++it, ++cursorDepth) {
 				inst_main = *it;
 				item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
 				linker.SetItemInst(inst_main);
@@ -3172,7 +3168,7 @@ void command_listpetition(Client *c, const Seperator *sep)
 	if (!results.Success())
         return;
 
-    LogFile->write(EQEMuLog::Normal,"Petition list requested by %s", c->GetName());
+    LogFile->write(EQEmuLog::Normal,"Petition list requested by %s", c->GetName());
 
     if (results.RowCount() == 0)
         return;
@@ -3829,7 +3825,7 @@ void command_lastname(Client *c, const Seperator *sep)
 
 	if(c->GetTarget() && c->GetTarget()->IsClient())
 		t=c->GetTarget()->CastToClient();
-	LogFile->write(EQEMuLog::Normal,"#lastname request from %s for %s", c->GetName(), t->GetName());
+	LogFile->write(EQEmuLog::Normal,"#lastname request from %s for %s", c->GetName(), t->GetName());
 
 	if(strlen(sep->arg[1]) <= 70)
 		t->ChangeLastName(sep->arg[1]);
@@ -4452,7 +4448,7 @@ void command_time(Client *c, const Seperator *sep)
 			);
 		c->Message(13, "It is now %s.", timeMessage);
 #if EQDEBUG >= 11
-		LogFile->write(EQEMuLog::Debug,"Recieved timeMessage:%s", timeMessage);
+		LogFile->write(EQEmuLog::Debug,"Recieved timeMessage:%s", timeMessage);
 #endif
 	}
 }
@@ -4927,7 +4923,7 @@ void command_manaburn(Client *c, const Seperator *sep)
 						target->Damage(c, nukedmg, 2751, SkillAbjuration/*hackish*/);
 						c->Message(4,"You unleash an enormous blast of magical energies.");
 					}
-					LogFile->write(EQEMuLog::Normal,"Manaburn request from %s, damage: %d", c->GetName(), nukedmg);
+					LogFile->write(EQEmuLog::Normal,"Manaburn request from %s, damage: %d", c->GetName(), nukedmg);
 				}
 			}
 			else
@@ -5279,7 +5275,7 @@ void command_scribespells(Client *c, const Seperator *sep)
 	t->Message(0, "Scribing spells to spellbook.");
 	if(t != c)
 		c->Message(0, "Scribing spells for %s.", t->GetName());
-	LogFile->write(EQEMuLog::Normal, "Scribe spells request for %s from %s, levels: %u -> %u", t->GetName(), c->GetName(), min_level, max_level);
+	LogFile->write(EQEmuLog::Normal, "Scribe spells request for %s from %s, levels: %u -> %u", t->GetName(), c->GetName(), min_level, max_level);
 
 	for(curspell = 0, book_slot = t->GetNextAvailableSpellBookSlot(), count = 0; curspell < SPDAT_RECORDS && book_slot < MAX_PP_SPELLBOOK; curspell++, book_slot = t->GetNextAvailableSpellBookSlot(book_slot))
 	{
@@ -5336,7 +5332,7 @@ void command_scribespell(Client *c, const Seperator *sep) {
 		if(t != c)
 			c->Message(0, "Scribing spell: %s (%i) for %s.", spells[spell_id].name, spell_id, t->GetName());
 
-		LogFile->write(EQEMuLog::Normal, "Scribe spell: %s (%i) request for %s from %s.", spells[spell_id].name, spell_id, t->GetName(), c->GetName());
+		LogFile->write(EQEmuLog::Normal, "Scribe spell: %s (%i) request for %s from %s.", spells[spell_id].name, spell_id, t->GetName(), c->GetName());
 
 		if (spells[spell_id].classes[WARRIOR] != 0 && spells[spell_id].skill != 52 && spells[spell_id].classes[t->GetPP().class_ - 1] > 0 && !IsDiscipline(spell_id)) {
 			book_slot = t->GetNextAvailableSpellBookSlot();
@@ -5383,7 +5379,7 @@ void command_unscribespell(Client *c, const Seperator *sep) {
 			if(t != c)
 				c->Message(0, "Unscribing spell: %s (%i) for %s.", spells[spell_id].name, spell_id, t->GetName());
 
-			LogFile->write(EQEMuLog::Normal, "Unscribe spell: %s (%i) request for %s from %s.", spells[spell_id].name, spell_id, t->GetName(), c->GetName());
+			LogFile->write(EQEmuLog::Normal, "Unscribe spell: %s (%i) request for %s from %s.", spells[spell_id].name, spell_id, t->GetName(), c->GetName());
 		}
 		else {
 			t->Message(13, "Unable to unscribe spell: %s (%i) from your spellbook. This spell is not scribed.", spells[spell_id].name, spell_id);
@@ -5422,8 +5418,7 @@ void command_wpadd(Client *c, const Seperator *sep)
 {
 	int	type1=0,
 		type2=0,
-		pause=0,
-		heading=-1;	// Defaults for a new grid
+		pause=0;	// Defaults for a new grid
 
 	Mob *t=c->GetTarget();
 	if (t && t->IsNPC())
@@ -5446,9 +5441,11 @@ void command_wpadd(Client *c, const Seperator *sep)
 				return;
 			}
 		}
-		if (strcmp("-h",sep->arg[2]) == 0)
-			heading = c->GetHeading();
-		uint32 tmp_grid = database.AddWPForSpawn(c, s2info->GetID(), c->GetX(),c->GetY(),c->GetZ(), pause, type1, type2, zone->GetZoneID(), heading);
+		auto position = c->GetPosition();
+		if (strcmp("-h",sep->arg[2]) != 0)
+			position.m_Heading = -1;
+
+		uint32 tmp_grid = database.AddWPForSpawn(c, s2info->GetID(), position, pause, type1, type2, zone->GetZoneID());
 		if (tmp_grid)
 			t->CastToNPC()->SetGrid(tmp_grid);
 
@@ -5565,9 +5562,8 @@ void command_givemoney(Client *c, const Seperator *sep)
 
 void command_itemsearch(Client *c, const Seperator *sep)
 {
-	if (sep->arg[1][0] == 0) {
+	if (sep->arg[1][0] == 0)
 		c->Message(0, "Usage: #itemsearch [search string]");
-	}
 	else
 	{
 		const char *search_criteria=sep->argplus[1];
@@ -5576,7 +5572,6 @@ void command_itemsearch(Client *c, const Seperator *sep)
 		std::string item_link;
 		Client::TextLink linker;
 		linker.SetLinkType(linker.linkItemData);
-		linker.SetClientVersion(c->GetClientVersion());
 
 		if (Seperator::IsNumber(search_criteria)) {
 			item = database.GetItem(atoi(search_criteria));
@@ -5623,6 +5618,7 @@ void command_itemsearch(Client *c, const Seperator *sep)
 			c->Message(0, "50 items shown...too many results.");
 		else
 			c->Message(0, "%i items found", count);
+
 	}
 }
 
@@ -6657,7 +6653,7 @@ void command_npcedit(Client *c, const Seperator *sep)
                                         "SET luclin_haircolor = %i, luclin_beardcolor = %i, "
                                         "luclin_hairstyle = %i, luclin_beard = %i, "
                                         "face = %i, drakkin_heritage = %i, "
-                                        "drakkin_tattoo = %i, drakkin_details = %i, "
+                                        "drakkin_tattoo = %i, drakkin_details = %i "
                                         "WHERE id = %i",
                                         target->GetHairColor(), target->GetBeardColor(),
                                         target->GetHairStyle(), target->GetBeard(),
@@ -6813,15 +6809,15 @@ void command_logs(Client *c, const Seperator *sep)
 	}
 
 	if(!strcasecmp(sep->arg[1], "status" ) )
-		client_logs.subscribe(EQEMuLog::Status, t);
+		client_logs.subscribe(EQEmuLog::Status, t);
 	else if(!strcasecmp(sep->arg[1], "normal" ) )
-		client_logs.subscribe(EQEMuLog::Normal, t);
+		client_logs.subscribe(EQEmuLog::Normal, t);
 	else if(!strcasecmp(sep->arg[1], "error" ) )
-		client_logs.subscribe(EQEMuLog::Error, t);
+		client_logs.subscribe(EQEmuLog::Error, t);
 	else if(!strcasecmp(sep->arg[1], "debug" ) )
-		client_logs.subscribe(EQEMuLog::Debug, t);
+		client_logs.subscribe(EQEmuLog::Debug, t);
 	else if(!strcasecmp(sep->arg[1], "quest" ) )
-		client_logs.subscribe(EQEMuLog::Quest, t);
+		client_logs.subscribe(EQEmuLog::Quest, t);
 	else if(!strcasecmp(sep->arg[1], "all" ) )
 		client_logs.subscribeAll(t);
 	else {
@@ -6845,15 +6841,15 @@ void command_nologs(Client *c, const Seperator *sep)
 	}
 
 	if(!strcasecmp(sep->arg[1], "status" ) )
-		client_logs.unsubscribe(EQEMuLog::Status, t);
+		client_logs.unsubscribe(EQEmuLog::Status, t);
 	else if(!strcasecmp(sep->arg[1], "normal" ) )
-		client_logs.unsubscribe(EQEMuLog::Normal, t);
+		client_logs.unsubscribe(EQEmuLog::Normal, t);
 	else if(!strcasecmp(sep->arg[1], "error" ) )
-		client_logs.unsubscribe(EQEMuLog::Error, t);
+		client_logs.unsubscribe(EQEmuLog::Error, t);
 	else if(!strcasecmp(sep->arg[1], "debug" ) )
-		client_logs.unsubscribe(EQEMuLog::Debug, t);
+		client_logs.unsubscribe(EQEmuLog::Debug, t);
 	else if(!strcasecmp(sep->arg[1], "quest" ) )
-		client_logs.unsubscribe(EQEMuLog::Quest, t);
+		client_logs.unsubscribe(EQEmuLog::Quest, t);
 	else if(!strcasecmp(sep->arg[1], "all" ) )
 		client_logs.unsubscribeAll(t);
 	else {
@@ -7337,7 +7333,7 @@ void command_pf(Client *c, const Seperator *sep)
 	{
 		Mob *who = c->GetTarget();
 		c->Message(0, "POS: (%.2f, %.2f, %.2f)", who->GetX(), who->GetY(), who->GetZ());
-		c->Message(0, "WP: (%.2f, %.2f, %.2f) (%d/%d)", who->GetCWPX(), who->GetCWPY(), who->GetCWPZ(), who->GetCWP(), who->IsNPC()?who->CastToNPC()->GetMaxWp():-1);
+		c->Message(0, "WP: %s (%d/%d)", to_string(who->GetCurrentWayPoint()).c_str(), who->IsNPC()?who->CastToNPC()->GetMaxWp():-1);
 		c->Message(0, "TAR: (%.2f, %.2f, %.2f)", who->GetTarX(), who->GetTarY(), who->GetTarZ());
 		c->Message(0, "TARV: (%.2f, %.2f, %.2f)", who->GetTarVX(), who->GetTarVY(), who->GetTarVZ());
 		c->Message(0, "|TV|=%.2f index=%d", who->GetTarVector(), who->GetTarNDX());
@@ -7379,16 +7375,18 @@ void command_bestz(Client *c, const Seperator *sep) {
 
 		if(c->GetTarget()) {
 			z=c->GetTarget()->GetZ();
-			RegionType = zone->watermap->ReturnRegionType(c->GetTarget()->GetX(), c->GetTarget()->GetY(), z);
-			c->Message(0,"InWater returns %d", zone->watermap->InWater(c->GetTarget()->GetX(), c->GetTarget()->GetY(), z));
-			c->Message(0,"InLava returns %d", zone->watermap->InLava(c->GetTarget()->GetX(), c->GetTarget()->GetY(), z));
+			auto position = xyz_location(c->GetTarget()->GetX(), c->GetTarget()->GetY(), z);
+			RegionType = zone->watermap->ReturnRegionType(position);
+			c->Message(0,"InWater returns %d", zone->watermap->InWater(position));
+			c->Message(0,"InLava returns %d", zone->watermap->InLava(position));
 
 		}
 		else {
 			z=c->GetZ();
-			RegionType = zone->watermap->ReturnRegionType(c->GetX(), c->GetY(), z);
-			c->Message(0,"InWater returns %d", zone->watermap->InWater(c->GetX(), c->GetY(), z));
-			c->Message(0,"InLava returns %d", zone->watermap->InLava(c->GetX(), c->GetY(), z));
+			auto position = xyz_location(c->GetX(), c->GetY(), z);
+			RegionType = zone->watermap->ReturnRegionType(position);
+			c->Message(0,"InWater returns %d", zone->watermap->InWater(position));
+			c->Message(0,"InLava returns %d", zone->watermap->InLava(position));
 
 		}
 
@@ -8144,7 +8142,7 @@ void command_traindisc(Client *c, const Seperator *sep)
 	t->Message(0, "Training disciplines");
 	if(t != c)
 		c->Message(0, "Training disciplines for %s.", t->GetName());
-	LogFile->write(EQEMuLog::Normal, "Train disciplines request for %s from %s, levels: %u -> %u", t->GetName(), c->GetName(), min_level, max_level);
+	LogFile->write(EQEmuLog::Normal, "Train disciplines request for %s from %s, levels: %u -> %u", t->GetName(), c->GetName(), min_level, max_level);
 
 	for(curspell = 0, count = 0; curspell < SPDAT_RECORDS; curspell++)
 	{
@@ -8203,7 +8201,7 @@ void command_setgraveyard(Client *c, const Seperator *sep)
 	zoneid = database.GetZoneID(sep->arg[1]);
 
 	if(zoneid > 0) {
-		graveyard_id = database.CreateGraveyardRecord(zoneid, t->GetX(), t->GetY(), t->GetZ(), t->GetHeading());
+		graveyard_id = database.CreateGraveyardRecord(zoneid, t->GetPosition());
 
 		if(graveyard_id > 0) {
 			c->Message(0, "Successfuly added a new record for this graveyard!");
@@ -8266,7 +8264,7 @@ void command_summonburriedplayercorpse(Client *c, const Seperator *sep)
 		return;
 	}
 
-	Corpse* PlayerCorpse = database.SummonBuriedCharacterCorpses(t->CharacterID(), t->GetZoneID(), zone->GetInstanceID(), t->GetX(), t->GetY(), t->GetZ(), t->GetHeading());
+	Corpse* PlayerCorpse = database.SummonBuriedCharacterCorpses(t->CharacterID(), t->GetZoneID(), zone->GetInstanceID(), t->GetPosition());
 
 	if(!PlayerCorpse)
 		c->Message(0, "Your target doesn't have any burried corpses.");
@@ -10282,7 +10280,6 @@ void command_camerashake(Client *c, const Seperator *sep)
 		if(sep->arg[1][0] && sep->arg[2][0])
 		{
 			ServerPacket *pack = new ServerPacket(ServerOP_CameraShake, sizeof(ServerCameraShake_Struct));
-			memset(pack->pBuffer, 0, sizeof(pack->pBuffer));
 			ServerCameraShake_Struct* scss = (ServerCameraShake_Struct*) pack->pBuffer;
 			scss->duration = atoi(sep->arg[1]);
 			scss->intensity = atoi(sep->arg[2]);
@@ -10698,4 +10695,213 @@ void command_refundaatype(Client *c, const Seperator *sep){
 				c->Message(0, "Invalid number, between 0 and 4 [0=Reset ALL]");
 		}
 	}
+}
+
+void command_tune(Client *c, const Seperator *sep)
+{
+	//Work in progress - Kayen
+
+	if(sep->arg[1][0] == '\0' || !strcasecmp(sep->arg[1], "help")) {
+		c->Message(0, "Syntax: #tune [subcommand].");
+		c->Message(0, "-- Tune System Commands --");
+		c->Message(0, "-- Usage: Returning recommended combat statistical values based on a desired outcome.");
+		c->Message(0, "-- Note: If targeted mob does not have a target (ie not engaged in combat), YOU will be considered the target.");
+		c->Message(0, "-- Warning: The calculations done in this process are intense and can potentially cause zone crashes depending on parameters set, use with caution!");
+		c->Message(0, "-- Below are OPTIONAL parameters.");
+		c->Message(0, "-- Note: [interval] Determines how fast the stat being checked increases/decreases till it finds the best result. Default [ATK/AC 50][Acc/Avoid 10] ");
+		c->Message(0, "-- Note: [loop_max] Determines how many iterations are done to increases/decreases the stat till it finds the best result. Default [ATK/AC 100][Acc/Avoid 1000]");
+		c->Message(0, "-- Note: [Stat Override] Will override that stat on mob being checkd with the specified value. Default=0");
+		c->Message(0, "-- Note: [Info Level] How much statistical detail is displayed[0 - 3]. Default=0 ");
+		c->Message(0, "-- Note: Results are only approximations usually accurate to +/- 2 intervals.");
+
+		c->Message(0, "... ");
+		c->Message(0, "...### Category A ### Target = ATTACKER ### YOU or Target's Target = DEFENDER ###");
+		c->Message(0, "...### Category B ### Target = DEFENDER ### YOU or Target's Target = ATTACKER ###");
+		c->Message(0, "... ");
+		c->Message(0, "...#Returns recommended ATK adjustment +/- on ATTACKER that will result in an average mitigation pct on DEFENDER. ");
+		c->Message(0, "...tune FindATK [A/B] [pct mitigation] [interval][loop_max][AC Overwride][Info Level]");
+		c->Message(0, "... ");
+		c->Message(0, "...#Returns recommended AC adjustment +/- on DEFENDER for an average mitigation pct from ATTACKER. ");
+		c->Message(0, "...tune FindAC [A/B] [pct mitigation] [interval][loop_max][ATK Overwride][Info Level] ");
+		c->Message(0, "... ");
+		c->Message(0, "...#Returns recommended Accuracy adjustment +/- on ATTACKER that will result in a hit chance pct on DEFENDER. ");
+		c->Message(0, "...tune FindAccuracy [A/B] [hit chance] [interval][loop_max][Avoidance Overwride][Info Level]");
+		c->Message(0, "... ");
+		c->Message(0, "...#Returns recommended Avoidance adjustment +/- on DEFENDER for in a hit chance pct from ATTACKER. ");
+		c->Message(0, "...tune FindAvoidance [A/B] [pct mitigation] [interval][loop_max][Accuracy Overwride][Info Level] ");
+
+		return;
+	}
+	//Default is category A for attacker/defender settings, which then are swapped under category B.
+	Mob* defender = c;
+	Mob* attacker = c->GetTarget();
+
+	if (!attacker)
+	{
+		c->Message(0, "#Tune - Error no target selected. [#Tune help]");
+		return;
+	}
+
+	Mob* ttarget = attacker->GetTarget();
+
+	if (ttarget)
+		defender = ttarget;
+
+	if(!strcasecmp(sep->arg[1], "FindATK"))
+	{
+		float pct_mitigation = atof(sep->arg[3]);
+		int interval = atoi(sep->arg[4]);
+		int max_loop = atoi(sep->arg[5]);
+		int ac_override = atoi(sep->arg[6]);
+		int info_level = atoi(sep->arg[7]);
+
+		if (!pct_mitigation)
+		{
+			c->Message(13, "#Tune - Error must enter the desired percent mitigation on defender. Ie. Defender to mitigate on average 20 pct of max damage.");
+			return;
+		}
+
+		if (!interval)
+			interval = 50;
+		if (!max_loop)
+			max_loop = 100;
+		if(!ac_override)
+			ac_override = 0;
+		if (!info_level)
+			info_level = 1;
+		
+		if(!strcasecmp(sep->arg[2], "A"))
+			c->Tune_FindATKByPctMitigation(defender, attacker, pct_mitigation, interval, max_loop,ac_override,info_level);
+		else if(!strcasecmp(sep->arg[2], "B"))
+			c->Tune_FindATKByPctMitigation(attacker,defender, pct_mitigation, interval, max_loop,ac_override,info_level);
+		else {
+			c->Message(0, "#Tune - Error no category selcted. [#Tune help]");
+			c->Message(0, "Usage #tune FindATK [A/B] [pct mitigation] [interval][loop_max][AC Overwride][Info Level] ");
+			c->Message(0, "Example #tune FindATK A 60");
+		}
+		return;
+	}
+
+	if(!strcasecmp(sep->arg[1], "FindAC"))
+	{
+		float pct_mitigation = atof(sep->arg[3]);
+		int interval = atoi(sep->arg[4]);
+		int max_loop = atoi(sep->arg[5]);
+		int atk_override = atoi(sep->arg[6]);
+		int info_level = atoi(sep->arg[7]);
+
+		if (!pct_mitigation)
+		{
+			c->Message(13, "#Tune - Error must enter the desired percent mitigation on defender. Ie. Defender to mitigate on average 20 pct of max damage.");
+			return;
+		}
+
+		if (!interval)
+			interval = 50;
+		if (!max_loop)
+			max_loop = 100;
+		if(!atk_override)
+			atk_override = 0;
+		if (!info_level)
+			info_level = 1;
+				
+		if(!strcasecmp(sep->arg[2], "A"))
+			c->Tune_FindACByPctMitigation(defender, attacker, pct_mitigation, interval, max_loop,atk_override,info_level);
+		else if(!strcasecmp(sep->arg[2], "B"))
+			c->Tune_FindACByPctMitigation(attacker, defender, pct_mitigation, interval, max_loop,atk_override,info_level);
+		else {
+			c->Message(0, "#Tune - Error no category selcted. [#Tune help]");
+			c->Message(0, "Usage #tune FindAC [A/B] [pct mitigation] [interval][loop_max][ATK Overwride][Info Level] ");
+			c->Message(0, "Example #tune FindAC A 60");
+		}
+
+		return;
+	}
+
+	if(!strcasecmp(sep->arg[1], "FindAccuracy"))
+	{
+		float hit_chance = atof(sep->arg[3]);
+		int interval = atoi(sep->arg[4]);
+		int max_loop = atoi(sep->arg[5]);
+		int avoid_override = atoi(sep->arg[6]);
+		int info_level = atoi(sep->arg[7]);
+
+		if (!hit_chance)
+		{
+			c->Message(10, "#Tune - Error must enter the desired percent mitigation on defender. Ie. Defender to mitigate on average 20 pct of max damage.");
+			return;
+		}
+
+		if (!interval)
+			interval = 10;
+		if (!max_loop)
+			max_loop = 1000;
+		if(!avoid_override)
+			avoid_override = 0;
+		if (!info_level)
+			info_level = 1;
+
+		if (hit_chance > RuleR(Combat,MaxChancetoHit) || hit_chance < RuleR(Combat,MinChancetoHit))
+		{
+			c->Message(10, "#Tune - Error hit chance out of bounds. [Max %.2f Min .2f]", RuleR(Combat,MaxChancetoHit),RuleR(Combat,MinChancetoHit));
+			return;
+		}
+		
+		if(!strcasecmp(sep->arg[2], "A"))
+			c->Tune_FindAccuaryByHitChance(defender, attacker, hit_chance, interval, max_loop,avoid_override,info_level);
+		else if(!strcasecmp(sep->arg[2], "B"))
+			c->Tune_FindAccuaryByHitChance(attacker, defender, hit_chance, interval, max_loop,avoid_override,info_level);
+		else {
+			c->Message(0, "#Tune - Error no category selcted. [#Tune help]");
+			c->Message(0, "Usage #tune FindAcccuracy [A/B] [hit chance] [interval][loop_max][Avoidance Overwride][Info Level]");
+			c->Message(0, "Exampled #tune FindAccuracy B 30");
+		}
+
+		return;
+	}
+
+	if(!strcasecmp(sep->arg[1], "FindAvoidance"))
+	{
+		float hit_chance = atof(sep->arg[3]);
+		int interval = atoi(sep->arg[4]);
+		int max_loop = atoi(sep->arg[5]);
+		int acc_override = atoi(sep->arg[6]);
+		int info_level = atoi(sep->arg[7]);
+
+		if (!hit_chance)
+		{
+			c->Message(0, "#Tune - Error must enter the desired hit chance on defender. Ie. Defender to have hit chance of 40 pct.");
+			return;
+		}
+
+		if (!interval)
+			interval = 10;
+		if (!max_loop)
+			max_loop = 1000;
+		if(!acc_override)
+			acc_override = 0;
+		if (!info_level)
+			info_level = 1;
+
+		if (hit_chance > RuleR(Combat,MaxChancetoHit) || hit_chance < RuleR(Combat,MinChancetoHit))
+		{
+			c->Message(10, "#Tune - Error hit chance out of bounds. [Max %.2f Min .2f]", RuleR(Combat,MaxChancetoHit),RuleR(Combat,MinChancetoHit));
+			return;
+		}
+		
+		if(!strcasecmp(sep->arg[2], "A"))
+			c->Tune_FindAvoidanceByHitChance(defender, attacker, hit_chance, interval, max_loop,acc_override, info_level);
+		else if(!strcasecmp(sep->arg[2], "B"))
+			c->Tune_FindAvoidanceByHitChance(attacker, defender, hit_chance, interval, max_loop,acc_override, info_level);
+		else {
+			c->Message(0, "#Tune - Error no category selcted. [#Tune help]");
+			c->Message(0, "Usage #tune FindAvoidance [A/B] [hit chance] [interval][loop_max][Accuracy Overwride][Info Level]");
+			c->Message(0, "Exampled #tune FindAvoidance B 30");
+		}
+
+		return;
+	}
+
+
+	return;
 }

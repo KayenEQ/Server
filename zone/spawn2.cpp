@@ -218,7 +218,7 @@ bool Spawn2::Process() {
 			database.UpdateSpawn2Timeleft(spawn2_id, zone->GetInstanceID(), 0);
 
 		currentnpcid = npcid;
-		NPC* npc = new NPC(tmp, this, x, y, z, heading, FlyMode3);
+		NPC* npc = new NPC(tmp, this, xyz_heading(x, y, z, heading), FlyMode3);
 
 		npc->mod_prespawn(this);
 
@@ -364,7 +364,7 @@ bool ZoneDatabase::PopulateZoneSpawnList(uint32 zoneid, LinkedList<Spawn2*> &spa
                                     zone_name, version);
     auto results = QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in PopulateZoneLists query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in PopulateZoneLists query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		return false;
     }
 
@@ -392,12 +392,12 @@ Spawn2* ZoneDatabase::LoadSpawn2(LinkedList<Spawn2*> &spawn2_list, uint32 spawn2
                                     "WHERE id = %i", spawn2id);
     auto results = QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in LoadSpawn2 query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in LoadSpawn2 query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
         return nullptr;
     }
 
     if (results.RowCount() != 1) {
-        LogFile->write(EQEMuLog::Error, "Error in LoadSpawn2 query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in LoadSpawn2 query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
         return nullptr;
     }
 
@@ -414,17 +414,17 @@ Spawn2* ZoneDatabase::LoadSpawn2(LinkedList<Spawn2*> &spawn2_list, uint32 spawn2
 	return newSpawn;
 }
 
-bool ZoneDatabase::CreateSpawn2(Client *client, uint32 spawngroup, const char* zone, float heading, float x, float y, float z, uint32 respawn, uint32 variance, uint16 condition, int16 cond_value)
+bool ZoneDatabase::CreateSpawn2(Client *client, uint32 spawngroup, const char* zone, const xyz_heading& position, uint32 respawn, uint32 variance, uint16 condition, int16 cond_value)
 {
 
 	std::string query = StringFormat("INSERT INTO spawn2 (spawngroupID, zone, x, y, z, heading, "
                                     "respawntime, variance, _condition, cond_value) "
                                     "VALUES (%i, '%s', %f, %f, %f, %f, %i, %i, %u, %i)",
-                                    spawngroup, zone, x, y, z, heading,
+                                    spawngroup, zone, position.m_X, position.m_Y, position.m_Z, position.m_Heading,
                                     respawn, variance, condition, cond_value);
     auto results = QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in CreateSpawn2 query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in CreateSpawn2 query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		return false;
     }
 
@@ -674,7 +674,7 @@ void SpawnConditionManager::UpdateDBEvent(SpawnEvent &event) {
                                     event.strict? 1: 0, event.id);
 	auto results = database.QueryDatabase(query);
 	if(!results.Success())
-		LogFile->write(EQEMuLog::Error, "Unable to update spawn event '%s': %s\n", query.c_str(), results.ErrorMessage().c_str());
+		LogFile->write(EQEmuLog::Error, "Unable to update spawn event '%s': %s\n", query.c_str(), results.ErrorMessage().c_str());
 
 }
 
@@ -686,7 +686,7 @@ void SpawnConditionManager::UpdateDBCondition(const char* zone_name, uint32 inst
                                     cond_id, value, zone_name, instance_id);
     auto results = database.QueryDatabase(query);
 	if(!results.Success())
-		LogFile->write(EQEMuLog::Error, "Unable to update spawn condition '%s': %s\n", query.c_str(), results.ErrorMessage().c_str());
+		LogFile->write(EQEmuLog::Error, "Unable to update spawn condition '%s': %s\n", query.c_str(), results.ErrorMessage().c_str());
 
 }
 
@@ -699,7 +699,7 @@ bool SpawnConditionManager::LoadDBEvent(uint32 event_id, SpawnEvent &event, std:
                                     "FROM spawn_events WHERE id = %d", event_id);
     auto results = database.QueryDatabase(query);
     if (!results.Success()) {
-		LogFile->write(EQEMuLog::Error, "Error in LoadDBEvent query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+		LogFile->write(EQEmuLog::Error, "Error in LoadDBEvent query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		return false;
 	}
 
@@ -742,7 +742,7 @@ bool SpawnConditionManager::LoadSpawnConditions(const char* zone_name, uint32 in
                                     "WHERE zone = '%s'", zone_name);
     auto results = database.QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in LoadSpawnConditions query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in LoadSpawnConditions query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		return false;
     }
 
@@ -764,7 +764,7 @@ bool SpawnConditionManager::LoadSpawnConditions(const char* zone_name, uint32 in
                         zone_name, instance_id);
     results = database.QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in LoadSpawnConditions query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in LoadSpawnConditions query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		spawn_conditions.clear();
 		return false;
     }
@@ -782,7 +782,7 @@ bool SpawnConditionManager::LoadSpawnConditions(const char* zone_name, uint32 in
                         "FROM spawn_events WHERE zone = '%s'", zone_name);
     results = database.QueryDatabase(query);
     if (!results.Success()) {
-        LogFile->write(EQEMuLog::Error, "Error in LoadSpawnConditions events query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
+        LogFile->write(EQEmuLog::Error, "Error in LoadSpawnConditions events query '%s': %s", query.c_str(), results.ErrorMessage().c_str());
 		return false;
     }
 
@@ -794,7 +794,7 @@ bool SpawnConditionManager::LoadSpawnConditions(const char* zone_name, uint32 in
         event.period = atoi(row[2]);
 
         if(event.period == 0) {
-            LogFile->write(EQEMuLog::Error, "Refusing to load spawn event #%d because it has a period of 0\n", event.id);
+            LogFile->write(EQEmuLog::Error, "Refusing to load spawn event #%d because it has a period of 0\n", event.id);
             continue;
         }
 

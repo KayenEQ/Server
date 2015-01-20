@@ -2388,7 +2388,7 @@ struct AugmentItem_Struct {
 
 // OP_Emote
 struct Emote_Struct {
-/*0000*/	uint32 unknown01;
+/*0000*/	uint32 type;			// 0 - custom, 0xffffffff - command (/dance, /flip, etc...)
 /*0004*/	char message[1024];
 /*1028*/
 };
@@ -5268,6 +5268,23 @@ struct ClientMarqueeMessage_Struct {
 };
 
 typedef std::list<ServerLootItem_Struct*> ItemList;
+
+struct TextLinkBody_Struct {
+	// Current server mask: EQClientRoF2
+	uint8 unknown_1;		/* %1X */
+	uint32 item_id;			/* %05X */
+	uint32 augment_1;		/* %05X */
+	uint32 augment_2;		/* %05X */
+	uint32 augment_3;		/* %05X */
+	uint32 augment_4;		/* %05X */
+	uint32 augment_5;		/* %05X */
+	uint32 augment_6;		/* %05X */
+	uint8 is_evolving;		/* %1X */
+	uint32 evolve_group;	/* %05X */
+	uint8 evolve_level;		/* %02X */
+	uint32 ornament_icon;	/* %05X */
+	int hash;				/* %08X */
+};
 
 // Restore structure packing to default
 #pragma pack()

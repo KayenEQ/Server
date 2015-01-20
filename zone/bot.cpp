@@ -9,7 +9,7 @@
 extern volatile bool ZoneLoaded;
 
 // This constructor is used during the bot create command
-Bot::Bot(NPCType npcTypeData, Client* botOwner) : NPC(&npcTypeData, 0, 0, 0, 0, 0, 0, false), rest_timer(1) {
+Bot::Bot(NPCType npcTypeData, Client* botOwner) : NPC(&npcTypeData, nullptr, xyz_heading::Origin(), 0, false), rest_timer(1) {
 	if(botOwner) {
 		this->SetBotOwner(botOwner);
 		this->_botOwnerCharacterID = botOwner->CharacterID();
@@ -99,7 +99,7 @@ Bot::Bot(NPCType npcTypeData, Client* botOwner) : NPC(&npcTypeData, 0, 0, 0, 0, 
 }
 
 // This constructor is used when the bot is loaded out of the database
-Bot::Bot(uint32 botID, uint32 botOwnerCharacterID, uint32 botSpellsID, double totalPlayTime, uint32 lastZoneId, NPCType npcTypeData) : NPC(&npcTypeData, 0, 0, 0, 0, 0, 0, false), rest_timer(1) {
+Bot::Bot(uint32 botID, uint32 botOwnerCharacterID, uint32 botSpellsID, double totalPlayTime, uint32 lastZoneId, NPCType npcTypeData) : NPC(&npcTypeData, nullptr, xyz_heading::Origin(), 0, false), rest_timer(1) {
 	this->_botOwnerCharacterID = botOwnerCharacterID;
 
 	if(this->_botOwnerCharacterID > 0) {
@@ -1225,7 +1225,7 @@ int32 Bot::acmod()
 		return (65 + ((agility-300) / 21));
 	}
 #if EQDEBUG >= 11
-	LogFile->write(EQEMuLog::Error, "Error in Bot::acmod(): Agility: %i, Level: %i",agility,level);
+	LogFile->write(EQEmuLog::Error, "Error in Bot::acmod(): Agility: %i, Level: %i",agility,level);
 #endif
 	return 0;
 }
@@ -1462,7 +1462,7 @@ void Bot::LoadAAs() {
     auto results = database.QueryDatabase(query);
 
 	if(!results.Success()) {
-		LogFile->write(EQEMuLog::Error, "Error in Bot::LoadAAs()");
+		LogFile->write(EQEmuLog::Error, "Error in Bot::LoadAAs()");
 		return;
 	}
 
@@ -2774,7 +2774,7 @@ void Bot::LoadStance() {
 	std::string query = StringFormat("SELECT StanceID FROM botstances WHERE BotID = %u;", GetBotID());
 	auto results = database.QueryDatabase(query);
 	if(!results.Success() || results.RowCount() == 0) {
-		LogFile->write(EQEMuLog::Error, "Error in Bot::LoadStance()");
+		LogFile->write(EQEmuLog::Error, "Error in Bot::LoadStance()");
 		SetDefaultBotStance();
 		return;
 	}
@@ -2792,7 +2792,7 @@ void Bot::SaveStance() {
                                     "VALUES(%u, %u);", GetBotID(), GetBotStance());
     auto results = database.QueryDatabase(query);
     if(!results.Success())
-        LogFile->write(EQEMuLog::Error, "Error in Bot::SaveStance()");
+        LogFile->write(EQEmuLog::Error, "Error in Bot::SaveStance()");
 
 }
 
@@ -2807,7 +2807,7 @@ void Bot::LoadTimers() {
                                     GetBotID(), DisciplineReuseStart-1, DisciplineReuseStart-1, GetClass(), GetLevel());
     auto results = database.QueryDatabase(query);
 	if(!results.Success()) {
-		LogFile->write(EQEMuLog::Error, "Error in Bot::LoadTimers()");
+		LogFile->write(EQEmuLog::Error, "Error in Bot::LoadTimers()");
 		return;
 	}
 
@@ -2847,7 +2847,7 @@ void Bot::SaveTimers() {
 	}
 
 	if(hadError)
-		LogFile->write(EQEMuLog::Error, "Error in Bot::SaveTimers()");
+		LogFile->write(EQEmuLog::Error, "Error in Bot::SaveTimers()");
 
 }
 
@@ -3184,7 +3184,7 @@ void Bot::DoMeleeSkillAttackDmg(Mob* other, uint16 weapon_damage, SkillUseTypes 
 		return;
 
 	if (damage > 0)
-		CheckNumHitsRemaining(NUMHIT_OutgoingHitSuccess);
+		CheckNumHitsRemaining(NumHit::OutgoingHitSuccess);
 
 	if((skillinuse == SkillDragonPunch) && GetAA(aaDragonPunch) && zone->random.Int(0, 99) < 25){
 		SpellFinished(904, other, 10, 0, -1, spells[904].ResistDiff);
@@ -3354,7 +3354,7 @@ void Bot::AI_Process() {
 	if(GetHasBeenSummoned()) {
 		if(IsBotCaster() || IsBotArcher()) {
 			if (AImovement_timer->Check()) {
-				if(!GetTarget() || (IsBotCaster() && !IsBotCasterCombatRange(GetTarget())) || (IsBotArcher() && IsArcheryRange(GetTarget())) || (DistNoRootNoZ(GetPreSummonX(), GetPreSummonY()) < 10)) {
+				if(!GetTarget() || (IsBotCaster() && !IsBotCasterCombatRange(GetTarget())) || (IsBotArcher() && IsArcheryRange(GetTarget())) || (DistNoRootNoZ(m_PreSummonLocation.m_X, m_PreSummonLocation.m_Y) < 10)) {
 					if(GetTarget())
 						FaceTarget(GetTarget());
 					SetHasBeenSummoned(false);
@@ -3363,8 +3363,8 @@ void Bot::AI_Process() {
 					if(GetTarget() && GetTarget()->GetHateTop() && GetTarget()->GetHateTop() != this)
 					{
 						mlog(AI__WAYPOINTS, "Returning to location prior to being summoned.");
-						CalculateNewPosition2(GetPreSummonX(), GetPreSummonY(), GetPreSummonZ(), GetRunspeed());
-						SetHeading(CalculateHeadingToTarget(GetPreSummonX(), GetPreSummonY()));
+						CalculateNewPosition2(m_PreSummonLocation.m_X, m_PreSummonLocation.m_Y, m_PreSummonLocation.m_Z, GetRunspeed());
+						SetHeading(CalculateHeadingToTarget(m_PreSummonLocation.m_X, m_PreSummonLocation.m_Y));
 						return;
 					}
 				}
@@ -4105,9 +4105,9 @@ void Bot::Spawn(Client* botCharacterOwner, std::string* errorMessage) {
 			this->GetBotOwner()->CastToClient()->Message(13, "%s save failed!", this->GetCleanName());
 
 		// Spawn the bot at the bow owner's loc
-		this->x_pos = botCharacterOwner->GetX();
-		this->y_pos = botCharacterOwner->GetY();
-		this->z_pos = botCharacterOwner->GetZ();
+		this->m_Position.m_X = botCharacterOwner->GetX();
+		this->m_Position.m_Y = botCharacterOwner->GetY();
+		this->m_Position.m_Z = botCharacterOwner->GetZ();
 
 		// Make the bot look at the bot owner
 		FaceTarget(botCharacterOwner);
@@ -4211,7 +4211,7 @@ void Bot::GetBotItems(std::string* errorMessage, Inventory &inv) {
 
         ItemInst* inst = database.CreateItem(item_id, charges, aug[0], aug[1], aug[2], aug[3], aug[4]);
         if (!inst) {
-            LogFile->write(EQEMuLog::Error, "Warning: botid %i has an invalid item_id %i in inventory slot %i", this->GetBotID(), item_id, slot_id);
+            LogFile->write(EQEmuLog::Error, "Warning: botid %i has an invalid item_id %i in inventory slot %i", this->GetBotID(), item_id, slot_id);
             continue;
         }
 
@@ -4235,7 +4235,7 @@ void Bot::GetBotItems(std::string* errorMessage, Inventory &inv) {
 
         // Save ptr to item in inventory
         if (put_slot_id == INVALID_INDEX)
-            LogFile->write(EQEMuLog::Error, "Warning: Invalid slot_id for item in inventory: botid=%i, item_id=%i, slot_id=%i",this->GetBotID(), item_id, slot_id);
+            LogFile->write(EQEmuLog::Error, "Warning: Invalid slot_id for item in inventory: botid=%i, item_id=%i, slot_id=%i",this->GetBotID(), item_id, slot_id);
 
     }
 
@@ -6017,7 +6017,7 @@ bool Bot::Attack(Mob* other, int Hand, bool FromRiposte, bool IsStrikethrough, b
 {
 	if (!other) {
 		SetTarget(nullptr);
-		LogFile->write(EQEMuLog::Error, "A null Mob object was passed to Bot::Attack for evaluation!");
+		LogFile->write(EQEmuLog::Error, "A null Mob object was passed to Bot::Attack for evaluation!");
 		return false;
 	}
 
@@ -6249,7 +6249,7 @@ bool Bot::Attack(Mob* other, int Hand, bool FromRiposte, bool IsStrikethrough, b
 	MeleeLifeTap(damage);
 
 	if (damage > 0)
-		CheckNumHitsRemaining(NUMHIT_OutgoingHitSuccess);
+		CheckNumHitsRemaining(NumHit::OutgoingHitSuccess);
 
 	//break invis when you attack
 	if(invisible) {
@@ -7028,7 +7028,7 @@ int32 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 						return 0;
 					break;
 				default:
-					LogFile->write(EQEMuLog::Normal, "CalcFocusEffect: unknown limit spelltype %d", focus_spell.base[i]);
+					LogFile->write(EQEmuLog::Normal, "CalcFocusEffect: unknown limit spelltype %d", focus_spell.base[i]);
 			}
 			break;
 
@@ -7336,7 +7336,7 @@ int32 Bot::CalcBotFocusEffect(BotfocusType bottype, uint16 focus_id, uint16 spel
 		//this spits up a lot of garbage when calculating spell focuses
 		//since they have all kinds of extra effects on them.
 		default:
-			LogFile->write(EQEMuLog::Normal, "CalcFocusEffect: unknown effectid %d", focus_spell.effectid[i]);
+			LogFile->write(EQEmuLog::Normal, "CalcFocusEffect: unknown effectid %d", focus_spell.effectid[i]);
 #endif
 		}
 	}
@@ -7707,7 +7707,7 @@ void Bot::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 	if (HasDied())	return;
 
 	if (max_damage > 0)
-		CheckNumHitsRemaining(NUMHIT_OutgoingHitSuccess);
+		CheckNumHitsRemaining(NumHit::OutgoingHitSuccess);
 
 	//[AA Dragon Punch] value[0] = 100 for 25%, chance value[1] = skill
 	if(aabonuses.SpecialAttackKBProc[0] && aabonuses.SpecialAttackKBProc[1] == skill){
@@ -8420,7 +8420,7 @@ void Bot::ProcessBotOwnerRefDelete(Mob* botOwner) {
 			std::list<Bot*> BotList = entity_list.GetBotsByBotOwnerCharacterID(botOwner->CastToClient()->CharacterID());
 
 			if(!BotList.empty()) {
-				for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); botListItr++) {
+				for(std::list<Bot*>::iterator botListItr = BotList.begin(); botListItr != BotList.end(); ++botListItr) {
 					Bot* tempBot = *botListItr;
 
 					if(tempBot) {
@@ -8550,7 +8550,7 @@ int32 Bot::CalcMaxMana() {
 		}
 		default:
 		{
-			LogFile->write(EQEMuLog::Debug, "Invalid Class '%c' in CalcMaxMana", GetCasterClass());
+			LogFile->write(EQEmuLog::Debug, "Invalid Class '%c' in CalcMaxMana", GetCasterClass());
 			max_mana = 0;
 			break;
 		}
@@ -9076,7 +9076,7 @@ void Bot::DoBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caste
 bool Bot::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot, int32 cast_time, int32 mana_cost, uint32* oSpellWillFinish, uint32 item_slot, int16 *resist_adjust) {
 	bool Result = false;
 
-	if(zone && !zone->IsSpellBlocked(spell_id, GetX(), GetY(), GetZ())) {
+	if(zone && !zone->IsSpellBlocked(spell_id, GetPosition())) {
 
 		mlog(SPELLS__CASTING, "CastSpell called for spell %s (%d) on entity %d, slot %d, time %d, mana %d, from item slot %d",
 			spells[spell_id].name, spell_id, target_id, slot, cast_time, mana_cost, (item_slot==0xFFFFFFFF)?999:item_slot);
@@ -10663,12 +10663,12 @@ void Bot::BotGroupSummon(Group* group, Client* client) {
 				if(botMember->GetBotOwnerCharacterID() == client->CharacterID()) {
 					botMember->SetTarget(botMember->GetBotOwner());
 					botMember->WipeHateList();
-					botMember->Warp(botMember->GetBotOwner()->GetX(), botMember->GetBotOwner()->GetY(), botMember->GetBotOwner()->GetZ());
+					botMember->Warp(botMember->GetBotOwner()->GetPosition());
 
 					if(botMember->HasPet() && botMember->GetPet()) {
 						botMember->GetPet()->SetTarget(botMember);
 						botMember->GetPet()->WipeHateList();
-						botMember->GetPet()->Warp(botMember->GetBotOwner()->GetX(), botMember->GetBotOwner()->GetY(), botMember->GetBotOwner()->GetZ());
+						botMember->GetPet()->Warp(botMember->GetBotOwner()->GetPosition());
 					}
 				}
 			}
@@ -11677,7 +11677,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				else
 				{
 					b->SetTarget(c->CastToMob());
-					b->Warp(c->GetX(), c->GetY(), c->GetZ());
+					b->Warp(c->GetPosition());
 				}
 			}
 		}
@@ -11707,7 +11707,6 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				std::string item_link;
 				Client::TextLink linker;
 				linker.SetLinkType(linker.linkItemInst);
-				linker.SetClientVersion(c->GetClientVersion());
 
 				for(int i = EmuConstants::EQUIPMENT_BEGIN; i <= EmuConstants::EQUIPMENT_END; ++i) {
 					if((i == MainSecondary) && is2Hweapon) {
@@ -15742,47 +15741,39 @@ std::list<Bot*> EntityList::GetBotsByBotOwnerCharacterID(uint32 botOwnerCharacte
 
 void EntityList::BotPickLock(Bot* rogue)
 {
-	auto it = door_list.begin();
 	for (auto it = door_list.begin(); it != door_list.end(); ++it) {
 		Doors *cdoor = it->second;
-		if(cdoor && !cdoor->IsDoorOpen()) {
-			float zdiff = rogue->GetZ() - cdoor->GetZ();
-			if(zdiff < 0)
-				zdiff = 0 - zdiff;
-			float curdist = 0;
-			float tmp = rogue->GetX() - cdoor->GetX();
-			curdist += (tmp * tmp);
-			tmp = rogue->GetY() - cdoor->GetY();
-			curdist += (tmp * tmp);
-			if((zdiff < 10) && (curdist <= 130)) {
-				// All rogue items with lock pick bonuses are hands or primary
-				const ItemInst* item1 = rogue->GetBotItem(MainHands);
-				const ItemInst* item2 = rogue->GetBotItem(MainPrimary);
+		if(!cdoor || cdoor->IsDoorOpen())
+            continue;
 
-				float bonus1 = 0.0f;
-				float bonus2 = 0.0f;
-				float skill = rogue->GetSkill(SkillPickLock);
+        auto diff = rogue->GetPosition() - cdoor->GetPosition();
+        diff.ABS_XYZ();
 
-				if(item1) { // Hand slot item
-					if(item1->GetItem()->SkillModType == SkillPickLock) {
-						bonus1 = skill * (((float)item1->GetItem()->SkillModValue) / 100.0f);
-					}
-				}
+		float curdist = diff.m_X * diff.m_X + diff.m_Y * diff.m_Y;
 
-				if(item2) { // Primary slot item
-					if(item2->GetItem()->SkillModType == SkillPickLock) {
-						bonus2 = skill * (((float)item2->GetItem()->SkillModValue) / 100.0f);
-					}
-				}
+        if((diff.m_Z * diff.m_Z >= 10) || (curdist > 130))
+            continue;
 
-				if((skill+bonus1+bonus2) >= cdoor->GetLockpick()) {
-					cdoor->ForceOpen(rogue);
-				}
-				else {
-					rogue->Say("I am not skilled enough for this lock.");
-				}
-			}
-		}
+        // All rogue items with lock pick bonuses are hands or primary
+        const ItemInst* item1 = rogue->GetBotItem(MainHands);
+        const ItemInst* item2 = rogue->GetBotItem(MainPrimary);
+
+        float bonus1 = 0.0f;
+        float bonus2 = 0.0f;
+        float skill = rogue->GetSkill(SkillPickLock);
+
+        if(item1) // Hand slot item
+            if(item1->GetItem()->SkillModType == SkillPickLock)
+                bonus1 = skill * (((float)item1->GetItem()->SkillModValue) / 100.0f);
+
+        if(item2) // Primary slot item
+            if(item2->GetItem()->SkillModType == SkillPickLock)
+                bonus2 = skill * (((float)item2->GetItem()->SkillModValue) / 100.0f);
+
+        if((skill+bonus1+bonus2) >= cdoor->GetLockpick())
+            cdoor->ForceOpen(rogue);
+        else
+            rogue->Say("I am not skilled enough for this lock.");
 	}
 }
 
@@ -16169,11 +16160,9 @@ bool Bot::HasOrMayGetAggro() {
 
 void Bot::SetHasBeenSummoned(bool wasSummoned) {
 	_hasBeenSummoned = wasSummoned;
-	if(!wasSummoned) {
-		_preSummonX = 0;
-		_preSummonY = 0;
-		_preSummonZ = 0;
-	}
+	if(!wasSummoned)
+        m_PreSummonLocation = xyz_location::Origin();
+
 }
 
 void Bot::SetDefaultBotStance() {
