@@ -509,7 +509,7 @@ void Client::CompleteConnect()
 
 	if (IsInAGuild()){
 		uint8 rank = GuildRank();
-		if (GetClientVersion() >= EQClientRoF)
+		if (GetClientVersion() >= ClientVersion::RoF)
 		{
 			switch (rank) {
 			case 0: { rank = 5; break; }	// GUILD_MEMBER	0
@@ -831,7 +831,7 @@ void Client::CompleteConnect()
 	if (zone->GetZoneID() == RuleI(World, GuildBankZoneID) && GuildBanks)
 		GuildBanks->SendGuildBank(this);
 
-	if (GetClientVersion() >= EQClientSoD)
+	if (GetClientVersion() >= ClientVersion::SoD)
 		entity_list.SendFindableNPCList(this);
 
 	if (IsInAGuild()) {
@@ -1043,7 +1043,7 @@ void Client::Handle_Connect_OP_ReqClientSpawn(const EQApplicationPacket *app)
 	outapp = new EQApplicationPacket(OP_SendExpZonein, 0);
 	FastQueuePacket(&outapp);
 
-	if (GetClientVersion() >= EQClientRoF)
+	if (GetClientVersion() >= ClientVersion::RoF)
 	{
 		outapp = new EQApplicationPacket(OP_ClientReady, 0);
 		FastQueuePacket(&outapp);
@@ -1317,14 +1317,12 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 
 	conn_state = ReceivedZoneEntry;
 
-	ClientVersion = Connection()->ClientVersion();
-	if (ClientVersion != EQClientUnknown)
-		ClientVersionBit = 1 << (ClientVersion - 1);
-	else
-		ClientVersionBit = 0;
+	SetClientVersion(Connection()->GetClientVersion());
+	if (m_ClientVersion != ClientVersion::Unknown)
+		ClientVersionBit = 1 << (static_cast<unsigned int>(m_ClientVersion) - 1);
 
-	bool siv = m_inv.SetInventoryVersion(ClientVersion);
-	LogFile->write(EQEmuLog::Debug, "%s inventory version to %s(%i)", (siv ? "Succeeded in setting" : "Failed to set"), EQClientVersionName(ClientVersion), ClientVersion);
+	bool siv = m_inv.SetInventoryVersion(m_ClientVersion);
+	LogFile->write(EQEmuLog::Debug, "%s inventory version to %s(%i)", (siv ? "Succeeded in setting" : "Failed to set"), ClientVersionName(m_ClientVersion), m_ClientVersion);
 
 	/* Antighost code
 		tmp var is so the search doesnt find this object
@@ -1507,7 +1505,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		m_pp.guild_id = GuildID();
 		uint8 rank = guild_mgr.GetDisplayedRank(GuildID(), GuildRank(), CharacterID());
 		// FIXME: RoF guild rank
-		if (GetClientVersion() >= EQClientRoF) {
+		if (GetClientVersion() >= ClientVersion::RoF) {
 			switch (rank) {
 			case 0:
 				rank = 5;
@@ -1858,7 +1856,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	/* Task Packets */
 	LoadClientTaskState();
 
-	if (GetClientVersion() >= EQClientRoF) {
+	if (GetClientVersion() >= ClientVersion::RoF) {
 		outapp = new EQApplicationPacket(OP_ReqNewZone, 0);
 		Handle_Connect_OP_ReqNewZone(outapp);
 		safe_delete(outapp);
@@ -2038,7 +2036,7 @@ void Client::Handle_OP_AdventureMerchantPurchase(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to them to be properly using them
-	if (DistNoRoot(*tmp) > USE_NPC_RANGE2)
+	if (ComparativeDistance(m_Position, tmp->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	merchantid = tmp->CastToNPC()->MerchantType;
@@ -2213,7 +2211,7 @@ void Client::Handle_OP_AdventureMerchantRequest(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to them to be properly using them
-	if (DistNoRoot(*tmp) > USE_NPC_RANGE2)
+	if (ComparativeDistance(m_Position, tmp->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	merchantid = tmp->CastToNPC()->MerchantType;
@@ -2304,7 +2302,7 @@ void Client::Handle_OP_AdventureMerchantSell(const EQApplicationPacket *app)
 		return;
 	}
 
-	if (DistNoRoot(*vendor) > USE_NPC_RANGE2)
+	if (ComparativeDistance(m_Position, vendor->GetPosition())  > USE_NPC_RANGE2)
 	{
 		Message(13, "Vendor is out of range.");
 		return;
@@ -2562,7 +2560,7 @@ void Client::Handle_OP_AltCurrencyMerchantRequest(const EQApplicationPacket *app
 
 	NPC* tar = entity_list.GetNPCByID(*((uint32*)app->pBuffer));
 	if (tar) {
-		if (DistNoRoot(*tar) > USE_NPC_RANGE2)
+		if (ComparativeDistance(m_Position, tar->GetPosition())  > USE_NPC_RANGE2)
 			return;
 
 		if (tar->GetClass() != ALT_CURRENCY_MERCHANT) {
@@ -2641,7 +2639,7 @@ void Client::Handle_OP_AltCurrencyPurchase(const EQApplicationPacket *app)
 	AltCurrencyPurchaseItem_Struct *purchase = (AltCurrencyPurchaseItem_Struct*)app->pBuffer;
 	NPC* tar = entity_list.GetNPCByID(purchase->merchant_entity_id);
 	if (tar) {
-		if (DistNoRoot(*tar) > USE_NPC_RANGE2)
+		if (ComparativeDistance(m_Position, tar->GetPosition())> USE_NPC_RANGE2)
 			return;
 
 		if (tar->GetClass() != ALT_CURRENCY_MERCHANT) {
@@ -2778,7 +2776,7 @@ void Client::Handle_OP_AltCurrencySell(const EQApplicationPacket *app)
 
 	NPC* tar = entity_list.GetNPCByID(sell->merchant_entity_id);
 	if (tar) {
-		if (DistNoRoot(*tar) > USE_NPC_RANGE2)
+		if (ComparativeDistance(m_Position, tar->GetPosition()) > USE_NPC_RANGE2)
 			return;
 
 		if (tar->GetClass() != ALT_CURRENCY_MERCHANT) {
@@ -2875,7 +2873,7 @@ void Client::Handle_OP_AltCurrencySellSelection(const EQApplicationPacket *app)
 	AltCurrencySelectItem_Struct *select = (AltCurrencySelectItem_Struct*)app->pBuffer;
 	NPC* tar = entity_list.GetNPCByID(select->merchant_entity_id);
 	if (tar) {
-		if (DistNoRoot(*tar) > USE_NPC_RANGE2)
+		if (ComparativeDistance(m_Position, tar->GetPosition()) > USE_NPC_RANGE2)
 			return;
 
 		if (tar->GetClass() != ALT_CURRENCY_MERCHANT) {
@@ -3033,7 +3031,7 @@ void Client::Handle_OP_Assist(const EQApplicationPacket *app)
 		if (assistee->GetTarget()) {
 			Mob *new_target = assistee->GetTarget();
 			if (new_target && (GetGM() ||
-				Dist(*assistee) <= TARGETING_RANGE)) {
+				Distance(m_Position, assistee->GetPosition()) <= TARGETING_RANGE)) {
 				SetAssistExemption(true);
 				eid->entity_id = new_target->GetID();
 			}
@@ -3087,7 +3085,7 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 	// Delegate to tradeskill object to perform combine
 	AugmentItem_Struct* in_augment = (AugmentItem_Struct*)app->pBuffer;
 	bool deleteItems = false;
-	if (GetClientVersion() >= EQClientRoF)
+	if (GetClientVersion() >= ClientVersion::RoF)
 	{
 		ItemInst *itemOneToPush = nullptr, *itemTwoToPush = nullptr;
 
@@ -5174,7 +5172,7 @@ void Client::Handle_OP_DeleteItem(const EQApplicationPacket *app)
 		int16 AlcoholTolerance = GetSkill(SkillAlcoholTolerance);
 		int16 IntoxicationIncrease;
 
-		if (GetClientVersion() < EQClientSoD)
+		if (GetClientVersion() < ClientVersion::SoD)
 			IntoxicationIncrease = (200 - AlcoholTolerance) * 30 / 200 + 10;
 		else
 			IntoxicationIncrease = (270 - AlcoholTolerance) * 0.111111108 + 10;
@@ -5491,7 +5489,7 @@ void Client::Handle_OP_EndLootRequest(const EQApplicationPacket *app)
 	Entity* entity = entity_list.GetID(*((uint16*)app->pBuffer));
 	if (entity == 0) {
 		Message(13, "Error: OP_EndLootRequest: Corpse not found (ent = 0)");
-		if (GetClientVersion() >= EQClientSoD)
+		if (GetClientVersion() >= ClientVersion::SoD)
 			Corpse::SendEndLootErrorPacket(this);
 		else
 			Corpse::SendLootReqErrorPacket(this);
@@ -6859,13 +6857,28 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 	char *Buffer = (char *)app->pBuffer;
 
 	uint32 Action = VARSTRUCT_DECODE_TYPE(uint32, Buffer);
+	uint32 sentAction = Action;
+
+	if (GetClientVersion() >= ClientVersion::RoF)
+	{
+		Action += 1;
+		/*
+		// Need to find all of the action types for RoF and switch case here
+		switch(Action)
+		{
+		case 4:
+			Action = 5;
+			break;
+		}
+		*/
+	}
 
 	if (!IsInAGuild())
 	{
 		Message(13, "You must be in a Guild to use the Guild Bank.");
 
 		if (Action == GuildBankDeposit)
-			GuildBankDepositAck(true);
+			GuildBankDepositAck(true, sentAction);
 		else
 			GuildBankAck();
 
@@ -6892,7 +6905,7 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 		{
 			Message_StringID(13, GUILD_BANK_FULL);
 
-			GuildBankDepositAck(true);
+			GuildBankDepositAck(true, sentAction);
 
 			return;
 		}
@@ -6941,7 +6954,7 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 		{
 			Message_StringID(13, GUILD_BANK_FULL);
 
-			GuildBankDepositAck(true);
+			GuildBankDepositAck(true, sentAction);
 
 			return;
 		}
@@ -6954,7 +6967,7 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 		{
 			Message(13, "No Item on the cursor.");
 
-			GuildBankDepositAck(true);
+			GuildBankDepositAck(true, sentAction);
 
 			return;
 		}
@@ -6985,14 +6998,14 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 		if (!Allowed)
 		{
 			Message_StringID(13, GUILD_BANK_CANNOT_DEPOSIT);
-			GuildBankDepositAck(true);
+			GuildBankDepositAck(true, sentAction);
 
 			return;
 		}
 
 		if (GuildBanks->AddItem(GuildID(), GuildBankDepositArea, CursorItem->ID, CursorItemInst->GetCharges(), GetName(), GuildBankBankerOnly, ""))
 		{
-			GuildBankDepositAck(false);
+			GuildBankDepositAck(false, sentAction);
 
 			DeleteItemInInventory(MainCursor, 0, false);
 		}
@@ -7413,7 +7426,7 @@ void Client::Handle_OP_GuildInviteAccept(const EQApplicationPacket *app)
 
 	GuildInviteAccept_Struct* gj = (GuildInviteAccept_Struct*)app->pBuffer;
 
-	if (GetClientVersion() >= EQClientRoF)
+	if (GetClientVersion() >= ClientVersion::RoF)
 	{
 		if (gj->response > 9)
 		{
@@ -7473,7 +7486,7 @@ void Client::Handle_OP_GuildInviteAccept(const EQApplicationPacket *app)
 
 			uint32 guildrank = gj->response;
 
-			if (GetClientVersion() >= EQClientRoF)
+			if (GetClientVersion() >= ClientVersion::RoF)
 			{
 				if (gj->response == 8)
 				{
@@ -8082,7 +8095,7 @@ void Client::Handle_OP_InspectRequest(const EQApplicationPacket *app)
 	Mob* tmp = entity_list.GetMob(ins->TargetID);
 
 	if (tmp != 0 && tmp->IsClient()) {
-		if (tmp->CastToClient()->GetClientVersion() < EQClientSoF) { tmp->CastToClient()->QueuePacket(app); } // Send request to target
+		if (tmp->CastToClient()->GetClientVersion() < ClientVersion::SoF) { tmp->CastToClient()->QueuePacket(app); } // Send request to target
 		// Inspecting an SoF or later client will make the server handle the request
 		else { ProcessInspectRequest(tmp->CastToClient(), this); }
 	}
@@ -8602,7 +8615,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 			}
 			else
 			{
-				if (GetClientVersion() >= EQClientSoD && !inst->IsEquipable(GetBaseRace(), GetClass()))
+				if (GetClientVersion() >= ClientVersion::SoD && !inst->IsEquipable(GetBaseRace(), GetClass()))
 				{
 					if (item->ItemType != ItemTypeFood && item->ItemType != ItemTypeDrink && item->ItemType != ItemTypeAlcohol)
 					{
@@ -8724,7 +8737,7 @@ void Client::Handle_OP_LDoNDisarmTraps(const EQApplicationPacket *app)
 	{
 		if (HasSkill(SkillDisarmTraps))
 		{
-			if (DistNoRootNoZ(*target) > RuleI(Adventure, LDoNTrapDistanceUse))
+			if (ComparativeDistanceNoZ(m_Position, target->GetPosition()) > RuleI(Adventure, LDoNTrapDistanceUse))
 			{
 				Message(13, "%s is too far away.", target->GetCleanName());
 				return;
@@ -8757,7 +8770,7 @@ void Client::Handle_OP_LDoNPickLock(const EQApplicationPacket *app)
 	{
 		if (HasSkill(SkillPickLock))
 		{
-			if (DistNoRootNoZ(*target) > RuleI(Adventure, LDoNTrapDistanceUse))
+			if (ComparativeDistanceNoZ(m_Position, target->GetPosition()) > RuleI(Adventure, LDoNTrapDistanceUse))
 			{
 				Message(13, "%s is too far away.", target->GetCleanName());
 				return;
@@ -8776,7 +8789,7 @@ void Client::Handle_OP_LDoNSenseTraps(const EQApplicationPacket *app)
 	{
 		if (HasSkill(SkillSenseTraps))
 		{
-			if (DistNoRootNoZ(*target) > RuleI(Adventure, LDoNTrapDistanceUse))
+			if (ComparativeDistanceNoZ(m_Position, target->GetPosition()) > RuleI(Adventure, LDoNTrapDistanceUse))
 			{
 				Message(13, "%s is too far away.", target->GetCleanName());
 				return;
@@ -9204,7 +9217,7 @@ void Client::Handle_OP_LootRequest(const EQApplicationPacket *app)
 	{
 		SetLooting(ent->GetID()); //store the entity we are looting
 		Corpse *ent_corpse = ent->CastToCorpse();
-		if (DistNoRootNoZ(ent_corpse->GetX(), ent_corpse->GetY()) > 625)
+		if (ComparativeDistanceNoZ(m_Position, ent_corpse->GetPosition())  > 625)
 		{
 			Message(13, "Corpse too far away.");
 			Corpse::SendLootReqErrorPacket(this);
@@ -9436,21 +9449,21 @@ void Client::Handle_OP_MercenaryDataRequest(const EQApplicationPacket *app)
 		int mercTypeCount = 0;
 		int mercCount = 0;
 
-		if (DistNoRoot(*tar) > USE_NPC_RANGE2)
+		if (ComparativeDistance(m_Position, tar->GetPosition()) > USE_NPC_RANGE2)
 			return;
 
 		if (tar->GetClass() != MERCERNARY_MASTER) {
 			return;
 		}
 
-		mercTypeCount = tar->GetNumMercTypes(GetClientVersion());
-		mercCount = tar->GetNumMercs(GetClientVersion());
+		mercTypeCount = tar->GetNumMercTypes(static_cast<unsigned int>(GetClientVersion()));
+		mercCount = tar->GetNumMercs(static_cast<unsigned int>(GetClientVersion()));
 
 		if (mercCount > MAX_MERC)
 			return;
 
-		std::list<MercType> mercTypeList = tar->GetMercTypesList(GetClientVersion());
-		std::list<MercData> mercDataList = tar->GetMercsList(GetClientVersion());
+		std::list<MercType> mercTypeList = tar->GetMercTypesList(static_cast<unsigned int>(GetClientVersion()));
+		std::list<MercData> mercDataList = tar->GetMercsList(static_cast<unsigned int>(GetClientVersion()));
 
 		int i = 0;
 		int StanceCount = 0;
@@ -9818,7 +9831,7 @@ void Client::Handle_OP_OpenGuildTributeMaster(const EQApplicationPacket *app)
 		StartTribute_Struct* st = (StartTribute_Struct*)app->pBuffer;
 		Mob* tribmast = entity_list.GetMob(st->tribute_master_id);
 		if (tribmast && tribmast->IsNPC() && tribmast->GetClass() == GUILD_TRIBUTE_MASTER
-			&& DistNoRoot(*tribmast) <= USE_NPC_RANGE2) {
+			&& ComparativeDistance(m_Position, tribmast->GetPosition()) <= USE_NPC_RANGE2) {
 			st->response = 1;
 			QueuePacket(app);
 			tribute_master_id = st->tribute_master_id;
@@ -9850,7 +9863,7 @@ void Client::Handle_OP_OpenTributeMaster(const EQApplicationPacket *app)
 		StartTribute_Struct* st = (StartTribute_Struct*)app->pBuffer;
 		Mob* tribmast = entity_list.GetMob(st->tribute_master_id);
 		if (tribmast && tribmast->IsNPC() && tribmast->GetClass() == TRIBUTE_MASTER
-			&& DistNoRoot(*tribmast) <= USE_NPC_RANGE2) {
+			&& ComparativeDistance(m_Position, tribmast->GetPosition()) <= USE_NPC_RANGE2) {
 			st->response = 1;
 			QueuePacket(app);
 			tribute_master_id = st->tribute_master_id;
@@ -9945,7 +9958,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 		}
 
 		if ((mypet->GetPetType() == petAnimation && GetAA(aaAnimationEmpathy) >= 2) || mypet->GetPetType() != petAnimation) {
-			if (GetTarget() != this && mypet->DistNoRootNoZ(*GetTarget()) <= (RuleR(Pets, AttackCommandRange)*RuleR(Pets, AttackCommandRange))) {
+			if (GetTarget() != this && ComparativeDistanceNoZ(mypet->GetPosition(), GetTarget()->GetPosition()) <= (RuleR(Pets, AttackCommandRange)*RuleR(Pets, AttackCommandRange))) {
 				if (mypet->IsHeld()) {
 					if (!mypet->IsFocused()) {
 						mypet->SetHeld(false); //break the hold and guard if we explicitly tell the pet to attack.
@@ -9980,7 +9993,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 		}
 
 		if ((mypet->GetPetType() == petAnimation && GetAA(aaAnimationEmpathy) >= 2) || mypet->GetPetType() != petAnimation) {
-			if (GetTarget() != this && mypet->DistNoRootNoZ(*GetTarget()) <= (RuleR(Pets, AttackCommandRange)*RuleR(Pets, AttackCommandRange))) {
+			if (GetTarget() != this && ComparativeDistanceNoZ(mypet->GetPosition(), GetTarget()->GetPosition()) <= (RuleR(Pets, AttackCommandRange)*RuleR(Pets, AttackCommandRange))) {
 				zone->AddAggroMob();
 				mypet->AddToHateList(GetTarget(), 1);
 				Message_StringID(MT_PetResponse, PET_ATTACKING, mypet->GetCleanName(), GetTarget()->GetCleanName());
@@ -11351,7 +11364,7 @@ void Client::Handle_OP_ReadBook(const EQApplicationPacket *app)
 	}
 	BookRequest_Struct* book = (BookRequest_Struct*)app->pBuffer;
 	ReadBook(book);
-	if (GetClientVersion() >= EQClientSoF)
+	if (GetClientVersion() >= ClientVersion::SoF)
 	{
 		EQApplicationPacket EndOfBook(OP_FinishWindow, 0);
 		QueuePacket(&EndOfBook);
@@ -12125,7 +12138,7 @@ void Client::Handle_OP_ShopPlayerBuy(const EQApplicationPacket *app)
 	if (mp->quantity < 1) return;
 
 	//you have to be somewhat close to them to be properly using them
-	if (DistNoRoot(*tmp) > USE_NPC_RANGE2)
+	if (ComparativeDistance(m_Position, tmp->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	merchantid = tmp->CastToNPC()->MerchantType;
@@ -12374,7 +12387,7 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to them to be properly using them
-	if (DistNoRoot(*vendor) > USE_NPC_RANGE2)
+	if (ComparativeDistance(m_Position, vendor->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	uint32 price = 0;
@@ -12533,7 +12546,7 @@ void Client::Handle_OP_ShopRequest(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to them to be properly using them
-	if (DistNoRoot(*tmp) > USE_NPC_RANGE2)
+	if (ComparativeDistance(m_Position, tmp->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	merchantid = tmp->CastToNPC()->MerchantType;
@@ -12668,7 +12681,7 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 		{
 			if (!HasSkill(SkillHide) && GetSkill(SkillHide) == 0)
 			{
-				if (GetClientVersion() < EQClientSoF)
+				if (GetClientVersion() < ClientVersion::SoF)
 				{
 					char *hack_str = nullptr;
 					MakeAnyLenString(&hack_str, "Player sent OP_SpawnAppearance with AT_Invis: %i", sa->parameter);
@@ -13035,7 +13048,7 @@ void Client::Handle_OP_TargetCommand(const EQApplicationPacket *app)
 
 	// For /target, send reject or success packet
 	if (app->GetOpcode() == OP_TargetCommand) {
-		if (GetTarget() && !GetTarget()->CastToMob()->IsInvisible(this) && (DistNoRoot(*GetTarget()) <= TARGETING_RANGE*TARGETING_RANGE || GetGM())) {
+		if (GetTarget() && !GetTarget()->CastToMob()->IsInvisible(this) && (ComparativeDistance(m_Position, GetTarget()->GetPosition())  <= TARGETING_RANGE*TARGETING_RANGE || GetGM())) {
 			if (GetTarget()->GetBodyType() == BT_NoTarget2 || GetTarget()->GetBodyType() == BT_Special
 				|| GetTarget()->GetBodyType() == BT_NoTarget)
 			{
@@ -13124,9 +13137,9 @@ void Client::Handle_OP_TargetCommand(const EQApplicationPacket *app)
 			}
 			else if (GetBindSightTarget())
 			{
-				if (GetBindSightTarget()->DistNoRoot(*GetTarget()) > (zone->newzone_data.maxclip*zone->newzone_data.maxclip))
+				if (ComparativeDistance(GetBindSightTarget()->GetPosition(), GetTarget()->GetPosition()) > (zone->newzone_data.maxclip*zone->newzone_data.maxclip))
 				{
-					if (DistNoRoot(*GetTarget()) > (zone->newzone_data.maxclip*zone->newzone_data.maxclip))
+					if (ComparativeDistance(m_Position, GetTarget()->GetPosition()) > (zone->newzone_data.maxclip*zone->newzone_data.maxclip))
 					{
 						char *hacker_str = nullptr;
 						MakeAnyLenString(&hacker_str, "%s attempting to target something beyond the clip plane of %.2f units,"
@@ -13140,7 +13153,7 @@ void Client::Handle_OP_TargetCommand(const EQApplicationPacket *app)
 					}
 				}
 			}
-			else if (DistNoRoot(*GetTarget()) > (zone->newzone_data.maxclip*zone->newzone_data.maxclip))
+			else if (ComparativeDistance(m_Position, GetTarget()->GetPosition()) > (zone->newzone_data.maxclip*zone->newzone_data.maxclip))
 			{
 				char *hacker_str = nullptr;
 				MakeAnyLenString(&hacker_str, "%s attempting to target something beyond the clip plane of %.2f units,"
@@ -13511,7 +13524,7 @@ void Client::Handle_OP_Trader(const EQApplicationPacket *app)
 
 			this->Trader_StartTrader();
 
-			if (GetClientVersion() >= EQClientRoF)
+			if (GetClientVersion() >= ClientVersion::RoF)
 			{
 				EQApplicationPacket* outapp = new EQApplicationPacket(OP_Trader, sizeof(TraderStatus_Struct));
 				TraderStatus_Struct* tss = (TraderStatus_Struct*)outapp->pBuffer;
@@ -13772,7 +13785,7 @@ void Client::Handle_OP_TributeItem(const EQApplicationPacket *app)
 		Mob* tribmast = entity_list.GetMob(t->tribute_master_id);
 		if (!tribmast || !tribmast->IsNPC() || tribmast->GetClass() != TRIBUTE_MASTER)
 			return;
-		if (DistNoRoot(*tribmast) > USE_NPC_RANGE2)
+		if (ComparativeDistance(m_Position, tribmast->GetPosition()) > USE_NPC_RANGE2)
 			return;
 
 		t->tribute_points = TributeItem(t->slot, t->quantity);
@@ -13801,7 +13814,7 @@ void Client::Handle_OP_TributeMoney(const EQApplicationPacket *app)
 		Mob* tribmast = entity_list.GetMob(t->tribute_master_id);
 		if (!tribmast || !tribmast->IsNPC() || tribmast->GetClass() != TRIBUTE_MASTER)
 			return;
-		if (DistNoRoot(*tribmast) > USE_NPC_RANGE2)
+		if (ComparativeDistance(m_Position, tribmast->GetPosition()) > USE_NPC_RANGE2)
 			return;
 
 		t->tribute_points = TributeMoney(t->platinum);

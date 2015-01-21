@@ -686,6 +686,7 @@ void Mob::TypesTemporaryPets(uint32 typesid, Mob *targ, const char *name_overrid
         xy_location(8, 8), xy_location(-8, 8), xy_location(8, -8), xy_location(-8, -8)
     };
 
+
 	while(summon_count > 0) {
 		int pet_duration = pet.duration;
 		if(duration_override > 0)

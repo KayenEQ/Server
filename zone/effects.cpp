@@ -26,6 +26,7 @@
 #include "string_ids.h"
 #include "worldserver.h"
 #include "zonedb.h"
+#include "position.h"
 
 float Mob::GetActSpellRange(uint16 spell_id, float range, bool IsBard)
 {
@@ -690,7 +691,7 @@ void EntityList::AETaunt(Client* taunter, float range)
 			zdiff *= -1;
 		if (zdiff < 10
 				&& taunter->IsAttackAllowed(them)
-				&& taunter->DistNoRootNoZ(*them) <= range) {
+				&& ComparativeDistanceNoZ(taunter->GetPosition(), them->GetPosition()) <= range) {
 			if (taunter->CheckLosFN(them)) {
 				taunter->Taunt(them, true);
 			}
@@ -752,10 +753,10 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
 		if (IsTargetRingSpell(spell_id) && !GetProjSpeed(spell_id)){ //C!Kayen pflag = Projectile
-			dist_targ = curmob->DistNoRoot(caster->GetTargetRingX(), caster->GetTargetRingY(),caster->GetTargetRingZ());
+			dist_targ = ComparativeDistance(static_cast<xyz_location>(curmob->GetPosition()), caster->GetTargetRingLocation());
 		}
-		else if (center){
-			dist_targ = center->DistNoRoot(*curmob);
+		else if (center) {
+			dist_targ = ComparativeDistance(curmob->GetPosition(), center->GetPosition());
 		}
 
 		if (dist_targ > dist2)	//make sure they are in range
@@ -846,7 +847,7 @@ void EntityList::MassGroupBuff(Mob *caster, Mob *center, uint16 spell_id, bool a
 			continue;
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
-		if (center->DistNoRoot(*curmob) > dist2)	//make sure they are in range
+		if (ComparativeDistance(center->GetPosition(), curmob->GetPosition()) > dist2)	//make sure they are in range
 			continue;
 
 		//Only npcs mgb should hit are client pets...
@@ -888,7 +889,7 @@ void EntityList::AEBardPulse(Mob *caster, Mob *center, uint16 spell_id, bool aff
 			continue;
 		if (curmob == caster && !affect_caster)	//watch for caster too
 			continue;
-		if (center->DistNoRoot(*curmob) > dist2)	//make sure they are in range
+		if (ComparativeDistance(center->GetPosition(), curmob->GetPosition()) > dist2)	//make sure they are in range
 			continue;
 		if (isnpc && curmob->IsNPC()) {	//check npc->npc casting
 			FACTION_VALUE f = curmob->GetReverseFactionCon(caster);
@@ -938,7 +939,7 @@ void EntityList::AEAttack(Mob *attacker, float dist, int Hand, int count, bool I
 				&& curmob != attacker //this is not needed unless NPCs can use this
 				&&(attacker->IsAttackAllowed(curmob))
 				&& curmob->GetRace() != 216 && curmob->GetRace() != 472 /* dont attack horses */
-				&& (curmob->DistNoRoot(*attacker) <= dist2)
+				&& (ComparativeDistance(curmob->GetPosition(), attacker->GetPosition()) <= dist2)
 		) {
 			attacker->Attack(curmob, Hand, false, false, IsFromSpell);
 			hit++;

@@ -2634,7 +2634,7 @@ void command_peekinv(Client *c, const Seperator *sep)
 			indexMain, ((item_data == nullptr) ? 0 : item_data->ID), item_link.c_str(), ((inst_main == nullptr) ? 0 : inst_main->GetCharges()));
 	}
 
-	if ((scopeWhere & peekWorn) && (targetClient->GetClientVersion() >= EQClientSoF)) {
+	if ((scopeWhere & peekWorn) && (targetClient->GetClientVersion() >= ClientVersion::SoF)) {
 		inst_main = targetClient->GetInv().GetItem(MainPowerSource);
 		item_data = (inst_main == nullptr) ? nullptr : inst_main->GetItem();
 		linker.SetItemInst(inst_main);
@@ -4910,7 +4910,7 @@ void command_manaburn(Client *c, const Seperator *sep)
 		c->Message(0, "#Manaburn needs a target.");
 	else {
 		int cur_level=c->GetAA(MANA_BURN);//ManaBurn ID
-		if (c->DistNoRootNoZ(*target) > 200)
+		if (ComparativeDistance(c->GetPosition(), target->GetPosition()) > 200)
 			c->Message(0,"You are too far away from your target.");
 		else {
 			if(cur_level == 1) {
@@ -10186,7 +10186,7 @@ void command_distance(Client *c, const Seperator *sep) {
 	if(c && c->GetTarget()) {
 		Mob* target = c->GetTarget();
 
-		c->Message(0, "Your target, %s, is %1.1f units from you.", c->GetTarget()->GetName(), c->Dist(*target));
+		c->Message(0, "Your target, %s, is %1.1f units from you.", c->GetTarget()->GetName(), Distance(c->GetPosition(), target->GetPosition()));
 	}
 }
 
@@ -10308,7 +10308,7 @@ void command_disarmtrap(Client *c, const Seperator *sep)
 	{
 		if(c->HasSkill(SkillDisarmTraps))
 		{
-			if(c->DistNoRootNoZ(*target) > RuleI(Adventure, LDoNTrapDistanceUse))
+			if(ComparativeDistanceNoZ(c->GetPosition(), target->GetPosition()) > RuleI(Adventure, LDoNTrapDistanceUse))
 			{
 				c->Message(13, "%s is too far away.", target->GetCleanName());
 				return;
@@ -10333,7 +10333,7 @@ void command_sensetrap(Client *c, const Seperator *sep)
 	{
 		if(c->HasSkill(SkillSenseTraps))
 		{
-			if(c->DistNoRootNoZ(*target) > RuleI(Adventure, LDoNTrapDistanceUse))
+			if(ComparativeDistanceNoZ(c->GetPosition(), target->GetPosition()) > RuleI(Adventure, LDoNTrapDistanceUse))
 			{
 				c->Message(13, "%s is too far away.", target->GetCleanName());
 				return;
@@ -10358,7 +10358,7 @@ void command_picklock(Client *c, const Seperator *sep)
 	{
 		if(c->HasSkill(SkillPickLock))
 		{
-			if(c->DistNoRootNoZ(*target) > RuleI(Adventure, LDoNTrapDistanceUse))
+			if(ComparativeDistanceNoZ(c->GetPosition(), target->GetPosition()) > RuleI(Adventure, LDoNTrapDistanceUse))
 			{
 				c->Message(13, "%s is too far away.", target->GetCleanName());
 				return;

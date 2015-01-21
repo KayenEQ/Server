@@ -124,7 +124,7 @@ bool Client::Process() {
 				HandleRespawnFromHover(0);
 		}
 
-		if(IsTracking() && (GetClientVersion() >= EQClientSoD) && TrackingTimer.Check())
+		if(IsTracking() && (GetClientVersion() >= ClientVersion::SoD) && TrackingTimer.Check())
 			DoTracking();
 
 		if(hpupdate_timer.Check())
@@ -907,7 +907,7 @@ void Client::BulkSendInventoryItems() {
 	}
 
 	// Power Source
-	if(GetClientVersion() >= EQClientSoF) {
+	if(GetClientVersion() >= ClientVersion::SoF) {
 		const ItemInst* inst = m_inv[MainPowerSource];
 		if(inst) {
 			std::string packet = inst->Serialize(MainPowerSource);
@@ -1637,7 +1637,7 @@ void Client::OPGMTraining(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to a trainer to be properly using them
-	if(DistNoRoot(*pTrainer) > USE_NPC_RANGE2)
+	if(ComparativeDistance(m_Position,pTrainer->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	// if this for-loop acts up again (crashes linux), try enabling the before and after #pragmas
@@ -1685,7 +1685,7 @@ void Client::OPGMEndTraining(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to a trainer to be properly using them
-	if(DistNoRoot(*pTrainer) > USE_NPC_RANGE2)
+	if(ComparativeDistance(m_Position, pTrainer->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	// goodbye message
@@ -1714,7 +1714,7 @@ void Client::OPGMTrainSkill(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to a trainer to be properly using them
-	if(DistNoRoot(*pTrainer) > USE_NPC_RANGE2)
+	if(ComparativeDistance(m_Position, pTrainer->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	if (gmskill->skillbank == 0x01)
@@ -1828,7 +1828,7 @@ void Client::OPGMTrainSkill(const EQApplicationPacket *app)
 		}
 	}
 
-	if(GetClientVersion() >= EQClientSoF) {
+	if(GetClientVersion() >= ClientVersion::SoF) {
 		// The following packet decreases the skill points left in the Training Window and
 		// produces the 'You have increased your skill / learned the basics of' message.
 		//

@@ -2325,59 +2325,7 @@ bool Mob::CanThisClassBlock(void) const
 		return(CastToClient()->HasSkill(SkillBlock));
 	}
 }
-
-float Mob::Dist(const Mob &other) const {
-	float xDiff = other.m_Position.m_X - m_Position.m_X;
-	float yDiff = other.m_Position.m_Y - m_Position.m_Y;
-	float zDiff = other.m_Position.m_Z - m_Position.m_Z;
-
-	return sqrtf( (xDiff * xDiff)
-				+ (yDiff * yDiff)
-				+ (zDiff * zDiff) );
-}
-
-float Mob::DistNoZ(const Mob &other) const {
-	float xDiff = other.m_Position.m_X - m_Position.m_X;
-	float yDiff = other.m_Position.m_Y - m_Position.m_Y;
-
-	return sqrtf( (xDiff * xDiff)
-				+ (yDiff * yDiff) );
-}
-
-float Mob::DistNoRoot(const Mob &other) const {
-	float xDiff = other.m_Position.m_X - m_Position.m_X;
-	float yDiff = other.m_Position.m_Y - m_Position.m_Y;
-	float zDiff = other.m_Position.m_Z - m_Position.m_Z;
-
-	return ( (xDiff * xDiff)
-			+ (yDiff * yDiff)
-			+ (zDiff * zDiff) );
-}
-
-float Mob::DistNoRoot(float x, float y, float z) const {
-	float xDiff = x - m_Position.m_X;
-	float yDiff = y - m_Position.m_Y;
-	float zDiff = z - m_Position.m_Z;
-
-	return ( (xDiff * xDiff)
-			+ (yDiff * yDiff)
-			+ (zDiff * zDiff) );
-}
-
-float Mob::DistNoRootNoZ(float x, float y) const {
-	float xDiff = x - m_Position.m_X;
-	float yDiff = y - m_Position.m_Y;
-
-	return ( (xDiff * xDiff) + (yDiff * yDiff) );
-}
-
-float Mob::DistNoRootNoZ(const Mob &other) const {
-	float xDiff = other.m_Position.m_X - m_Position.m_X;
-	float yDiff = other.m_Position.m_Y - m_Position.m_Y;
-
-	return ( (xDiff * xDiff) + (yDiff * yDiff) );
-}
-
+/*
 float Mob::GetReciprocalHeading(Mob* target) {
 	float Result = 0;
 
@@ -2394,7 +2342,7 @@ float Mob::GetReciprocalHeading(Mob* target) {
 
 	return Result;
 }
-
+*/
 bool Mob::PlotPositionAroundTarget(Mob* target, float &x_dest, float &y_dest, float &z_dest, bool lookForAftArc) {
 	bool Result = false;
 
@@ -2402,7 +2350,7 @@ bool Mob::PlotPositionAroundTarget(Mob* target, float &x_dest, float &y_dest, fl
 		float look_heading = 0;
 
 		if(lookForAftArc)
-			look_heading = GetReciprocalHeading(target);
+			look_heading = GetReciprocalHeading(target->GetPosition());
 		else
 			look_heading = target->GetHeading();
 
@@ -5891,7 +5839,7 @@ void EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spe
 		if (curmob->IsNPC() && !curmob->IsPet())
 			continue;
 
-		dist_targ = center->DistNoRoot(*curmob);
+		dist_targ = ComparativeDistance(curmob->GetPosition(), center->GetPosition());
 
 		if (dist_targ > dist2)	//make sure they are in range
 			continue;
@@ -5924,7 +5872,7 @@ void EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id,
 		if (curmob->IsNPC() && !curmob->IsPet())
 			continue;
 
-		dist_targ = center->DistNoRoot(*curmob);
+		dist_targ = ComparativeDistance(curmob->GetPosition(), center->GetPosition());
 
 		if (dist_targ > dist2)	//make sure they are in range
 			continue;
@@ -7793,8 +7741,8 @@ void EntityList::ApplyEffectField(Mob *caster, Mob *center, uint16 spell_id, boo
 			continue;
 		if (curmob == caster && !affect_caster)
 			continue;
-
-		dist_targ = center->DistNoRoot(*curmob);
+		
+		dist_targ = ComparativeDistance(curmob->GetPosition(), center->GetPosition());
 
 		if (dist_targ > dist2){
 			if (curmob->FindBuff(spell_id))
@@ -7890,7 +7838,7 @@ void EntityList::ApplyAuraField(Mob *caster, Mob *center, uint16 spell_id)
 		if (curmob->IsNPC() && !curmob->IsPetOwnerClient())
 			continue;
 
-		dist_targ = center->DistNoRoot(*curmob);
+		dist_targ = ComparativeDistance(curmob->GetPosition(), center->GetPosition());
 
 		if (dist_targ > dist2){	//make sure they are in range
 			if (curmob->FindBuff(spell_id))
@@ -8758,7 +8706,7 @@ void Mob::BuffFastProcess()
 				{
 					CastToClient()->SendBuffDurationPacket(buffs[buffs_i]);
 					// Hack to get UF to play nicer, RoF seems fine without it
-					if (CastToClient()->GetClientVersion() == EQClientUnderfoot && buffs[buffs_i].numhits > 0)
+					if (CastToClient()->GetClientVersion() == ClientVersion::Und && buffs[buffs_i].numhits > 0)
 						CastToClient()->SendBuffNumHitPacket(buffs[buffs_i], buffs_i);
 					buffs[buffs_i].UpdateClient = false;
 				}
@@ -9443,7 +9391,7 @@ void Mob::DoPetEffectOnOwner()
 
 			float dist2 = spells[spell_id].range * spells[spell_id].range;
 			float dist_targ = 0;
-			dist_targ = DistNoRoot(*owner);
+			dist_targ = ComparativeDistance(owner->GetPosition(), GetPosition());
 
 			if (dist_targ > dist2){
 				if (owner->FindBuff(spell_id))
@@ -9499,7 +9447,7 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	if (IsNoTargetRequiredSpell(spell_id)) {
 
 		//Min Distance checks for directional spells - Hit Chance -10000
-		float dist = DistNoRoot(*target);
+		float dist = ComparativeDistance(target->GetPosition(), GetPosition());
 
 		float min_range = RuleI(Combat, MinRangedAttackDist);
 
@@ -9599,7 +9547,7 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	if (min_range_sp > min_range)
 		min_range = min_range_sp;
 
-	float dist = DistNoRoot(*target);
+	float dist = ComparativeDistance(target->GetPosition(), GetPosition());
 	Shout("Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
 	if(dist > (range * range)) {
 		Message_StringID(13, TARGET_OUT_OF_RANGE);
