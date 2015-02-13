@@ -25,6 +25,7 @@
 #include "position.h"
 #include <set>
 #include <vector>
+#include <memory>
 
 char* strn0cpy(char* dest, const char* source, uint32 size);
 
@@ -78,7 +79,7 @@ public:
 		uint32		in_npctype_id,
 		float		in_size,
 		float		in_runspeed,
-		const xyz_heading& position,
+		const glm::vec4& position,
 		uint8		in_light,
 		uint8		in_texture,
 		uint8		in_helmtexture,
@@ -122,7 +123,7 @@ public:
 
 	//Attack
 	virtual void RogueBackstab(Mob* other, bool min_damage = false, int ReuseTime = 10);
-	virtual void RogueAssassinate(Mob* other); // solar
+	virtual void RogueAssassinate(Mob* other);
 	float MobAngle(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const;
 	// greater than 90 is behind
 	inline bool BehindMob(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
@@ -193,7 +194,7 @@ public:
 	bool IsBeneficialAllowed(Mob *target);
 	virtual int GetCasterLevel(uint16 spell_id);
 	void ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses* newbon, uint16 casterID = 0,
-		bool item_bonus = false, uint32 ticsremaining = 0, int buffslot = -1,
+		uint8 WornType = 0, uint32 ticsremaining = 0, int buffslot = -1,
 		bool IsAISpellEffect = false, uint16 effect_id = 0, int32 se_base = 0, int32 se_limit = 0, int32 se_max = 0);
 	void NegateSpellsBonuses(uint16 spell_id);
 	virtual float GetActSpellRange(uint16 spell_id, float range, bool IsBard = false);
@@ -294,10 +295,10 @@ public:
 	inline virtual uint32 GetNimbusEffect2() const { return nimbus_effect2; }
 	inline virtual uint32 GetNimbusEffect3() const { return nimbus_effect3; }
 	void RemoveNimbusEffect(int effectid);
-	inline const xyz_location& GetTargetRingLocation() const { return m_TargetRing; }
-	inline float GetTargetRingX() const { return m_TargetRing.m_X; }
-	inline float GetTargetRingY() const { return m_TargetRing.m_Y; }
-	inline float GetTargetRingZ() const { return m_TargetRing.m_Z; }
+	inline const glm::vec3& GetTargetRingLocation() const { return m_TargetRing; }
+	inline float GetTargetRingX() const { return m_TargetRing.x; }
+	inline float GetTargetRingY() const { return m_TargetRing.y; }
+	inline float GetTargetRingZ() const { return m_TargetRing.z; }
 	inline bool HasEndurUpkeep() const { return endur_upkeep; }
 	inline void SetEndurUpkeep(bool val) { endur_upkeep = val; }
 
@@ -307,13 +308,16 @@ public:
 	void SetTargetable(bool on);
 	bool IsTargetable() const { return m_targetable; }
 	bool HasShieldEquiped() const { return has_shieldequiped; }
-	inline void ShieldEquiped(bool val) { has_shieldequiped = val; }
+	inline void SetShieldEquiped(bool val) { has_shieldequiped = val; }
+	bool HasTwoHandBluntEquiped() const { return has_twohandbluntequiped; }
+	inline void SetTwoHandBluntEquiped(bool val) { has_twohandbluntequiped = val; }
 	virtual uint16 GetSkill(SkillUseTypes skill_num) const { return 0; }
 	virtual uint32 GetEquipment(uint8 material_slot) const { return(0); }
 	virtual int32 GetEquipmentMaterial(uint8 material_slot) const;
 	virtual int32 GetHerosForgeModel(uint8 material_slot) const;
 	virtual uint32 GetEquipmentColor(uint8 material_slot) const;
 	virtual uint32 IsEliteMaterialItem(uint8 material_slot) const;
+	bool CanClassEquipItem(uint32 item_id);
 	bool AffectedBySpellExcludingSlot(int slot, int effect);
 	virtual bool Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillUseTypes attack_skill) = 0;
 	virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillUseTypes attack_skill,
@@ -399,19 +403,19 @@ public:
 		((static_cast<float>(cur_mana) / max_mana) * 100); }
 	virtual int32 CalcMaxMana();
 	uint32 GetNPCTypeID() const { return npctype_id; }
-	inline const xyz_heading GetPosition() const { return m_Position; }
-	inline const float GetX() const { return m_Position.m_X; }
-	inline const float GetY() const { return m_Position.m_Y; }
-	inline const float GetZ() const { return m_Position.m_Z; }
-	inline const float GetHeading() const { return m_Position.m_Heading; }
+	inline const glm::vec4& GetPosition() const { return m_Position; }
+	inline const float GetX() const { return m_Position.x; }
+	inline const float GetY() const { return m_Position.y; }
+	inline const float GetZ() const { return m_Position.z; }
+	inline const float GetHeading() const { return m_Position.w; }
 	inline const float GetSize() const { return size; }
 	inline const float GetBaseSize() const { return base_size; }
-	inline const float GetTarX() const { return m_TargetLocation.m_X; }
-	inline const float GetTarY() const { return m_TargetLocation.m_Y; }
-	inline const float GetTarZ() const { return m_TargetLocation.m_Z; }
-	inline const float GetTarVX() const { return m_TargetV.m_X; }
-	inline const float GetTarVY() const { return m_TargetV.m_Y; }
-	inline const float GetTarVZ() const { return m_TargetV.m_Z; }
+	inline const float GetTarX() const { return m_TargetLocation.x; }
+	inline const float GetTarY() const { return m_TargetLocation.y; }
+	inline const float GetTarZ() const { return m_TargetLocation.z; }
+	inline const float GetTarVX() const { return m_TargetV.x; }
+	inline const float GetTarVY() const { return m_TargetV.y; }
+	inline const float GetTarVZ() const { return m_TargetV.z; }
 	inline const float GetTarVector() const { return tar_vector; }
 	inline const uint8 GetTarNDX() const { return tar_ndx; }
 	bool IsBoat() const;
@@ -426,11 +430,9 @@ public:
 	virtual inline int32 GetPrimaryFaction() const { return 0; }
 
 	//Movement
-	void Warp(const xyz_location& location);
+	void Warp(const glm::vec3& location);
 	inline bool IsMoving() const { return moving; }
-	//virtual void SetMoving(bool move, bool in_combat_range = false); //C!Kayen
-	virtual void SetMoving(bool move) { moving = move; m_Delta = xyz_heading::Origin(); }
-
+	virtual void SetMoving(bool move) { moving = move; m_Delta = glm::vec4(); }
 	virtual void GoToBind(uint8 bindnum = 0) { }
 	virtual void Gate();
 	float GetWalkspeed() const { return(_GetMovementSpeed(-47)); }
@@ -440,15 +442,15 @@ public:
 	bool IsRunning() const { return m_is_running; }
 	void SetRunning(bool val) { m_is_running = val; }
 	virtual void GMMove(float x, float y, float z, float heading = 0.01, bool SendUpdate = true);
-	void SetDelta(const xyz_heading& delta);
+	void SetDelta(const glm::vec4& delta);
 	void SetTargetDestSteps(uint8 target_steps) { tar_ndx = target_steps; }
 	void SendPosUpdate(uint8 iSendToSelf = 0);
 	void MakeSpawnUpdateNoDelta(PlayerPositionUpdateServer_Struct* spu);
 	void MakeSpawnUpdate(PlayerPositionUpdateServer_Struct* spu);
 	void SendPosition();
 	void SetFlyMode(uint8 flymode);
-	inline void Teleport(Map::Vertex NewPosition) { m_Position.m_X = NewPosition.x; m_Position.m_Y = NewPosition.y;
-		m_Position.m_Z = NewPosition.z; };
+	inline void Teleport(glm::vec3 NewPosition) { m_Position.x = NewPosition.x; m_Position.y = NewPosition.y;
+		m_Position.z = NewPosition.z; };
 
 	//AI
 	static uint32 GetLevelCon(uint8 mylevel, uint8 iOtherLevel);
@@ -469,8 +471,8 @@ public:
 	bool IsEngaged() { return(!hate_list.IsHateListEmpty()); }
 	bool HateSummon();
 	void FaceTarget(Mob* MobToFace = 0);
-	void SetHeading(float iHeading) { if(m_Position.m_Heading != iHeading) { pLastChange = Timer::GetCurrentTime();
-		m_Position.m_Heading = iHeading; } }
+	void SetHeading(float iHeading) { if(m_Position.w != iHeading) { pLastChange = Timer::GetCurrentTime();
+		m_Position.w = iHeading; } }
 	void WipeHateList();
 	void AddFeignMemory(Client* attacker);
 	void RemoveFromFeignMemory(Client* attacker);
@@ -530,12 +532,6 @@ public:
 	bool HasProcs() const;
 	bool IsCombatProc(uint16 spell_id);
 
-	//Logging
-	bool IsLoggingEnabled() const { return(logging_enabled); }
-	void EnableLogging() { logging_enabled = true; }
-	void DisableLogging() { logging_enabled = false; }
-
-
 	//More stuff to sort:
 	virtual bool IsRaidTarget() const { return false; };
 	virtual bool IsAttackAllowed(Mob *target, bool isSpellAttack = false);
@@ -585,7 +581,7 @@ public:
 	void WakeTheDead(uint16 spell_id, Mob *target, uint32 duration);
 	void Spin();
 	void Kill();
-	bool PassCharismaCheck(Mob* caster, Mob* spellTarget, uint16 spell_id);
+	bool PassCharismaCheck(Mob* caster, uint16 spell_id);
 	bool TryDeathSave();
 	bool TryDivineSave();
 	void DoBuffWearOffEffect(uint32 index);
@@ -628,7 +624,7 @@ public:
 	bool PassCastRestriction(bool UseCastRestriction = true, int16 value = 0, bool IsDamage = true);
 	bool ImprovedTaunt();
 	bool TryRootFadeByDamage(int buffslot, Mob* attacker);
-	int16 GetSlowMitigation() const {return slow_mitigation;}
+	float GetSlowMitigation() const { return slow_mitigation; }
 	void CalcSpellPowerDistanceMod(uint16 spell_id, float range, Mob* caster = nullptr);
 	inline int16 GetSpellPowerDistanceMod() const { return SpellPowerDistanceMod; };
 	inline void SetSpellPowerDistanceMod(int16 value) { SpellPowerDistanceMod = value; };
@@ -659,6 +655,15 @@ public:
 	bool IsDestructibleObject() { return destructibleobject; }
 	void SetDestructibleObject(bool in) { destructibleobject = in; }
 
+	inline uint8 GetInnateLightValue() { return innate_light; }
+	inline uint8 GetEquipLightValue() { return equip_light; }
+	inline uint8 GetSpellLightValue() { return spell_light; }
+	virtual void UpdateEquipLightValue() { equip_light = NOT_USED; }
+	inline void SetSpellLightValue(uint8 light_value) { spell_light = (light_value & 0x0F); }
+
+	inline uint8 GetActiveLightValue() { return active_light; }
+	bool UpdateActiveLightValue(); // returns true if change, false if no change
+
 	Mob* GetPet();
 	void SetPet(Mob* newpet);
 	virtual Mob* GetOwner();
@@ -673,6 +678,9 @@ public:
 	bool IsFamiliar() const { return(typeofpet == petFamiliar); }
 	bool IsAnimation() const { return(typeofpet == petAnimation); }
 	bool IsCharmed() const { return(typeofpet == petCharmed); }
+	bool IsTargetLockPet() const { return(typeofpet == petTargetLock); }
+	inline uint32 GetPetTargetLockID() { return pet_targetlock_id; };
+	inline void SetPetTargetLockID(uint32 value) { pet_targetlock_id = value; };
 	void SetOwnerID(uint16 NewOwnerID);
 	inline uint16 GetOwnerID() const { return ownerid; }
 	inline virtual bool HasOwner() { if(GetOwnerID()==0){return false;} return( entity_list.GetMob(GetOwnerID()) != 0); }
@@ -817,10 +825,10 @@ public:
 	void				SetDontCureMeBefore(uint32 time) { pDontCureMeBefore = time; }
 
 	// calculate interruption of spell via movement of mob
-	void SaveSpellLoc() {m_SpellLocation = m_Position; }
-	inline float GetSpellX() const {return m_SpellLocation.m_X;}
-	inline float GetSpellY() const {return m_SpellLocation.m_Y;}
-	inline float GetSpellZ() const {return m_SpellLocation.m_Z;}
+	void SaveSpellLoc() { m_SpellLocation = glm::vec3(m_Position); }
+	inline float GetSpellX() const {return m_SpellLocation.x;}
+	inline float GetSpellY() const {return m_SpellLocation.y;}
+	inline float GetSpellZ() const {return m_SpellLocation.z;}
 	inline bool IsGrouped() const { return isgrouped; }
 	void SetGrouped(bool v);
 	inline bool IsRaidGrouped() const { return israidgrouped; }
@@ -873,15 +881,15 @@ public:
 	Shielders_Struct shielder[MAX_SHIELDERS];
 	Trade* trade;
 
-	inline xyz_heading GetCurrentWayPoint() const { return m_CurrentWayPoint; }
+	inline glm::vec4 GetCurrentWayPoint() const { return m_CurrentWayPoint; }
 	inline float GetCWPP() const { return(static_cast<float>(cur_wp_pause)); }
 	inline int GetCWP() const { return(cur_wp); }
 	void SetCurrentWP(uint16 waypoint) { cur_wp = waypoint; }
 	virtual FACTION_VALUE GetReverseFactionCon(Mob* iOther) { return FACTION_INDIFFERENT; }
 
 	inline bool IsTrackable() const { return(trackable); }
-	Timer* GetAIThinkTimer() { return AIthink_timer; }
-	Timer* GetAIMovementTimer() { return AImovement_timer; }
+	Timer* GetAIThinkTimer() { return AIthink_timer.get(); }
+	Timer* GetAIMovementTimer() { return AImovement_timer.get(); }
 	Timer GetAttackTimer() { return attack_timer; }
 	Timer GetAttackDWTimer() { return attack_dw_timer; }
 	inline bool IsFindable() { return findable; }
@@ -1285,7 +1293,7 @@ protected:
 	uint8 level;
 	uint8 orig_level;
 	uint32 npctype_id;
-	xyz_heading m_Position;
+	glm::vec4 m_Position;
 	uint16 animation;
 	float base_size;
 	float size;
@@ -1318,7 +1326,7 @@ protected:
 	virtual int16 GetFocusEffect(focusType type, uint16 spell_id) { return 0; }
 	void CalculateNewFearpoint();
 	float FindGroundZ(float new_x, float new_y, float z_offset=0.0);
-	Map::Vertex UpdatePath(float ToX, float ToY, float ToZ, float Speed, bool &WaypointChange, bool &NodeReached);
+	glm::vec3 UpdatePath(float ToX, float ToY, float ToZ, float Speed, bool &WaypointChange, bool &NodeReached);
 	void PrintRoute();
 
 	virtual float GetSympatheticProcChances(uint16 spell_id, int16 ProcRateMod, int32 ItemProcRate = 0);
@@ -1334,9 +1342,12 @@ protected:
 	char clean_name[64];
 	char lastname[64];
 
-	xyz_heading m_Delta;
+	glm::vec4 m_Delta;
 
-	uint8 light;
+	uint8 innate_light;	// defined by db field `npc_types`.`light` - where appropriate
+	uint8 equip_light;	// highest value of equipped/carried light-producing items
+	uint8 spell_light;	// set value of any light-producing spell (can be modded to mimic equip_light behavior)
+	uint8 active_light;	// highest value of all light sources
 
 	float fixedZ;
 	EmuAppearance _appearance;
@@ -1356,7 +1367,7 @@ protected:
 	//spell casting vars
 	Timer spellend_timer;
 	uint16 casting_spell_id;
-	xyz_location m_SpellLocation;
+	glm::vec3 m_SpellLocation;
 	int attacked_count;
 	bool delaytimer;
 	uint16 casting_spell_targetid;
@@ -1375,7 +1386,7 @@ protected:
 	bool ActiveProjectileATK;
 	tProjatk ProjectileAtk[MAX_SPELL_PROJECTILE];
 
-	xyz_location m_RewindLocation;
+	glm::vec3 m_RewindLocation;
 
 	Timer rewind_timer;
 
@@ -1412,6 +1423,7 @@ protected:
 	uint16 viral_spells[MAX_SPELL_TRIGGER*2]; // Stores the spell ids of the viruses on target and caster ids
 	bool offhand;
 	bool has_shieldequiped;
+	bool has_twohandbluntequiped;
 	bool has_numhits;
 	bool has_MGB;
 	bool has_ProjectIllusion;
@@ -1437,14 +1449,14 @@ protected:
 	uint32 maxLastFightingDelayMoving;
 	float pAggroRange;
 	float pAssistRange;
-	Timer* AIthink_timer;
-	Timer* AImovement_timer;
-	Timer* AItarget_check_timer;
+	std::unique_ptr<Timer> AIthink_timer;
+	std::unique_ptr<Timer> AImovement_timer;
+	std::unique_ptr<Timer> AItarget_check_timer;
 	bool movetimercompleted;
 	bool permarooted;
-	Timer* AIscanarea_timer;
-	Timer* AIwalking_timer;
-	Timer* AIfeignremember_timer;
+	std::unique_ptr<Timer> AIscanarea_timer;
+	std::unique_ptr<Timer> AIwalking_timer;
+	std::unique_ptr<Timer> AIfeignremember_timer;
 	uint32 pLastFightingDelayMoving;
 	HateList hate_list;
 	std::set<uint32> feign_memory_list;
@@ -1472,18 +1484,18 @@ protected:
 	int pausetype;
 
 	int cur_wp;
-	xyz_heading m_CurrentWayPoint;
+	glm::vec4 m_CurrentWayPoint;
 	int cur_wp_pause;
 
 
 	int patrol;
-	xyz_location m_FearWalkTarget;
+	glm::vec3 m_FearWalkTarget;
 	bool curfp;
 
 	// Pathing
 	//
-	Map::Vertex PathingDestination;
-	Map::Vertex PathingLastPosition;
+	glm::vec3 PathingDestination;
+	glm::vec3 PathingLastPosition;
 	int PathingLoopCount;
 	int PathingLastNodeVisited;
 	std::deque<int> Route;
@@ -1510,15 +1522,16 @@ protected:
 	bool _IsTempPet;
 	int16 count_TempPet;
 	bool pet_owner_client; //Flags regular and pets as belonging to a client
+	uint32 pet_targetlock_id;
 
 	EGNode *_egnode; //the EG node we are in
-	xyz_location m_TargetLocation;
+	glm::vec3 m_TargetLocation;
 	uint8 tar_ndx;
 	float tar_vector;
-	xyz_location m_TargetV;
+	glm::vec3 m_TargetV;
 	float test_vector;
 
-	xyz_location m_TargetRing;
+	glm::vec3 m_TargetRing;
 
 	uint32 m_spellHitsLeft[38]; // Used to track which spells will have their numhits incremented when spell finishes casting, 38 Buffslots
 	int flymode;

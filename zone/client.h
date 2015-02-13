@@ -64,6 +64,7 @@ struct Item_Struct;
 #include <float.h>
 #include <set>
 #include <algorithm>
+#include <memory>
 
 
 #define CLIENT_TIMEOUT 90000
@@ -203,7 +204,7 @@ struct ClientReward
 
 class ClientFactory {
 public:
-	Client *MakeClient(EQStream* ieqs);
+	Client *MakeClient(std::shared_ptr<EQStream> ieqs);
 };
 
 class Client : public Mob
@@ -400,10 +401,10 @@ public:
 
 	inline const char* GetLastName() const { return lastname; }
 
-	inline float ProximityX() const { return m_Proximity.m_X; }
-	inline float ProximityY() const { return m_Proximity.m_Y; }
-	inline float ProximityZ() const { return m_Proximity.m_Z; }
-	inline void ClearAllProximities() { entity_list.ProcessMove(this, xyz_location(FLT_MAX, FLT_MAX, FLT_MAX)); m_Proximity = xyz_location(FLT_MAX,FLT_MAX,FLT_MAX); }
+	inline float ProximityX() const { return m_Proximity.x; }
+	inline float ProximityY() const { return m_Proximity.y; }
+	inline float ProximityZ() const { return m_Proximity.z; }
+	inline void ClearAllProximities() { entity_list.ProcessMove(this, glm::vec3(FLT_MAX, FLT_MAX, FLT_MAX)); m_Proximity = glm::vec3(FLT_MAX,FLT_MAX,FLT_MAX); }
 
 	/*
 			Begin client modifiers
@@ -582,7 +583,7 @@ public:
 	void GoToBind(uint8 bindnum = 0);
 	void GoToSafeCoords(uint16 zone_id, uint16 instance_id);
 	void Gate();
-	void SetBindPoint(int to_zone = -1, int to_instance = 0, const xyz_location& location = xyz_location::Origin());
+	void SetBindPoint(int to_zone = -1, int to_instance = 0, const glm::vec3& location = glm::vec3());
 	void SetStartZone(uint32 zoneid, float x = 0.0f, float y =0.0f, float z = 0.0f);
 	uint32 GetStartZone(void);
 	void MovePC(const char* zonename, float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
@@ -608,8 +609,9 @@ public:
 	int32 GetCharacterFactionLevel(int32 faction_id);
 	int32 GetModCharacterFactionLevel(int32 faction_id);
 	void MerchantRejectMessage(Mob *merchant, int primaryfaction);
-	void SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 totalvalue, uint8 temp);
+	void SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 faction_before_hit, int32 totalvalue, uint8 temp,  int32 this_faction_min, int32 this_faction_max);
 
+	void UpdatePersonalFaction(int32 char_id, int32 npc_value, int32 faction_id, int32 *current_value, int32 temp, int32 this_faction_min, int32 this_faction_max);
 	void SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity);
 	void SetFactionLevel2(uint32 char_id, int32 faction_id, uint8 char_class, uint8 char_race, uint8 char_deity, int32 value, uint8 temp);
 	int32 GetRawItemAC();
@@ -730,6 +732,7 @@ public:
 #endif
 	uint32 GetEquipment(uint8 material_slot) const; // returns item id
 	uint32 GetEquipmentColor(uint8 material_slot) const;
+	virtual void UpdateEquipLightValue() { equip_light = m_inv.FindHighestLightValue(); }
 
 	inline bool AutoSplitEnabled() { return m_pp.autosplit != 0; }
 
@@ -916,8 +919,6 @@ public:
 	void SendZoneFlagInfo(Client *to) const;
 	void LoadZoneFlags();
 
-	void ChangeSQLLog(const char *file);
-	void LogSQL(const char *fmt, ...);
 	bool CanFish();
 	void GoFish();
 	void ForageItem(bool guarantee = false);
@@ -1081,7 +1082,7 @@ public:
 	void DoItemEnterZone();
 	bool DoItemEnterZone(uint32 slot_x, uint32 slot_y); // behavior change: 'slot_y' is now [RANGE]_END and not [RANGE]_END + 1
 	void SummonAndRezzAllCorpses();
-	void SummonAllCorpses(const xyz_heading& position);
+	void SummonAllCorpses(const glm::vec4& position);
 	void DepopAllCorpses();
 	void DepopPlayerCorpse(uint32 dbid);
 	void BuryPlayerCorpses();
@@ -1140,7 +1141,7 @@ public:
 	void HandleLFGuildResponse(ServerPacket *pack);
 	void SendLFGuildStatus();
 	void SendGuildLFGuildStatus();
-	inline bool XTargettingAvailable() const { return ((ClientVersionBit & BIT_UnderfootAndLater) && RuleB(Character, EnableXTargetting)); }
+	inline bool XTargettingAvailable() const { return ((ClientVersionBit & BIT_UFAndLater) && RuleB(Character, EnableXTargetting)); }
 	inline uint8 GetMaxXTargets() const { return MaxXTargets; }
 	void SetMaxXTargets(uint8 NewMax);
 	bool IsXTarget(const Mob *m) const;
@@ -1308,6 +1309,7 @@ protected:
 	friend class Mob;
 	void CalcItemBonuses(StatBonuses* newbon);
 	void AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug = false, bool isTribute = false);
+	void AdditiveWornBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug = false);
 	int CalcRecommendedLevelBonus(uint8 level, uint8 reclevel, int basestat);
 	void CalcEdibleBonuses(StatBonuses* newbon);
 	void CalcAABonuses(StatBonuses* newbon);
@@ -1320,8 +1322,8 @@ protected:
 
 	Mob* bind_sight_target;
 
-	xyz_heading m_AutoAttackPosition;
-	xyz_location m_AutoAttackTargetLocation;
+	glm::vec4 m_AutoAttackPosition;
+	glm::vec3 m_AutoAttackTargetLocation;
 	Mob *aa_los_them_mob;
 	bool los_status;
 	bool los_status_facing;
@@ -1480,6 +1482,7 @@ private:
 
 	bool CanBeInZone();
 	void SendLogoutPackets();
+	void SendZoneInPackets();
 	bool AddPacket(const EQApplicationPacket *, bool);
 	bool AddPacket(EQApplicationPacket**, bool);
 	bool SendAllPackets();
@@ -1492,7 +1495,7 @@ private:
 	void ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z, float heading, uint8 ignorerestrictions, ZoneMode zm);
 	void ProcessMovePC(uint32 zoneID, uint32 instance_id, float x, float y, float z, float heading, uint8 ignorerestrictions = 0, ZoneMode zm = ZoneSolicited);
 
-	xyz_location m_ZoneSummonLocation;
+	glm::vec3 m_ZoneSummonLocation;
 	uint16 zonesummon_id;
 	uint8 zonesummon_ignorerestrictions;
 	ZoneMode zone_mode;
@@ -1530,8 +1533,12 @@ private:
 	Timer TrackingTimer;
 	Timer RespawnFromHoverTimer;
 	Timer merc_timer;
+	Timer anon_toggle_timer;
+	Timer afk_toggle_timer;
+	Timer helm_toggle_timer;
+	Timer light_update_timer;
 
-    xyz_location m_Proximity;
+    glm::vec3 m_Proximity;
 
 	void BulkSendInventoryItems();
 

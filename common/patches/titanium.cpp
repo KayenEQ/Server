@@ -1,7 +1,8 @@
-#include "../debug.h"
+#include "../global_define.h"
+#include "../eqemu_logsys.h"
 #include "titanium.h"
 #include "../opcodemgr.h"
-#include "../logsys.h"
+
 #include "../eq_stream_ident.h"
 #include "../crc32.h"
 #include "../races.h"
@@ -22,12 +23,12 @@ namespace Titanium
 	char* SerializeItem(const ItemInst *inst, int16 slot_id_in, uint32 *length, uint8 depth);
 
 	// server to client inventory location converters
-	static inline int16 ServerToTitaniumSlot(uint32 ServerSlot);
-	static inline int16 ServerToTitaniumCorpseSlot(uint32 ServerCorpse);
+	static inline int16 ServerToTitaniumSlot(uint32 serverSlot);
+	static inline int16 ServerToTitaniumCorpseSlot(uint32 serverCorpseSlot);
 
 	// client to server inventory location converters
-	static inline uint32 TitaniumToServerSlot(int16 TitaniumSlot);
-	static inline uint32 TitaniumToServerCorpseSlot(int16 TitaniumCorpse);
+	static inline uint32 TitaniumToServerSlot(int16 titaniumSlot);
+	static inline uint32 TitaniumToServerCorpseSlot(int16 titaniumCorpseSlot);
 
 	// server to client text link converter
 	static inline void ServerToTitaniumTextLink(std::string& titaniumTextLink, const std::string& serverTextLink);
@@ -47,7 +48,7 @@ namespace Titanium
 			//TODO: figure out how to support shared memory with multiple patches...
 			opcodes = new RegularOpcodeManager();
 			if (!opcodes->LoadOpcodes(opfile.c_str())) {
-				_log(NET__OPCODES, "Error loading opcodes file %s. Not registering patch %s.", opfile.c_str(), name);
+				Log.Out(Logs::General, Logs::Netcode, "[OPCODES] Error loading opcodes file %s. Not registering patch %s.", opfile.c_str(), name);
 				return;
 			}
 		}
@@ -73,7 +74,7 @@ namespace Titanium
 
 
 
-		_log(NET__IDENTIFY, "Registered patch %s", name);
+		Log.Out(Logs::General, Logs::Netcode, "[IDENTIFY] Registered patch %s", name);
 	}
 
 	void Reload()
@@ -88,10 +89,10 @@ namespace Titanium
 			opfile += name;
 			opfile += ".conf";
 			if (!opcodes->ReloadOpcodes(opfile.c_str())) {
-				_log(NET__OPCODES, "Error reloading opcodes file %s for patch %s.", opfile.c_str(), name);
+				Log.Out(Logs::General, Logs::Netcode, "[OPCODES] Error reloading opcodes file %s for patch %s.", opfile.c_str(), name);
 				return;
 			}
-			_log(NET__OPCODES, "Reloaded opcodes for patch %s", name);
+			Log.Out(Logs::General, Logs::Netcode, "[OPCODES] Reloaded opcodes for patch %s", name);
 		}
 	}
 
@@ -112,7 +113,7 @@ namespace Titanium
 
 	const ClientVersion Strategy::GetClientVersion() const
 	{
-		return ClientVersion::Tit;
+		return ClientVersion::Titanium;
 	}
 
 #include "ss_define.h"
@@ -186,7 +187,7 @@ namespace Titanium
 		//determine and verify length
 		int entrycount = in->size / sizeof(BazaarSearchResults_Struct);
 		if (entrycount == 0 || (in->size % sizeof(BazaarSearchResults_Struct)) != 0) {
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d",
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d",
 				opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(BazaarSearchResults_Struct));
 			delete in;
 			return;
@@ -267,7 +268,7 @@ namespace Titanium
 
 		int itemcount = in->size / sizeof(InternalSerializedItem_Struct);
 		if (itemcount == 0 || (in->size % sizeof(InternalSerializedItem_Struct)) != 0) {
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(InternalSerializedItem_Struct));
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(InternalSerializedItem_Struct));
 			delete in;
 			return;
 		}
@@ -284,7 +285,7 @@ namespace Titanium
 				safe_delete_array(serialized);
 			}
 			else {
-				_log(NET__STRUCTS, "Serialization failed on item slot %d during OP_CharInventory.  Item skipped.", eq->slot_id);
+				Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Serialization failed on item slot %d during OP_CharInventory.  Item skipped.", eq->slot_id);
 			}
 
 		}
@@ -711,7 +712,7 @@ namespace Titanium
 		char *serialized = SerializeItem((ItemInst *)int_struct->inst, int_struct->slot_id, &length, 0);
 
 		if (!serialized) {
-			_log(NET__STRUCTS, "Serialization failed on item slot %d.", int_struct->slot_id);
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Serialization failed on item slot %d.", int_struct->slot_id);
 			delete in;
 			return;
 		}
@@ -1286,7 +1287,7 @@ namespace Titanium
 
 		if (EntryCount == 0 || ((in->size % sizeof(Track_Struct))) != 0)
 		{
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Track_Struct));
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Track_Struct));
 			delete in;
 			return;
 		}
@@ -1403,7 +1404,7 @@ namespace Titanium
 		//determine and verify length
 		int entrycount = in->size / sizeof(Spawn_Struct);
 		if (entrycount == 0 || (in->size % sizeof(Spawn_Struct)) != 0) {
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Spawn_Struct));
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Spawn_Struct));
 			delete in;
 			return;
 		}
@@ -1773,7 +1774,7 @@ namespace Titanium
 		DECODE_LENGTH_EXACT(structs::MoveItem_Struct);
 		SETUP_DIRECT_DECODE(MoveItem_Struct, structs::MoveItem_Struct);
 
-		_log(NET__ERROR, "Moved item from %u to %u", eq->from_slot, eq->to_slot);
+		Log.Out(Logs::General, Logs::Netcode, "[Titanium] Moved item from %u to %u", eq->from_slot, eq->to_slot);
 
 		emu->from_slot = TitaniumToServerSlot(eq->from_slot);
 		emu->to_slot = TitaniumToServerSlot(eq->to_slot);
@@ -2003,7 +2004,7 @@ namespace Titanium
 			inst->IsScaling() ? inst->GetExp() / 100 : 0,
 			//merchant_slot,	//instance ID, bullshit for now
 			(merchant_slot == 0) ? inst->GetSerialNumber() : merchant_slot,
-			0, // item recast timer timestamp field (aka..last_cast_time field in SoF+ clients)
+			inst->GetRecastTimestamp(),
 			(stackable ? ((inst->GetItem()->ItemType == ItemTypePotion) ? 1 : 0) : charges),
 			inst->IsAttuned() ? 1 : 0,
 			0
@@ -2061,34 +2062,34 @@ namespace Titanium
 		return serialization;
 	}
 
-	static inline int16 ServerToTitaniumSlot(uint32 ServerSlot)
+	static inline int16 ServerToTitaniumSlot(uint32 serverSlot)
 	{
 		//int16 TitaniumSlot;
-		if (ServerSlot == INVALID_INDEX)
+		if (serverSlot == INVALID_INDEX)
 			return INVALID_INDEX;
 
-		return ServerSlot; // deprecated
+		return serverSlot; // deprecated
 	}
 	
-	static inline int16 ServerToTitaniumCorpseSlot(uint32 ServerCorpse)
+	static inline int16 ServerToTitaniumCorpseSlot(uint32 serverCorpseSlot)
 	{
 		//int16 TitaniumCorpse;
-		return ServerCorpse;
+		return serverCorpseSlot;
 	}
 
-	static inline uint32 TitaniumToServerSlot(int16 TitaniumSlot)
+	static inline uint32 TitaniumToServerSlot(int16 titaniumSlot)
 	{
 		//uint32 ServerSlot;
-		if (TitaniumSlot == INVALID_INDEX)
+		if (titaniumSlot == INVALID_INDEX)
 			return INVALID_INDEX;
 
-		return TitaniumSlot; // deprecated
+		return titaniumSlot; // deprecated
 	}
 	
-	static inline uint32 TitaniumToServerCorpseSlot(int16 TitaniumCorpse)
+	static inline uint32 TitaniumToServerCorpseSlot(int16 titaniumCorpseSlot)
 	{
 		//uint32 ServerCorpse;
-		return TitaniumCorpse;
+		return titaniumCorpseSlot;
 	}
 
 	static inline void ServerToTitaniumTextLink(std::string& titaniumTextLink, const std::string& serverTextLink)

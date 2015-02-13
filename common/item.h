@@ -33,9 +33,6 @@ class EvolveInfo;			// Stores information about an evolving item family
 #include <list>
 #include <map>
 
-// Helper typedefs
-typedef std::map<int16, ItemInst*>::const_iterator			iter_inst;
-typedef std::map<uint8, ItemInst*>::const_iterator			iter_contents;
 
 namespace ItemField
 {
@@ -86,8 +83,8 @@ public:
 	// Public Methods
 	/////////////////////////
 
-	inline std::list<ItemInst*>::const_iterator begin() { return m_list.begin(); }
-	inline std::list<ItemInst*>::const_iterator end() { return m_list.end(); }
+	inline std::list<ItemInst*>::const_iterator cbegin() { return m_list.cbegin(); }
+	inline std::list<ItemInst*>::const_iterator cend() { return m_list.cend(); }
 
 	inline int size() { return static_cast<int>(m_list.size()); } // TODO: change to size_t
 	inline bool empty() { return m_list.empty(); }
@@ -140,8 +137,8 @@ public:
 	ItemInst* GetItem(int16 slot_id) const;
 	ItemInst* GetItem(int16 slot_id, uint8 bagidx) const;
 
-	inline std::list<ItemInst*>::const_iterator cursor_begin() { return m_cursor.begin(); }
-	inline std::list<ItemInst*>::const_iterator cursor_end() { return m_cursor.end(); }
+	inline std::list<ItemInst*>::const_iterator cursor_cbegin() { return m_cursor.cbegin(); }
+	inline std::list<ItemInst*>::const_iterator cursor_cend() { return m_cursor.cend(); }
 
 	inline int CursorSize() { return m_cursor.size(); }
 	inline bool CursorEmpty() { return m_cursor.empty(); }
@@ -207,6 +204,8 @@ public:
 
 	int GetSlotByItemInst(ItemInst *inst);
 
+	uint8 FindHighestLightValue();
+
 	void dumpEntireInventory();
 	void dumpWornItems();
 	void dumpInventory();
@@ -225,7 +224,7 @@ protected:
 
 	int GetSlotByItemInstCollection(const std::map<int16, ItemInst*> &collection, ItemInst *inst);
 	void dumpItemCollection(const std::map<int16, ItemInst*> &collection);
-	void dumpBagContents(ItemInst *inst, iter_inst *it);
+	void dumpBagContents(ItemInst *inst, std::map<int16, ItemInst*>::const_iterator *it);
 
 	// Retrieves item within an inventory bucket
 	ItemInst* _GetItem(const std::map<int16, ItemInst*>& bucket, int16 slot_id) const;
@@ -401,6 +400,8 @@ public:
 	void SetOrnamentationIDFile(uint32 ornament_idfile)			{ m_ornamentidfile = ornament_idfile; }
 	uint32 GetOrnamentHeroModel(int32 material_slot = -1) const;
 	void SetOrnamentHeroModel(uint32 ornament_hero_model)		{ m_ornament_hero_model = ornament_hero_model; }
+	uint32 GetRecastTimestamp() const							{ return m_recast_timestamp; }
+	void SetRecastTimestamp(uint32 in)							{ m_recast_timestamp = in; }
 
 	void Initialize(SharedDatabase *db = nullptr);
 	void ScaleItem();
@@ -421,8 +422,8 @@ protected:
 	//////////////////////////
 	// Protected Members
 	//////////////////////////
-	iter_contents _begin()		{ return m_contents.begin(); }
-	iter_contents _end()		{ return m_contents.end(); }
+	std::map<uint8, ItemInst*>::const_iterator _cbegin() { return m_contents.cbegin(); }
+	std::map<uint8, ItemInst*>::const_iterator _cend() { return m_contents.cend(); }
 
 	friend class Inventory;
 
@@ -448,6 +449,7 @@ protected:
 	uint32				m_ornamenticon;
 	uint32				m_ornamentidfile;
 	uint32				m_ornament_hero_model;
+	uint32				m_recast_timestamp;
 
 	//
 	// Items inside of this item (augs or contents);

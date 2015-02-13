@@ -1,7 +1,8 @@
-#include "../debug.h"
+#include "../global_define.h"
+#include "../eqemu_logsys.h"
 #include "rof2.h"
 #include "../opcodemgr.h"
-#include "../logsys.h"
+
 #include "../eq_stream_ident.h"
 #include "../crc32.h"
 
@@ -24,14 +25,14 @@ namespace RoF2
 	char* SerializeItem(const ItemInst *inst, int16 slot_id, uint32 *length, uint8 depth, ItemPacketType packet_type);
 
 	// server to client inventory location converters
-	static inline structs::ItemSlotStruct ServerToRoF2Slot(uint32 ServerSlot, ItemPacketType PacketType = ItemPacketInvalid);
-	static inline structs::MainInvItemSlotStruct ServerToRoF2MainInvSlot(uint32 ServerSlot);
-	static inline uint32 ServerToRoF2CorpseSlot(uint32 ServerCorpse);
+	static inline structs::ItemSlotStruct ServerToRoF2Slot(uint32 serverSlot, ItemPacketType PacketType = ItemPacketInvalid);
+	static inline structs::MainInvItemSlotStruct ServerToRoF2MainInvSlot(uint32 serverSlot);
+	static inline uint32 ServerToRoF2CorpseSlot(uint32 serverCorpseSlot);
 
 	// client to server inventory location converters
-	static inline uint32 RoF2ToServerSlot(structs::ItemSlotStruct RoF2Slot, ItemPacketType PacketType = ItemPacketInvalid);
-	static inline uint32 RoF2ToServerMainInvSlot(structs::MainInvItemSlotStruct RoF2Slot);
-	static inline uint32 RoF2ToServerCorpseSlot(uint32 RoF2Corpse);
+	static inline uint32 RoF2ToServerSlot(structs::ItemSlotStruct rof2Slot, ItemPacketType PacketType = ItemPacketInvalid);
+	static inline uint32 RoF2ToServerMainInvSlot(structs::MainInvItemSlotStruct rof2Slot);
+	static inline uint32 RoF2ToServerCorpseSlot(uint32 rof2CorpseSlot);
 
 	// server to client text link converter
 	static inline void ServerToRoF2TextLink(std::string& rof2TextLink, const std::string& serverTextLink);
@@ -51,7 +52,7 @@ namespace RoF2
 			//TODO: figure out how to support shared memory with multiple patches...
 			opcodes = new RegularOpcodeManager();
 			if (!opcodes->LoadOpcodes(opfile.c_str())) {
-				_log(NET__OPCODES, "Error loading opcodes file %s. Not registering patch %s.", opfile.c_str(), name);
+				Log.Out(Logs::General, Logs::Netcode, "[OPCODES] Error loading opcodes file %s. Not registering patch %s.", opfile.c_str(), name);
 				return;
 			}
 		}
@@ -77,7 +78,7 @@ namespace RoF2
 
 
 
-		_log(NET__IDENTIFY, "Registered patch %s", name);
+		Log.Out(Logs::General, Logs::Netcode, "[IDENTIFY] Registered patch %s", name);
 	}
 
 	void Reload()
@@ -92,10 +93,10 @@ namespace RoF2
 			opfile += name;
 			opfile += ".conf";
 			if (!opcodes->ReloadOpcodes(opfile.c_str())) {
-				_log(NET__OPCODES, "Error reloading opcodes file %s for patch %s.", opfile.c_str(), name);
+				Log.Out(Logs::General, Logs::Netcode, "[OPCODES] Error reloading opcodes file %s for patch %s.", opfile.c_str(), name);
 				return;
 			}
-			_log(NET__OPCODES, "Reloaded opcodes for patch %s", name);
+			Log.Out(Logs::General, Logs::Netcode, "[OPCODES] Reloaded opcodes for patch %s", name);
 		}
 	}
 
@@ -381,7 +382,7 @@ namespace RoF2
 
 		if (EntryCount == 0 || (in->size % sizeof(BazaarSearchResults_Struct)) != 0)
 		{
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(BazaarSearchResults_Struct));
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(BazaarSearchResults_Struct));
 			delete in;
 			return;
 		}
@@ -616,7 +617,7 @@ namespace RoF2
 
 		if (ItemCount == 0 || (in->size % sizeof(InternalSerializedItem_Struct)) != 0) {
 
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d",
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d",
 				opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(InternalSerializedItem_Struct));
 
 			delete in;
@@ -650,14 +651,14 @@ namespace RoF2
 				safe_delete_array(Serialized);
 			}
 			else {
-				_log(NET__ERROR, "Serialization failed on item slot %d during OP_CharInventory.  Item skipped.", eq->slot_id);
+				Log.Out(Logs::General, Logs::Netcode, "[ERROR] Serialization failed on item slot %d during OP_CharInventory.  Item skipped.", eq->slot_id);
 			}
 		}
 
 		delete[] __emu_buffer;
 
-		//_log(NET__ERROR, "Sending inventory to client");
-		//_hex(NET__ERROR, in->pBuffer, in->size);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Sending inventory to client");
+		//Log.Hex(Logs::Netcode, in->pBuffer, in->size);
 
 		dest->FastQueuePacket(&in, ack_req);
 	}
@@ -1094,16 +1095,16 @@ namespace RoF2
 
 	ENCODE(OP_GroupUpdate)
 	{
-		//_log(NET__ERROR, "OP_GroupUpdate");
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] OP_GroupUpdate");
 		EQApplicationPacket *in = *p;
 		GroupJoin_Struct *gjs = (GroupJoin_Struct*)in->pBuffer;
 
-		//_log(NET__ERROR, "Received outgoing OP_GroupUpdate with action code %i", gjs->action);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Received outgoing OP_GroupUpdate with action code %i", gjs->action);
 		if ((gjs->action == groupActLeave) || (gjs->action == groupActDisband))
 		{
 			if ((gjs->action == groupActDisband) || !strcmp(gjs->yourname, gjs->membername))
 			{
-				//_log(NET__ERROR, "Group Leave, yourname = %s, membername = %s", gjs->yourname, gjs->membername);
+				//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Group Leave, yourname = %s, membername = %s", gjs->yourname, gjs->membername);
 
 				EQApplicationPacket *outapp = new EQApplicationPacket(OP_GroupDisbandYou, sizeof(structs::GroupGeneric_Struct));
 
@@ -1121,14 +1122,14 @@ namespace RoF2
 				return;
 			}
 			//if(gjs->action == groupActLeave)
-			//	_log(NET__ERROR, "Group Leave, yourname = %s, membername = %s", gjs->yourname, gjs->membername);
+			//	Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Group Leave, yourname = %s, membername = %s", gjs->yourname, gjs->membername);
 
 			EQApplicationPacket *outapp = new EQApplicationPacket(OP_GroupDisbandOther, sizeof(structs::GroupGeneric_Struct));
 
 			structs::GroupGeneric_Struct *ggs = (structs::GroupGeneric_Struct*)outapp->pBuffer;
 			memcpy(ggs->name1, gjs->yourname, sizeof(ggs->name1));
 			memcpy(ggs->name2, gjs->membername, sizeof(ggs->name2));
-			//_hex(NET__ERROR, outapp->pBuffer, outapp->size);
+			//Log.Hex(Logs::Netcode, outapp->pBuffer, outapp->size);
 			dest->FastQueuePacket(&outapp);
 
 			delete in;
@@ -1138,19 +1139,19 @@ namespace RoF2
 		if (in->size == sizeof(GroupUpdate2_Struct))
 		{
 			// Group Update2
-			//_log(NET__ERROR, "Struct is GroupUpdate2");
+			//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Struct is GroupUpdate2");
 
 			unsigned char *__emu_buffer = in->pBuffer;
 			GroupUpdate2_Struct *gu2 = (GroupUpdate2_Struct*)__emu_buffer;
 
-			//_log(NET__ERROR, "Yourname is %s", gu2->yourname);
+			//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Yourname is %s", gu2->yourname);
 
 			int MemberCount = 1;
 			int PacketLength = 8 + strlen(gu2->leadersname) + 1 + 22 + strlen(gu2->yourname) + 1;
 
 			for (int i = 0; i < 5; ++i)
 			{
-				//_log(NET__ERROR, "Membername[%i] is %s", i,  gu2->membername[i]);
+				//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Membername[%i] is %s", i,  gu2->membername[i]);
 				if (gu2->membername[i][0] != '\0')
 				{
 					PacketLength += (22 + strlen(gu2->membername[i]) + 1);
@@ -1158,7 +1159,7 @@ namespace RoF2
 				}
 			}
 
-			//_log(NET__ERROR, "Leadername is %s", gu2->leadersname);
+			//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Leadername is %s", gu2->leadersname);
 
 			EQApplicationPacket *outapp = new EQApplicationPacket(OP_GroupUpdateB, PacketLength);
 
@@ -1204,7 +1205,7 @@ namespace RoF2
 				VARSTRUCT_ENCODE_TYPE(uint16, Buffer, 0);
 			}
 
-			//_hex(NET__ERROR, outapp->pBuffer, outapp->size);
+			//Log.Hex(Logs::Netcode, outapp->pBuffer, outapp->size);
 			dest->FastQueuePacket(&outapp);
 
 			outapp = new EQApplicationPacket(OP_GroupLeadershipAAUpdate, sizeof(GroupLeadershipAAUpdate_Struct));
@@ -1220,7 +1221,7 @@ namespace RoF2
 			return;
 
 		}
-		//_log(NET__ERROR, "Generic GroupUpdate, yourname = %s, membername = %s", gjs->yourname, gjs->membername);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Generic GroupUpdate, yourname = %s, membername = %s", gjs->yourname, gjs->membername);
 		ENCODE_LENGTH_EXACT(GroupJoin_Struct);
 		SETUP_DIRECT_ENCODE(GroupJoin_Struct, structs::GroupJoin_Struct);
 
@@ -1232,7 +1233,7 @@ namespace RoF2
 		GLAAus->NPCMarkerID = emu->NPCMarkerID;
 
 		memcpy(&GLAAus->LeaderAAs, &emu->leader_aas, sizeof(GLAAus->LeaderAAs));
-		//_hex(NET__ERROR, __packet->pBuffer, __packet->size);
+		//Log.Hex(Logs::Netcode, __packet->pBuffer, __packet->size);
 
 		FINISH_ENCODE();
 
@@ -1528,7 +1529,7 @@ namespace RoF2
 		char *serialized = SerializeItem((ItemInst *)int_struct->inst, int_struct->slot_id, &length, 0, old_item_pkt->PacketType);
 
 		if (!serialized) {
-			_log(NET__STRUCTS, "Serialization failed on item slot %d.", int_struct->slot_id);
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Serialization failed on item slot %d.", int_struct->slot_id);
 			delete in;
 			return;
 		}
@@ -2369,7 +2370,15 @@ namespace RoF2
 			{
 				outapp->WriteString(emu->bandoliers[r].items[j].item_name);
 				outapp->WriteUInt32(emu->bandoliers[r].items[j].item_id);
-				outapp->WriteUInt32(emu->bandoliers[r].items[j].icon);
+				if (emu->bandoliers[r].items[j].icon)
+				{
+					outapp->WriteSInt32(emu->bandoliers[r].items[j].icon);
+				}
+				else
+				{
+					// If no icon, it must send -1 or Treasure Chest Icon (836) is displayed
+					outapp->WriteSInt32(-1);
+				}
 			}
 		}
 
@@ -2381,7 +2390,7 @@ namespace RoF2
 			{
 				outapp->WriteString("");
 				outapp->WriteUInt32(0);
-				outapp->WriteUInt32(0);
+				outapp->WriteSInt32(-1);
 			}
 		}
 
@@ -2391,14 +2400,21 @@ namespace RoF2
 		{
 			outapp->WriteString(emu->potionbelt.items[r].item_name);
 			outapp->WriteUInt32(emu->potionbelt.items[r].item_id);
-			outapp->WriteUInt32(emu->potionbelt.items[r].icon);
+			if (emu->potionbelt.items[r].icon)
+			{
+				outapp->WriteSInt32(emu->potionbelt.items[r].icon);
+			}
+			else
+			{
+				outapp->WriteSInt32(-1);
+			}
 		}
 
 		for (uint32 r = 0; r < structs::MAX_POTIONS_IN_BELT - EmuConstants::POTION_BELT_SIZE; r++)
 		{
 			outapp->WriteString("");
 			outapp->WriteUInt32(0);
-			outapp->WriteUInt32(0);
+			outapp->WriteSInt32(-1);
 		}
 
 		outapp->WriteSInt32(-1);	// Unknown;
@@ -2492,7 +2508,7 @@ namespace RoF2
 		outapp->WriteUInt32(emu->silver_bank);
 		outapp->WriteUInt32(emu->copper_bank);
 
-		outapp->WriteUInt32(0);				// Unknown
+		outapp->WriteUInt32(emu->platinum_shared);
 		outapp->WriteUInt32(0);				// Unknown
 		outapp->WriteUInt32(0);				// Unknown
 		outapp->WriteUInt32(0);				// Unknown
@@ -2716,7 +2732,7 @@ namespace RoF2
 		// Think we need 1 byte of padding at the end
 		outapp->WriteUInt8(0);				// Unknown
 
-		_log(NET__STRUCTS, "Player Profile Packet is %i bytes", outapp->GetWritePosition());
+		Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Player Profile Packet is %i bytes", outapp->GetWritePosition());
 
 		unsigned char *NewBuffer = new unsigned char[outapp->GetWritePosition()];
 		memcpy(NewBuffer, outapp->pBuffer, outapp->GetWritePosition());
@@ -2727,7 +2743,7 @@ namespace RoF2
 		outapp->WriteUInt32(outapp->size - 9);
 
 		CRC32::SetEQChecksum(outapp->pBuffer, outapp->size - 1, 8);
-		//_hex(NET__ERROR, outapp->pBuffer, outapp->size);
+		//Log.Hex(Logs::Netcode, outapp->pBuffer, outapp->size);
 
 		dest->FastQueuePacket(&outapp, ack_req);
 		delete in;
@@ -2968,8 +2984,6 @@ namespace RoF2
 				OUT(abilities[r].slot);
 			}
 		}
-
-		_hex(NET__ERROR, eq, sizeof(structs::SendAA_Struct) + emu->total_abilities*sizeof(structs::AA_Ability));
 
 		FINISH_ENCODE();
 	}
@@ -3519,7 +3533,7 @@ namespace RoF2
 
 		if (EntryCount == 0 || ((in->size % sizeof(Track_Struct))) != 0)
 		{
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Track_Struct));
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Track_Struct));
 			delete in;
 			return;
 		}
@@ -3766,7 +3780,7 @@ namespace RoF2
 			VARSTRUCT_ENCODE_TYPE(uint32, OutBuffer, x);
 		}
 
-		//_hex(NET__ERROR, outapp->pBuffer, outapp->size);
+		//Log.Hex(Logs::Netcode, outapp->pBuffer, outapp->size);
 		dest->FastQueuePacket(&outapp);
 		delete in;
 	}
@@ -3853,16 +3867,16 @@ namespace RoF2
 		//determine and verify length
 		int entrycount = in->size / sizeof(Spawn_Struct);
 		if (entrycount == 0 || (in->size % sizeof(Spawn_Struct)) != 0) {
-			_log(NET__STRUCTS, "Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Spawn_Struct));
+			Log.Out(Logs::General, Logs::Netcode, "[STRUCTS] Wrong size on outbound %s: Got %d, expected multiple of %d", opcodes->EmuToName(in->GetOpcode()), in->size, sizeof(Spawn_Struct));
 			delete in;
 			return;
 		}
 
-		//_log(NET__STRUCTS, "Spawn name is [%s]", emu->name);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[STRUCTS] Spawn name is [%s]", emu->name);
 
 		emu = (Spawn_Struct *)__emu_buffer;
 
-		//_log(NET__STRUCTS, "Spawn packet size is %i, entries = %i", in->size, entrycount);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[STRUCTS] Spawn packet size is %i, entries = %i", in->size, entrycount);
 
 		char *Buffer = (char *)in->pBuffer, *BufferStart;
 
@@ -4105,10 +4119,10 @@ namespace RoF2
 			Buffer += 29;
 			if (Buffer != (BufferStart + PacketSize))
 			{
-				_log(NET__ERROR, "SPAWN ENCODE LOGIC PROBLEM: Buffer pointer is now %i from end", Buffer - (BufferStart + PacketSize));
+				Log.Out(Logs::General, Logs::Netcode, "[ERROR] SPAWN ENCODE LOGIC PROBLEM: Buffer pointer is now %i from end", Buffer - (BufferStart + PacketSize));
 			}
-			//_log(NET__ERROR, "Sending zone spawn for %s packet is %i bytes", emu->name, outapp->size);
-			//_hex(NET__ERROR, outapp->pBuffer, outapp->size);
+			//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Sending zone spawn for %s packet is %i bytes", emu->name, outapp->size);
+			//Log.Hex(Logs::Netcode, outapp->pBuffer, outapp->size);
 			dest->FastQueuePacket(&outapp, ack_req);
 		}
 
@@ -4523,8 +4537,8 @@ namespace RoF2
 	DECODE(OP_GroupDisband)
 	{
 		//EQApplicationPacket *in = __packet;
-		//_log(NET__ERROR, "Received incoming OP_Disband");
-		//_hex(NET__ERROR, in->pBuffer, in->size);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Received incoming OP_Disband");
+		//Log.Hex(Logs::Netcode, in->pBuffer, in->size);
 		DECODE_LENGTH_EXACT(structs::GroupGeneric_Struct);
 		SETUP_DIRECT_DECODE(GroupGeneric_Struct, structs::GroupGeneric_Struct);
 
@@ -4537,8 +4551,8 @@ namespace RoF2
 	DECODE(OP_GroupFollow)
 	{
 		//EQApplicationPacket *in = __packet;
-		//_log(NET__ERROR, "Received incoming OP_GroupFollow");
-		//_hex(NET__ERROR, in->pBuffer, in->size);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Received incoming OP_GroupFollow");
+		//Log.Hex(Logs::Netcode, in->pBuffer, in->size);
 		DECODE_LENGTH_EXACT(structs::GroupFollow_Struct);
 		SETUP_DIRECT_DECODE(GroupGeneric_Struct, structs::GroupFollow_Struct);
 
@@ -4551,8 +4565,8 @@ namespace RoF2
 	DECODE(OP_GroupFollow2)
 	{
 		//EQApplicationPacket *in = __packet;
-		//_log(NET__ERROR, "Received incoming OP_GroupFollow2");
-		//_hex(NET__ERROR, in->pBuffer, in->size);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Received incoming OP_GroupFollow2");
+		//Log.Hex(Logs::Netcode, in->pBuffer, in->size);
 		DECODE_LENGTH_EXACT(structs::GroupFollow_Struct);
 		SETUP_DIRECT_DECODE(GroupGeneric_Struct, structs::GroupFollow_Struct);
 
@@ -4565,8 +4579,8 @@ namespace RoF2
 	DECODE(OP_GroupInvite)
 	{
 		//EQApplicationPacket *in = __packet;
-		//_log(NET__ERROR, "Received incoming OP_GroupInvite");
-		//_hex(NET__ERROR, in->pBuffer, in->size);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Received incoming OP_GroupInvite");
+		//Log.Hex(Logs::Netcode, in->pBuffer, in->size);
 		DECODE_LENGTH_EXACT(structs::GroupInvite_Struct);
 		SETUP_DIRECT_DECODE(GroupGeneric_Struct, structs::GroupInvite_Struct);
 
@@ -4578,7 +4592,7 @@ namespace RoF2
 
 	DECODE(OP_GroupInvite2)
 	{
-		//_log(NET__ERROR, "Received incoming OP_GroupInvite2. Forwarding");
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Received incoming OP_GroupInvite2. Forwarding");
 		DECODE_FORWARD(OP_GroupInvite);
 	}
 
@@ -4721,13 +4735,10 @@ namespace RoF2
 		DECODE_LENGTH_EXACT(structs::MoveItem_Struct);
 		SETUP_DIRECT_DECODE(MoveItem_Struct, structs::MoveItem_Struct);
 
-		//_log(NET__ERROR, "Moved item from %u to %u", eq->from_slot.MainSlot, eq->to_slot.MainSlot);
-		_log(NET__ERROR, "MoveItem SlotType from %i to %i, MainSlot from %i to %i, SubSlot from %i to %i, AugSlot from %i to %i, Unknown01 from %i to %i, Number %u", eq->from_slot.SlotType, eq->to_slot.SlotType, eq->from_slot.MainSlot, eq->to_slot.MainSlot, eq->from_slot.SubSlot, eq->to_slot.SubSlot, eq->from_slot.AugSlot, eq->to_slot.AugSlot, eq->from_slot.Unknown01, eq->to_slot.Unknown01, eq->number_in_stack);
+		Log.Out(Logs::General, Logs::Netcode, "[RoF2] MoveItem SlotType from %i to %i, MainSlot from %i to %i, SubSlot from %i to %i, AugSlot from %i to %i, Unknown01 from %i to %i, Number %u", eq->from_slot.SlotType, eq->to_slot.SlotType, eq->from_slot.MainSlot, eq->to_slot.MainSlot, eq->from_slot.SubSlot, eq->to_slot.SubSlot, eq->from_slot.AugSlot, eq->to_slot.AugSlot, eq->from_slot.Unknown01, eq->to_slot.Unknown01, eq->number_in_stack);
 		emu->from_slot = RoF2ToServerSlot(eq->from_slot);
 		emu->to_slot = RoF2ToServerSlot(eq->to_slot);
 		IN(number_in_stack);
-
-		_hex(NET__ERROR, eq, sizeof(structs::MoveItem_Struct));
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -5051,13 +5062,13 @@ namespace RoF2
 		std::stringstream ss(std::stringstream::in | std::stringstream::out | std::stringstream::binary);
 
 		const Item_Struct *item = inst->GetUnscaledItem();
-		//_log(NET__ERROR, "Serialize called for: %s", item->Name);
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] Serialize called for: %s", item->Name);
 
 		RoF2::structs::ItemSerializationHeader hdr;
 
 		//sprintf(hdr.unknown000, "06e0002Y1W00");
 
-		snprintf(hdr.unknown000, sizeof(hdr.unknown000), "%012d", item->ID);
+		snprintf(hdr.unknown000, sizeof(hdr.unknown000), "%016d", item->ID);
 
 		hdr.stacksize = stackable ? charges : 1;
 		hdr.unknown004 = 0;
@@ -5073,7 +5084,7 @@ namespace RoF2
 		hdr.scaled_value = inst->IsScaling() ? inst->GetExp() / 100 : 0;
 		hdr.instance_id = (merchant_slot == 0) ? inst->GetSerialNumber() : merchant_slot;
 		hdr.unknown028 = 0;
-		hdr.last_cast_time = ((item->RecastDelay > 1) ? 1212693140 : 0);
+		hdr.last_cast_time = inst->GetRecastTimestamp();
 		hdr.charges = (stackable ? (item->MaxCharges ? 1 : 0) : charges);
 		hdr.inst_nodrop = inst->IsAttuned() ? 1 : 0;
 		hdr.unknown044 = 0;
@@ -5159,7 +5170,7 @@ namespace RoF2
 		}
 
 		ss.write((const char*)&null_term, sizeof(uint8));
-		//_log(NET__ERROR, "ItemBody struct is %i bytes", sizeof(RoF2::structs::ItemBodyStruct));
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] ItemBody struct is %i bytes", sizeof(RoF2::structs::ItemBodyStruct));
 		RoF2::structs::ItemBodyStruct ibs;
 		memset(&ibs, 0, sizeof(RoF2::structs::ItemBodyStruct));
 
@@ -5266,7 +5277,7 @@ namespace RoF2
 			ss.write((const char*)&null_term, sizeof(uint8));
 		}
 
-		//_log(NET__ERROR, "ItemBody secondary struct is %i bytes", sizeof(RoF2::structs::ItemSecondaryBodyStruct));
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] ItemBody secondary struct is %i bytes", sizeof(RoF2::structs::ItemSecondaryBodyStruct));
 		RoF2::structs::ItemSecondaryBodyStruct isbs;
 		memset(&isbs, 0, sizeof(RoF2::structs::ItemSecondaryBodyStruct));
 
@@ -5307,7 +5318,7 @@ namespace RoF2
 			ss.write((const char*)&null_term, sizeof(uint8));
 		}
 
-		//_log(NET__ERROR, "ItemBody tertiary struct is %i bytes", sizeof(RoF2::structs::ItemTertiaryBodyStruct));
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] ItemBody tertiary struct is %i bytes", sizeof(RoF2::structs::ItemTertiaryBodyStruct));
 		RoF2::structs::ItemTertiaryBodyStruct itbs;
 		memset(&itbs, 0, sizeof(RoF2::structs::ItemTertiaryBodyStruct));
 
@@ -5346,7 +5357,7 @@ namespace RoF2
 		// Effect Structures Broken down to allow variable length strings for effect names
 		int32 effect_unknown = 0;
 
-		//_log(NET__ERROR, "ItemBody Click effect struct is %i bytes", sizeof(RoF2::structs::ClickEffectStruct));
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] ItemBody Click effect struct is %i bytes", sizeof(RoF2::structs::ClickEffectStruct));
 		RoF2::structs::ClickEffectStruct ices;
 		memset(&ices, 0, sizeof(RoF2::structs::ClickEffectStruct));
 
@@ -5373,7 +5384,7 @@ namespace RoF2
 
 		ss.write((const char*)&effect_unknown, sizeof(int32));	// clickunk7
 
-		//_log(NET__ERROR, "ItemBody proc effect struct is %i bytes", sizeof(RoF2::structs::ProcEffectStruct));
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] ItemBody proc effect struct is %i bytes", sizeof(RoF2::structs::ProcEffectStruct));
 		RoF2::structs::ProcEffectStruct ipes;
 		memset(&ipes, 0, sizeof(RoF2::structs::ProcEffectStruct));
 
@@ -5397,7 +5408,7 @@ namespace RoF2
 
 		ss.write((const char*)&effect_unknown, sizeof(int32));	// unknown5
 
-		//_log(NET__ERROR, "ItemBody worn effect struct is %i bytes", sizeof(RoF2::structs::WornEffectStruct));
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] ItemBody worn effect struct is %i bytes", sizeof(RoF2::structs::WornEffectStruct));
 		RoF2::structs::WornEffectStruct iwes;
 		memset(&iwes, 0, sizeof(RoF2::structs::WornEffectStruct));
 
@@ -5488,7 +5499,7 @@ namespace RoF2
 		ss.write((const char*)&effect_unknown, sizeof(int32));	// unknown6
 		// End of Effects
 
-		//_log(NET__ERROR, "ItemBody Quaternary effect struct is %i bytes", sizeof(RoF2::structs::ItemQuaternaryBodyStruct));
+		//Log.LogDebugType(Logs::General, Logs::Netcode, "[ERROR] ItemBody Quaternary effect struct is %i bytes", sizeof(RoF2::structs::ItemQuaternaryBodyStruct));
 		RoF2::structs::ItemQuaternaryBodyStruct iqbs;
 		memset(&iqbs, 0, sizeof(RoF2::structs::ItemQuaternaryBodyStruct));
 
@@ -5593,7 +5604,7 @@ namespace RoF2
 		return item_serial;
 	}
 
-	static inline structs::ItemSlotStruct ServerToRoF2Slot(uint32 ServerSlot, ItemPacketType PacketType)
+	static inline structs::ItemSlotStruct ServerToRoF2Slot(uint32 serverSlot, ItemPacketType PacketType)
 	{
 		structs::ItemSlotStruct RoF2Slot;
 		RoF2Slot.SlotType = INVALID_INDEX;
@@ -5605,25 +5616,25 @@ namespace RoF2
 
 		uint32 TempSlot = 0;
 
-		if (ServerSlot < 56 || ServerSlot == MainPowerSource) { // Main Inventory and Cursor
+		if (serverSlot < 56 || serverSlot == MainPowerSource) { // Main Inventory and Cursor
 			if (PacketType == ItemPacketLoot)
 			{
 				RoF2Slot.SlotType = maps::MapCorpse;
-				RoF2Slot.MainSlot = ServerSlot - EmuConstants::CORPSE_BEGIN;
+				RoF2Slot.MainSlot = serverSlot - EmuConstants::CORPSE_BEGIN;
 			}
 			else
 			{
 				RoF2Slot.SlotType = maps::MapPossessions;
-				RoF2Slot.MainSlot = ServerSlot;
+				RoF2Slot.MainSlot = serverSlot;
 			}
 			
-			if (ServerSlot == MainPowerSource)
+			if (serverSlot == MainPowerSource)
 				RoF2Slot.MainSlot = slots::MainPowerSource;
 
-			else if (ServerSlot >= MainCursor && PacketType != ItemPacketLoot) // Cursor and Extended Corpse Inventory
+			else if (serverSlot >= MainCursor && PacketType != ItemPacketLoot) // Cursor and Extended Corpse Inventory
 				RoF2Slot.MainSlot += 3;
 
-			else if (ServerSlot >= MainAmmo) // (> 20)
+			else if (serverSlot >= MainAmmo) // (> 20)
 				RoF2Slot.MainSlot += 1;
 		}
 
@@ -5632,9 +5643,9 @@ namespace RoF2
 		RoF2Slot.MainSlot = ServerSlot - 31;
 		}*/
 
-		else if (ServerSlot >= EmuConstants::GENERAL_BAGS_BEGIN && ServerSlot <= EmuConstants::CURSOR_BAG_END) { // (> 250 && < 341)
+		else if (serverSlot >= EmuConstants::GENERAL_BAGS_BEGIN && serverSlot <= EmuConstants::CURSOR_BAG_END) { // (> 250 && < 341)
 			RoF2Slot.SlotType = maps::MapPossessions;
-			TempSlot = ServerSlot - 1;
+			TempSlot = serverSlot - 1;
 			RoF2Slot.MainSlot = int(TempSlot / EmuConstants::ITEM_CONTAINER_SIZE) - 2;
 			RoF2Slot.SubSlot = TempSlot - ((RoF2Slot.MainSlot + 2) * EmuConstants::ITEM_CONTAINER_SIZE);
 
@@ -5642,14 +5653,14 @@ namespace RoF2
 				RoF2Slot.MainSlot = slots::MainCursor;
 		}
 
-		else if (ServerSlot >= EmuConstants::TRIBUTE_BEGIN && ServerSlot <= EmuConstants::TRIBUTE_END) { // Tribute
+		else if (serverSlot >= EmuConstants::TRIBUTE_BEGIN && serverSlot <= EmuConstants::TRIBUTE_END) { // Tribute
 			RoF2Slot.SlotType = maps::MapTribute;
-			RoF2Slot.MainSlot = ServerSlot - EmuConstants::TRIBUTE_BEGIN;
+			RoF2Slot.MainSlot = serverSlot - EmuConstants::TRIBUTE_BEGIN;
 		}
 
-		else if (ServerSlot >= EmuConstants::BANK_BEGIN && ServerSlot <= EmuConstants::BANK_BAGS_END) {
+		else if (serverSlot >= EmuConstants::BANK_BEGIN && serverSlot <= EmuConstants::BANK_BAGS_END) {
 			RoF2Slot.SlotType = maps::MapBank;
-			TempSlot = ServerSlot - EmuConstants::BANK_BEGIN;
+			TempSlot = serverSlot - EmuConstants::BANK_BEGIN;
 			RoF2Slot.MainSlot = TempSlot;
 
 			if (TempSlot > 30) { // (> 30)
@@ -5658,9 +5669,9 @@ namespace RoF2
 			}
 		}
 
-		else if (ServerSlot >= EmuConstants::SHARED_BANK_BEGIN && ServerSlot <= EmuConstants::SHARED_BANK_BAGS_END) {
+		else if (serverSlot >= EmuConstants::SHARED_BANK_BEGIN && serverSlot <= EmuConstants::SHARED_BANK_BAGS_END) {
 			RoF2Slot.SlotType = maps::MapSharedBank;
-			TempSlot = ServerSlot - EmuConstants::SHARED_BANK_BEGIN;
+			TempSlot = serverSlot - EmuConstants::SHARED_BANK_BEGIN;
 			RoF2Slot.MainSlot = TempSlot;
 
 			if (TempSlot > 30) { // (> 30)
@@ -5669,9 +5680,9 @@ namespace RoF2
 			}
 		}
 
-		else if (ServerSlot >= EmuConstants::TRADE_BEGIN && ServerSlot <= EmuConstants::TRADE_BAGS_END) {
+		else if (serverSlot >= EmuConstants::TRADE_BEGIN && serverSlot <= EmuConstants::TRADE_BAGS_END) {
 			RoF2Slot.SlotType = maps::MapTrade;
-			TempSlot = ServerSlot - EmuConstants::TRADE_BEGIN;
+			TempSlot = serverSlot - EmuConstants::TRADE_BEGIN;
 			RoF2Slot.MainSlot = TempSlot;
 
 			if (TempSlot > 30) {
@@ -5693,18 +5704,18 @@ namespace RoF2
 			*/
 		}
 
-		else if (ServerSlot >= EmuConstants::WORLD_BEGIN && ServerSlot <= EmuConstants::WORLD_END) {
+		else if (serverSlot >= EmuConstants::WORLD_BEGIN && serverSlot <= EmuConstants::WORLD_END) {
 			RoF2Slot.SlotType = maps::MapWorld;
-			TempSlot = ServerSlot - EmuConstants::WORLD_BEGIN;
+			TempSlot = serverSlot - EmuConstants::WORLD_BEGIN;
 			RoF2Slot.MainSlot = TempSlot;
 		}
 
-		_log(NET__ERROR, "Convert Server Slot %i to RoF2 Slots: Type %i, Unk2 %i, Main %i, Sub %i, Aug %i, Unk1 %i", ServerSlot, RoF2Slot.SlotType, RoF2Slot.Unknown02, RoF2Slot.MainSlot, RoF2Slot.SubSlot, RoF2Slot.AugSlot, RoF2Slot.Unknown01);
+		Log.Out(Logs::General, Logs::Netcode, "[ERROR] Convert Server Slot %i to RoF2 Slots: Type %i, Unk2 %i, Main %i, Sub %i, Aug %i, Unk1 %i", serverSlot, RoF2Slot.SlotType, RoF2Slot.Unknown02, RoF2Slot.MainSlot, RoF2Slot.SubSlot, RoF2Slot.AugSlot, RoF2Slot.Unknown01);
 
 		return RoF2Slot;
 	}
 
-	static inline structs::MainInvItemSlotStruct ServerToRoF2MainInvSlot(uint32 ServerSlot)
+	static inline structs::MainInvItemSlotStruct ServerToRoF2MainInvSlot(uint32 serverSlot)
 	{
 		structs::MainInvItemSlotStruct RoF2Slot;
 		RoF2Slot.MainSlot = INVALID_INDEX;
@@ -5714,16 +5725,16 @@ namespace RoF2
 
 		uint32 TempSlot = 0;
 
-		if (ServerSlot < 56 || ServerSlot == MainPowerSource) { // (< 52)
-			RoF2Slot.MainSlot = ServerSlot;
+		if (serverSlot < 56 || serverSlot == MainPowerSource) { // (< 52)
+			RoF2Slot.MainSlot = serverSlot;
 
-			if (ServerSlot == MainPowerSource)
+			if (serverSlot == MainPowerSource)
 				RoF2Slot.MainSlot = slots::MainPowerSource;
 
-			else if (ServerSlot >= MainCursor) // Cursor and Extended Corpse Inventory
+			else if (serverSlot >= MainCursor) // Cursor and Extended Corpse Inventory
 				RoF2Slot.MainSlot += 3;
 
-			else if (ServerSlot >= MainAmmo) // Ammo and Personl Inventory
+			else if (serverSlot >= MainAmmo) // Ammo and Personl Inventory
 				RoF2Slot.MainSlot += 1;
 
 			/*else if (ServerSlot >= MainCursor) { // Cursor
@@ -5734,33 +5745,33 @@ namespace RoF2
 			}*/
 		}
 
-		else if (ServerSlot >= EmuConstants::GENERAL_BAGS_BEGIN && ServerSlot <= EmuConstants::CURSOR_BAG_END) {
-			TempSlot = ServerSlot - 1;
+		else if (serverSlot >= EmuConstants::GENERAL_BAGS_BEGIN && serverSlot <= EmuConstants::CURSOR_BAG_END) {
+			TempSlot = serverSlot - 1;
 			RoF2Slot.MainSlot = int(TempSlot / EmuConstants::ITEM_CONTAINER_SIZE) - 2;
 			RoF2Slot.SubSlot = TempSlot - ((RoF2Slot.MainSlot + 2) * EmuConstants::ITEM_CONTAINER_SIZE);
 		}
 
-		_log(NET__ERROR, "Convert Server Slot %i to RoF2 Slots: Main %i, Sub %i, Aug %i, Unk1 %i", ServerSlot, RoF2Slot.MainSlot, RoF2Slot.SubSlot, RoF2Slot.AugSlot, RoF2Slot.Unknown01);
+		Log.Out(Logs::General, Logs::Netcode, "[ERROR] Convert Server Slot %i to RoF2 Slots: Main %i, Sub %i, Aug %i, Unk1 %i", serverSlot, RoF2Slot.MainSlot, RoF2Slot.SubSlot, RoF2Slot.AugSlot, RoF2Slot.Unknown01);
 
 		return RoF2Slot;
 	}
 
-	static inline uint32 ServerToRoF2CorpseSlot(uint32 ServerCorpse)
+	static inline uint32 ServerToRoF2CorpseSlot(uint32 serverCorpseSlot)
 	{
-		return (ServerCorpse - EmuConstants::CORPSE_BEGIN + 1);
+		return (serverCorpseSlot - EmuConstants::CORPSE_BEGIN + 1);
 	}
 
-	static inline uint32 RoF2ToServerSlot(structs::ItemSlotStruct RoF2Slot, ItemPacketType PacketType)
+	static inline uint32 RoF2ToServerSlot(structs::ItemSlotStruct rof2Slot, ItemPacketType PacketType)
 	{
 		uint32 ServerSlot = INVALID_INDEX;
 		uint32 TempSlot = 0;
 
-		if (RoF2Slot.SlotType == maps::MapPossessions && RoF2Slot.MainSlot < 57) { // Worn/Personal Inventory and Cursor (< 51)
-			if (RoF2Slot.MainSlot == slots::MainPowerSource)
+		if (rof2Slot.SlotType == maps::MapPossessions && rof2Slot.MainSlot < 57) { // Worn/Personal Inventory and Cursor (< 51)
+			if (rof2Slot.MainSlot == slots::MainPowerSource)
 				TempSlot = MainPowerSource;
 
-			else if (RoF2Slot.MainSlot >= slots::MainCursor) // Cursor and Extended Corpse Inventory
-				TempSlot = RoF2Slot.MainSlot - 3;
+			else if (rof2Slot.MainSlot >= slots::MainCursor) // Cursor and Extended Corpse Inventory
+				TempSlot = rof2Slot.MainSlot - 3;
 
 			/*else if (RoF2Slot.MainSlot == slots::MainGeneral9 || RoF2Slot.MainSlot == slots::MainGeneral10) { // 9th and 10th RoF2 inventory/corpse slots
 			// Need to figure out what to do when we get these
@@ -5773,61 +5784,61 @@ namespace RoF2
 			// For now, it's probably best to leave as-is and let this work itself out in the inventory rework.
 			}*/
 
-			else if (RoF2Slot.MainSlot >= slots::MainAmmo) // Ammo and Main Inventory
-				TempSlot = RoF2Slot.MainSlot - 1;
+			else if (rof2Slot.MainSlot >= slots::MainAmmo) // Ammo and Main Inventory
+				TempSlot = rof2Slot.MainSlot - 1;
 
 			else // Worn Slots
-				TempSlot = RoF2Slot.MainSlot;
+				TempSlot = rof2Slot.MainSlot;
 
-			if (RoF2Slot.SubSlot >= SUB_BEGIN) // Bag Slots
-				TempSlot = ((TempSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + RoF2Slot.SubSlot + 1;
+			if (rof2Slot.SubSlot >= SUB_BEGIN) // Bag Slots
+				TempSlot = ((TempSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + rof2Slot.SubSlot + 1;
 
 			ServerSlot = TempSlot;
 		}
 
-		else if (RoF2Slot.SlotType == maps::MapBank) {
+		else if (rof2Slot.SlotType == maps::MapBank) {
 			TempSlot = EmuConstants::BANK_BEGIN;
 
-			if (RoF2Slot.SubSlot >= SUB_BEGIN)
-				TempSlot += ((RoF2Slot.MainSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + RoF2Slot.SubSlot + 1;
+			if (rof2Slot.SubSlot >= SUB_BEGIN)
+				TempSlot += ((rof2Slot.MainSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + rof2Slot.SubSlot + 1;
 
 			else
-				TempSlot += RoF2Slot.MainSlot;
+				TempSlot += rof2Slot.MainSlot;
 
 			ServerSlot = TempSlot;
 		}
 
-		else if (RoF2Slot.SlotType == maps::MapSharedBank) {
+		else if (rof2Slot.SlotType == maps::MapSharedBank) {
 			TempSlot = EmuConstants::SHARED_BANK_BEGIN;
 
-			if (RoF2Slot.SubSlot >= SUB_BEGIN)
-				TempSlot += ((RoF2Slot.MainSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + RoF2Slot.SubSlot + 1;
+			if (rof2Slot.SubSlot >= SUB_BEGIN)
+				TempSlot += ((rof2Slot.MainSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + rof2Slot.SubSlot + 1;
 
 			else
-				TempSlot += RoF2Slot.MainSlot;
+				TempSlot += rof2Slot.MainSlot;
 
 			ServerSlot = TempSlot;
 		}
 
-		else if (RoF2Slot.SlotType == maps::MapTrade) {
+		else if (rof2Slot.SlotType == maps::MapTrade) {
 			TempSlot = EmuConstants::TRADE_BEGIN;
 
-			if (RoF2Slot.SubSlot >= SUB_BEGIN)
-				TempSlot += ((RoF2Slot.MainSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + RoF2Slot.SubSlot + 1;
+			if (rof2Slot.SubSlot >= SUB_BEGIN)
+				TempSlot += ((rof2Slot.MainSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + rof2Slot.SubSlot + 1;
 			// OLD CODE:
 			//TempSlot += 100 + (RoF2Slot.MainSlot * EmuConstants::ITEM_CONTAINER_SIZE) + RoF2Slot.SubSlot;
 
 			else
-				TempSlot += RoF2Slot.MainSlot;
+				TempSlot += rof2Slot.MainSlot;
 
 			ServerSlot = TempSlot;
 		}
 
-		else if (RoF2Slot.SlotType == maps::MapWorld) {
+		else if (rof2Slot.SlotType == maps::MapWorld) {
 			TempSlot = EmuConstants::WORLD_BEGIN;
 
-			if (RoF2Slot.MainSlot >= SUB_BEGIN)
-				TempSlot += RoF2Slot.MainSlot;
+			if (rof2Slot.MainSlot >= SUB_BEGIN)
+				TempSlot += rof2Slot.MainSlot;
 
 			ServerSlot = TempSlot;
 		}
@@ -5841,30 +5852,30 @@ namespace RoF2
 		ServerSlot = TempSlot;
 		}*/
 
-		else if (RoF2Slot.SlotType == maps::MapGuildTribute) {
+		else if (rof2Slot.SlotType == maps::MapGuildTribute) {
 			ServerSlot = INVALID_INDEX;
 		}
 
-		else if (RoF2Slot.SlotType == maps::MapCorpse) {
-			ServerSlot = RoF2Slot.MainSlot + EmuConstants::CORPSE_BEGIN;
+		else if (rof2Slot.SlotType == maps::MapCorpse) {
+			ServerSlot = rof2Slot.MainSlot + EmuConstants::CORPSE_BEGIN;
 		}
 
-		_log(NET__ERROR, "Convert RoF2 Slots: Type %i, Unk2 %i, Main %i, Sub %i, Aug %i, Unk1 %i to Server Slot %i", RoF2Slot.SlotType, RoF2Slot.Unknown02, RoF2Slot.MainSlot, RoF2Slot.SubSlot, RoF2Slot.AugSlot, RoF2Slot.Unknown01, ServerSlot);
+		Log.Out(Logs::General, Logs::Netcode, "[ERROR] Convert RoF2 Slots: Type %i, Unk2 %i, Main %i, Sub %i, Aug %i, Unk1 %i to Server Slot %i", rof2Slot.SlotType, rof2Slot.Unknown02, rof2Slot.MainSlot, rof2Slot.SubSlot, rof2Slot.AugSlot, rof2Slot.Unknown01, ServerSlot);
 
 		return ServerSlot;
 	}
 
-	static inline uint32 RoF2ToServerMainInvSlot(structs::MainInvItemSlotStruct RoF2Slot)
+	static inline uint32 RoF2ToServerMainInvSlot(structs::MainInvItemSlotStruct rof2Slot)
 	{
 		uint32 ServerSlot = INVALID_INDEX;
 		uint32 TempSlot = 0;
 
-		if (RoF2Slot.MainSlot < 57) { // Worn/Personal Inventory and Cursor (< 33)
-			if (RoF2Slot.MainSlot == slots::MainPowerSource)
+		if (rof2Slot.MainSlot < 57) { // Worn/Personal Inventory and Cursor (< 33)
+			if (rof2Slot.MainSlot == slots::MainPowerSource)
 				TempSlot = MainPowerSource;
 
-			else if (RoF2Slot.MainSlot >= slots::MainCursor) // Cursor and Extended Corpse Inventory
-				TempSlot = RoF2Slot.MainSlot - 3;
+			else if (rof2Slot.MainSlot >= slots::MainCursor) // Cursor and Extended Corpse Inventory
+				TempSlot = rof2Slot.MainSlot - 3;
 
 			/*else if (RoF2Slot.MainSlot == slots::MainGeneral9 || RoF2Slot.MainSlot == slots::MainGeneral10) { // 9th and 10th RoF2 inventory slots
 			// Need to figure out what to do when we get these
@@ -5872,26 +5883,26 @@ namespace RoF2
 			// Same as above
 			}*/
 
-			else if (RoF2Slot.MainSlot >= slots::MainAmmo) // Main Inventory and Ammo Slots
-				TempSlot = RoF2Slot.MainSlot - 1;
+			else if (rof2Slot.MainSlot >= slots::MainAmmo) // Main Inventory and Ammo Slots
+				TempSlot = rof2Slot.MainSlot - 1;
 
 			else
-				TempSlot = RoF2Slot.MainSlot;
+				TempSlot = rof2Slot.MainSlot;
 
-			if (RoF2Slot.SubSlot >= SUB_BEGIN) // Bag Slots
-				TempSlot = ((TempSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + RoF2Slot.SubSlot + 1;
+			if (rof2Slot.SubSlot >= SUB_BEGIN) // Bag Slots
+				TempSlot = ((TempSlot + 3) * EmuConstants::ITEM_CONTAINER_SIZE) + rof2Slot.SubSlot + 1;
 
 			ServerSlot = TempSlot;
 		}
 
-		_log(NET__ERROR, "Convert RoF2 Slots: Main %i, Sub %i, Aug %i, Unk1 %i to Server Slot %i", RoF2Slot.MainSlot, RoF2Slot.SubSlot, RoF2Slot.AugSlot, RoF2Slot.Unknown01, ServerSlot);
+		Log.Out(Logs::General, Logs::Netcode, "[ERROR] Convert RoF2 Slots: Main %i, Sub %i, Aug %i, Unk1 %i to Server Slot %i", rof2Slot.MainSlot, rof2Slot.SubSlot, rof2Slot.AugSlot, rof2Slot.Unknown01, ServerSlot);
 
 		return ServerSlot;
 	}
 
-	static inline uint32 RoF2ToServerCorpseSlot(uint32 RoF2Corpse)
+	static inline uint32 RoF2ToServerCorpseSlot(uint32 rof2CorpseSlot)
 	{
-		return (RoF2Corpse + EmuConstants::CORPSE_BEGIN - 1); 
+		return (rof2CorpseSlot + EmuConstants::CORPSE_BEGIN - 1);
 	}
 
 	static inline void ServerToRoF2TextLink(std::string& rof2TextLink, const std::string& serverTextLink)

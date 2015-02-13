@@ -18,7 +18,9 @@
 	client_process.cpp:
 	Handles client login sequence and packets sent from client to zone
 */
-#include "../common/debug.h"
+
+#include "../common/eqemu_logsys.h"
+#include "../common/global_define.h"
 #include <iostream>
 #include <stdio.h>
 #include <zlib.h>
@@ -231,16 +233,14 @@ bool Client::Process() {
 
 		if(GetMercInfo().MercTemplateID != 0 && GetMercInfo().IsSuspended)
 		{
-			if(p_timers.Expired(&database, pTimerMercSuspend, false))
-			{
-				CheckMercSuspendTimer();
-			}
+			CheckMercSuspendTimer();
 		}
 
 		if(IsAIControlled())
 			AI_Process();
 
-		if (bindwound_timer.Check() && bindwound_target != 0) {
+		// Don't reset the bindwound timer so we can check it in BindWound as well.
+		if (bindwound_timer.Check(false) && bindwound_target != 0) {
 			BindWound(bindwound_target, false);
 		}
 
@@ -258,6 +258,13 @@ bool Client::Process() {
 			if(qglobal_purge_timer.Check())
 			{
 				qGlobals->PurgeExpiredGlobals();
+			}
+		}
+
+		if(light_update_timer.Check()) {
+			UpdateEquipLightValue();
+			if(UpdateActiveLightValue()) {
+				SendAppearancePacket(AT_Light, GetActiveLightValue());
 			}
 		}
 
@@ -340,23 +347,23 @@ bool Client::Process() {
 			if(aa_los_them_mob)
 			{
 				if(auto_attack_target != aa_los_them_mob ||
-					m_AutoAttackPosition.m_X != GetX() ||
-					m_AutoAttackPosition.m_Y != GetY() ||
-					m_AutoAttackPosition.m_Z != GetZ() ||
-					m_AutoAttackTargetLocation.m_X != aa_los_them_mob->GetX() ||
-					m_AutoAttackTargetLocation.m_Y != aa_los_them_mob->GetY() ||
-					m_AutoAttackTargetLocation.m_Z != aa_los_them_mob->GetZ())
+					m_AutoAttackPosition.x != GetX() ||
+					m_AutoAttackPosition.y != GetY() ||
+					m_AutoAttackPosition.z != GetZ() ||
+					m_AutoAttackTargetLocation.x != aa_los_them_mob->GetX() ||
+					m_AutoAttackTargetLocation.y != aa_los_them_mob->GetY() ||
+					m_AutoAttackTargetLocation.z != aa_los_them_mob->GetZ())
 				{
 					aa_los_them_mob = auto_attack_target;
 					m_AutoAttackPosition = GetPosition();
-					m_AutoAttackTargetLocation = aa_los_them_mob->GetPosition();
+					m_AutoAttackTargetLocation = glm::vec3(aa_los_them_mob->GetPosition());
 					los_status = CheckLosFN(auto_attack_target);
 					los_status_facing = IsFacingMob(aa_los_them_mob);
 				}
 				// If only our heading changes, we can skip the CheckLosFN call
 				// but above we still need to update los_status_facing
-				if (m_AutoAttackPosition.m_Heading != GetHeading()) {
-					m_AutoAttackPosition.m_Heading = GetHeading();
+				if (m_AutoAttackPosition.w != GetHeading()) {
+					m_AutoAttackPosition.w = GetHeading();
 					los_status_facing = IsFacingMob(aa_los_them_mob);
 				}
 			}
@@ -364,7 +371,7 @@ bool Client::Process() {
 			{
 				aa_los_them_mob = auto_attack_target;
 				m_AutoAttackPosition = GetPosition();
-				m_AutoAttackTargetLocation = aa_los_them_mob->GetPosition();
+				m_AutoAttackTargetLocation = glm::vec3(aa_los_them_mob->GetPosition());
 				los_status = CheckLosFN(auto_attack_target);
 				los_status_facing = IsFacingMob(aa_los_them_mob);
 			}
@@ -519,7 +526,7 @@ bool Client::Process() {
 				else
 				{
 					animation = 0;
-					m_Delta = xyz_heading(0.0f, 0.0f, 0.0f, m_Delta.m_Heading);
+					m_Delta = glm::vec4(0.0f, 0.0f, 0.0f, m_Delta.w);
 					SendPosUpdate(2);
 				}
 			}
@@ -692,7 +699,7 @@ bool Client::Process() {
 
 	if (client_state != CLIENT_LINKDEAD && !eqs->CheckState(ESTABLISHED)) {
 		OnDisconnect(true);
-		std::cout << "Client linkdead: " << name << std::endl;
+		Log.Out(Logs::General, Logs::Zone_Server, "Client linkdead: %s", name);
 
 		if (GetGM()) {
 			if (GetMerc())
@@ -821,7 +828,7 @@ void Client::OnDisconnect(bool hard_disconnect) {
 	Mob *Other = trade->With();
 	if(Other)
 	{
-		mlog(TRADING__CLIENT, "Client disconnected during a trade. Returning their items.");
+		Log.Out(Logs::Detail, Logs::Trading, "Client disconnected during a trade. Returning their items."); 
 		FinishTrade(this);
 
 		if(Other->IsClient())
@@ -858,7 +865,7 @@ void Client::BulkSendInventoryItems() {
 		if(inst) {
 			bool is_arrow = (inst->GetItem()->ItemType == ItemTypeArrow) ? true : false;
 			int16 free_slot_id = m_inv.FindFreeSlot(inst->IsType(ItemClassContainer), true, inst->GetItem()->Size, is_arrow);
-			mlog(INVENTORY__ERROR, "Incomplete Trade Transaction: Moving %s from slot %i to %i", inst->GetItem()->Name, slot_id, free_slot_id);
+			Log.Out(Logs::Detail, Logs::Inventory, "Incomplete Trade Transaction: Moving %s from slot %i to %i", inst->GetItem()->Name, slot_id, free_slot_id);
 			PutItemInInventory(free_slot_id, *inst, false);
 			database.SaveInventory(character_id, nullptr, slot_id);
 			safe_delete(inst);
@@ -997,6 +1004,9 @@ void Client::BulkSendInventoryItems()
 void Client::BulkSendMerchantInventory(int merchant_id, int npcid) {
 	const Item_Struct* handyitem = nullptr;
 	uint32 numItemSlots = 80; //The max number of items passed in the transaction.
+	if (ClientVersionBit & BIT_RoFAndLater) { // RoF+ can send 200 items
+		numItemSlots = 200;
+	}
 	const Item_Struct *item;
 	std::list<MerchantList> merlist = zone->merchanttable[merchant_id];
 	std::list<MerchantList>::const_iterator itr;
@@ -1059,7 +1069,7 @@ void Client::BulkSendMerchantInventory(int merchant_id, int npcid) {
 		// Account for merchant lists with gaps.
 		if (ml.slot >= i) {
 			if (ml.slot > i)
-				LogFile->write(EQEmuLog::Debug, "(WARNING) Merchantlist contains gap at slot %d. Merchant: %d, NPC: %d", i, merchant_id, npcid);
+				Log.Out(Logs::General, Logs::None, "(WARNING) Merchantlist contains gap at slot %d. Merchant: %d, NPC: %d", i, merchant_id, npcid);
 			i = ml.slot + 1;
 		}
 	}
@@ -1151,7 +1161,7 @@ uint8 Client::WithCustomer(uint16 NewCustomer){
 	Client* c = entity_list.GetClientByID(CustomerID);
 
 	if(!c) {
-		_log(TRADING__CLIENT, "Previous customer has gone away.");
+		Log.Out(Logs::Detail, Logs::Trading, "Previous customer has gone away.");
 		CustomerID = NewCustomer;
 		return 1;
 	}
@@ -1163,7 +1173,7 @@ void Client::OPRezzAnswer(uint32 Action, uint32 SpellID, uint16 ZoneID, uint16 I
 {
 	if(PendingRezzXP < 0) {
 		// pendingrezexp is set to -1 if we are not expecting an OP_RezzAnswer
-		_log(SPELLS__REZ, "Unexpected OP_RezzAnswer. Ignoring it.");
+		Log.Out(Logs::Detail, Logs::Spells, "Unexpected OP_RezzAnswer. Ignoring it.");
 		Message(13, "You have already been resurrected.\n");
 		return;
 	}
@@ -1173,7 +1183,7 @@ void Client::OPRezzAnswer(uint32 Action, uint32 SpellID, uint16 ZoneID, uint16 I
 		// Mark the corpse as rezzed in the database, just in case the corpse has buried, or the zone the
 		// corpse is in has shutdown since the rez spell was cast.
 		database.MarkCorpseAsRezzed(PendingRezzDBID);
-		_log(SPELLS__REZ, "Player %s got a %i Rezz, spellid %i in zone%i, instance id %i",
+		Log.Out(Logs::Detail, Logs::Spells, "Player %s got a %i Rezz, spellid %i in zone%i, instance id %i",
 				this->name, (uint16)spells[SpellID].base[0],
 				SpellID, ZoneID, InstanceID);
 
@@ -1223,7 +1233,7 @@ void Client::OPMemorizeSpell(const EQApplicationPacket* app)
 {
 	if(app->size != sizeof(MemorizeSpell_Struct))
 	{
-		LogFile->write(EQEmuLog::Error,"Wrong size on OP_MemorizeSpell. Got: %i, Expected: %i", app->size, sizeof(MemorizeSpell_Struct));
+		Log.Out(Logs::General, Logs::Error, "Wrong size on OP_MemorizeSpell. Got: %i, Expected: %i", app->size, sizeof(MemorizeSpell_Struct));
 		DumpPacket(app);
 		return;
 	}
@@ -1637,7 +1647,7 @@ void Client::OPGMTraining(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to a trainer to be properly using them
-	if(ComparativeDistance(m_Position,pTrainer->GetPosition()) > USE_NPC_RANGE2)
+	if(DistanceSquared(m_Position,pTrainer->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	// if this for-loop acts up again (crashes linux), try enabling the before and after #pragmas
@@ -1685,7 +1695,7 @@ void Client::OPGMEndTraining(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to a trainer to be properly using them
-	if(ComparativeDistance(m_Position, pTrainer->GetPosition()) > USE_NPC_RANGE2)
+	if(DistanceSquared(m_Position, pTrainer->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	// goodbye message
@@ -1714,7 +1724,7 @@ void Client::OPGMTrainSkill(const EQApplicationPacket *app)
 		return;
 
 	//you have to be somewhat close to a trainer to be properly using them
-	if(ComparativeDistance(m_Position, pTrainer->GetPosition()) > USE_NPC_RANGE2)
+	if(DistanceSquared(m_Position, pTrainer->GetPosition()) > USE_NPC_RANGE2)
 		return;
 
 	if (gmskill->skillbank == 0x01)
@@ -1745,12 +1755,12 @@ void Client::OPGMTrainSkill(const EQApplicationPacket *app)
 		SkillUseTypes skill = (SkillUseTypes) gmskill->skill_id;
 
 		if(!CanHaveSkill(skill)) {
-			mlog(CLIENT__ERROR, "Tried to train skill %d, which is not allowed.", skill);
+			Log.Out(Logs::Detail, Logs::Skills, "Tried to train skill %d, which is not allowed.", skill);
 			return;
 		}
 
 		if(MaxSkill(skill) == 0) {
-			mlog(CLIENT__ERROR, "Tried to train skill %d, but training is not allowed at this level.", skill);
+			Log.Out(Logs::Detail, Logs::Skills, "Tried to train skill %d, but training is not allowed at this level.", skill);
 			return;
 		}
 
@@ -2151,7 +2161,7 @@ void Client::HandleRespawnFromHover(uint32 Option)
 		{
 			if (PendingRezzXP < 0 || PendingRezzSpellID == 0)
 			{
-				_log(SPELLS__REZ, "Unexpected Rezz from hover request.");
+				Log.Out(Logs::Detail, Logs::Spells, "Unexpected Rezz from hover request.");
 				return;
 			}
 			SetHP(GetMaxHP() / 5);
@@ -2160,9 +2170,9 @@ void Client::HandleRespawnFromHover(uint32 Option)
 
 			if (corpse)
 			{
-				m_Position.m_X = corpse->GetX();
-				m_Position.m_Y = corpse->GetY();
-				m_Position.m_Z = corpse->GetZ();
+				m_Position.x = corpse->GetX();
+				m_Position.y = corpse->GetY();
+				m_Position.z = corpse->GetZ();
 			}
 
 			EQApplicationPacket* outapp = new EQApplicationPacket(OP_ZonePlayerToBind, sizeof(ZonePlayerToBind_Struct) + 10);
@@ -2184,10 +2194,10 @@ void Client::HandleRespawnFromHover(uint32 Option)
 
 			if (corpse && corpse->IsCorpse())
 			{
-				_log(SPELLS__REZ, "Hover Rez in zone %s for corpse %s",
+				Log.Out(Logs::Detail, Logs::Spells, "Hover Rez in zone %s for corpse %s",
 						zone->GetShortName(), PendingRezzCorpseName.c_str());
 
-				_log(SPELLS__REZ, "Found corpse. Marking corpse as rezzed.");
+				Log.Out(Logs::Detail, Logs::Spells, "Found corpse. Marking corpse as rezzed.");
 
 				corpse->IsRezzed(true);
 				corpse->CompleteResurrection();
@@ -2215,10 +2225,10 @@ void Client::HandleRespawnFromHover(uint32 Option)
 			SetMana(GetMaxMana());
 			SetEndurance(GetMaxEndurance());
 
-			m_Position.m_X = chosen->x;
-			m_Position.m_Y = chosen->y;
-			m_Position.m_Z = chosen->z;
-			m_Position.m_Heading = chosen->heading;
+			m_Position.x = chosen->x;
+			m_Position.y = chosen->y;
+			m_Position.z = chosen->z;
+			m_Position.w = chosen->heading;
 
 			ClearHover();
 			entity_list.RefreshClientXTargets(this);
@@ -2275,7 +2285,7 @@ void Client::ClearHover()
 	entity_list.QueueClients(this, outapp, false);
 	safe_delete(outapp);
 
-	if(IsClient() && CastToClient()->GetClientVersionBit() & BIT_UnderfootAndLater)
+	if(IsClient() && CastToClient()->GetClientVersionBit() & BIT_UFAndLater)
 	{
 		EQApplicationPacket *outapp = MakeBuffsPacket(false);
 		CastToClient()->FastQueuePacket(&outapp);

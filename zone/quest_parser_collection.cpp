@@ -16,7 +16,7 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "../common/debug.h"
+#include "../common/global_define.h"
 #include "../common/misc_functions.h"
 #include "../common/features.h"
 
@@ -483,7 +483,7 @@ QuestInterface *QuestParserCollection::GetQIByNPCQuest(uint32 npcid, std::string
 	}
 
 	//second look for /quests/zone/npcname.ext (precedence)
-	const NPCType *npc_type = database.GetNPCType(npcid);
+	const NPCType *npc_type = database.LoadNPCTypesData(npcid);
 	if(!npc_type) {
 		return nullptr;
 	}

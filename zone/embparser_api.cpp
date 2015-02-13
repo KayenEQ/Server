@@ -21,8 +21,9 @@
 #ifdef EMBPERL
 #ifdef EMBPERL_XS
 
-#include "../common/debug.h"
+#include "../common/global_define.h"
 #include "../common/misc_functions.h"
+#include "../common/eqemu_logsys.h"
 
 #include "embparser.h"
 #include "embxs.h"
@@ -219,7 +220,7 @@ XS(XS__spawn)
 	int	npc_type = (int)SvIV(ST(0));
 	int	grid = (int)SvIV(ST(1));
 	int	unused = (int)SvIV(ST(2));
-	auto position = xyz_heading((float)SvNV(ST(3)), (float)SvNV(ST(4)), (float)SvNV(ST(5)), 0.0f);
+	auto position = glm::vec4((float)SvNV(ST(3)), (float)SvNV(ST(4)), (float)SvNV(ST(5)), 0.0f);
 
 	Mob *r = quest_manager.spawn2(npc_type, grid, unused, position);
 	RETVAL = (r != nullptr) ? r->GetID() : 0;
@@ -241,7 +242,7 @@ XS(XS__spawn2)
 	int	npc_type = (int)SvIV(ST(0));
 	int	grid = (int)SvIV(ST(1));
 	int	unused = (int)SvIV(ST(2));
-	auto position = xyz_heading((float)SvNV(ST(3)), (float)SvNV(ST(4)), (float)SvNV(ST(5)), (float)SvNV(ST(6)));
+	auto position = glm::vec4((float)SvNV(ST(3)), (float)SvNV(ST(4)), (float)SvNV(ST(5)), (float)SvNV(ST(6)));
 
 	Mob *r = quest_manager.spawn2(npc_type, grid, unused, position);
 	RETVAL = (r != nullptr) ? r->GetID() : 0;
@@ -270,7 +271,7 @@ XS(XS__unique_spawn)
 	if(items == 7)
 		heading = (float)SvNV(ST(6));
 
-	Mob *r =  quest_manager.unique_spawn(npc_type, grid, unused, xyz_heading(x, y, z, heading));
+	Mob *r =  quest_manager.unique_spawn(npc_type, grid, unused, glm::vec4(x, y, z, heading));
 	RETVAL = (r != nullptr) ? r->GetID() : 0;
 
 	XSprePUSH; PUSHu((UV)RETVAL);
@@ -1317,7 +1318,7 @@ XS(XS__rebind)
 		Perl_croak(aTHX_ "Usage: rebind(zoneid, x, y, z)");
 
 	int	zoneid = (int)SvIV(ST(0));
-	auto location = xyz_location((float)SvNV(ST(1)),(float)SvNV(ST(2)),(float)SvNV(ST(3)));
+	auto location = glm::vec3((float)SvNV(ST(1)),(float)SvNV(ST(2)),(float)SvNV(ST(3)));
 
 	quest_manager.rebind(zoneid, location);
 
@@ -1388,7 +1389,7 @@ XS(XS__moveto)
 	else
 		saveguard = false;
 
-	quest_manager.moveto(xyz_heading(x, y, z, h), saveguard);
+	quest_manager.moveto(glm::vec4(x, y, z, h), saveguard);
 
 	XSRETURN_EMPTY;
 }
@@ -1743,7 +1744,7 @@ XS(XS__summonburriedplayercorpse)
 
 	bool RETVAL;
 	uint32	char_id = (int)SvIV(ST(0));
-	auto position = xyz_heading((float)SvIV(ST(1)), (float)SvIV(ST(2)), (float)SvIV(ST(3)),(float)SvIV(ST(4)));
+	auto position = glm::vec4((float)SvIV(ST(1)), (float)SvIV(ST(2)), (float)SvIV(ST(3)),(float)SvIV(ST(4)));
 
 	RETVAL = quest_manager.summonburriedplayercorpse(char_id, position);
 
@@ -1761,7 +1762,7 @@ XS(XS__summonallplayercorpses)
 
 	bool RETVAL;
 	uint32	char_id = (int)SvIV(ST(0));
-	auto position = xyz_heading((float)SvIV(ST(1)),(float)SvIV(ST(2)),(float)SvIV(ST(3)),(float)SvIV(ST(4)));
+	auto position = glm::vec4((float)SvIV(ST(1)),(float)SvIV(ST(2)),(float)SvIV(ST(3)),(float)SvIV(ST(4)));
 
 	RETVAL = quest_manager.summonallplayercorpses(char_id, position);
 
@@ -2660,10 +2661,10 @@ XS(XS__CreateGroundObject)
 	uint16 id = 0;
 
 	if(items == 5)
-		id = quest_manager.CreateGroundObject(itemid, xyz_heading(x, y, z, heading));
+		id = quest_manager.CreateGroundObject(itemid, glm::vec4(x, y, z, heading));
 	else{
 		uint32 decay_time = (uint32)SvIV(ST(5));
-		id = quest_manager.CreateGroundObject(itemid, xyz_heading(x, y, z, heading), decay_time);
+		id = quest_manager.CreateGroundObject(itemid, glm::vec4(x, y, z, heading), decay_time);
 	}
 
 	XSRETURN_IV(id);
@@ -2691,7 +2692,7 @@ XS(XS__CreateGroundObjectFromModel)
 	if (items > 6)
 		decay_time = (uint32)SvIV(ST(6));
 
-	id = quest_manager.CreateGroundObjectFromModel(modelname, xyz_heading(x, y, z, heading), type, decay_time);
+	id = quest_manager.CreateGroundObjectFromModel(modelname, glm::vec4(x, y, z, heading), type, decay_time);
 	XSRETURN_IV(id);
 }
 
@@ -2966,12 +2967,12 @@ XS(XS__MovePCInstance)
 
 	if (items == 4)
 	{
-		quest_manager.MovePCInstance(zoneid, instanceid, xyz_heading(x, y, z, 0.0f));
+		quest_manager.MovePCInstance(zoneid, instanceid, glm::vec4(x, y, z, 0.0f));
 	}
 	else
 	{
 		float heading = (float)SvNV(ST(5));
-		quest_manager.MovePCInstance(zoneid, instanceid, xyz_heading(x, y, z, heading));
+		quest_manager.MovePCInstance(zoneid, instanceid, glm::vec4(x, y, z, heading));
 	}
 
 	XSRETURN_EMPTY;
@@ -3493,6 +3494,37 @@ XS(XS__crosszonesignalnpcbynpctypeid)
 	XSRETURN_EMPTY;
 }
 
+XS(XS__debug);
+XS(XS__debug)
+{
+	dXSARGS;
+	if (items != 1 && items != 2){
+		Perl_croak(aTHX_ "Usage: debug(message, [debug_level])");
+	}
+	else{
+		std::string log_message = (std::string)SvPV_nolen(ST(0));
+		uint8 debug_level = 1;
+
+		if (items == 2)
+			debug_level = (uint8)SvIV(ST(1));
+
+		if (debug_level > Logs::Detail)
+			return;
+
+		if (debug_level == Logs::General){
+			Log.Out(Logs::General, Logs::QuestDebug, log_message);
+		}
+		else if (debug_level == Logs::Moderate){
+			Log.Out(Logs::Moderate, Logs::QuestDebug, log_message);
+		}
+		else if (debug_level == Logs::Detail){
+			Log.Out(Logs::Detail, Logs::QuestDebug, log_message);
+		}
+	}
+	XSRETURN_EMPTY;
+}
+
+
 /*
 This is the callback perl will look for to setup the
 quest package's XSUBs
@@ -3506,7 +3538,7 @@ EXTERN_C XS(boot_quest)
 	file[255] = '\0';
 
 	if(items != 1)
-		LogFile->write(EQEmuLog::Error, "boot_quest does not take any arguments.");
+		Log.Out(Logs::General, Logs::Error, "boot_quest does not take any arguments.");
 
 	char buf[128];	//shouldent have any function names longer than this.
 
@@ -3579,6 +3611,7 @@ EXTERN_C XS(boot_quest)
 		newXS(strcpy(buf, "crosszonesignalclientbycharid"), XS__crosszonesignalclientbycharid, file);
 		newXS(strcpy(buf, "crosszonesignalclientbyname"), XS__crosszonesignalclientbyname, file);
 		newXS(strcpy(buf, "crosszonesignalnpcbynpctypeid"), XS__crosszonesignalnpcbynpctypeid, file);
+		newXS(strcpy(buf, "debug"), XS__debug, file);
 		newXS(strcpy(buf, "delglobal"), XS__delglobal, file);
 		newXS(strcpy(buf, "depop"), XS__depop, file);
 		newXS(strcpy(buf, "depop_withtimer"), XS__depop_withtimer, file);

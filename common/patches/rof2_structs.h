@@ -1,5 +1,5 @@
-#ifndef RoF2_STRUCTS_H_
-#define RoF2_STRUCTS_H_
+#ifndef ROF2_STRUCTS_H_
+#define ROF2_STRUCTS_H_
 
 namespace RoF2 {
 	namespace structs {
@@ -114,7 +114,7 @@ static const uint32 MAX_PP_SPELLBOOK	= 720;	// was 480
 static const uint32 MAX_PP_MEMSPELL		= 16;	// was 12
 static const uint32 MAX_PP_SKILL		= PACKET_SKILL_ARRAY_SIZE;	// 100 - actual skills buffer size
 static const uint32 MAX_PP_AA_ARRAY		= 300;
-static const uint32 MAX_PP_DISCIPLINES	= 200;	// was 100
+static const uint32 MAX_PP_DISCIPLINES	= 300;	// was 200
 static const uint32 MAX_GROUP_MEMBERS	= 6;
 static const uint32 MAX_RECAST_TYPES	= 20;
 
@@ -1394,7 +1394,7 @@ struct Animation_Struct {
 /*04*/
 };
 
-// solar: this is what causes the caster to animate and the target to
+// this is what causes the caster to animate and the target to
 // get the particle effects around them when a spell is cast
 // also causes a buff icon
 struct Action_Struct
@@ -1445,7 +1445,7 @@ struct ActionAlt_Struct
 /*56*/
 };
 
-// solar: this is what prints the You have been struck. and the regular
+// this is what prints the You have been struck. and the regular
 // melee messages like You try to pierce, etc.  It's basically the melee
 // and spell damage message
 struct CombatDamage_Struct
@@ -1997,7 +1997,7 @@ struct RandomReq_Struct {
 	uint32 high;
 };
 
-/* solar: 9/23/03 reply to /random command; struct from Zaphod */
+/* 9/23/03 reply to /random command */
 struct RandomReply_Struct {
 /* 00 */	uint32 low;
 /* 04 */	uint32 high;
@@ -2865,7 +2865,7 @@ struct SetRunMode_Struct {
 };
 
 // EnvDamage is EnvDamage2 without a few bytes at the end.
-// Size: 37 bytes
+// Size: 39 bytes
 struct EnvDamage2_Struct {
 /*0000*/	uint32 id;
 /*0004*/	uint16 unknown4;
@@ -2877,7 +2877,8 @@ struct EnvDamage2_Struct {
 /*0031*/	uint16 unknown31;	// New to Underfoot - Seen 66
 /*0033*/	uint16 constant;		// Always FFFF
 /*0035*/	uint16 unknown35;
-/*0037*/
+/*0037*/	uint16 unknown37;
+/*0039*/
 };
 
 //Bazaar Stuff
@@ -4352,7 +4353,7 @@ struct RoF2SlotStruct
 
 struct ItemSerializationHeader
 {
-/*000*/	char unknown000[13];	// New for HoT. Looks like a string.
+/*000*/	char unknown000[17];	// New for HoT. Looks like a string.
 /*017*/	uint32 stacksize;
 /*021*/	uint32 unknown004;
 /*025*/	uint8  slot_type;	// 0 = normal, 1 = bank, 2 = shared bank, 9 = merchant, 20 = ?
@@ -4881,4 +4882,4 @@ struct MercenaryMerchantResponse_Struct {
 	};	//end namespace structs
 };	//end namespace RoF2
 
-#endif /*RoF2_STRUCTS_H_*/
+#endif /*ROF2_STRUCTS_H_*/

@@ -17,7 +17,7 @@
 */
 
 #include "classes.h"
-#include "debug.h"
+#include "global_define.h"
 #include "item.h"
 #include "races.h"
 #include "rulesys.h"
@@ -506,6 +506,7 @@ int16 Inventory::HasItem(uint32 item_id, uint8 quantity, uint8 where)
 			return slot_id;
 	}
 
+	// Behavioral change - Limbo is no longer checked due to improper handling of return value
 	if (where & invWhereCursor) {
 		// Check cursor queue
 		slot_id = _HasItem(m_cursor, item_id, quantity);
@@ -552,6 +553,7 @@ int16 Inventory::HasItemByUse(uint8 use, uint8 quantity, uint8 where)
 			return slot_id;
 	}
 
+	// Behavioral change - Limbo is no longer checked due to improper handling of return value
 	if (where & invWhereCursor) {
 		// Check cursor queue
 		slot_id = _HasItemByUse(m_cursor, use, quantity);
@@ -597,6 +599,7 @@ int16 Inventory::HasItemByLoreGroup(uint32 loregroup, uint8 where)
 			return slot_id;
 	}
 
+	// Behavioral change - Limbo is no longer checked due to improper handling of return value
 	if (where & invWhereCursor) {
 		// Check cursor queue
 		slot_id = _HasItemByLoreGroup(m_cursor, loregroup);
@@ -990,6 +993,36 @@ int Inventory::GetSlotByItemInst(ItemInst *inst) {
 	return INVALID_INDEX;
 }
 
+uint8 Inventory::FindHighestLightValue()
+{
+	uint8 light_value = NOT_USED;
+
+	// NOTE: The client does not recognize augment light sources, applied or otherwise, and should not be parsed
+	for (auto iter = m_worn.begin(); iter != m_worn.end(); ++iter) {
+		if ((iter->first < EmuConstants::EQUIPMENT_BEGIN || iter->first > EmuConstants::EQUIPMENT_END) && iter->first != MainPowerSource) { continue; }
+		auto inst = iter->second;
+		if (inst == nullptr) { continue; }
+		auto item = inst->GetItem();
+		if (item == nullptr) { continue; }
+		if (item->Light & 0xF0) { continue; }
+		if (item->Light > light_value) { light_value = item->Light; }
+	}
+
+	for (auto iter = m_inv.begin(); iter != m_inv.end(); ++iter) {
+		if (iter->first < EmuConstants::GENERAL_BEGIN || iter->first > EmuConstants::GENERAL_END) { continue; }
+		auto inst = iter->second;
+		if (inst == nullptr) { continue; }
+		auto item = inst->GetItem();
+		if (item == nullptr) { continue; }
+		// 'Gloomingdeep lantern' is ItemTypeArmor in the database..there may be others instances and/or types that need to be handled
+		if (item->ItemType != ItemTypeMisc && item->ItemType != ItemTypeLight && item->ItemType != ItemTypeArmor) { continue; }
+		if (item->Light & 0xF0) { continue; }
+		if (item->Light > light_value) { light_value = item->Light; }
+	}
+
+	return light_value;
+}
+
 void Inventory::dumpEntireInventory() {
 
 	dumpWornItems();
@@ -1030,7 +1063,7 @@ int Inventory::GetSlotByItemInstCollection(const std::map<int16, ItemInst*> &col
 		}
 
 		if (t_inst && !t_inst->IsType(ItemClassContainer)) {
-			for (auto b_iter = t_inst->_begin(); b_iter != t_inst->_end(); ++b_iter) {
+			for (auto b_iter = t_inst->_cbegin(); b_iter != t_inst->_cend(); ++b_iter) {
 				if (b_iter->second == inst) {
 					return Inventory::CalcSlotId(iter->first, b_iter->first);
 				}
@@ -1041,13 +1074,10 @@ int Inventory::GetSlotByItemInstCollection(const std::map<int16, ItemInst*> &col
 	return -1;
 }
 
-void Inventory::dumpItemCollection(const std::map<int16, ItemInst*> &collection) {
-	iter_inst it;
-	iter_contents itb;
-	ItemInst* inst = nullptr;
-
-	for (it = collection.begin(); it != collection.end(); ++it) {
-		inst = it->second;
+void Inventory::dumpItemCollection(const std::map<int16, ItemInst*> &collection)
+{
+	for (auto it = collection.cbegin(); it != collection.cend(); ++it) {
+		auto inst = it->second;
 		if (!inst || !inst->GetItem())
 			continue;
 
@@ -1058,14 +1088,13 @@ void Inventory::dumpItemCollection(const std::map<int16, ItemInst*> &collection)
 	}
 }
 
-void Inventory::dumpBagContents(ItemInst *inst, iter_inst *it) {
-	iter_contents itb;
-
+void Inventory::dumpBagContents(ItemInst *inst, std::map<int16, ItemInst*>::const_iterator *it)
+{
 	if (!inst || !inst->IsType(ItemClassContainer))
 		return;
 
 	// Go through bag, if bag
-	for (itb = inst->_begin(); itb != inst->_end(); ++itb) {
+	for (auto itb = inst->_cbegin(); itb != inst->_cend(); ++itb) {
 		ItemInst* baginst = itb->second;
 		if (!baginst || !baginst->GetItem())
 			continue;
@@ -1080,7 +1109,7 @@ void Inventory::dumpBagContents(ItemInst *inst, iter_inst *it) {
 // Internal Method: Retrieves item within an inventory bucket
 ItemInst* Inventory::_GetItem(const std::map<int16, ItemInst*>& bucket, int16 slot_id) const
 {
-	iter_inst it = bucket.find(slot_id);
+	auto it = bucket.find(slot_id);
 	if (it != bucket.end()) {
 		return it->second;
 	}
@@ -1093,6 +1122,8 @@ ItemInst* Inventory::_GetItem(const std::map<int16, ItemInst*>& bucket, int16 sl
 // Assumes item has already been allocated
 int16 Inventory::_PutItem(int16 slot_id, ItemInst* inst)
 {
+	// What happens here when we _PutItem(MainCursor)? Bad things..really bad things...
+	//
 	// If putting a nullptr into slot, we need to remove slot without memory delete
 	if (inst == nullptr) {
 		//Why do we not delete the poped item here????
@@ -1145,7 +1176,7 @@ int16 Inventory::_PutItem(int16 slot_id, ItemInst* inst)
 	}
 	
 	if (result == INVALID_INDEX) {
-		LogFile->write(EQEmuLog::Error, "Inventory::_PutItem: Invalid slot_id specified (%i) with parent slot id (%i)", slot_id, parentSlot);
+		Log.Out(Logs::General, Logs::Error, "Inventory::_PutItem: Invalid slot_id specified (%i) with parent slot id (%i)", slot_id, parentSlot);
 		Inventory::MarkDirty(inst); // Slot not found, clean up
 	}
 
@@ -1174,7 +1205,7 @@ int16 Inventory::_HasItem(std::map<int16, ItemInst*>& bucket, uint32 item_id, ui
 		
 		if (!inst->IsType(ItemClassContainer)) { continue; }
 
-		for (auto bag_iter = inst->_begin(); bag_iter != inst->_end(); ++bag_iter) {
+		for (auto bag_iter = inst->_cbegin(); bag_iter != inst->_cend(); ++bag_iter) {
 			auto bag_inst = bag_iter->second;
 			if (bag_inst == nullptr) { continue; }
 
@@ -1205,7 +1236,7 @@ int16 Inventory::_HasItem(ItemInstQueue& iqueue, uint32 item_id, uint8 quantity)
 	
 	uint8 quantity_found = 0;
 
-	for (auto iter = iqueue.begin(); iter != iqueue.end(); ++iter) {
+	for (auto iter = iqueue.cbegin(); iter != iqueue.cend(); ++iter) {
 		auto inst = *iter;
 		if (inst == nullptr) { continue; }
 
@@ -1222,7 +1253,7 @@ int16 Inventory::_HasItem(ItemInstQueue& iqueue, uint32 item_id, uint8 quantity)
 
 		if (!inst->IsType(ItemClassContainer)) { continue; }
 
-		for (auto bag_iter = inst->_begin(); bag_iter != inst->_end(); ++bag_iter) {
+		for (auto bag_iter = inst->_cbegin(); bag_iter != inst->_cend(); ++bag_iter) {
 			auto bag_inst = bag_iter->second;
 			if (bag_inst == nullptr) { continue; }
 
@@ -1237,6 +1268,9 @@ int16 Inventory::_HasItem(ItemInstQueue& iqueue, uint32 item_id, uint8 quantity)
 					return legacy::SLOT_AUGMENT;
 			}
 		}
+
+		// We only check the visible cursor due to lack of queue processing ability (client allows duplicate in limbo)
+		break;
 	}
 
 	return INVALID_INDEX;
@@ -1259,7 +1293,7 @@ int16 Inventory::_HasItemByUse(std::map<int16, ItemInst*>& bucket, uint8 use, ui
 
 		if (!inst->IsType(ItemClassContainer)) { continue; }
 
-		for (auto bag_iter = inst->_begin(); bag_iter != inst->_end(); ++bag_iter) {
+		for (auto bag_iter = inst->_cbegin(); bag_iter != inst->_cend(); ++bag_iter) {
 			auto bag_inst = bag_iter->second;
 			if (bag_inst == nullptr) { continue; }
 
@@ -1279,7 +1313,7 @@ int16 Inventory::_HasItemByUse(ItemInstQueue& iqueue, uint8 use, uint8 quantity)
 {
 	uint8 quantity_found = 0;
 
-	for (auto iter = iqueue.begin(); iter != iqueue.end(); ++iter) {
+	for (auto iter = iqueue.cbegin(); iter != iqueue.cend(); ++iter) {
 		auto inst = *iter;
 		if (inst == nullptr) { continue; }
 
@@ -1291,7 +1325,7 @@ int16 Inventory::_HasItemByUse(ItemInstQueue& iqueue, uint8 use, uint8 quantity)
 
 		if (!inst->IsType(ItemClassContainer)) { continue; }
 
-		for (auto bag_iter = inst->_begin(); bag_iter != inst->_end(); ++bag_iter) {
+		for (auto bag_iter = inst->_cbegin(); bag_iter != inst->_cend(); ++bag_iter) {
 			auto bag_inst = bag_iter->second;
 			if (bag_inst == nullptr) { continue; }
 
@@ -1301,6 +1335,9 @@ int16 Inventory::_HasItemByUse(ItemInstQueue& iqueue, uint8 use, uint8 quantity)
 					return Inventory::CalcSlotId(MainCursor, bag_iter->first);
 			}
 		}
+
+		// We only check the visible cursor due to lack of queue processing ability (client allows duplicate in limbo)
+		break;
 	}
 
 	return INVALID_INDEX;
@@ -1325,7 +1362,7 @@ int16 Inventory::_HasItemByLoreGroup(std::map<int16, ItemInst*>& bucket, uint32 
 
 		if (!inst->IsType(ItemClassContainer)) { continue; }
 
-		for (auto bag_iter = inst->_begin(); bag_iter != inst->_end(); ++bag_iter) {
+		for (auto bag_iter = inst->_cbegin(); bag_iter != inst->_cend(); ++bag_iter) {
 			auto bag_inst = bag_iter->second;
 			if (bag_inst == nullptr) { continue; }
 
@@ -1348,7 +1385,7 @@ int16 Inventory::_HasItemByLoreGroup(std::map<int16, ItemInst*>& bucket, uint32 
 // Internal Method: Checks an inventory queue type bucket for a particular item
 int16 Inventory::_HasItemByLoreGroup(ItemInstQueue& iqueue, uint32 loregroup)
 {
-	for (auto iter = iqueue.begin(); iter != iqueue.end(); ++iter) {
+	for (auto iter = iqueue.cbegin(); iter != iqueue.cend(); ++iter) {
 		auto inst = *iter;
 		if (inst == nullptr) { continue; }
 
@@ -1365,7 +1402,7 @@ int16 Inventory::_HasItemByLoreGroup(ItemInstQueue& iqueue, uint32 loregroup)
 
 		if (!inst->IsType(ItemClassContainer)) { continue; }
 
-		for (auto bag_iter = inst->_begin(); bag_iter != inst->_end(); ++bag_iter) {
+		for (auto bag_iter = inst->_cbegin(); bag_iter != inst->_cend(); ++bag_iter) {
 			auto bag_inst = bag_iter->second;
 			if (bag_inst == nullptr) { continue; }
 
@@ -1380,6 +1417,9 @@ int16 Inventory::_HasItemByLoreGroup(ItemInstQueue& iqueue, uint32 loregroup)
 					return legacy::SLOT_AUGMENT;
 			}
 		}
+
+		// We only check the visible cursor due to lack of queue processing ability (client allows duplicate in limbo)
+		break;
 	}
 	
 	return INVALID_INDEX;
@@ -1412,6 +1452,7 @@ ItemInst::ItemInst(const Item_Struct* item, int16 charges) {
 	m_ornamenticon = 0;
 	m_ornamentidfile = 0;
 	m_ornament_hero_model = 0;
+	m_recast_timestamp = 0;
 }
 
 ItemInst::ItemInst(SharedDatabase *db, uint32 item_id, int16 charges) {
@@ -1437,6 +1478,7 @@ ItemInst::ItemInst(SharedDatabase *db, uint32 item_id, int16 charges) {
 	m_ornamenticon = 0;
 	m_ornamentidfile = 0;
 	m_ornament_hero_model = 0;
+	m_recast_timestamp = 0;
 }
 
 ItemInst::ItemInst(ItemInstTypes use_type) {
@@ -1457,6 +1499,7 @@ ItemInst::ItemInst(ItemInstTypes use_type) {
 	m_ornamenticon = 0;
 	m_ornamentidfile = 0;
 	m_ornament_hero_model = 0;
+	m_recast_timestamp = 0;
 }
 
 // Make a copy of an ItemInst object
@@ -1472,8 +1515,7 @@ ItemInst::ItemInst(const ItemInst& copy)
 	m_attuned=copy.m_attuned;
 	m_merchantcount=copy.m_merchantcount;
 	// Copy container contents
-	iter_contents it;
-	for (it=copy.m_contents.begin(); it!=copy.m_contents.end(); ++it) {
+	for (auto it = copy.m_contents.begin(); it != copy.m_contents.end(); ++it) {
 		ItemInst* inst_old = it->second;
 		ItemInst* inst_new = nullptr;
 
@@ -1510,6 +1552,7 @@ ItemInst::ItemInst(const ItemInst& copy)
 	m_ornamenticon = copy.m_ornamenticon;
 	m_ornamentidfile = copy.m_ornamentidfile;
 	m_ornament_hero_model = copy.m_ornament_hero_model;
+	m_recast_timestamp = copy.m_recast_timestamp;
 }
 
 // Clean up container contents
@@ -1642,7 +1685,7 @@ bool ItemInst::IsAugmentSlotAvailable(int32 augtype, uint8 slot) const
 // Retrieve item inside container
 ItemInst* ItemInst::GetItem(uint8 index) const
 {
-	iter_contents it = m_contents.find(index);
+	auto it = m_contents.find(index);
 	if (it != m_contents.end()) {
 		return it->second;
 	}
@@ -1705,7 +1748,7 @@ void ItemInst::ClearByFlags(byFlagSetting is_nodrop, byFlagSetting is_norent)
 	// TODO: This needs work...
 
 	// Destroy container contents
-	iter_contents cur, end, del;
+	std::map<uint8, ItemInst*>::const_iterator cur, end, del;
 	cur = m_contents.begin();
 	end = m_contents.end();
 	for (; cur != end;) {

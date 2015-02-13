@@ -715,7 +715,7 @@ typedef enum {
 #define DF_Permanent			50
 #define DF_INVIS				100
 
-// solar: note this struct is historical, we don't actually need it to be
+// note this struct is historical, we don't actually need it to be
 // aligned to anything, but for maintaining it it is kept in the order that
 // the fields in the text file are. the numbering is not offset, but field
 // number. note that the id field is counted as 0, this way the numbers

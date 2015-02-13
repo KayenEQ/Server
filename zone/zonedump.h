@@ -58,7 +58,7 @@ struct NPCType
 	uint32	alt_currency_type;
 	uint32	adventure_template;
 	uint32	trap_template;
-	uint8	light;		//not loaded from DB
+	uint8	light;
 	uint32	AC;
 	uint32	Mana;	//not loaded from DB
 	uint32	ATK;	//not loaded from DB
@@ -182,7 +182,7 @@ struct PlayerCorpse_Struct {
 struct Door {
 	uint32	db_id;
 	uint8	door_id;
-	char	zone_name[16];
+	char	zone_name[32];
 	char	door_name[32];
 	float	pos_x;
 	float	pos_y;
