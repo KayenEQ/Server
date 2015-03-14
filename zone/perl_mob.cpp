@@ -7784,7 +7784,7 @@ XS(XS_Mob_GetModSkillDmgTaken)
 		Perl_croak(aTHX_ "Usage: Mob::GetModSkillDmgTaken(THIS, skill_num)");
 	{
 		Mob *		THIS;
-		uint32		RETVAL;
+		int16		RETVAL;
 		dXSTARG;
 		SkillUseTypes		skill_num = (SkillUseTypes)SvUV(ST(1));
 
@@ -7798,7 +7798,7 @@ XS(XS_Mob_GetModSkillDmgTaken)
 			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
 
 		RETVAL = THIS->GetModSkillDmgTaken(skill_num);
-		XSprePUSH; PUSHu((UV)RETVAL);
+		XSprePUSH; PUSHi((IV)RETVAL);
 	}
 	XSRETURN(1);
 }

@@ -332,7 +332,13 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_Save] = &Client::Handle_OP_Save;
 	ConnectedOpcodes[OP_SaveOnZoneReq] = &Client::Handle_OP_SaveOnZoneReq;
 	ConnectedOpcodes[OP_SelectTribute] = &Client::Handle_OP_SelectTribute;
-	ConnectedOpcodes[OP_SenseHeading] = &Client::Handle_OP_Ignore;
+
+	// Use or Ignore sense heading based on rule.
+	bool train=RuleB(Skills, TrainSenseHeading);
+
+	ConnectedOpcodes[OP_SenseHeading] = 
+		(train) ? &Client::Handle_OP_SenseHeading : &Client::Handle_OP_Ignore;
+
 	ConnectedOpcodes[OP_SenseTraps] = &Client::Handle_OP_SenseTraps;
 	ConnectedOpcodes[OP_SetGuildMOTD] = &Client::Handle_OP_SetGuildMOTD;
 	ConnectedOpcodes[OP_SetRunMode] = &Client::Handle_OP_SetRunMode;
@@ -733,8 +739,8 @@ void Client::CompleteConnect()
 		SendWearChange(x);
 	}
 	// added due to wear change above
-	UpdateActiveLightValue();
-	SendAppearancePacket(AT_Light, GetActiveLightValue());
+	UpdateActiveLight();
+	SendAppearancePacket(AT_Light, GetActiveLightType());
 
 	Mob *pet = GetPet();
 	if (pet != nullptr) {
@@ -742,8 +748,8 @@ void Client::CompleteConnect()
 			pet->SendWearChange(x);
 		}
 		// added due to wear change above
-		pet->UpdateActiveLightValue();
-		pet->SendAppearancePacket(AT_Light, pet->GetActiveLightValue());
+		pet->UpdateActiveLight();
+		pet->SendAppearancePacket(AT_Light, pet->GetActiveLightType());
 	}
 
 	entity_list.SendTraders(this);
@@ -1199,8 +1205,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	conn_state = ReceivedZoneEntry;
 
 	SetClientVersion(Connection()->GetClientVersion());
-	if (m_ClientVersion != ClientVersion::Unknown)
-		ClientVersionBit = 1 << (static_cast<unsigned int>(m_ClientVersion) - 1);
+	m_ClientVersionBit = ClientBitFromVersion(Connection()->GetClientVersion());
 
 	bool siv = m_inv.SetInventoryVersion(m_ClientVersion);
 	Log.Out(Logs::General, Logs::None, "%s inventory version to %s(%i)", (siv ? "Succeeded in setting" : "Failed to set"), ClientVersionName(m_ClientVersion), m_ClientVersion);
@@ -1315,9 +1320,9 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	/* Set item material tint */
 	for (int i = EmuConstants::MATERIAL_BEGIN; i <= EmuConstants::MATERIAL_END; i++)
 	{
-		if (m_pp.item_tint[i].rgb.use_tint == 1 || m_pp.item_tint[i].rgb.use_tint == 255)
+		if (m_pp.item_tint[i].RGB.UseTint == 1 || m_pp.item_tint[i].RGB.UseTint == 255)
 		{
-				m_pp.item_tint[i].rgb.use_tint = 0xFF;
+				m_pp.item_tint[i].RGB.UseTint = 0xFF;
 		}
 	}
 
@@ -1439,10 +1444,6 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	if (m_pp.ldon_points_ruj < 0 || m_pp.ldon_points_ruj > 2000000000){ m_pp.ldon_points_ruj = 0; }
 	if (m_pp.ldon_points_tak < 0 || m_pp.ldon_points_tak > 2000000000){ m_pp.ldon_points_tak = 0; }
 	if (m_pp.ldon_points_available < 0 || m_pp.ldon_points_available > 2000000000){ m_pp.ldon_points_available = 0; }
-
-	/* Set Swimming Skill 100 by default if under 100 */
-	if (GetSkill(SkillSwimming) < 100)
-		SetSkill(SkillSwimming, 100);
 
 	/* Initialize AA's : Move to function eventually */
 	for (uint32 a = 0; a < MAX_PP_AA_ARRAY; a++){ aa[a] = &m_pp.aa_array[a]; }
@@ -1744,7 +1745,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		safe_delete(outapp);
 	}
 
-	if (ClientVersionBit & BIT_UFAndLater) {
+	if (m_ClientVersionBit & BIT_UFAndLater) {
 		outapp = new EQApplicationPacket(OP_XTargetResponse, 8);
 		outapp->WriteUInt32(GetMaxXTargets());
 		outapp->WriteUInt32(0);
@@ -3179,7 +3180,6 @@ void Client::Handle_OP_AutoFire(const EQApplicationPacket *app)
 
 void Client::Handle_OP_Bandolier(const EQApplicationPacket *app)
 {
-
 	// Although there are three different structs for OP_Bandolier, they are all the same size.
 	//
 	if (app->size != sizeof(BandolierCreate_Struct)) {
@@ -3191,19 +3191,20 @@ void Client::Handle_OP_Bandolier(const EQApplicationPacket *app)
 
 	BandolierCreate_Struct *bs = (BandolierCreate_Struct*)app->pBuffer;
 
-	switch (bs->action) {
-	case BandolierCreate:
+	switch (bs->Action)
+	{
+	case bandolierCreate:
 		CreateBandolier(app);
 		break;
-	case BandolierRemove:
+	case bandolierRemove:
 		RemoveBandolier(app);
 		break;
-	case BandolierSet:
+	case bandolierSet:
 		SetBandolier(app);
 		break;
 	default:
-		Log.Out(Logs::General, Logs::None, "Uknown Bandolier action %i", bs->action);
-
+		Log.Out(Logs::General, Logs::None, "Unknown Bandolier action %i", bs->Action);
+		break;
 	}
 }
 
@@ -3908,7 +3909,7 @@ void Client::Handle_OP_CastSpell(const EQApplicationPacket *app)
 		}
 		else if (m_inv.SupportsClickCasting(castspell->inventoryslot) || (castspell->slot == POTION_BELT_SPELL_SLOT) || (castspell->slot == TARGET_RING_SPELL_SLOT))	// sanity check
 		{
-			// packet field types will be reviewed as packet transistions occur -U
+			// packet field types will be reviewed as packet transistions occur
 			const ItemInst* inst = m_inv[castspell->inventoryslot]; //slot values are int16, need to check packet on this field
 			//bool cancast = true;
 			if (inst && inst->IsType(ItemClassCommon))
@@ -5092,6 +5093,7 @@ void Client::Handle_OP_DeleteSpell(const EQApplicationPacket *app)
 
 	if (m_pp.spell_book[dss->spell_slot] != SPELLBOOK_UNKNOWN) {
 		m_pp.spell_book[dss->spell_slot] = SPELLBOOK_UNKNOWN;
+		database.DeleteCharacterSpell(this->CharacterID(), m_pp.spell_book[dss->spell_slot], dss->spell_slot);
 		dss->success = 1;
 	}
 	else
@@ -10466,16 +10468,16 @@ void Client::Handle_OP_PotionBelt(const EQApplicationPacket *app)
 	if (mptbs->Action == 0) {
 		const Item_Struct *BaseItem = database.GetItem(mptbs->ItemID);
 		if (BaseItem) {
-			m_pp.potionbelt.items[mptbs->SlotNumber].item_id = BaseItem->ID;
-			m_pp.potionbelt.items[mptbs->SlotNumber].icon = BaseItem->Icon;
-			strn0cpy(m_pp.potionbelt.items[mptbs->SlotNumber].item_name, BaseItem->Name, sizeof(BaseItem->Name));
-			database.SaveCharacterPotionBelt(this->CharacterID(), mptbs->SlotNumber, m_pp.potionbelt.items[mptbs->SlotNumber].item_id, m_pp.potionbelt.items[mptbs->SlotNumber].icon);
+			m_pp.potionbelt.Items[mptbs->SlotNumber].ID = BaseItem->ID;
+			m_pp.potionbelt.Items[mptbs->SlotNumber].Icon = BaseItem->Icon;
+			strn0cpy(m_pp.potionbelt.Items[mptbs->SlotNumber].Name, BaseItem->Name, sizeof(BaseItem->Name));
+			database.SaveCharacterPotionBelt(this->CharacterID(), mptbs->SlotNumber, m_pp.potionbelt.Items[mptbs->SlotNumber].ID, m_pp.potionbelt.Items[mptbs->SlotNumber].Icon);
 		}
 	}
 	else {
-		m_pp.potionbelt.items[mptbs->SlotNumber].item_id = 0;
-		m_pp.potionbelt.items[mptbs->SlotNumber].icon = 0;
-		strncpy(m_pp.potionbelt.items[mptbs->SlotNumber].item_name, "\0", 1);
+		m_pp.potionbelt.Items[mptbs->SlotNumber].ID = 0;
+		m_pp.potionbelt.Items[mptbs->SlotNumber].Icon = 0;
+		m_pp.potionbelt.Items[mptbs->SlotNumber].Name[0] = '\0';
 	}
 }
 
@@ -11677,6 +11679,27 @@ void Client::Handle_OP_SelectTribute(const EQApplicationPacket *app)
 	return;
 }
 
+void Client::Handle_OP_SenseHeading(const EQApplicationPacket *app)
+{
+	if (!HasSkill(SkillSenseHeading))
+		return;
+
+	int chancemod=0;
+
+	// The client seems to limit sense heading packets based on skill
+	// level.  So if we're really low, we don't hit this routine very often.
+	// I think it's the GUI deciding when to skill you up.
+	// So, I'm adding a mod here which is larger at lower levels so
+	// very low levels get a much better chance to skill up when the GUI
+	// eventually sends a message.
+	if (GetLevel() <= 8)
+		chancemod += (9-level) * 10;
+	
+	CheckIncreaseSkill(SkillSenseHeading, nullptr, chancemod);
+
+	return;
+}
+
 void Client::Handle_OP_SenseTraps(const EQApplicationPacket *app)
 {
 	if (!HasSkill(SkillSenseTraps))
@@ -11976,12 +11999,6 @@ void Client::Handle_OP_ShopEnd(const EQApplicationPacket *app)
 {
 	EQApplicationPacket empty(OP_ShopEndConfirm);
 	QueuePacket(&empty);
-	//EQApplicationPacket* outapp = new EQApplicationPacket(OP_ShopEndConfirm, 2);
-	//outapp->pBuffer[0] = 0x0a;
-	//outapp->pBuffer[1] = 0x66;
-	//QueuePacket(outapp);
-	//safe_delete(outapp);
-	//Save();
 	return;
 }
 
@@ -13308,7 +13325,7 @@ void Client::Handle_OP_Trader(const EQApplicationPacket *app)
 
 	/*
 	if (GetClientVersion() >= EQClientRoF)
-	max_items = 200;
+		max_items = 200;
 	*/
 
 	//Show Items
@@ -13320,20 +13337,25 @@ void Client::Handle_OP_Trader(const EQApplicationPacket *app)
 		{
 		case BazaarTrader_EndTraderMode: {
 			Trader_EndTrader();
+			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: End Trader Session");
 			break;
 		}
 		case BazaarTrader_EndTransaction: {
 
 			Client* c = entity_list.GetClientByID(sis->TraderID);
 			if (c)
+			{
 				c->WithCustomer(0);
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: End Transaction");
+			}
 			else
-				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderBuy: Null Client Pointer");
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Null Client Pointer");
 
 			break;
 		}
 		case BazaarTrader_ShowItems: {
 			Trader_ShowItems();
+			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Show Trader Items");
 			break;
 		}
 		default: {
@@ -13356,6 +13378,7 @@ void Client::Handle_OP_Trader(const EQApplicationPacket *app)
 		{
 			GetItems_Struct* gis = GetTraderItems();
 
+			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Start Trader Mode");
 			// Verify there are no NODROP or items with a zero price
 			bool TradeItemsValid = true;
 
@@ -13402,7 +13425,8 @@ void Client::Handle_OP_Trader(const EQApplicationPacket *app)
 			safe_delete(gis);
 
 			this->Trader_StartTrader();
-
+			
+			// This refreshes the Trader window to display the End Trader button
 			if (GetClientVersion() >= ClientVersion::RoF)
 			{
 				EQApplicationPacket* outapp = new EQApplicationPacket(OP_Trader, sizeof(TraderStatus_Struct));
@@ -13412,15 +13436,6 @@ void Client::Handle_OP_Trader(const EQApplicationPacket *app)
 				safe_delete(outapp);
 			}
 		}
-		else if (app->size == sizeof(TraderStatus_Struct))
-		{
-			TraderStatus_Struct* tss = (TraderStatus_Struct*)app->pBuffer;
-
-			if (tss->Code == BazaarTrader_ShowItems)
-			{
-				Trader_ShowItems();
-			}
-		}
 		else {
 			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Unknown TraderStruct code of: %i\n",
 				ints->Code);
@@ -13428,9 +13443,35 @@ void Client::Handle_OP_Trader(const EQApplicationPacket *app)
 			Log.Out(Logs::General, Logs::Error, "Unknown TraderStruct code of: %i\n", ints->Code);
 		}
 	}
+	else if (app->size == sizeof(TraderStatus_Struct))
+	{
+		TraderStatus_Struct* tss = (TraderStatus_Struct*)app->pBuffer;
 
+		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Trader Status Code: %d", tss->Code);
+
+		switch (tss->Code)
+		{
+		case BazaarTrader_EndTraderMode: {
+			Trader_EndTrader();
+			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: End Trader Session");
+			break;
+		}
+		case BazaarTrader_ShowItems: {
+			Trader_ShowItems();
+			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Show Trader Items");
+			break;
+		}
+		default: {
+			Log.Out(Logs::Detail, Logs::Trading, "Unhandled action code in OP_Trader ShowItems_Struct");
+			break;
+		}
+		}
+
+
+	}
 	else if (app->size == sizeof(TraderPriceUpdate_Struct))
 	{
+		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Trader Price Update");
 		HandleTraderPriceUpdate(app);
 	}
 	else {
@@ -13449,23 +13490,22 @@ void Client::Handle_OP_TraderBuy(const EQApplicationPacket *app)
 	//
 	// Client has elected to buy an item from a Trader
 	//
+	if (app->size != sizeof(TraderBuy_Struct)) {
+		Log.Out(Logs::General, Logs::Error, "Wrong size: OP_TraderBuy, size=%i, expected %i", app->size, sizeof(TraderBuy_Struct));
+		return;
+	}
 
-	if (app->size == sizeof(TraderBuy_Struct)){
+	TraderBuy_Struct* tbs = (TraderBuy_Struct*)app->pBuffer;
 
-		TraderBuy_Struct* tbs = (TraderBuy_Struct*)app->pBuffer;
-
-		if (Client* Trader = entity_list.GetClientByID(tbs->TraderID)){
-
-			BuyTraderItem(tbs, Trader, app);
-		}
-		else {
-			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderBuy: Null Client Pointer");
-		}
+	if (Client* Trader = entity_list.GetClientByID(tbs->TraderID)){
+		BuyTraderItem(tbs, Trader, app);
+		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderBuy: Buy Trader Item ");
 	}
 	else {
-		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderBuy: Struct size mismatch");
-
+		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderBuy: Null Client Pointer");
 	}
+
+
 	return;
 }
 
@@ -13527,51 +13567,124 @@ void Client::Handle_OP_TradeRequestAck(const EQApplicationPacket *app)
 void Client::Handle_OP_TraderShop(const EQApplicationPacket *app)
 {
 	// Bazaar Trader:
-	//
-	// This is when a potential purchaser right clicks on this client who is in Trader mode to
-	// browse their goods.
-	//
 
-	TraderClick_Struct* tcs = (TraderClick_Struct*)app->pBuffer;
+	if (app->size == sizeof(TraderClick_Struct))
+	{
+		
+		TraderClick_Struct* tcs = (TraderClick_Struct*)app->pBuffer;
 
-	if (app->size != sizeof(TraderClick_Struct)) {
+		Log.Out(Logs::Detail, Logs::Trading, "Handle_OP_TraderShop: TraderClick_Struct TraderID %d, Code %d, Unknown008 %d, Approval %d",
+			tcs->TraderID, tcs->Code, tcs->Unknown008, tcs->Approval);
 
-		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: Returning due to struct size mismatch");
+		if (tcs->Code == BazaarWelcome)
+		{
+			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: Sent Bazaar Welcome Info");
+			SendBazaarWelcome();
+		}
+		else
+		{
+			// This is when a potential purchaser right clicks on this client who is in Trader mode to
+			// browse their goods.
+			EQApplicationPacket* outapp = new EQApplicationPacket(OP_TraderShop, sizeof(TraderClick_Struct));
 
-		return;
+			TraderClick_Struct* outtcs = (TraderClick_Struct*)outapp->pBuffer;
+
+			Client* Trader = entity_list.GetClientByID(tcs->TraderID);
+
+			if (Trader)
+			{
+				outtcs->Approval = Trader->WithCustomer(GetID());
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: Shop Request (%s) to (%s) with Approval: %d", GetCleanName(), Trader->GetCleanName(), outtcs->Approval);
+			}
+			else {
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: entity_list.GetClientByID(tcs->traderid)"
+					" returned a nullptr pointer");
+				return;
+			}
+
+			outtcs->TraderID = tcs->TraderID;
+
+			outtcs->Unknown008 = 0x3f800000;
+
+			QueuePacket(outapp);
+
+
+			if (outtcs->Approval) {
+				this->BulkSendTraderInventory(Trader->CharacterID());
+				Trader->Trader_CustomerBrowsing(this);
+				TraderID = tcs->TraderID;
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: Trader Inventory Sent");
+			}
+			else
+			{
+				Message_StringID(clientMessageYellow, TRADER_BUSY);
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: Trader Busy");
+			}
+
+			safe_delete(outapp);
+			return;
+		}
+
 	}
-
-	EQApplicationPacket* outapp = new EQApplicationPacket(OP_TraderShop, sizeof(TraderClick_Struct));
-
-	TraderClick_Struct* outtcs = (TraderClick_Struct*)outapp->pBuffer;
-
-	Client* Customer = entity_list.GetClientByID(tcs->TraderID);
-
-	if (Customer)
-		outtcs->Approval = Customer->WithCustomer(GetID());
-	else {
-		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: entity_list.GetClientByID(tcs->traderid)"
-			" returned a nullptr pointer");
-		return;
+	else if (app->size == sizeof(BazaarWelcome_Struct))
+	{
+		// RoF+
+		// Client requested Bazaar Welcome Info (Trader and Item Total Counts)
+		SendBazaarWelcome();
+		Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_TraderShop: Sent Bazaar Welcome Info");
 	}
+	else if (app->size == sizeof(TraderBuy_Struct))
+	{
+		// RoF+
+		// Customer has purchased an item from the Trader
 
-	outtcs->TraderID = tcs->TraderID;
+		TraderBuy_Struct* tbs = (TraderBuy_Struct*)app->pBuffer;
 
-	outtcs->Unknown008 = 0x3f800000;
+		if (Client* Trader = entity_list.GetClientByID(tbs->TraderID))
+		{
+			BuyTraderItem(tbs, Trader, app);
+			Log.Out(Logs::Detail, Logs::Trading, "Handle_OP_TraderShop: Buy Action %d, Price %d, Trader %d, ItemID %d, Quantity %d, ItemName, %s",
+				tbs->Action, tbs->Price, tbs->TraderID, tbs->ItemID, tbs->Quantity, tbs->ItemName);
+		}
+		else
+		{
+			Log.Out(Logs::Detail, Logs::Trading, "OP_TraderShop: Null Client Pointer");
+		}
+	}
+	else if (app->size == 4)
+	{
+		// RoF+
+		// Customer has closed the trade window
+		uint32 Command = *((uint32 *)app->pBuffer);
 
-	QueuePacket(outapp);
-
-
-	if (outtcs->Approval) {
-		this->BulkSendTraderInventory(Customer->CharacterID());
-		Customer->Trader_CustomerBrowsing(this);
+		if (Command == 4)
+		{
+			Client* c = entity_list.GetClientByID(TraderID);
+			TraderID = 0;
+			if (c)
+			{
+				c->WithCustomer(0);
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: End Transaction - Code %d", Command);
+			}
+			else
+			{
+				Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Null Client Pointer for Trader - Code %d", Command);
+			}
+			EQApplicationPacket empty(OP_ShopEndConfirm);
+			QueuePacket(&empty);
+		}
+		else
+		{
+			Log.Out(Logs::Detail, Logs::Trading, "Client::Handle_OP_Trader: Unhandled Code %d", Command);
+		}
 	}
 	else
-		Message_StringID(clientMessageYellow, TRADER_BUSY);
-
-	safe_delete(outapp);
-
-	return;
+	{
+		Log.Out(Logs::Detail, Logs::Trading, "Unknown size for OP_TraderShop: %i\n", app->size);
+		Log.Out(Logs::General, Logs::Error, "Unknown size for OP_TraderShop: %i\n", app->size);
+		DumpPacket(app);
+		return;
+	}
 }
 
 void Client::Handle_OP_TradeSkillCombine(const EQApplicationPacket *app)
@@ -13734,41 +13847,32 @@ void Client::Handle_OP_TributeUpdate(const EQApplicationPacket *app)
 
 void Client::Handle_OP_VetClaimRequest(const EQApplicationPacket *app)
 {
-	if (app->size < sizeof(VeteranClaimRequest))
-	{
-		Log.Out(Logs::General, Logs::None, "OP_VetClaimRequest size lower than expected: got %u expected at least %u", app->size, sizeof(VeteranClaimRequest));
+	if (app->size < sizeof(VeteranClaim)) {
+		Log.Out(Logs::General, Logs::None,
+			"OP_VetClaimRequest size lower than expected: got %u expected at least %u", app->size,
+			sizeof(VeteranClaim));
 		DumpPacket(app);
 		return;
 	}
 
-	VeteranClaimRequest *vcr = (VeteranClaimRequest*)app->pBuffer;
+	VeteranClaim *vcr = (VeteranClaim *)app->pBuffer;
 
-	if (vcr->claim_id == 0xFFFFFFFF) //request update packet
-	{
+	if (vcr->claim_id == 0xFFFFFFFF) { // request update packet
 		SendRewards();
+		return;
 	}
-	else //try to claim something!
-	{
-		if (!TryReward(vcr->claim_id))
-		{
-			Message(13, "Your claim has been rejected.");
-			EQApplicationPacket *vetapp = new EQApplicationPacket(OP_VetClaimReply, sizeof(VeteranClaimReply));
-			VeteranClaimReply * cr = (VeteranClaimReply*)vetapp->pBuffer;
-			strcpy(cr->name, GetName());
-			cr->claim_id = vcr->claim_id;
-			cr->reject_field = -1;
-			FastQueuePacket(&vetapp);
-		}
-		else
-		{
-			EQApplicationPacket *vetapp = new EQApplicationPacket(OP_VetClaimReply, sizeof(VeteranClaimReply));
-			VeteranClaimReply * cr = (VeteranClaimReply*)vetapp->pBuffer;
-			strcpy(cr->name, GetName());
-			cr->claim_id = vcr->claim_id;
-			cr->reject_field = 0;
-			FastQueuePacket(&vetapp);
-		}
-	}
+	// try to claim something!
+	EQApplicationPacket *vetapp = new EQApplicationPacket(OP_VetClaimReply, sizeof(VeteranClaim));
+	VeteranClaim *cr = (VeteranClaim *)vetapp->pBuffer;
+	strcpy(cr->name, GetName());
+	cr->claim_id = vcr->claim_id;
+
+	if (!TryReward(vcr->claim_id))
+		cr->action = 1;
+	else
+		cr->action = 0;
+
+	FastQueuePacket(&vetapp);
 }
 
 void Client::Handle_OP_VoiceMacroIn(const EQApplicationPacket *app)

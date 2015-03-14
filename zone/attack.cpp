@@ -919,6 +919,7 @@ int Mob::GetWeaponDamage(Mob *against, const ItemInst *weapon_item, uint32 *hate
 {
 	int dmg = 0;
 	int banedmg = 0;
+	int x = 0;
 
 	if(!against || against->GetInvul() || against->GetSpecialAbility(IMMUNE_MELEE)){
 		return 0;
@@ -947,10 +948,20 @@ int Mob::GetWeaponDamage(Mob *against, const ItemInst *weapon_item, uint32 *hate
 			bool MagicWeapon = false;
 			if(weapon_item->GetItem() && weapon_item->GetItem()->Magic)
 				MagicWeapon = true;
-			else {
+			else 
 				if(spellbonuses.MagicWeapon || itembonuses.MagicWeapon)
 					MagicWeapon = true;
-			}
+				else 
+					// An augment on the weapon that is marked magic makes
+					// the item magical.
+					for(x = 0; MagicWeapon == false && x < EmuConstants::ITEM_COMMON_SIZE; x++)
+					{
+						if(weapon_item->GetAugment(x) && weapon_item->GetAugment(x)->GetItem())
+						{
+							if (weapon_item->GetAugment(x)->GetItem()->Magic)
+								MagicWeapon = true;
+						}
+					}
 
 			if(MagicWeapon) {
 
@@ -3673,6 +3684,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 						(frontal_stun_resist && zone->random.Roll(frontal_stun_resist))) &&
 						!attacker->BehindMob(this, attacker->GetX(), attacker->GetY())) {
 					Log.Out(Logs::Detail, Logs::Combat, "Frontal stun resisted. %d chance.", frontal_stun_resist);
+
 				} else {
 					// Normal stun resist check.
 					if (stun_resist && zone->random.Roll(stun_resist)) {
@@ -4017,7 +4029,7 @@ void Mob::TryWeaponProc(const ItemInst *inst, const Item_Struct *weapon, Mob *on
 	// We can proc once here, either weapon or one aug
 	bool proced = false; // silly bool to prevent augs from going if weapon does
 	skillinuse = GetSkillByItemType(weapon->ItemType);
-	if (weapon->Proc.Type == ET_CombatProc) {
+	if (weapon->Proc.Type == ET_CombatProc && IsValidSpell(weapon->Proc.Effect)) {
 		float WPC = ProcChance * (100.0f + // Proc chance for this weapon
 				static_cast<float>(weapon->ProcRate)) / 100.0f;
 		if (zone->random.Roll(WPC)) {	// 255 dex = 0.084 chance of proc. No idea what this number should be really.
@@ -4055,7 +4067,7 @@ void Mob::TryWeaponProc(const ItemInst *inst, const Item_Struct *weapon, Mob *on
 			if (!aug)
 				continue;
 
-			if (aug->Proc.Type == ET_CombatProc) {
+			if (aug->Proc.Type == ET_CombatProc && IsValidSpell(aug->Proc.Effect)) {
 				float APC = ProcChance * (100.0f + // Proc chance for this aug
 					static_cast<float>(aug->ProcRate)) / 100.0f;
 				if (zone->random.Roll(APC)) {

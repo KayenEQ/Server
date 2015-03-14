@@ -358,9 +358,6 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, const glm::vec4& position, int if
 	InitializeBuffSlots();
 	CalcBonuses();
 	raid_target = d->raid_target;
-
-	active_light = d->light;
-	spell_light = equip_light = NOT_USED;
 }
 
 NPC::~NPC()
@@ -445,15 +442,15 @@ void NPC::RemoveItem(uint32 item_id, uint16 quantity, uint16 slot) {
 		ServerLootItem_Struct* item = *cur;
 		if (item->item_id == item_id && slot <= 0 && quantity <= 0) {
 			itemlist.erase(cur);
-			UpdateEquipLightValue();
-			if (UpdateActiveLightValue()) { SendAppearancePacket(AT_Light, GetActiveLightValue()); }
+			UpdateEquipmentLight();
+			if (UpdateActiveLight()) { SendAppearancePacket(AT_Light, GetActiveLightType()); }
 			return;
 		}
 		else if (item->item_id == item_id && item->equip_slot == slot && quantity >= 1) {
 			if (item->charges <= quantity) {
 				itemlist.erase(cur);
-				UpdateEquipLightValue();
-				if (UpdateActiveLightValue()) { SendAppearancePacket(AT_Light, GetActiveLightValue()); }
+				UpdateEquipmentLight();
+				if (UpdateActiveLight()) { SendAppearancePacket(AT_Light, GetActiveLightType()); }
 			}
 			else {
 				item->charges -= quantity;
@@ -489,9 +486,9 @@ void NPC::CheckMinMaxLevel(Mob *them)
 		++cur;
 	}
 
-	UpdateEquipLightValue();
-	if (UpdateActiveLightValue())
-		SendAppearancePacket(AT_Light, GetActiveLightValue());
+	UpdateEquipmentLight();
+	if (UpdateActiveLight())
+		SendAppearancePacket(AT_Light, GetActiveLightType());
 }
 
 void NPC::ClearItemList() {
@@ -504,9 +501,9 @@ void NPC::ClearItemList() {
 	}
 	itemlist.clear();
 
-	UpdateEquipLightValue();
-	if (UpdateActiveLightValue())
-		SendAppearancePacket(AT_Light, GetActiveLightValue());
+	UpdateEquipmentLight();
+	if (UpdateActiveLight())
+		SendAppearancePacket(AT_Light, GetActiveLightType());
 }
 
 void NPC::QueryLoot(Client* to)
@@ -743,25 +740,39 @@ uint32 NPC::CountLoot() {
 	return(itemlist.size());
 }
 
-void NPC::UpdateEquipLightValue()
+void NPC::UpdateEquipmentLight()
 {
-	equip_light = NOT_USED;
+	m_Light.Type.Equipment = 0;
+	m_Light.Level.Equipment = 0;
 	
 	for (int index = MAIN_BEGIN; index < EmuConstants::EQUIPMENT_SIZE; ++index) {
-		if (equipment[index] == NOT_USED) { continue; }
+		if (index == MainAmmo) { continue; }
+
 		auto item = database.GetItem(equipment[index]);
 		if (item == nullptr) { continue; }
-		if (item->Light & 0xF0) { continue; }
-		if (item->Light > equip_light) { equip_light = item->Light; }
+
+		if (m_Light.IsLevelGreater(item->Light, m_Light.Type.Equipment)) {
+			m_Light.Type.Equipment = item->Light;
+			m_Light.Level.Equipment = m_Light.TypeToLevel(m_Light.Type.Equipment);
+		}
 	}
 
+	uint8 general_light_type = 0;
 	for (auto iter = itemlist.begin(); iter != itemlist.end(); ++iter) {
 		auto item = database.GetItem((*iter)->item_id);
 		if (item == nullptr) { continue; }
-		if (item->ItemType != ItemTypeMisc && item->ItemType != ItemTypeLight) { continue; }
-		if (item->Light & 0xF0) { continue; }
-		if (item->Light > equip_light) { equip_light = item->Light; }
+
+		if (item->ItemClass != ItemClassCommon) { continue; }
+		if (item->Light < 9 || item->Light > 13) { continue; }
+
+		if (m_Light.TypeToLevel(item->Light))
+			general_light_type = item->Light;
 	}
+
+	if (m_Light.IsLevelGreater(general_light_type, m_Light.Type.Equipment))
+		m_Light.Type.Equipment = general_light_type;
+
+	m_Light.Level.Equipment = m_Light.TypeToLevel(m_Light.Type.Equipment);
 }
 
 void NPC::Depop(bool StartSpawnTimer) {
@@ -1835,8 +1846,8 @@ void NPC::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 	Mob::FillSpawnStruct(ns, ForWho);
 	PetOnSpawn(ns);
 	ns->spawn.is_npc = 1;
-	UpdateActiveLightValue();
-	ns->spawn.light = GetActiveLightValue();
+	UpdateActiveLight();
+	ns->spawn.light = GetActiveLightType();
 }
 
 void NPC::PetOnSpawn(NewSpawn_Struct* ns)
@@ -1853,7 +1864,7 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 		if(swarmOwner->IsClient())
 		{
 			SetPetOwnerClient(true); //Simple flag to determine if pet belongs to a client
-			SetAllowBeneficial(1);//Allow temp pets to receive buffs and heals if owner is client.
+			SetAllowBeneficial(true);//Allow temp pets to receive buffs and heals if owner is client.
 			//This will allow CLIENT swarm pets NOT to be targeted with F8.
 			ns->spawn.targetable_with_hotkey = 0;
 			no_target_hotkey = 1;
@@ -2272,8 +2283,6 @@ bool NPC::CanTalk()
 	0,0,420,0,0,0,0,425,0,0,0,0,0,0,0,433,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,458,0,0,0,0,0,0,0,0,467,0,0,470,0,0,473};
 
-	int talk_check = TalkRace[GetRace() - 1];
-
 	if (TalkRace[GetRace() - 1] > 0)
 		return true;
 
@@ -2417,6 +2426,29 @@ void NPC::DoQuestPause(Mob *other) {
 		FaceTarget(other);
 	}
 
+}
+
+void NPC::ChangeLastName(const char* in_lastname) 
+{
+
+	EQApplicationPacket* outapp = new EQApplicationPacket(OP_GMLastName, sizeof(GMLastName_Struct));
+	GMLastName_Struct* gmn = (GMLastName_Struct*)outapp->pBuffer;
+	strcpy(gmn->name, GetName());
+	strcpy(gmn->gmname, GetName());
+	strcpy(gmn->lastname, in_lastname);
+	gmn->unknown[0]=1;
+	gmn->unknown[1]=1;
+	gmn->unknown[2]=1;
+	gmn->unknown[3]=1;
+	entity_list.QueueClients(this, outapp, false);
+	safe_delete(outapp);
+}
+
+void NPC::ClearLastName()
+{
+	std::string WT;
+	WT = '\0'; //Clear Last Name
+	ChangeLastName( WT.c_str());
 }
 
 void NPC::DepopSwarmPets()

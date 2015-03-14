@@ -28,7 +28,7 @@
 		set to nullptr and 0 respectively since they aren't used when adding
 		an alias. The function pointers being equal is makes it an alias.
 		The access level you set with command_add is only a default if
-		the command isn't listed in the addon.ini file.
+		the command isn't listed in the commands db table.
 
 */
 
@@ -7066,7 +7066,7 @@ void Client::Undye() {
 			database.SaveInventory(CharacterID(), inst, slot2);
 		}
 
-		m_pp.item_tint[cur_slot].color = 0;
+		m_pp.item_tint[cur_slot].Color = 0;
 		SendWearChange(cur_slot);
 	}
 

@@ -165,6 +165,7 @@ Client::Client(EQStreamInterface* ieqs)
 	Trader=false;
 	Buyer = false;
 	CustomerID = 0;
+	TraderID = 0;
 	TrackingID = 0;
 	WID = 0;
 	account_id = 0;
@@ -249,7 +250,7 @@ Client::Client(EQStreamInterface* ieqs)
 	AttemptedMessages = 0;
 	TotalKarma = 0;
 	m_ClientVersion = ClientVersion::Unknown;
-	ClientVersionBit = 0;
+	m_ClientVersionBit = 0;
 	AggroCount = 0;
 	RestRegenHP = 0;
 	RestRegenMana = 0;
@@ -306,9 +307,6 @@ Client::Client(EQStreamInterface* ieqs)
 	SavedRaidRestTimer = 0;
 
 	interrogateinv_flag = false;
-
-	active_light = innate_light;
-	spell_light = equip_light = NOT_USED;
 
 	AI_Init();
 
@@ -1885,9 +1883,9 @@ void Client::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 	ns->spawn.runspeed		= (gmspeed == 0) ? runspeed : 3.125f;
 	ns->spawn.showhelm = m_pp.showhelm ? 1 : 0;
 
-	UpdateEquipLightValue();
-	UpdateActiveLightValue();
-	ns->spawn.light = active_light;
+	UpdateEquipmentLight();
+	UpdateActiveLight();
+	ns->spawn.light = m_Light.Type.Active;
 }
 
 bool Client::GMHideMe(Client* client) {
@@ -3055,7 +3053,7 @@ void Client::Tell_StringID(uint32 string_id, const char *who, const char *messag
 
 void Client::SetTint(int16 in_slot, uint32 color) {
 	Color_Struct new_color;
-	new_color.color = color;
+	new_color.Color = color;
 	SetTint(in_slot, new_color);
 	database.SaveCharacterMaterialColor(this->CharacterID(), in_slot, color);
 }
@@ -3066,8 +3064,8 @@ void Client::SetTint(int16 in_slot, Color_Struct& color) {
 	uint8 matslot = Inventory::CalcMaterialFromSlot(in_slot);
 	if (matslot != _MaterialInvalid)
 	{
-		m_pp.item_tint[matslot].color = color.color;
-		database.SaveCharacterMaterialColor(this->CharacterID(), in_slot, color.color);
+		m_pp.item_tint[matslot].Color = color.Color;
+		database.SaveCharacterMaterialColor(this->CharacterID(), in_slot, color.Color);
 	}
 
 }
@@ -5378,35 +5376,35 @@ void Client::SendRewards()
 	FastQueuePacket(&vetapp);
 }
 
-bool Client::TryReward(uint32 claim_id) {
-	//Make sure we have an open spot
-	//Make sure we have it in our acct and count > 0
-	//Make sure the entry was found
-	//If we meet all the criteria:
-	//Decrement our count by 1 if it > 1 delete if it == 1
-	//Create our item in bag if necessary at the free inv slot
-	//save
+bool Client::TryReward(uint32 claim_id)
+{
+	// Make sure we have an open spot
+	// Make sure we have it in our acct and count > 0
+	// Make sure the entry was found
+	// If we meet all the criteria:
+	// Decrement our count by 1 if it > 1 delete if it == 1
+	// Create our item in bag if necessary at the free inv slot
+	// save
 	uint32 free_slot = 0xFFFFFFFF;
 
-	for(int i = EmuConstants::GENERAL_BEGIN; i <= EmuConstants::GENERAL_END; ++i) {
+	for (int i = EmuConstants::GENERAL_BEGIN; i <= EmuConstants::GENERAL_END; ++i) {
 		ItemInst *item = GetInv().GetItem(i);
-		if(!item) {
+		if (!item) {
 			free_slot = i;
 			break;
 		}
 	}
 
-	if(free_slot == 0xFFFFFFFF)
+	if (free_slot == 0xFFFFFFFF)
 		return false;
 
 	char errbuf[MYSQL_ERRMSG_SIZE];
 	std::string query = StringFormat("SELECT amount FROM account_rewards "
-									"WHERE account_id = %i AND reward_id = %i",
-									AccountID(), claim_id);
+					 "WHERE account_id = %i AND reward_id = %i",
+					 AccountID(), claim_id);
 	auto results = database.QueryDatabase(query);
-	if (!results.Success()) {
+	if (!results.Success())
 		return false;
-	}
 
 	if (results.RowCount() == 0)
 		return false;
@@ -5414,58 +5412,57 @@ bool Client::TryReward(uint32 claim_id) {
 	auto row = results.begin();
 
 	uint32 amt = atoi(row[0]);
-	if(amt == 0)
+	if (amt == 0)
 		return false;
 
-	std::list<InternalVeteranReward>::iterator iter = zone->VeteranRewards.begin();
-	for (; iter != zone->VeteranRewards.end(); ++row)
-		if((*iter).claim_id == claim_id)
-			break;
+	auto iter = std::find_if(zone->VeteranRewards.begin(), zone->VeteranRewards.end(),
+			[claim_id](const InternalVeteranReward &a) { return a.claim_id == claim_id; });
 
-	if(iter == zone->VeteranRewards.end())
+	if (iter == zone->VeteranRewards.end())
 		return false;
 
-	if(amt == 1) {
+	if (amt == 1) {
 		query = StringFormat("DELETE FROM account_rewards "
-							"WHERE account_id = %i AND reward_id = %i",
-							AccountID(), claim_id);
+				     "WHERE account_id = %i AND reward_id = %i",
+				     AccountID(), claim_id);
 		auto results = database.QueryDatabase(query);
-	}
-	else {
+	} else {
 		query = StringFormat("UPDATE account_rewards SET amount = (amount-1) "
-							"WHERE account_id = %i AND reward_id = %i",
-							AccountID(), claim_id);
+				     "WHERE account_id = %i AND reward_id = %i",
+				     AccountID(), claim_id);
 		auto results = database.QueryDatabase(query);
 	}
 
-	InternalVeteranReward ivr = (*iter);
+	auto &ivr = (*iter);
 	ItemInst *claim = database.CreateItem(ivr.items[0].item_id, ivr.items[0].charges);
-	if(!claim) {
+	if (!claim) {
 		Save();
 		return true;
 	}
 
 	bool lore_conflict = CheckLoreConflict(claim->GetItem());
 
-	for(int y = 1; y < 8; y++)
-		if(ivr.items[y].item_id && claim->GetItem()->ItemClass == 1) {
+	for (int y = 1; y < 8; y++)
+		if (ivr.items[y].item_id && claim->GetItem()->ItemClass == 1) {
 			ItemInst *item_temp = database.CreateItem(ivr.items[y].item_id, ivr.items[y].charges);
-			if(item_temp) {
-				if(CheckLoreConflict(item_temp->GetItem())) {
+			if (item_temp) {
+				if (CheckLoreConflict(item_temp->GetItem())) {
 					lore_conflict = true;
 					DuplicateLoreMessage(ivr.items[y].item_id);
 				}
-				claim->PutItem(y-1, *item_temp);
+				claim->PutItem(y - 1, *item_temp);
+				safe_delete(item_temp);
 			}
 		}
 
-	if(lore_conflict) {
+	if (lore_conflict) {
 		safe_delete(claim);
 		return true;
 	}
 
 	PutItemInInventory(free_slot, *claim);
 	SendItemPacket(free_slot, claim, ItemPacketTrade);
+	safe_delete(claim);
 
 	Save();
 	return true;
@@ -6237,6 +6234,8 @@ void Client::DragCorpses()
 				!corpse->CastToCorpse()->Summon(this, false, false)) {
 			Message_StringID(MT_DefaultText, CORPSEDRAG_STOP);
 			It = DraggedCorpses.erase(It);
+			if (It == DraggedCorpses.end())
+				break;
 		}
 	}
 }
@@ -7484,7 +7483,7 @@ void Client::SendClearMercInfo()
 
 void Client::DuplicateLoreMessage(uint32 ItemID)
 {
-	if(!(ClientVersionBit & BIT_RoFAndLater))
+	if (!(m_ClientVersionBit & BIT_RoFAndLater))
 	{
 		Message_StringID(0, PICK_LORE);
 		return;

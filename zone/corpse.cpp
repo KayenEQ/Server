@@ -113,15 +113,15 @@ Corpse* Corpse::LoadCharacterCorpseEntity(uint32 in_dbid, uint32 in_charid, std:
 		pc->Lock();
 
 	/* Load Item Tints */
-	pc->item_tint[0].color = pcs->item_tint[0].color;
-	pc->item_tint[1].color = pcs->item_tint[1].color;
-	pc->item_tint[2].color = pcs->item_tint[2].color;
-	pc->item_tint[3].color = pcs->item_tint[3].color;
-	pc->item_tint[4].color = pcs->item_tint[4].color;
-	pc->item_tint[5].color = pcs->item_tint[5].color;
-	pc->item_tint[6].color = pcs->item_tint[6].color;
-	pc->item_tint[7].color = pcs->item_tint[7].color;
-	pc->item_tint[8].color = pcs->item_tint[8].color;
+	pc->item_tint[0].Color = pcs->item_tint[0].Color;
+	pc->item_tint[1].Color = pcs->item_tint[1].Color;
+	pc->item_tint[2].Color = pcs->item_tint[2].Color;
+	pc->item_tint[3].Color = pcs->item_tint[3].Color;
+	pc->item_tint[4].Color = pcs->item_tint[4].Color;
+	pc->item_tint[5].Color = pcs->item_tint[5].Color;
+	pc->item_tint[6].Color = pcs->item_tint[6].Color;
+	pc->item_tint[7].Color = pcs->item_tint[7].Color;
+	pc->item_tint[8].Color = pcs->item_tint[8].Color;
 
 	/* Load Physical Appearance */
 	pc->haircolor = pcs->haircolor;
@@ -137,9 +137,9 @@ Corpse* Corpse::LoadCharacterCorpseEntity(uint32 in_dbid, uint32 in_charid, std:
 	pc->IsRezzed(rezzed);
 	pc->become_npc = false;
 
-	pc->spell_light = pc->innate_light = NOT_USED;
-	pc->UpdateEquipLightValue();
-	//pc->UpdateActiveLightValue();
+	pc->m_Light.Level.Innate = pc->m_Light.Type.Innate = 0;
+	pc->UpdateEquipmentLight(); // itemlist populated above..need to determine actual values
+	pc->m_Light.Level.Spell = pc->m_Light.Type.Spell = 0;
 
 	safe_delete_array(pcs);
 
@@ -150,7 +150,7 @@ Corpse::Corpse(NPC* in_npc, ItemList* in_itemlist, uint32 in_npctypeid, const NP
 // vesuvias - appearence fix
 : Mob("Unnamed_Corpse","",0,0,in_npc->GetGender(),in_npc->GetRace(),in_npc->GetClass(),BT_Humanoid,//bodytype added
 	in_npc->GetDeity(),in_npc->GetLevel(),in_npc->GetNPCTypeID(),in_npc->GetSize(),0,
-	in_npc->GetPosition(), in_npc->GetInnateLightValue(), in_npc->GetTexture(),in_npc->GetHelmTexture(),
+	in_npc->GetPosition(), in_npc->GetInnateLightType(), in_npc->GetTexture(),in_npc->GetHelmTexture(),
 	0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0xff,0,0,0,0,0,0,0,0,0),
 	corpse_decay_timer(in_decaytime),
@@ -202,9 +202,8 @@ Corpse::Corpse(NPC* in_npc, ItemList* in_itemlist, uint32 in_npctypeid, const NP
 	}
 	this->rez_experience = 0;
 
-	UpdateEquipLightValue();
-	spell_light = NOT_USED;
-	UpdateActiveLightValue();
+	UpdateEquipmentLight();
+	UpdateActiveLight();
 }
 
 Corpse::Corpse(Client* client, int32 in_rezexp) : Mob (
@@ -222,7 +221,7 @@ Corpse::Corpse(Client* client, int32 in_rezexp) : Mob (
 	client->GetSize(),				  // float		in_size,
 	0,								  // float		in_runspeed,
 	client->GetPosition(),
-	0,								  // uint8		in_light, - verified for client innate_light value
+	client->GetInnateLightType(),	  // uint8		in_light, - verified for client innate_light value
 	client->GetTexture(),			  // uint8		in_texture,
 	client->GetHelmTexture(),		  // uint8		in_helmtexture,
 	0,								  // uint16		in_ac,
@@ -340,7 +339,7 @@ Corpse::Corpse(Client* client, int32 in_rezexp) : Mob (
 
 		database.TransactionBegin();
 
-		// I have an untested process that avoids this snarl up when all possessions inventory is removed..but this isn't broke -U
+		// I have an untested process that avoids this snarl up when all possessions inventory is removed..but this isn't broke
 		if (!removed_list.empty()) {
 			std::stringstream ss("");
 			ss << "DELETE FROM inventory WHERE charid=" << client->CharacterID();
@@ -373,16 +372,14 @@ Corpse::Corpse(Client* client, int32 in_rezexp) : Mob (
 
 		database.TransactionCommit();
 
-		UpdateEquipLightValue();
-		spell_light = NOT_USED;
-		UpdateActiveLightValue();
+		UpdateEquipmentLight();
+		UpdateActiveLight();
 
 		return;
 	} //end "not leaving naked corpses"
 
-	UpdateEquipLightValue();
-	spell_light = NOT_USED;
-	UpdateActiveLightValue();
+	UpdateEquipmentLight();
+	UpdateActiveLight();
 
 	IsRezzed(false);
 	Save();
@@ -521,9 +518,9 @@ in_helmtexture,
 	}
 	SetPlayerKillItemID(0);
 
-	UpdateEquipLightValue();
-	spell_light = NOT_USED;
-	UpdateActiveLightValue();
+	UpdateEquipmentLight();
+	m_Light.Level.Spell = m_Light.Type.Spell = 0;
+	UpdateActiveLight();
 }
 
 Corpse::~Corpse() {
@@ -667,7 +664,7 @@ void Corpse::AddItem(uint32 itemnum, uint16 charges, int16 slot, uint32 aug1, ui
 	item->attuned=attuned;
 	itemlist.push_back(item);
 
-	UpdateEquipLightValue();
+	UpdateEquipmentLight();
 }
 
 ServerLootItem_Struct* Corpse::GetItem(uint16 lootslot, ServerLootItem_Struct** bag_item_data) {
@@ -742,9 +739,9 @@ void Corpse::RemoveItem(ServerLootItem_Struct* item_data)
 		if (material != _MaterialInvalid)
 			SendWearChange(material);
 
-		UpdateEquipLightValue();
-		if (UpdateActiveLightValue())
-			SendAppearancePacket(AT_Light, GetActiveLightValue());
+		UpdateEquipmentLight();
+		if (UpdateActiveLight())
+			SendAppearancePacket(AT_Light, GetActiveLightType());
 
 		safe_delete(sitem);
 		return;
@@ -1220,9 +1217,9 @@ void Corpse::LootItem(Client* client, const EQApplicationPacket* app) {
 	linker.SetLinkType(linker.linkItemInst);
 	linker.SetItemInst(inst);
 
-		auto item_link = linker.GenerateLink();
+	auto item_link = linker.GenerateLink();
 
-		client->Message_StringID(MT_LootMessages, LOOTED_MESSAGE, item_link.c_str());
+	client->Message_StringID(MT_LootMessages, LOOTED_MESSAGE, item_link.c_str());
 
 	if (!IsPlayerCorpse()) {
 			Group *g = client->GetGroup();
@@ -1273,8 +1270,8 @@ void Corpse::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho) {
 	ns->spawn.max_hp = 120;
 	ns->spawn.NPC = 2;
 
-	UpdateActiveLightValue();
-	ns->spawn.light = active_light;
+	UpdateActiveLight();
+	ns->spawn.light = m_Light.Type.Active;
 }
 
 void Corpse::QueryLoot(Client* to) {
@@ -1413,26 +1410,48 @@ uint32 Corpse::GetEquipmentColor(uint8 material_slot) const {
 
 	item = database.GetItem(GetEquipment(material_slot));
 	if(item != NO_ITEM) {
-		return item_tint[material_slot].rgb.use_tint ?
-			item_tint[material_slot].color :
+		return item_tint[material_slot].RGB.UseTint ?
+			item_tint[material_slot].Color :
 			item->Color;
 	}
 
 	return 0;
 }
 
-void Corpse::UpdateEquipLightValue()
+void Corpse::UpdateEquipmentLight()
 {
-	equip_light = NOT_USED;
+	m_Light.Type.Equipment = 0;
+	m_Light.Level.Equipment = 0;
 
 	for (auto iter = itemlist.begin(); iter != itemlist.end(); ++iter) {
-		if (((*iter)->equip_slot < EmuConstants::EQUIPMENT_BEGIN || (*iter)->equip_slot > EmuConstants::GENERAL_END) && (*iter)->equip_slot != MainPowerSource) { continue; }
+		if (((*iter)->equip_slot < EmuConstants::EQUIPMENT_BEGIN || (*iter)->equip_slot > EmuConstants::EQUIPMENT_END) && (*iter)->equip_slot != MainPowerSource) { continue; }
+		if ((*iter)->equip_slot == MainAmmo) { continue; }
+		
 		auto item = database.GetItem((*iter)->item_id);
 		if (item == nullptr) { continue; }
-		if (item->ItemType != ItemTypeMisc && item->ItemType != ItemTypeLight) { continue; }
-		if (item->Light & 0xF0) { continue; }
-		if (item->Light > equip_light) { equip_light = item->Light; }
+		
+		if (m_Light.IsLevelGreater(item->Light, m_Light.Type.Equipment))
+			m_Light.Type.Equipment = item->Light;
 	}
+	
+	uint8 general_light_type = 0;
+	for (auto iter = itemlist.begin(); iter != itemlist.end(); ++iter) {
+		if ((*iter)->equip_slot < EmuConstants::GENERAL_BEGIN || (*iter)->equip_slot > EmuConstants::GENERAL_END) { continue; }
+		
+		auto item = database.GetItem((*iter)->item_id);
+		if (item == nullptr) { continue; }
+		
+		if (item->ItemClass != ItemClassCommon) { continue; }
+		if (item->Light < 9 || item->Light > 13) { continue; }
+
+		if (m_Light.TypeToLevel(item->Light))
+			general_light_type = item->Light;
+	}
+
+	if (m_Light.IsLevelGreater(general_light_type, m_Light.Type.Equipment))
+		m_Light.Type.Equipment = general_light_type;
+
+	m_Light.Level.Equipment = m_Light.TypeToLevel(m_Light.Type.Equipment);
 }
 
 void Corpse::AddLooter(Mob* who) {

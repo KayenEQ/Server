@@ -791,6 +791,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		} else { // check to stop casting beneficial ae buffs (to wit: bard songs) on enemies...
 			// This does not check faction for beneficial AE buffs..only agro and attackable.
 			// I've tested for spells that I can find without problem, but a faction-based
+
 			// check may still be needed. Any changes here should also reflect in BardAEPulse() -U
 
 				//C!Kayen - Not sure why we can't just use the Beneficial Check for the other two, will leave for now.
@@ -804,6 +805,12 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 					if (caster->CheckAggro(curmob))
 						continue;
 				}
+
+			// check may still be needed. Any changes here should also reflect in BardAEPulse()
+			if (caster->IsAttackAllowed(curmob, true))
+				continue;
+			if (caster->CheckAggro(curmob))
+				continue;
 		}
 
 		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);

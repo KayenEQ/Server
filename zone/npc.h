@@ -187,7 +187,7 @@ public:
 	void	QueryLoot(Client* to);
 	uint32	CountLoot();
 	inline uint32	GetLoottableID()	const { return loottable_id; }
-	virtual void UpdateEquipLightValue();
+	virtual void UpdateEquipmentLight();
 
 	inline uint32	GetCopper()		const { return copper; }
 	inline uint32	GetSilver()		const { return silver; }
@@ -360,6 +360,9 @@ public:
 
 	const bool IsUnderwaterOnly() const { return NPCTypedata->underwater; }
 	const char* GetRawNPCTypeName() const { return NPCTypedata->name; }
+
+	void ChangeLastName(const char* in_lastname);
+	void ClearLastName();
 
 	bool GetDepop() { return p_depop; }
 

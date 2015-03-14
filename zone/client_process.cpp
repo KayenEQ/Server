@@ -262,9 +262,10 @@ bool Client::Process() {
 		}
 
 		if(light_update_timer.Check()) {
-			UpdateEquipLightValue();
-			if(UpdateActiveLightValue()) {
-				SendAppearancePacket(AT_Light, GetActiveLightValue());
+			
+			UpdateEquipmentLight();
+			if(UpdateActiveLight()) {
+				SendAppearancePacket(AT_Light, GetActiveLightType());
 			}
 		}
 
@@ -852,14 +853,14 @@ void Client::OnDisconnect(bool hard_disconnect) {
 
 // Sends the client complete inventory used in character login
 
-// DO WE STILL NEED THE 'ITEMCOMBINED' CONDITIONAL CODE? -U
+// DO WE STILL NEED THE 'ITEMCOMBINED' CONDITIONAL CODE?
 
 //#ifdef ITEMCOMBINED
 void Client::BulkSendInventoryItems() {
 	int16 slot_id = 0;
 
 	// LINKDEAD TRADE ITEMS
-	// Move trade slot items back into normal inventory..need them there now for the proceeding validity checks -U
+	// Move trade slot items back into normal inventory..need them there now for the proceeding validity checks
 	for(slot_id = EmuConstants::TRADE_BEGIN; slot_id <= EmuConstants::TRADE_END; slot_id++) {
 		ItemInst* inst = m_inv.PopItem(slot_id);
 		if(inst) {
@@ -878,7 +879,7 @@ void Client::BulkSendInventoryItems() {
 	RemoveDuplicateLore(false);
 	MoveSlotNotAllowed(false);
 
-	// The previous three method calls took care of moving/removing expired/illegal item placements -U
+	// The previous three method calls took care of moving/removing expired/illegal item placements
 
 	//TODO: this function is just retarded... it re-allocates the buffer for every
 	//new item. It should be changed to loop through once, gather the
@@ -1004,7 +1005,7 @@ void Client::BulkSendInventoryItems()
 void Client::BulkSendMerchantInventory(int merchant_id, int npcid) {
 	const Item_Struct* handyitem = nullptr;
 	uint32 numItemSlots = 80; //The max number of items passed in the transaction.
-	if (ClientVersionBit & BIT_RoFAndLater) { // RoF+ can send 200 items
+	if (m_ClientVersionBit & BIT_RoFAndLater) { // RoF+ can send 200 items
 		numItemSlots = 200;
 	}
 	const Item_Struct *item;
@@ -1930,7 +1931,7 @@ void Client::DoHPRegen() {
 }
 
 void Client::DoManaRegen() {
-	if (GetMana() >= max_mana)
+	if (GetMana() >= max_mana && spellbonuses.ManaRegen >= 0)
 		return;
 
 	SetMana(GetMana() + CalcManaRegen() + RestRegenMana);
