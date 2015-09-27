@@ -158,7 +158,7 @@ namespace RoF2
 
 		eq->exit_url_length = emu->exit_url_length;
 		eq->exit_url_length2 = emu->exit_url_length2;
-		
+
 		FINISH_ENCODE();
 	}
 
@@ -183,7 +183,7 @@ namespace RoF2
 		{
 			eq->entries[i] = 1;
 		}
-		
+
 
 		FINISH_ENCODE();
 	}
@@ -293,8 +293,8 @@ namespace RoF2
 		SETUP_DIRECT_ENCODE(Animation_Struct, structs::Animation_Struct);
 
 		OUT(spawnid);
-		OUT(value);
 		OUT(action);
+		OUT(speed);
 
 		FINISH_ENCODE();
 	}
@@ -483,7 +483,7 @@ namespace RoF2
 			outapp->WriteUInt32(0);			// Duration
 			outapp->WriteUInt32(0);			// ?
 			outapp->WriteUInt8(0);		// Caster name
-			outapp->WriteUInt8(0);		// Terminating byte
+			outapp->WriteUInt8(0);		// Type
 		}
 		FINISH_ENCODE();
 
@@ -513,6 +513,11 @@ namespace RoF2
 			{
 				buffslot += 17;
 			}
+			// TODO: We should really just deal with these "server side"
+			// so we can have clients not limited to other clients.
+			// This fixes discs, songs were changed to 20
+			if (buffslot == 54)
+				buffslot = 62;
 
 			__packet->WriteUInt32(buffslot);
 			__packet->WriteUInt32(emu->entries[i].spell_id);
@@ -520,7 +525,7 @@ namespace RoF2
 			__packet->WriteUInt32(emu->entries[i].num_hits); // Unknown
 			__packet->WriteString("");
 		}
-		__packet->WriteUInt8(!emu->all_buffs); // Unknown
+		__packet->WriteUInt8(emu->type); // Unknown
 
 		FINISH_ENCODE();
 	}
@@ -545,7 +550,7 @@ namespace RoF2
 			eq->slot = 13;
 		else
 			OUT(slot);
-		
+
 		OUT(spell_id);
 		eq->inventoryslot = ServerToRoF2Slot(emu->inventoryslot);
 		//OUT(inventoryslot);
@@ -569,7 +574,7 @@ namespace RoF2
 
 		//in->size = strlen(emu->sender) + 1 + strlen(emu->targetname) + 1 + strlen(emu->message) + 1 + 36;
 		in->size = strlen(emu->sender) + strlen(emu->targetname) + new_message.length() + 39;
-		
+
 		in->pBuffer = new unsigned char[in->size];
 
 		char *OutBuffer = (char *)in->pBuffer;
@@ -724,7 +729,10 @@ namespace RoF2
 		OUT(type);
 		OUT(spellid);
 		OUT(damage);
-		eq->sequence = emu->sequence;
+		OUT(force);
+		OUT(meleepush_xy);
+		OUT(meleepush_z);
+		OUT(special);
 
 		FINISH_ENCODE();
 	}
@@ -768,7 +776,7 @@ namespace RoF2
 	{
 		SETUP_VAR_ENCODE(ExpeditionCompass_Struct);
 		ALLOC_VAR_ENCODE(structs::ExpeditionCompass_Struct, sizeof(structs::ExpeditionInfo_Struct) + sizeof(structs::ExpeditionCompassEntry_Struct) * emu->count);
-		
+
 		OUT(count);
 
 		for (uint32 i = 0; i < emu->count; ++i)
@@ -1039,8 +1047,8 @@ namespace RoF2
 		VARSTRUCT_ENCODE_TYPE(uint32, OutBuffer, 0);	// Same for all objects in the zone
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->heading);
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, 0);	// Normally 0, but seen (float)255.0 as well
-		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, 0);	// Unknown
-		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, 1);	// Need to add emu->size to struct
+		VARSTRUCT_ENCODE_TYPE(uint32, OutBuffer, emu->solidtype);	// Unknown
+		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->size != 0 && (float)emu->size < 5000.f ? (float)((float)emu->size / 100.0f) : 1.f );	// This appears to be the size field. Hackish logic because some PEQ DB items were corrupt.
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->y);
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->x);
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->z);
@@ -1315,7 +1323,7 @@ namespace RoF2
 				switch (emu_e->rank) {
 				case 0: { e->rank = htonl(5); break; }  // GUILD_MEMBER	0
 				case 1: { e->rank = htonl(3); break; }  // GUILD_OFFICER 1
-				case 2: { e->rank = htonl(1); break; }  // GUILD_LEADER	2  
+				case 2: { e->rank = htonl(1); break; }  // GUILD_LEADER	2
 				default: { e->rank = htonl(emu_e->rank); break; } // GUILD_NONE
 				}
 
@@ -2193,7 +2201,7 @@ namespace RoF2
 		{
 			outapp->WriteUInt32(emu->aa_array[r].AA);
 			outapp->WriteUInt32(emu->aa_array[r].value);
-			outapp->WriteUInt32(0);
+			outapp->WriteUInt32(emu->aa_array[r].charges);
 		}
 
 		// Fill the other 60 AAs with zeroes
@@ -2388,9 +2396,9 @@ namespace RoF2
  				outapp->WriteSInt32(-1);
  			}
  		}
- 
+
 		outapp->WriteUInt32(consts::POTION_BELT_ITEM_COUNT);
- 
+
 		// Copy potion belt where server and client indexes converge
 		for (uint32 r = 0; r < EmuConstants::POTION_BELT_ITEM_COUNT && r < consts::POTION_BELT_ITEM_COUNT; ++r) {
 			outapp->WriteString(emu->potionbelt.Items[r].Name);
@@ -2459,7 +2467,8 @@ namespace RoF2
 		outapp->WriteUInt32(emu->lastlogin);
 		outapp->WriteUInt32(emu->timePlayedMin);
 		outapp->WriteUInt32(emu->timeentitledonaccount);
-		outapp->WriteUInt32(0x0007ffff);		// Expansion bitmask
+		outapp->WriteUInt32(emu->expansions);
+		//outapp->WriteUInt32(0x0007ffff);		// Expansion bitmask
 
 		outapp->WriteUInt32(structs::MAX_PP_LANGUAGE);
 
@@ -2486,7 +2495,7 @@ namespace RoF2
 		outapp->WriteUInt8(0);				// Unknown
 		outapp->WriteUInt8(emu->gm);
 		outapp->WriteUInt32(emu->guild_id);
-		
+
 		outapp->WriteUInt8(emu->guildrank);	// guildrank
 		outapp->WriteUInt32(0);				// Unknown
 		outapp->WriteUInt8(0);			// Unknown
@@ -2541,12 +2550,12 @@ namespace RoF2
 		outapp->WriteUInt32(0);				// Unknown
 		outapp->WriteUInt32(0);				// Unknown
 		outapp->WriteUInt32(0);				// Unknown
-		
+
 		for (uint32 r = 0; r < 125; r++)
 		{
 			outapp->WriteUInt8(0);				// Unknown
 		}
-		
+
 		outapp->WriteUInt32(0);				// Unknown
 		outapp->WriteUInt32(0);				// Unknown
 		outapp->WriteUInt32(emu->currentRadCrystals);
@@ -2892,7 +2901,7 @@ namespace RoF2
 
 		eq->aa_spent = emu->aa_spent;
 		// These fields may need to be correctly populated at some point
-		eq->aapoints_assigned = emu->aa_spent + 1;
+		eq->aapoints_assigned = emu->aa_spent;
 		eq->aa_spent_general = 0;
 		eq->aa_spent_archetype = 0;
 		eq->aa_spent_class = 0;
@@ -2900,9 +2909,9 @@ namespace RoF2
 
 		for (uint32 i = 0; i < MAX_PP_AA_ARRAY; ++i)
 		{
-			eq->aa_list[i].aa_skill = emu->aa_list[i].aa_skill;
-			eq->aa_list[i].aa_value = emu->aa_list[i].aa_value;
-			eq->aa_list[i].unknown08 = emu->aa_list[i].unknown08;
+			eq->aa_list[i].AA = emu->aa_list[i].AA;
+			eq->aa_list[i].value = emu->aa_list[i].value;
+			eq->aa_list[i].charges = emu->aa_list[i].charges;
 		}
 
 		FINISH_ENCODE();
@@ -2928,57 +2937,80 @@ namespace RoF2
 
 	ENCODE(OP_SendAATable)
 	{
-		ENCODE_LENGTH_ATLEAST(SendAA_Struct);
-		SETUP_VAR_ENCODE(SendAA_Struct);
-		ALLOC_VAR_ENCODE(structs::SendAA_Struct, sizeof(structs::SendAA_Struct) + emu->total_abilities*sizeof(structs::AA_Ability));
+		EQApplicationPacket *inapp = *p;
+		*p = nullptr;
+		AARankInfo_Struct *emu = (AARankInfo_Struct*)inapp->pBuffer;
+		
+		// the structs::SendAA_Struct includes enough space for 1 prereq which is the min even if it has no prereqs
+		auto prereq_size = emu->total_prereqs > 1 ? (emu->total_prereqs - 1) * 8 : 0;
+		auto outapp = new EQApplicationPacket(OP_SendAATable, sizeof(structs::SendAA_Struct) + emu->total_effects * sizeof(structs::AA_Ability) + prereq_size);
+		inapp->SetReadPosition(sizeof(AARankInfo_Struct)+emu->total_effects * sizeof(AARankEffect_Struct));
+		
 
-		// Check clientver field to verify this AA should be sent for SoF
-		// clientver 1 is for all clients and 5 is for Live
-		if (emu->clientver <= 5)
-		{
-			OUT(id);
-			eq->unknown004 = 1;
-			//eq->hotkey_sid = (emu->hotkey_sid==4294967295UL)?0:(emu->id - emu->current_level + 1);
-			//eq->hotkey_sid2 = (emu->hotkey_sid2==4294967295UL)?0:(emu->id - emu->current_level + 1);
-			//eq->title_sid = emu->id - emu->current_level + 1;
-			//eq->desc_sid = emu->id - emu->current_level + 1;
-			eq->hotkey_sid = (emu->hotkey_sid == 4294967295UL) ? -1 : (emu->sof_next_skill);
-			eq->hotkey_sid2 = (emu->hotkey_sid2 == 4294967295UL) ? -1 : (emu->sof_next_skill);
-			eq->title_sid = emu->sof_next_skill;
-			eq->desc_sid = emu->sof_next_skill;
-			OUT(class_type);
-			OUT(cost);
-			OUT(seq);
-			OUT(current_level);
-			eq->unknown037 = 1;	// Introduced during HoT
-			OUT(prereq_skill);
-			eq->unknown045 = 1;	// New Mar 21 2012 - Seen 1
-			OUT(prereq_minpoints);
-			eq->type = emu->sof_type;
-			OUT(spellid);
-			eq->unknown057 = 1;	// Introduced during HoT
-			OUT(spell_type);
-			OUT(spell_refresh);
-			OUT(classes);
-			OUT(berserker);
-			//eq->max_level = emu->sof_max_level;
-			OUT(max_level);
-			OUT(last_id);
-			OUT(next_id);
-			OUT(cost2);
-			eq->aa_expansion = emu->aa_expansion;
-			eq->special_category = emu->special_category;
-			OUT(total_abilities);
-			unsigned int r;
-			for (r = 0; r < emu->total_abilities; r++) {
-				OUT(abilities[r].skill_id);
-				OUT(abilities[r].base1);
-				OUT(abilities[r].base2);
-				OUT(abilities[r].slot);
-			}
+		std::vector<int32> skill;
+		std::vector<int32> points;
+		for(auto i = 0; i < emu->total_prereqs; ++i) {
+			skill.push_back(inapp->ReadUInt32());
+			points.push_back(inapp->ReadUInt32());
 		}
 
-		FINISH_ENCODE();
+		outapp->WriteUInt32(emu->id);
+		outapp->WriteUInt8(1);
+		outapp->WriteSInt32(emu->upper_hotkey_sid);
+		outapp->WriteSInt32(emu->lower_hotkey_sid);
+		outapp->WriteSInt32(emu->title_sid);
+		outapp->WriteSInt32(emu->desc_sid);
+		outapp->WriteSInt32(emu->level_req);
+		outapp->WriteSInt32(emu->cost);
+		outapp->WriteUInt32(emu->seq);
+		outapp->WriteUInt32(emu->current_level);
+
+		if (emu->total_prereqs) {
+			outapp->WriteUInt32(emu->total_prereqs);
+			for (auto &e : skill)
+				outapp->WriteSInt32(e);
+			outapp->WriteUInt32(emu->total_prereqs);
+			for (auto &e : points)
+				outapp->WriteSInt32(e);
+		} else {
+			outapp->WriteUInt32(1);
+			outapp->WriteUInt32(0);
+			outapp->WriteUInt32(1);
+			outapp->WriteUInt32(0);
+		}
+
+		outapp->WriteSInt32(emu->type);
+		outapp->WriteSInt32(emu->spell);
+		outapp->WriteSInt32(1);
+		outapp->WriteSInt32(emu->spell_type);
+		outapp->WriteSInt32(emu->spell_refresh);
+		outapp->WriteSInt32(emu->classes);
+		outapp->WriteSInt32(emu->max_level);
+		outapp->WriteSInt32(emu->prev_id);
+		outapp->WriteSInt32(emu->next_id);
+		outapp->WriteSInt32(emu->total_cost);
+		outapp->WriteUInt8(0);
+		outapp->WriteUInt8(emu->grant_only);
+		outapp->WriteUInt8(0);
+		outapp->WriteUInt32(emu->charges);
+		outapp->WriteSInt32(emu->expansion);
+		outapp->WriteSInt32(emu->category);
+		outapp->WriteUInt8(0); // shroud
+		outapp->WriteUInt8(0); // unknown109
+		outapp->WriteUInt8(0); // loh
+		outapp->WriteUInt8(0); // unknown111
+		outapp->WriteUInt32(emu->total_effects);
+
+		inapp->SetReadPosition(sizeof(AARankInfo_Struct));
+		for(auto i = 0; i < emu->total_effects; ++i) {
+			outapp->WriteUInt32(inapp->ReadUInt32()); // skill_id
+			outapp->WriteUInt32(inapp->ReadUInt32()); // base1
+			outapp->WriteUInt32(inapp->ReadUInt32()); // base2
+			outapp->WriteUInt32(inapp->ReadUInt32()); // slot
+ 		}
+			
+		dest->FastQueuePacket(&outapp);
+		delete inapp;
 	}
 
 	ENCODE(OP_SendCharInfo)
@@ -3028,11 +3060,12 @@ namespace RoF2
 
 		for (int counter = 0; counter < character_count; ++counter) {
 			emu_cse = (CharacterSelectEntry_Struct *)emu_ptr;
-			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr;
+			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr; // base address
 
 			strcpy(eq_cse->Name, emu_cse->Name);
-			eq_ptr += strlen(eq_cse->Name);
-			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr;
+			eq_ptr += strlen(emu_cse->Name);
+			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr; // offset address (base + name length offset)
+			eq_cse->Name[0] = '\0'; // (offset)eq_cse->Name[0] = (base)eq_cse->Name[strlen(emu_cse->Name)]
 
 			eq_cse->Class = emu_cse->Class;
 			eq_cse->Race = emu_cse->Race;
@@ -3112,7 +3145,7 @@ namespace RoF2
 		switch (emu->Rank) {
 		case 0: { eq->Rank = 5; break; }  // GUILD_MEMBER	0
 		case 1: { eq->Rank = 3; break; }  // GUILD_OFFICER	1
-		case 2: { eq->Rank = 1; break; }  // GUILD_LEADER	2 
+		case 2: { eq->Rank = 1; break; }  // GUILD_LEADER	2
 		default: { eq->Rank = emu->Rank; break; }
 		}
 
@@ -3918,7 +3951,7 @@ namespace RoF2
 	}
 
 	ENCODE(OP_ZoneEntry) { ENCODE_FORWARD(OP_ZoneSpawns); }
-	
+
 	ENCODE(OP_ZonePlayerToBind)
 	{
 		SETUP_VAR_ENCODE(ZonePlayerToBind_Struct);
@@ -4109,8 +4142,8 @@ namespace RoF2
 				switch (emu->guildrank) {
 				case 0: { VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 5);  break; }  // GUILD_MEMBER	0
 				case 1: { VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 3);  break; }  // GUILD_OFFICER	1
-				case 2: { VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 1);  break; }  // GUILD_LEADER	2 
-				default: { VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->guildrank); break; }  //			
+				case 2: { VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 1);  break; }  // GUILD_LEADER	2
+				default: { VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->guildrank); break; }  //
 				}
 			}
 
@@ -4133,7 +4166,7 @@ namespace RoF2
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->petOwnerId);
 
 			VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0); // unknown13
-			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown14 - Stance 64 = normal 4 = aggressive 40 = stun/mezzed
+			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->PlayerState);
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown15
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown16
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown17
@@ -4193,7 +4226,7 @@ namespace RoF2
 			Position->z = emu->z;
 			Position->animation = emu->animation;
 			Position->deltaY = emu->deltaY;
-			
+
 			Buffer += sizeof(structs::Spawn_Struct_Position);
 
 			if (strlen(emu->title))
@@ -4260,6 +4293,18 @@ namespace RoF2
 
 		IN(merchant_entity_id);
 		emu->slot_id = RoF2ToServerMainInvSlot(eq->slot_id);
+
+		FINISH_DIRECT_DECODE();
+	}
+
+	DECODE(OP_Animation)
+	{
+		DECODE_LENGTH_EXACT(structs::Animation_Struct);
+		SETUP_DIRECT_DECODE(Animation_Struct, structs::Animation_Struct);
+
+		IN(spawnid);
+		IN(action);
+		IN(speed);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -4375,11 +4420,14 @@ namespace RoF2
 			emu->slot = 10;
 		else
 			IN(slot);
-		
+
 		IN(spell_id);
 		emu->inventoryslot = RoF2ToServerSlot(eq->inventoryslot);
 		//IN(inventoryslot);
 		IN(target_id);
+		IN(y_pos);
+		IN(x_pos);
+		IN(z_pos);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -4518,7 +4566,7 @@ namespace RoF2
 		IN(type);
 		IN(spellid);
 		IN(damage);
-		emu->sequence = eq->sequence;
+		IN(meleepush_xy);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -4844,7 +4892,7 @@ namespace RoF2
 		SETUP_DIRECT_DECODE(PetCommand_Struct, structs::PetCommand_Struct);
 
 		IN(command);
-		emu->unknown = eq->unknown04;
+		IN(target);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -5098,7 +5146,7 @@ namespace RoF2
 			IN(Quantity);
 			Log.Out(Logs::Detail, Logs::Trading, "DECODE(OP_TraderShop): TraderBuy_Struct (Unknowns) Unknown004 %d, Unknown008 %d, Unknown012 %d, Unknown076 %d, Unknown276 %d",
 				eq->Unknown004, eq->Unknown008, eq->Unknown012, eq->Unknown076, eq->Unknown276);
-			Log.Out(Logs::Detail, Logs::Trading, "DECODE(OP_TraderShop): TraderBuy_Struct Buy Action %d, Price %d, Trader %d, ItemID %d, Quantity %d, ItemName, %s", 
+			Log.Out(Logs::Detail, Logs::Trading, "DECODE(OP_TraderShop): TraderBuy_Struct Buy Action %d, Price %d, Trader %d, ItemID %d, Quantity %d, ItemName, %s",
 				eq->Action, eq->Price, eq->TraderID, eq->ItemID, eq->Quantity, eq->ItemName);
 
 			FINISH_DIRECT_DECODE();
@@ -5787,7 +5835,7 @@ namespace RoF2
 				RoF2Slot.SlotType = maps::MapPossessions;
 				RoF2Slot.MainSlot = serverSlot;
 			}
-			
+
 			if (serverSlot == MainPowerSource)
 				RoF2Slot.MainSlot = slots::MainPowerSource;
 

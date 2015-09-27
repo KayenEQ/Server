@@ -169,7 +169,7 @@ public:
 	bool CastSpell(int spell_id, int target_id, int slot, int cast_time, int mana_cost);
 	bool CastSpell(int spell_id, int target_id, int slot, int cast_time, int mana_cost, int item_slot);
 	bool CastSpell(int spell_id, int target_id, int slot, int cast_time, int mana_cost, int item_slot, int timer, int timer_duration);
-	bool CastSpell(int spell_id, int target_id, int slot, int cast_time, int mana_cost, int item_slot, int timer, int timer_duration, 
+	bool CastSpell(int spell_id, int target_id, int slot, int cast_time, int mana_cost, int item_slot, int timer, int timer_duration,
 		int resist_adjust);
 	bool SpellFinished(int spell_id, Lua_Mob target);
 	bool SpellFinished(int spell_id, Lua_Mob target, int slot);
@@ -249,6 +249,9 @@ public:
 	int CheckHealAggroAmount(int spell_id);
 	int CheckHealAggroAmount(int spell_id, uint32 heal_possible);
 	int GetAA(int id);
+	int GetAAByAAID(int id);
+	bool SetAA(int rank_id, int new_value);
+	bool SetAA(int rank_id, int new_value, int charges);
 	bool DivineAura();
 	void SetOOCRegen(int regen);
 	const char* GetEntityVariable(const char *name);
@@ -296,10 +299,6 @@ public:
 	void SetRace(int in);
 	void SetGender(int in);
 	void SendIllusionPacket(luabind::adl::object illusion);
-	void QuestReward(Lua_Client c);
-	void QuestReward(Lua_Client c, uint32 silver);
-	void QuestReward(Lua_Client c, uint32 silver, uint32 gold);
-	void QuestReward(Lua_Client c, uint32 silver, uint32 gold, uint32 platinum);
 	void CameraEffect(uint32 duration, uint32 intensity);
 	void CameraEffect(uint32 duration, uint32 intensity, Lua_Client c);
 	void CameraEffect(uint32 duration, uint32 intensity, Lua_Client c, bool global);
@@ -311,6 +310,7 @@ public:
 		uint32 unk020, bool perm_effect, Lua_Client c);
 	void TempName();
 	void TempName(const char *newname);
+	std::string GetGlobal(const char *varname);
 	void SetGlobal(const char *varname, const char *newvalue, int options, const char *duration);
 	void SetGlobal(const char *varname, const char *newvalue, int options, const char *duration, Lua_Mob other);
 	void TarGlobal(const char *varname, const char *value, const char *duration, int npc_id, int char_id, int zone_id);
@@ -355,6 +355,7 @@ public:
 	void BuffFadeBySlot(int slot, bool recalc_bonuses);
 	int CanBuffStack(int spell_id, int caster_level);
 	int CanBuffStack(int spell_id, int caster_level, bool fail_if_overwrite);
+	void SetPseudoRoot(bool in);
 };
 
 #endif

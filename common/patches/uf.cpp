@@ -387,7 +387,7 @@ namespace UF
 			__packet->WriteUInt32(emu->entries[i].num_hits);
 			__packet->WriteString("");
 		}
-		__packet->WriteUInt8(!emu->all_buffs);
+		__packet->WriteUInt8(emu->type);
 
 		FINISH_ENCODE();
 		/*
@@ -581,7 +581,10 @@ namespace UF
 		OUT(type);
 		OUT(spellid);
 		OUT(damage);
-		eq->sequence = emu->sequence;
+		OUT(force);
+		OUT(meleepush_xy);
+		OUT(meleepush_z);
+		OUT(special);
 
 		FINISH_ENCODE();
 	}
@@ -855,8 +858,8 @@ namespace UF
 		// field to be set to (float)255.0 to appear at all, and also the size field below to be 5, to be the correct size. I think SoD has the same
 		// issue.
 		VARSTRUCT_ENCODE_TYPE(uint32, OutBuffer, 0);
-		VARSTRUCT_ENCODE_TYPE(uint32, OutBuffer, 0);	// Unknown, observed 0
-		VARSTRUCT_ENCODE_TYPE(uint32, OutBuffer, 0);	// This appears to be the size field.
+		VARSTRUCT_ENCODE_TYPE(uint32, OutBuffer, emu->solidtype);	// Unknown, observed 0
+		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->size != 0 && (float)emu->size < 5000.f ? (float)((float)emu->size / 100.0f) : 1.f );	// This appears to be the size field. Hackish logic because some PEQ DB items were corrupt.
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->y);
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->x);
 		VARSTRUCT_ENCODE_TYPE(float, OutBuffer, emu->z);
@@ -1803,10 +1806,13 @@ namespace UF
 		//NOTE: new client supports 300 AAs, our internal rep/PP
 		//only supports 240..
 		for (r = 0; r < MAX_PP_AA_ARRAY; r++) {
-			OUT(aa_array[r].AA);
-			OUT(aa_array[r].value);
+			eq->aa_array[r].AA = emu->aa_array[r].AA;
+			eq->aa_array[r].value = emu->aa_array[r].value;
+			eq->aa_array[r].charges = emu->aa_array[r].charges;
 		}
+
 		//	OUT(unknown02220[4]);
+
 		OUT(mana);
 		OUT(cur_hp);
 		OUT(STR);
@@ -1936,8 +1942,8 @@ namespace UF
 		OUT(copper_bank);
 		OUT(platinum_shared);
 		//	OUT(unknown13156[84]);
-		//OUT(expansions);
-		eq->expansions = 0xffff;
+		OUT(expansions);
+		//eq->expansions = 0x1ffff;
 		//	OUT(unknown13244[12]);
 		OUT(autosplit);
 		//	OUT(unknown13260[16]);
@@ -2125,16 +2131,16 @@ namespace UF
 
 		eq->aa_spent = emu->aa_spent;
 		eq->aa_assigned = emu->aa_spent;
-		eq->aa_spent3 = emu->aa_spent;
+		eq->aa_spent3 = 0;
 		eq->unknown012 = 0;
 		eq->unknown016 = 0;
 		eq->unknown020 = 0;
 
 		for (uint32 i = 0; i < MAX_PP_AA_ARRAY; ++i)
 		{
-			eq->aa_list[i].aa_skill = emu->aa_list[i].aa_skill;
-			eq->aa_list[i].aa_value = emu->aa_list[i].aa_value;
-			eq->aa_list[i].unknown08 = emu->aa_list[i].unknown08;
+			eq->aa_list[i].AA = emu->aa_list[i].AA;
+			eq->aa_list[i].value = emu->aa_list[i].value;
+			eq->aa_list[i].charges = emu->aa_list[i].charges;
 		}
 
 		FINISH_ENCODE();
@@ -2142,54 +2148,56 @@ namespace UF
 
 	ENCODE(OP_SendAATable)
 	{
-		ENCODE_LENGTH_ATLEAST(SendAA_Struct);
-		SETUP_VAR_ENCODE(SendAA_Struct);
-		ALLOC_VAR_ENCODE(structs::SendAA_Struct, sizeof(structs::SendAA_Struct) + emu->total_abilities*sizeof(structs::AA_Ability));
+		EQApplicationPacket *inapp = *p;
+		*p = nullptr;
+		AARankInfo_Struct *emu = (AARankInfo_Struct*)inapp->pBuffer;
 
-		// Check clientver field to verify this AA should be sent for SoF
-		// clientver 1 is for all clients and 6 is for Underfoot
-		if (emu->clientver <= 6)
-		{
-			OUT(id);
-			eq->unknown004 = 1;
-			//eq->hotkey_sid = (emu->hotkey_sid==4294967295UL)?0:(emu->id - emu->current_level + 1);
-			//eq->hotkey_sid2 = (emu->hotkey_sid2==4294967295UL)?0:(emu->id - emu->current_level + 1);
-			//eq->title_sid = emu->id - emu->current_level + 1;
-			//eq->desc_sid = emu->id - emu->current_level + 1;
-			eq->hotkey_sid = (emu->hotkey_sid == 4294967295UL) ? 0 : (emu->sof_next_skill);
-			eq->hotkey_sid2 = (emu->hotkey_sid2 == 4294967295UL) ? 0 : (emu->sof_next_skill);
-			eq->title_sid = emu->sof_next_skill;
-			eq->desc_sid = emu->sof_next_skill;
-			OUT(class_type);
-			OUT(cost);
-			OUT(seq);
-			OUT(current_level);
-			OUT(prereq_skill);
-			OUT(prereq_minpoints);
-			eq->type = emu->sof_type;
-			OUT(spellid);
-			OUT(spell_type);
-			OUT(spell_refresh);
-			OUT(classes);
-			OUT(berserker);
-			//eq->max_level = emu->sof_max_level;
-			OUT(max_level);
-			OUT(last_id);
-			OUT(next_id);
-			OUT(cost2);
-			eq->aa_expansion = emu->aa_expansion;
-			eq->special_category = emu->special_category;
-			OUT(total_abilities);
-			unsigned int r;
-			for (r = 0; r < emu->total_abilities; r++) {
-				OUT(abilities[r].skill_id);
-				OUT(abilities[r].base1);
-				OUT(abilities[r].base2);
-				OUT(abilities[r].slot);
-			}
+		EQApplicationPacket *outapp = new EQApplicationPacket(OP_SendAATable, sizeof(structs::SendAA_Struct) + emu->total_effects * sizeof(structs::AA_Ability));
+		structs::SendAA_Struct *eq = (structs::SendAA_Struct*)outapp->pBuffer;
+
+		inapp->SetReadPosition(sizeof(AARankInfo_Struct));
+		outapp->SetWritePosition(sizeof(structs::SendAA_Struct));
+
+		eq->id = emu->id;
+		eq->unknown004 = 1;
+		eq->id = emu->id;
+		eq->hotkey_sid = emu->upper_hotkey_sid;
+		eq->hotkey_sid2 = emu->lower_hotkey_sid;
+		eq->desc_sid = emu->desc_sid;
+		eq->title_sid = emu->title_sid;
+		eq->class_type = emu->level_req;
+		eq->cost = emu->cost;
+		eq->seq = emu->seq;
+		eq->current_level = emu->current_level;
+		eq->type = emu->type;
+		eq->spellid = emu->spell;
+		eq->spell_type = emu->spell_type;
+		eq->spell_refresh = emu->spell_refresh;
+		eq->classes = emu->classes;
+		eq->max_level = emu->max_level;
+		eq->last_id = emu->prev_id;
+		eq->next_id = emu->next_id;
+		eq->cost2 = emu->total_cost;
+		eq->grant_only = emu->grant_only;
+		eq->expendable_charges = emu->charges;
+		eq->aa_expansion = emu->expansion;
+		eq->special_category = emu->category;
+		eq->total_abilities = emu->total_effects;
+		
+		for(auto i = 0; i < eq->total_abilities; ++i) {
+			eq->abilities[i].skill_id = inapp->ReadUInt32();
+			eq->abilities[i].base1 = inapp->ReadUInt32();
+			eq->abilities[i].base2 = inapp->ReadUInt32();
+			eq->abilities[i].slot = inapp->ReadUInt32();
 		}
 
-		FINISH_ENCODE();
+		if(emu->total_prereqs > 0) {
+			eq->prereq_skill = inapp->ReadUInt32();
+			eq->prereq_minpoints = inapp->ReadUInt32();
+		}
+
+		dest->FastQueuePacket(&outapp);
+		delete inapp;
 	}
 
 	ENCODE(OP_SendCharInfo)
@@ -2213,7 +2221,7 @@ namespace UF
 			FINISH_ENCODE();
 			return;
 		}
-		
+
 		unsigned char *emu_ptr = __emu_buffer;
 		emu_ptr += sizeof(CharacterSelect_Struct);
 		CharacterSelectEntry_Struct *emu_cse = (CharacterSelectEntry_Struct *)nullptr;
@@ -2251,15 +2259,16 @@ namespace UF
 
 		for (int counter = 0; counter < character_count; ++counter) {
 			emu_cse = (CharacterSelectEntry_Struct *)emu_ptr;
-			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr;
+			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr; // base address
 
 			eq_cse->Level = emu_cse->Level;
 			eq_cse->HairStyle = emu_cse->HairStyle;
 			eq_cse->Gender = emu_cse->Gender;
 
 			strcpy(eq_cse->Name, emu_cse->Name);
-			eq_ptr += strlen(eq_cse->Name);
-			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr;
+			eq_ptr += strlen(emu_cse->Name);
+			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr; // offset address (base + name length offset)
+			eq_cse->Name[0] = '\0'; // (offset)eq_cse->Name[0] = (base)eq_cse->Name[strlen(emu_cse->Name)]
 
 			eq_cse->Beard = emu_cse->Beard;
 			eq_cse->HairColor = emu_cse->HairColor;
@@ -3003,7 +3012,7 @@ namespace UF
 			VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0); // unknown12
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->petOwnerId);
 			VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0); // unknown13
-			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown14 - Stance 64 = normal 4 = aggressive 40 = stun/mezzed
+			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->PlayerState);
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown15
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown16
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown17
@@ -3356,7 +3365,7 @@ namespace UF
 		IN(type);
 		IN(spellid);
 		IN(damage);
-		emu->sequence = eq->sequence;
+		IN(meleepush_xy);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -3599,7 +3608,7 @@ namespace UF
 		SETUP_DIRECT_DECODE(PetCommand_Struct, structs::PetCommand_Struct);
 
 		IN(command);
-		IN(unknown);
+		IN(target);
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -3861,7 +3870,7 @@ namespace UF
 
 		UF::structs::ItemSerializationHeaderFinish hdrf;
 		hdrf.ornamentIcon = ornaIcon;
-		hdrf.unknown060 = 0; //This is Always 0.. or it breaks shit.. 
+		hdrf.unknown060 = 0; //This is Always 0.. or it breaks shit..
 		hdrf.unknown061 = 0; //possibly ornament / special ornament
 		hdrf.isCopied = 0; //Flag for item to be 'Copied'
 		hdrf.ItemClass = item->ItemClass;

@@ -89,7 +89,7 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 
 		if (IsClient() && GetClass() == WIZARD)
 			ratio += RuleI(Spells, WizCritRatio); //Default is zero
-	
+
 		if (Critical){
 
 			value = value_BaseEffect*ratio/100;
@@ -174,7 +174,7 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target, int16 buff
 		value += int(value_BaseEffect*GetFocusEffect(focusImprovedDamage, spell_id)/100)*ratio/100;
 		value += int(value_BaseEffect*GetFocusEffect(focusFcDamagePctCrit, spell_id)/100)*ratio/100;
 		value += int(value_BaseEffect*target->GetVulnerability(this, spell_id, 0)/100)*ratio/100;
-		extra_dmg = target->GetFcDamageAmtIncoming(this, spell_id) + 
+		extra_dmg = target->GetFcDamageAmtIncoming(this, spell_id) +
 					int(GetFocusEffect(focusFcDamageAmtCrit, spell_id)*ratio/100) +
 					GetFocusEffect(focusFcDamageAmt, spell_id);
 
@@ -221,11 +221,11 @@ int32 Mob::GetExtraSpellAmt(uint16 spell_id, int32 extra_spell_amt, int32 base_s
 		total_cast_time = spells[spell_id].recovery_time + spells[spell_id].cast_time;
 
 	if (total_cast_time > 0 && total_cast_time <= 2500)
-		extra_spell_amt = extra_spell_amt*25/100; 
-	 else if (total_cast_time > 2500 && total_cast_time < 7000) 
-		 extra_spell_amt = extra_spell_amt*(167*((total_cast_time - 1000)/1000)) / 1000; 
-	 else 
-		 extra_spell_amt = extra_spell_amt * total_cast_time / 7000; 
+		extra_spell_amt = extra_spell_amt*25/100;
+	 else if (total_cast_time > 2500 && total_cast_time < 7000)
+		 extra_spell_amt = extra_spell_amt*(167*((total_cast_time - 1000)/1000)) / 1000;
+	 else
+		 extra_spell_amt = extra_spell_amt * total_cast_time / 7000;
 
 		if(extra_spell_amt*2 < base_spell_dmg)
 			return 0;
@@ -284,7 +284,7 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target, int16 b
 		if (Critical) {
 			entity_list.MessageClose_StringID(this, true, 100, MT_SpellCrits,
 					OTHER_CRIT_HEAL, GetName(), itoa(value));
-			
+
 			if (IsClient())
 				Message_StringID(MT_SpellCrits, YOU_CRIT_HEAL, itoa(value));
 		}
@@ -424,16 +424,15 @@ int32 Mob::GetActSpellDuration(uint16 spell_id, int32 duration)
 	int tic_inc = 0;
 	tic_inc = GetFocusEffect(focusSpellDurByTic, spell_id);
 
-	// Only need this for clients, since the change was for bard songs, I assume we should keep non bard songs getting +1
-	// However if its bard or not and is mez, charm or fear, we need to add 1 so that client is in sync
-	if (IsClient() && !(IsShortDurationBuff(spell_id) && IsBardSong(spell_id)) ||
-			IsFearSpell(spell_id) ||
-			IsCharmSpell(spell_id) ||
-			IsMezSpell(spell_id) ||
-			IsBlindSpell(spell_id))
-		tic_inc += 1;
+	float focused = ((duration * increase) / 100.0f) + tic_inc;
+	int ifocused = static_cast<int>(focused);
 
-	return (((duration * increase) / 100) + tic_inc);
+	// 7.6 is rounded to 7, 8.6 is rounded to 9
+	// 6 is 6, etc
+	if (FCMP(focused, ifocused) || ifocused % 2) // equal or odd
+		return ifocused;
+	else // even and not equal round to odd
+		return ifocused + 1;
 }
 
 int32 Client::GetActSpellCasttime(uint16 spell_id, int32 casttime)
@@ -639,14 +638,24 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 	if(spell.recast_time > 0)
 	{
 		uint32 reduced_recast = spell.recast_time / 1000;
-		reduced_recast -= GetFocusEffect(focusReduceRecastTime, spell_id);
-		reduced_recast = TryCastonDiscCastCountAmt(spells[spell_id].EndurTimerIndex, spell_id, reduced_recast); //C!Kayen - % Recast Adjuster by Count
-
-		if(reduced_recast <= 0){
+		auto focus = GetFocusEffect(focusReduceRecastTime, spell_id);
+		// do stupid stuff because custom servers.
+		// we really should be able to just do the -= focus but since custom servers could have shorter reuse timers
+		// we have to make sure we don't underflow the uint32 ...
+		// and yes, the focus effect can be used to increase the durations (spell 38944)
+		if (focus > reduced_recast) {
 			reduced_recast = 0;
 			if (GetPTimers().Enabled((uint32)DiscTimer))
 				GetPTimers().Clear(&database, (uint32)DiscTimer);
-		}
+		} else {
+			reduced_recast -= focus;
+			//C!Kayen
+			reduced_recast = TryCastonDiscCastCountAmt(spells[spell_id].EndurTimerIndex, spell_id, reduced_recast); //C!Kayen - % Recast Adjuster by Count
+			if(reduced_recast == 0){
+			if (GetPTimers().Enabled((uint32)DiscTimer))
+				GetPTimers().Clear(&database, (uint32)DiscTimer);
+			}//C!Kayen - End	
+		}		
 
 		if (reduced_recast > 0)
 			CastSpell(spell_id, target, DISCIPLINE_SPELL_SLOT, -1, -1, 0, -1, (uint32)DiscTimer, reduced_recast);
@@ -830,6 +839,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			else
 				caster->SpellOnTarget(spell_id, curmob, false, true, resist_adjust);
 		}
+
 	}
 
 	if (maxtargets){ //C!Kayen - Max target PBAE
@@ -918,7 +928,7 @@ void EntityList::AEBardPulse(Mob *caster, Mob *center, uint16 spell_id, bool aff
 			if (!center->CheckLosFN(curmob))
 				continue;
 		} else { // check to stop casting beneficial ae buffs (to wit: bard songs) on enemies...
-			// See notes in AESpell() above for more info. 
+			// See notes in AESpell() above for more info.
 			if (caster->IsAttackAllowed(curmob, true))
 				continue;
 			if (caster->CheckAggro(curmob))
@@ -932,7 +942,7 @@ void EntityList::AEBardPulse(Mob *caster, Mob *center, uint16 spell_id, bool aff
 		caster->CastToClient()->CheckSongSkillIncrease(spell_id);
 }
 
-//Dook- Rampage and stuff for clients.
+// Rampage and stuff for clients. Normal and Duration rampages
 //NPCs handle it differently in Mob::Rampage
 void EntityList::AEAttack(Mob *attacker, float dist, int Hand, int count, bool IsFromSpell) {
 //Dook- Will need tweaking, currently no pets or players or horses
@@ -950,7 +960,10 @@ void EntityList::AEAttack(Mob *attacker, float dist, int Hand, int count, bool I
 				&& curmob->GetRace() != 216 && curmob->GetRace() != 472 /* dont attack horses */
 				&& (DistanceSquared(curmob->GetPosition(), attacker->GetPosition()) <= dist2)
 		) {
-			attacker->Attack(curmob, Hand, false, false, IsFromSpell);
+			if (!attacker->IsClient() || attacker->GetClass() == MONK || attacker->GetClass() == RANGER)
+				attacker->Attack(curmob, Hand, false, false, IsFromSpell);
+			else
+				attacker->CastToClient()->DoAttackRounds(curmob, Hand, IsFromSpell);
 			hit++;
 			if (count != 0 && hit >= count)
 				return;

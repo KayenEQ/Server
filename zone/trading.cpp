@@ -874,11 +874,11 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 		}
 
 		std::vector<EQEmu::Any> item_list;
-		uint32 items[4] = { 0 };
+		std::list<ItemInst*> items;
 		for(int i = EmuConstants::TRADE_BEGIN; i <= EmuConstants::TRADE_NPC_END; ++i) {
 			ItemInst *inst = m_inv.GetItem(i);
 			if(inst) {
-				items[i - EmuConstants::TRADE_BEGIN] = inst->GetItem()->ID;
+				items.push_back(inst);
 				item_list.push_back(inst);
 			} else {
 				item_list.push_back((ItemInst*)nullptr);
@@ -1583,6 +1583,8 @@ void Client::BuyTraderItem(TraderBuy_Struct* tbs, Client* Trader, const EQApplic
 		return;
 	}
 
+	tbs->Price = BuyItem->GetPrice();
+
 	Log.Out(Logs::Detail, Logs::Trading, "Buyitem: Name: %s, IsStackable: %i, Requested Quantity: %i, Charges on Item %i",
 					BuyItem->GetItem()->Name, BuyItem->IsStackable(), tbs->Quantity, BuyItem->GetCharges());
 	// If the item is not stackable, then we can only be buying one of them.
@@ -1624,23 +1626,10 @@ void Client::BuyTraderItem(TraderBuy_Struct* tbs, Client* Trader, const EQApplic
 		return;
 	}
 
-	ReturnTraderReq(app, outtbs->Quantity, ItemID);
-
-	outtbs->TraderID = this->GetID();
-	outtbs->Action = BazaarBuyItem;
-	strn0cpy(outtbs->ItemName, BuyItem->GetItem()->Name, 64);
-
-	int TraderSlot = 0;
-
-	if(BuyItem->IsStackable())
-		SendTraderItem(BuyItem->GetItem()->ID, outtbs->Quantity);
-	else
-		SendTraderItem(BuyItem->GetItem()->ID, BuyItem->GetCharges());
-
 	// This cannot overflow assuming MAX_TRANSACTION_VALUE, checked above, is the default of 2000000000
 	uint32 TotalCost = tbs->Price * outtbs->Quantity;
 
-	if (Trader->GetClientVersion() >= ClientVersion::RoF)
+	if(Trader->GetClientVersion() >= ClientVersion::RoF)
 	{
 		// RoF+ uses individual item price where older clients use total price
 		outtbs->Price = tbs->Price;
@@ -1650,7 +1639,12 @@ void Client::BuyTraderItem(TraderBuy_Struct* tbs, Client* Trader, const EQApplic
 		outtbs->Price = TotalCost;
 	}
 
-	this->TakeMoneyFromPP(TotalCost);
+	if(!TakeMoneyFromPP(TotalCost)) {
+		database.SetHackerFlag(account_name, name, "Attempted to buy something in bazaar but did not have enough money.");
+		TradeRequestFailed(app);
+		safe_delete(outapp);
+		return;
+	}
 
 	Log.Out(Logs::Detail, Logs::Trading, "Customer Paid: %d in Copper", TotalCost);
 
@@ -1665,6 +1659,19 @@ void Client::BuyTraderItem(TraderBuy_Struct* tbs, Client* Trader, const EQApplic
 	Trader->AddMoneyToPP(copper, silver, gold, platinum, true);
 
 	Log.Out(Logs::Detail, Logs::Trading, "Trader Received: %d Platinum, %d Gold, %d Silver, %d Copper", platinum, gold, silver, copper);
+
+	ReturnTraderReq(app, outtbs->Quantity, ItemID);
+
+	outtbs->TraderID = this->GetID();
+	outtbs->Action = BazaarBuyItem;
+	strn0cpy(outtbs->ItemName, BuyItem->GetItem()->Name, 64);
+
+	int TraderSlot = 0;
+
+	if(BuyItem->IsStackable())
+		SendTraderItem(BuyItem->GetItem()->ID, outtbs->Quantity);
+	else
+		SendTraderItem(BuyItem->GetItem()->ID, BuyItem->GetCharges());
 
 	TraderSlot = Trader->FindTraderItem(tbs->ItemID, outtbs->Quantity);
 

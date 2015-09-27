@@ -22,6 +22,7 @@
 #define TARGET_RING_SPELL_SLOT 12
 #define DISCIPLINE_SPELL_SLOT 10
 #define ABILITY_SPELL_SLOT 9
+#define ALTERNATE_ABILITY_SPELL_SLOT 0xFF
 
 //LOS Parameters:
 #define HEAD_POSITION 0.9f	//ratio of GetSize() where NPCs see from
@@ -137,7 +138,8 @@ enum {
 	IGNORE_ROOT_AGGRO_RULES = 42,
 	CASTING_RESIST_DIFF = 43,
 	COUNTER_AVOID_DAMAGE = 44,
-	MAX_SPECIAL_ATTACK = 45
+	PROX_AGGRO = 45,
+	MAX_SPECIAL_ATTACK = 46
 };
 
 typedef enum {	//fear states
@@ -173,6 +175,18 @@ enum class NumHit {		  // Numhits type
 	OffensiveSpellProcs = 11  // Offensive buff procs
 };
 
+enum class PlayerState : uint32 {
+	None = 0,
+	Open = 1,
+	WeaponSheathed = 2,
+	Aggressive = 4,
+	ForcedAggressive = 8,
+	InstrumentEquipped = 16,
+	Stunned = 32,
+	PrimaryWeaponEquipped = 64,
+	SecondaryWeaponEquipped = 128
+};
+
 //this is our internal representation of the BUFF struct, can put whatever we want in it
 struct Buffs_Struct {
 	uint16	spellid;
@@ -190,6 +204,7 @@ struct Buffs_Struct {
 	int32	caston_z;
 	int32	ExtraDIChance;
 	int16	RootBreakChance; //Not saved to dbase
+	uint32	instrument_mod;
 	bool	persistant_buff;
 	bool	client; //True if the caster is a client
 	bool	UpdateClient;
@@ -389,7 +404,6 @@ struct StatBonuses {
 	int32	Metabolism;							// Food/drink consumption rates.
 	bool	Sanctuary;							// Sanctuary effect, lowers place on hate list until cast on others.
 	int32   FactionModPct;						// Modifies amount of faction gained.
-	int32	MeleeVulnerability;					// Weakness/mitigation to melee damage
 	bool	LimitToSkill[HIGHEST_SKILL+2];		// Determines if we need to search for a skill proc.
 	uint32  SkillProc[MAX_SKILL_PROCS];			// Max number of spells containing skill_procs.
 	uint32  SkillProcSuccess[MAX_SKILL_PROCS];	// Max number of spells containing skill_procs_success.
@@ -401,7 +415,7 @@ struct StatBonuses {
 	int8	BaseMovementSpeed;					// Adjust base run speed, does not stack with other movement bonuses.
 	uint8	IncreaseRunSpeedCap;				// Increase max run speed above cap.
 	int32	DoubleSpecialAttack;				// Chance to to perform a double special attack (ie flying kick 2x)
-	int32	SpecialAttackKBProc[2];				// Chance to to do a knockback from special attacks. (0 = chance 1 = Skill)
+	int32	SkillAttackProc[3];					// [0] chance to proc [2] spell on [1] skill usage
 	uint8	FrontalStunResist;					// Chance to resist a frontal stun
 	int32	BindWound;							// Increase amount of HP by percent.
 	int32	MaxBindWound;						// Increase max amount of HP you can bind wound.
@@ -440,7 +454,7 @@ struct StatBonuses {
 	int32	ShieldEquipHateMod;					// Hate mod when shield equiped.
 	int32	ShieldEquipDmgMod[2];				// Damage mod when shield equiped. 0 = damage modifier 1 = Unknown
 	bool	TriggerOnValueAmount;				// Triggers off various different conditions, bool to check if client has effect.
-	int8	StunBashChance;						// chance to stun with bash.	
+	int8	StunBashChance;						// chance to stun with bash.
 	int8	IncreaseChanceMemwipe;				// increases chance to memory wipe
 	int8	CriticalMend;						// chance critical monk mend
 	int32	ImprovedReclaimEnergy;				// Modifies amount of mana returned from reclaim energy
@@ -450,6 +464,7 @@ struct StatBonuses {
 	uint8	AssassinateLevel;					// Max Level Assassinate will be effective at.
 	int32	PetMeleeMitigation;					// Add AC to owner's pet.
 	bool	IllusionPersistence;				// Causes illusions not to fade.
+	uint16	extra_xtargets;						// extra xtarget entries
 
 	//C!Kayen - Custom Bonuses
 	int16 PetLifeShare[4];						//0= Buff Slot 1=Mitigation Amt 2=Percent Penalty 3=RuneAmt
@@ -482,6 +497,7 @@ struct StatBonuses {
 	uint16 SpinAttack[2];						// 0 = spellid of trigger spell 1= speed of spell trigger
 	bool BottomHateList;						// Sets mob to bottom of hatelist like divine aura.
 	uint16 PetEffectOnOwner;					// spell id
+
 };
 
 
@@ -490,6 +506,7 @@ typedef struct
 	uint16 spellID;
 	uint16 chance;
 	uint16 base_spellID;
+	int level_override;
 } tProc;
 
 struct Shielders_Struct {
@@ -545,7 +562,8 @@ typedef enum {
 	petOther,
 	petCharmed,
 	petNPCFollow,
-	petTargetLock			//remain active as long something is on the hatelist. Don't listen to any commands
+	petTargetLock,			//remain active as long something is on the hatelist. Don't listen to any commands
+	petNone = 0xFF // not a pet
 } PetType;
 
 typedef enum {

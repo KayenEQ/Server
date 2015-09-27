@@ -30,6 +30,7 @@
 #include "position.h"
 #include "zonedump.h"
 
+class Encounter;
 class Beacon;
 class Client;
 class Corpse;
@@ -40,7 +41,7 @@ class EntityList;
 class Group;
 class Merc;
 class Mob;
-class NPC; 
+class NPC;
 class Object;
 class Petition;
 class Raid;
@@ -77,6 +78,7 @@ public:
 	virtual bool IsDoor()			const { return false; }
 	virtual bool IsTrap()			const { return false; }
 	virtual bool IsBeacon()			const { return false; }
+	virtual bool IsEncounter()		const { return false; }
 
 	virtual bool Process() { return false; }
 	virtual bool Save() { return true; }
@@ -91,6 +93,7 @@ public:
 	Doors	*CastToDoors();
 	Trap	*CastToTrap();
 	Beacon	*CastToBeacon();
+	Encounter *CastToEncounter();
 
 	const Client	*CastToClient() const;
 	const NPC		*CastToNPC() const;
@@ -101,6 +104,7 @@ public:
 	const Doors		*CastToDoors() const;
 	const Trap		*CastToTrap() const;
 	const Beacon	*CastToBeacon() const;
+	const Encounter *CastToEncounter() const;
 
 	inline const uint16& GetID() const { return id; }
 	inline const time_t& GetSpawnTimeStamp() const { return spawn_timestamp; }
@@ -203,6 +207,7 @@ public:
 	void	MobProcess();
 	void	TrapProcess();
 	void	BeaconProcess();
+	void	EncounterProcess();
 	void	ProcessMove(Client *c, const glm::vec3& location);
 	void	ProcessMove(NPC *n, float x, float y, float z);
 	void	AddArea(int id, int type, float min_x, float max_x, float min_y, float max_y, float min_z, float max_z);
@@ -228,6 +233,7 @@ public:
 	void	AddDoor(Doors* door);
 	void	AddTrap(Trap* trap);
 	void	AddBeacon(Beacon *beacon);
+	void	AddEncounter(Encounter *encounter);
 	void	AddProximity(NPC *proximity_for);
 	void	Clear();
 	bool	RemoveMob(uint16 delete_id);
@@ -266,6 +272,7 @@ public:
 	Entity *GetEntityCorpse(uint16 id);
 	Entity *GetEntityTrap(uint16 id);
 	Entity *GetEntityBeacon(uint16 id);
+	Entity *GetEntityEncounter(uint16 id);
 	Entity *GetEntityMob(const char *name);
 	Entity *GetEntityCorpse(const char *name);
 
@@ -326,7 +333,7 @@ public:
 	void	SendAlarm(Trap* trap, Mob* currenttarget, uint8 kos);
 	Trap*	FindNearbyTrap(Mob* searcher, float max_dist);
 
-	void	AddHealAggro(Mob* target, Mob* caster, uint16 thedam);
+	void	AddHealAggro(Mob* target, Mob* caster, uint16 hate);
 	Mob*	FindDefenseNPC(uint32 npcid);
 	void	OpenDoorsNear(NPC* opener);
 	void	UpdateWho(bool iSendFullUpdate = false);
@@ -391,7 +398,6 @@ public:
 
 	void	SaveAllClientsTaskState();
 	void	ReloadAllClientsTaskState(int TaskID=0);
-
 	uint16	CreateGroundObject(uint32 itemid, const glm::vec4& position, uint32 decay_time = 300000);
 	uint16	CreateGroundObjectFromModel(const char *model, const glm::vec4& position, uint8 type = 0x00, uint32 decay_time = 0);
 	uint16	CreateDoor(const char *model, const glm::vec4& position, uint8 type = 0, uint16 size = 100);
@@ -422,6 +428,7 @@ public:
 	uint16 GetFreeID();
 	void RefreshAutoXTargets(Client *c);
 	void RefreshClientXTargets(Client *c);
+	void SendAlternateAdvancementStats();
 
 	//C!Kayen
 	void TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id);
@@ -459,6 +466,7 @@ private:
 	std::unordered_map<uint16, Doors *> door_list;
 	std::unordered_map<uint16, Trap *> trap_list;
 	std::unordered_map<uint16, Beacon *> beacon_list;
+	std::unordered_map<uint16, Encounter *> encounter_list;
 	std::list<NPC *> proximity_list;
 	std::list<Group *> group_list;
 	std::list<Raid *> raid_list;

@@ -57,6 +57,7 @@ ZoneServer::ZoneServer(EmuTCPConnection* itcpc)
 	instanceID = 0;
 
 	memset(clientaddress, 0, sizeof(clientaddress));
+	memset(clientlocaladdress, 0, sizeof(clientlocaladdress));
 	clientport = 0;
 	BootingUp = false;
 	authenticated = false;
@@ -190,7 +191,7 @@ bool ZoneServer::Process() {
 						Log.Out(Logs::Detail, Logs::World_Server,"Zone authorization failed.");
 						auto pack = new ServerPacket(ServerOP_ZAAuthFailed);
 						SendPacket(pack);
-						delete pack;
+						safe_delete(pack);
 						Disconnect();
 						return false;
 					}
@@ -201,7 +202,7 @@ bool ZoneServer::Process() {
 					Log.Out(Logs::Detail, Logs::World_Server,"Zone authorization failed.");
 					auto pack = new ServerPacket(ServerOP_ZAAuthFailed);
 					SendPacket(pack);
-					delete pack;
+					safe_delete(pack);
 					Disconnect();
 					return false;
 				}
@@ -581,7 +582,7 @@ bool ZoneServer::Process() {
 				ServerConnectInfo* sci = (ServerConnectInfo*) pack->pBuffer;
 
 				if (!sci->port) {
-					clientport=zoneserver_list.GetAvailableZonePort();
+					clientport = zoneserver_list.GetAvailableZonePort();
 
 					ServerPacket p(ServerOP_SetConnectInfo, sizeof(ServerConnectInfo));
 					memset(p.pBuffer,0,sizeof(ServerConnectInfo));
@@ -590,8 +591,18 @@ bool ZoneServer::Process() {
 					SendPacket(&p);
 					Log.Out(Logs::Detail, Logs::World_Server,"Auto zone port configuration. Telling zone to use port %d",clientport);
 				} else {
-					clientport=sci->port;
-					Log.Out(Logs::Detail, Logs::World_Server,"Zone specified port %d, must be a previously allocated zone reconnecting.",clientport);
+					clientport = sci->port;
+					Log.Out(Logs::Detail, Logs::World_Server,"Zone specified port %d.",clientport);
+				}
+
+				if(sci->address[0]) {
+					strn0cpy(clientaddress, sci->address, 250);
+					Log.Out(Logs::Detail, Logs::World_Server, "Zone specified address %s.", sci->address);
+				}
+
+				if(sci->local_address[0]) {
+					strn0cpy(clientlocaladdress, sci->local_address, 250);
+					Log.Out(Logs::Detail, Logs::World_Server, "Zone specified local address %s.", sci->address);
 				}
 
 			}
@@ -779,7 +790,7 @@ bool ZoneServer::Process() {
 				whom->wrace = whoall->wrace;
 				strcpy(whom->whom,whoall->whom);
 				client_list.SendWhoAll(whoall->fromid,whoall->from, whoall->admin, whom, this);
-				delete whom;
+				safe_delete(whom);
 				break;
 			}
 			case ServerOP_RequestOnlineGuildMembers: {
@@ -958,13 +969,13 @@ bool ZoneServer::Process() {
 				tod->start_eqtime=zoneserver_list.worldclock.getStartEQTime();
 				tod->start_realtime=zoneserver_list.worldclock.getStartRealTime();
 				SendPacket(pack);
-				delete pack;
+				safe_delete(pack);
 				break;
 			}
 			case ServerOP_SetWorldTime: {
 				Log.Out(Logs::Detail, Logs::World_Server,"Received SetWorldTime");
 				eqTimeOfDay* newtime = (eqTimeOfDay*) pack->pBuffer;
-				zoneserver_list.worldclock.setEQTimeOfDay(newtime->start_eqtime, newtime->start_realtime);
+				zoneserver_list.worldclock.SetCurrentEQTimeOfDay(newtime->start_eqtime, newtime->start_realtime);
 				Log.Out(Logs::Detail, Logs::World_Server,"New time = %d-%d-%d %d:%d (%d)\n", newtime->start_eqtime.year, newtime->start_eqtime.month, (int)newtime->start_eqtime.day, (int)newtime->start_eqtime.hour, (int)newtime->start_eqtime.minute, (int)newtime->start_realtime);
 				zoneserver_list.worldclock.saveFile(WorldConfig::get()->EQTimeFile.c_str());
 				zoneserver_list.SendTimeSync();
@@ -1059,8 +1070,7 @@ bool ZoneServer::Process() {
 						}
 						else
 						{
-							delete pack;
-							pack = new ServerPacket(ServerOP_Consent_Response, sizeof(ServerOP_Consent_Struct));
+							auto pack = new ServerPacket(ServerOP_Consent_Response, sizeof(ServerOP_Consent_Struct));
 							ServerOP_Consent_Struct* scs = (ServerOP_Consent_Struct*)pack->pBuffer;
 							strcpy(scs->grantname, s->grantname);
 							strcpy(scs->ownername, s->ownername);
@@ -1076,6 +1086,7 @@ bool ZoneServer::Process() {
 							else {
 								Log.Out(Logs::Detail, Logs::World_Server, "Unable to locate zone record for instance id %u in zoneserver list for ServerOP_Consent_Response operation.", s->instance_id);
 							}
+							safe_delete(pack);
 						}
 					}
 					else
@@ -1091,8 +1102,7 @@ bool ZoneServer::Process() {
 						}
 						else {
 							// send target not found back to requester
-							delete pack;
-							pack = new ServerPacket(ServerOP_Consent_Response, sizeof(ServerOP_Consent_Struct));
+							auto pack = new ServerPacket(ServerOP_Consent_Response, sizeof(ServerOP_Consent_Struct));
 							ServerOP_Consent_Struct* scs = (ServerOP_Consent_Struct*)pack->pBuffer;
 							strcpy(scs->grantname, s->grantname);
 							strcpy(scs->ownername, s->ownername);
@@ -1107,13 +1117,13 @@ bool ZoneServer::Process() {
 							else {
 								Log.Out(Logs::Detail, Logs::World_Server, "Unable to locate zone record for zone id %u in zoneserver list for ServerOP_Consent_Response operation.", s->zone_id);
 							}
+							safe_delete(pack);
 						}
 					}
 				}
 				else {
 					// send target not found back to requester
-					delete pack;
-					pack = new ServerPacket(ServerOP_Consent_Response, sizeof(ServerOP_Consent_Struct));
+					auto pack = new ServerPacket(ServerOP_Consent_Response, sizeof(ServerOP_Consent_Struct));
 					ServerOP_Consent_Struct* scs = (ServerOP_Consent_Struct*)pack->pBuffer;
 					strcpy(scs->grantname, s->grantname);
 					strcpy(scs->ownername, s->ownername);
@@ -1128,6 +1138,7 @@ bool ZoneServer::Process() {
 					else {
 						Log.Out(Logs::Detail, Logs::World_Server, "Unable to locate zone record for zone id %u in zoneserver list for ServerOP_Consent_Response operation.", s->zone_id);
 					}
+					safe_delete(pack);
 				}
 				break;
 			}
@@ -1286,10 +1297,6 @@ bool ZoneServer::Process() {
 			case ServerOP_CZSignalNPC:
 			case ServerOP_CZSetEntityVariableByNPCTypeID:
 			case ServerOP_CZSignalClient:
-			{
-				zoneserver_list.SendPacket(pack);
-				break;
-			}
 			case ServerOP_DepopAllPlayersCorpses:
 			case ServerOP_DepopPlayerCorpse:
 			case ServerOP_ReloadTitles:
@@ -1301,6 +1308,23 @@ bool ZoneServer::Process() {
 				zoneserver_list.SendPacket(pack);
 				break;
 			}
+			case ServerOP_ChangeSharedMem: {
+				std::string hotfix_name = std::string((char*)pack->pBuffer);
+
+				Log.Out(Logs::General, Logs::World_Server, "Loading items...");
+				if(!database.LoadItems(hotfix_name)) {
+					Log.Out(Logs::General, Logs::World_Server, "Error: Could not load item data. But ignoring");
+				}
+
+				Log.Out(Logs::General, Logs::World_Server, "Loading skill caps...");
+				if(!database.LoadSkillCaps(hotfix_name)) {
+					Log.Out(Logs::General, Logs::World_Server, "Error: Could not load skill cap data. But ignoring");
+				}
+
+				zoneserver_list.SendPacket(pack);
+				break;
+			}
+
 			case ServerOP_RequestTellQueue:
 			{
 				ServerRequestTellQueue_Struct* rtq = (ServerRequestTellQueue_Struct*) pack->pBuffer;
@@ -1313,13 +1337,17 @@ bool ZoneServer::Process() {
 			}
 			default:
 			{
-				Log.Out(Logs::Detail, Logs::World_Server,"Unknown ServerOPcode from zone 0x%04x, size %d",pack->opcode,pack->size);
+				Log.Out(Logs::Detail, Logs::World_Server, "Unknown ServerOPcode from zone 0x%04x, size %d", pack->opcode, pack->size);
 				DumpPacket(pack->pBuffer, pack->size);
 				break;
 			}
 		}
-
-		delete pack;
+		if (pack) {
+			safe_delete(pack);
+		}
+		else {
+			Log.Out(Logs::Detail, Logs::World_Server, "Zoneserver process attempted to delete pack when pack does not exist.");
+		}
 	}
 	return true;
 }

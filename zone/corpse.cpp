@@ -22,8 +22,10 @@ Child of the Mob class.
 */
 
 #ifdef _WINDOWS
-    #define snprintf	_snprintf
-	#define vsnprintf	_vsnprintf
+	#if (!defined(_MSC_VER) || (defined(_MSC_VER) && _MSC_VER < 1900))
+		#define snprintf	_snprintf
+		#define vsnprintf	_vsnprintf
+	#endif
     #define strncasecmp	_strnicmp
     #define strcasecmp	_stricmp
 #endif
@@ -152,7 +154,7 @@ Corpse::Corpse(NPC* in_npc, ItemList* in_itemlist, uint32 in_npctypeid, const NP
 	in_npc->GetDeity(),in_npc->GetLevel(),in_npc->GetNPCTypeID(),in_npc->GetSize(),0,
 	in_npc->GetPosition(), in_npc->GetInnateLightType(), in_npc->GetTexture(),in_npc->GetHelmTexture(),
 	0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0xff,0,0,0,0,0,0,0,0,0),
+	0,0,0,0,0,0,0,0,0,0,0,0xff,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
 	corpse_decay_timer(in_decaytime),
 	corpse_rez_timer(0),
 	corpse_delay_timer(RuleI(NPC, CorpseUnlockTimer)),
@@ -253,7 +255,12 @@ Corpse::Corpse(Client* client, int32 in_rezexp) : Mob (
 	0,								  // int32		in_mana_regen,
 	0,								  // uint8		in_qglobal,
 	0,								  // uint8		in_maxlevel,
-	0								  // uint32		in_scalerate
+	0,								  // uint32		in_scalerate
+	0,								  // uint8		in_armtexture,
+	0,								  // uint8		in_bracertexture,
+	0,								  // uint8		in_handtexture,
+	0,								  // uint8		in_legtexture,
+	0								  // uint8		in_feettexture,
 	),
 	corpse_decay_timer(RuleI(Character, CorpseDecayTimeMS)),
 	corpse_rez_timer(RuleI(Character, CorpseResTimeMS)),
@@ -470,6 +477,11 @@ in_helmtexture,
 0,
 0,
 0xff,
+0,
+0,
+0,
+0,
+0,
 0,
 0,
 0,
@@ -825,7 +837,7 @@ bool Corpse::Process() {
 				Save();
 				player_corpse_depop = true;
 				corpse_db_id = 0;
-				Log.Out(Logs::General, Logs::None, "Tagged %s player corpse has burried.", this->GetName());
+				Log.Out(Logs::General, Logs::None, "Tagged %s player corpse has buried.", this->GetName());
 			}
 			else {
 				Log.Out(Logs::General, Logs::Error, "Unable to bury %s player corpse.", this->GetName());

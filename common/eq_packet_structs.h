@@ -273,7 +273,8 @@ struct Spawn_Struct {
 /*0146*/ uint8	beard;				// Beard style (not totally, sure but maybe!)
 /*0147*/ uint8	unknown0147[4];
 /*0151*/ uint8	level;				// Spawn Level
-/*0152*/ uint8	unknown0259[4];		// ***Placeholder
+// None = 0, Open = 1, WeaponSheathed = 2, Aggressive = 4, ForcedAggressive = 8, InstrumentEquipped = 16, Stunned = 32, PrimaryWeaponEquipped = 64, SecondaryWeaponEquipped = 128
+/*0152*/ uint32 PlayerState;           // Controls animation stuff
 /*0156*/ uint8	beardcolor;			// Beard color
 /*0157*/ char	suffix[32];			// Player's suffix (of Veeshan, etc.)
 /*0189*/ uint32	petOwnerId;			// If this is a pet, the spawn id of owner
@@ -364,6 +365,11 @@ union
 	uint32 DestructibleUnk9;
 	bool targetable_with_hotkey;
 
+};
+
+struct PlayerState_Struct {
+/*00*/	uint32 spawn_id;
+/*04*/	uint32 state;
 };
 
 /*
@@ -547,7 +553,7 @@ struct SpellBuff_Struct
 /*002*/	uint8	bard_modifier;
 /*003*/	uint8	effect;			//not real
 /*004*/	uint32	spellid;
-/*008*/ uint32	duration;
+/*008*/ int32	duration;
 /*012*/	uint32	counters;
 /*016*/	uint32	player_id;	//'global' ID of the caster, for wearoff messages
 /*020*/
@@ -560,7 +566,7 @@ struct SpellBuffFade_Struct {
 /*006*/	uint8 effect;
 /*007*/	uint8 unknown7;
 /*008*/	uint32 spellid;
-/*012*/	uint32 duration;
+/*012*/	int32 duration;
 /*016*/	uint32 num_hits;
 /*020*/	uint32 unknown020;	//prolly global player ID
 /*024*/	uint32 slotid;
@@ -578,14 +584,8 @@ struct BuffRemoveRequest_Struct
 
 struct PetBuff_Struct {
 /*000*/ uint32 petid;
-/*004*/ uint32 spellid[BUFF_COUNT];
-/*104*/ uint32 unknown700;
-/*108*/ uint32 unknown701;
-/*112*/ uint32 unknown702;
-/*116*/ uint32 unknown703;
-/*120*/ uint32 unknown704;
-/*124*/ uint32 ticsremaining[BUFF_COUNT];
-/*224*/ uchar unknown705[20];
+/*004*/ uint32 spellid[BUFF_COUNT+5];
+/*124*/ int32 ticsremaining[BUFF_COUNT+5];
 /*244*/ uint32 buffcount;
 };
 
@@ -726,6 +726,7 @@ struct AA_Array
 {
 	uint32 AA;
 	uint32 value;
+	uint32 charges;
 };
 
 
@@ -1160,7 +1161,7 @@ struct TargetReject_Struct {
 
 struct PetCommand_Struct {
 /*000*/ uint32	command;
-/*004*/ uint32	unknown;
+/*004*/ uint32	target;
 };
 
 /*
@@ -1279,8 +1280,8 @@ struct RequestClientZoneChange_Struct {
 
 struct Animation_Struct {
 /*00*/	uint16 spawnid;
-/*02*/	uint8 action;
-/*03*/	uint8 value;
+/*02*/	uint8 speed;
+/*03*/	uint8 action;
 /*04*/
 };
 
@@ -1318,10 +1319,10 @@ struct CombatDamage_Struct
 /* 04 */	uint8	type; //slashing, etc. 231 (0xE7) for spells
 /* 05 */	uint16	spellid;
 /* 07 */	uint32	damage;
-/* 11 */	uint32 unknown11;
-/* 15 */	uint32 sequence;	// see above notes in Action_Struct
-/* 19 */	uint32	unknown19;
-/* 23 */
+/* 11 */	float force;
+/* 15 */	float meleepush_xy;	// see above notes in Action_Struct
+/* 19 */	float meleepush_z;
+/* 23 */	uint32 special; // 2 = Rampage, 1 = Wild Rampage
 };
 
 /*
@@ -2148,24 +2149,24 @@ struct Illusion_Struct_Old {
 // OP_Sound - Size: 68
 struct QuestReward_Struct
 {
-/*000*/ uint32	from_mob;	// ID of mob awarding the client
-/*004*/ uint32	unknown004;
-/*008*/ uint32	unknown008;
-/*012*/ uint32	unknown012;
-/*016*/ uint32	unknown016;
-/*020*/ uint32	unknown020;
-/*024*/ uint32	silver;		// Gives silver to the client
-/*028*/ uint32	gold;		// Gives gold to the client
-/*032*/ uint32	platinum;	// Gives platinum to the client
-/*036*/ uint32	unknown036;
-/*040*/ uint32	unknown040;
-/*044*/ uint32	unknown044;
-/*048*/ uint32	unknown048;
-/*052*/ uint32	unknown052;
-/*056*/ uint32	unknown056;
-/*060*/ uint32	unknown060;
-/*064*/ uint32	unknown064;
-/*068*/
+	/*000*/ uint32	mob_id;	// ID of mob awarding the client
+	/*004*/ uint32	target_id;
+	/*008*/ uint32	exp_reward;
+	/*012*/ uint32	faction;
+	/*016*/ int32	faction_mod;
+	/*020*/ uint32	copper;		// Gives copper to the client
+	/*024*/ uint32	silver;		// Gives silver to the client
+	/*028*/ uint32	gold;		// Gives gold to the client
+	/*032*/ uint32	platinum;	// Gives platinum to the client
+	/*036*/ uint32	item_id;
+	/*040*/ uint32	unknown040;
+	/*044*/ uint32	unknown044;
+	/*048*/ uint32	unknown048;
+	/*052*/ uint32	unknown052;
+	/*056*/ uint32	unknown056;
+	/*060*/ uint32	unknown060;
+	/*064*/ uint32	unknown064;
+	/*068*/
 };
 
 // Size: 8
@@ -2535,8 +2536,8 @@ struct BookRequest_Struct {
 */
 struct Object_Struct {
 /*00*/	uint32	linked_list_addr[2];// They are, get this, prev and next, ala linked list
-/*08*/	uint16	unknown008;			//
-/*10*/	uint16	unknown010;			//
+/*08*/	uint16	size;				//
+/*10*/	uint16	solidtype;			//
 /*12*/	uint32	drop_id;			// Unique object id for zone
 /*16*/	uint16	zone_id;			// Redudant, but: Zone the object appears in
 /*18*/	uint16	zone_instance;		//
@@ -4030,7 +4031,7 @@ struct MarkNPC_Struct
 
 struct InspectBuffs_Struct {
 /*000*/ uint32 spell_id[BUFF_COUNT];
-/*100*/ uint32 tics_remaining[BUFF_COUNT];
+/*100*/ int32 tics_remaining[BUFF_COUNT];
 };
 
 struct RaidGeneral_Struct {
@@ -4218,6 +4219,52 @@ struct UseAA_Struct {
 	uint32 end;
 };
 
+//new AA stuff
+//reference only
+struct AARankInfo_Struct
+{
+	uint32 id;
+	int32 upper_hotkey_sid;
+	int32 lower_hotkey_sid;
+	int32 title_sid;
+	int32 desc_sid;
+	int32 level_req;
+	int32 cost;
+	uint32 seq;
+	uint32 current_level;
+	uint32 type;
+	int32 spell;
+	int32 spell_type;
+	int32 spell_refresh;
+	int32 classes;
+	int32 max_level;
+	int32 prev_id;
+	int32 next_id;
+	int32 total_cost;
+	int32 expansion;
+	int32 category;
+	uint32 charges;
+	uint8 grant_only;
+	uint32 total_effects;
+	uint32 total_prereqs;
+};
+
+struct AARankPrereq_Struct
+{
+	int32 aa_id;
+	int32 points;
+};
+
+struct AARankEffect_Struct
+{
+	int32 effect_id;
+	int32 base1;
+	int32 base2;
+	int32 slot;
+};
+
+//old AA stuff
+
 struct AA_Ability {
 /*00*/	uint32 skill_id;
 /*04*/	uint32 base1;
@@ -4272,16 +4319,8 @@ struct SendAA_Struct {
 struct AA_Action {
 /*00*/	uint32	action;
 /*04*/	uint32	ability;
-/*08*/	uint32	unknown08;
+/*08*/	uint32	target_id;
 /*12*/	uint32	exp_value;
-};
-
-
-struct AA_Skills {		//this should be removed and changed to AA_Array
-/*00*/	uint32	aa_skill;						// Total AAs Spent
-/*04*/	uint32	aa_value;
-/*08*/	uint32	unknown08;
-/*12*/
 };
 
 struct AAExpUpdate_Struct {
@@ -4301,12 +4340,12 @@ struct AltAdvStats_Struct {
 };
 
 struct PlayerAA_Struct {						// Is this still used?
-	AA_Skills aa_list[MAX_PP_AA_ARRAY];
+	AA_Array aa_list[MAX_PP_AA_ARRAY];
 };
 
 struct AATable_Struct {
 /*00*/ int32		aa_spent;					// Total AAs Spent
-/*04*/ AA_Skills	aa_list[MAX_PP_AA_ARRAY];
+/*04*/ AA_Array	aa_list[MAX_PP_AA_ARRAY];
 };
 
 struct Weather_Struct {
@@ -4731,7 +4770,7 @@ struct BuffIconEntry_Struct
 {
 	uint32 buff_slot;
 	uint32 spell_id;
-	uint32 tics_remaining;
+	int32 tics_remaining;
 	uint32 num_hits;
 };
 
@@ -4740,6 +4779,7 @@ struct BuffIcon_Struct
 	uint32 entity_id;
 	uint8  all_buffs;
 	uint16 count;
+	uint8 type; // 0 = self buff window, 1 = self target window, 4 = group, 5 = PC, 7 = NPC
 	BuffIconEntry_Struct entries[0];
 };
 

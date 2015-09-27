@@ -212,7 +212,7 @@ void NPC::UpdateWaypoint(int wp_index)
 	Log.Out(Logs::Detail, Logs::AI, "Next waypoint %d: (%.3f, %.3f, %.3f, %.3f)", wp_index, m_CurrentWayPoint.x, m_CurrentWayPoint.y, m_CurrentWayPoint.z, m_CurrentWayPoint.w);
 
 	//fix up pathing Z
-	if(zone->HasMap() && RuleB(Map, FixPathingZAtWaypoints))
+	if(zone->HasMap() && RuleB(Map, FixPathingZAtWaypoints) && !IsBoat())
 	{
 
 		if(!RuleB(Watermap, CheckForWaterAtWaypoints) || !zone->HasWaterMap() ||
@@ -394,6 +394,7 @@ void NPC::SetWaypointPause()
 
 	if (cur_wp_pause == 0) {
 		AIwalking_timer->Start(100);
+		AIwalking_timer->Trigger();
 	}
 	else
 	{
@@ -436,38 +437,16 @@ void NPC::NextGuardPosition() {
 	{
 		if(moved)
 		{
-			moved=false;
-			SetMoving(false);
-			SendPosition();
+			moved = false;
+			SetCurrentSpeed(0);
 		}
 	}
 }
-
-/*
-// we need this for charmed NPCs
-void Mob::SaveSpawnSpot() {
-	spawn_x = x_pos;
-	spawn_y = y_pos;
-	spawn_z = z_pos;
-	spawn_heading = heading;
-}*/
-
-
-
-
-/*float Mob::CalculateDistanceToNextWaypoint() {
-	return CalculateDistance(cur_wp_x, cur_wp_y, cur_wp_z);
-}*/
 
 float Mob::CalculateDistance(float x, float y, float z) {
 	return (float)sqrtf( ((m_Position.x-x)*(m_Position.x-x)) + ((m_Position.y-y)*(m_Position.y-y)) + ((m_Position.z-z)*(m_Position.z-z)) );
 }
 
-/*
-uint8 NPC::CalculateHeadingToNextWaypoint() {
-	return CalculateHeadingToTarget(cur_wp_x, cur_wp_y);
-}
-*/
 float Mob::CalculateHeadingToTarget(float in_x, float in_y) {
 	float angle;
 
@@ -489,9 +468,15 @@ float Mob::CalculateHeadingToTarget(float in_x, float in_y) {
 	return (256*(360-angle)/360.0f);
 }
 
-bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, bool checkZ) {
+bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, int speed, bool checkZ) {
 	if(GetID()==0)
 		return true;
+
+	if(speed <= 0)
+	{
+		SetCurrentSpeed(0);
+		return true;
+	}
 
 	if ((m_Position.x-x == 0) && (m_Position.y-y == 0)) {//spawn is at target coords
 		if(m_Position.z-z != 0) {
@@ -514,7 +499,8 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 		return true;
 	}
 
-	int compare_steps = IsBoat() ? 1 : 20;
+	bool send_update = false;
+	int compare_steps = 20;
 	if(tar_ndx < compare_steps && m_TargetLocation.x==x && m_TargetLocation.y==y) {
 
 		float new_x = m_Position.x + m_TargetV.x*tar_vector;
@@ -586,7 +572,12 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 	m_TargetV.x = x - nx;
 	m_TargetV.y = y - ny;
 	m_TargetV.z = z - nz;
-
+	SetCurrentSpeed((int8)speed);
+	pRunAnimSpeed = speed;
+	if(IsClient())
+	{
+		animation = speed / 2;
+	}
 	//pRunAnimSpeed = (int8)(speed*NPC_RUNANIM_RATIO);
 	//speed *= NPC_SPEED_MULTIPLIER;
 
@@ -596,10 +587,10 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 	// 2: get unit vector
 	// --------------------------------------------------------------------------
 	float mag = sqrtf (m_TargetV.x*m_TargetV.x + m_TargetV.y*m_TargetV.y + m_TargetV.z*m_TargetV.z);
-	tar_vector = speed / mag;
+	tar_vector = (float)speed / mag;
 
 // mob move fix
-	int numsteps = (int) ( mag * 20 / speed) + 1;
+	int numsteps = (int) ( mag * 16.0f / (float)speed + 0.5f);
 
 
 // mob move fix
@@ -609,9 +600,9 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 		if (numsteps>1)
 		{
 			tar_vector=1.0f	;
-			m_TargetV.x = m_TargetV.x/numsteps;
-			m_TargetV.y = m_TargetV.y/numsteps;
-			m_TargetV.z = m_TargetV.z/numsteps;
+			m_TargetV.x = m_TargetV.x/(float)numsteps;
+			m_TargetV.y = m_TargetV.y/(float)numsteps;
+			m_TargetV.z = m_TargetV.z/(float)numsteps;
 
 			float new_x = m_Position.x + m_TargetV.x;
 			float new_y = m_Position.y + m_TargetV.y;
@@ -624,7 +615,7 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 			m_Position.y = new_y;
 			m_Position.z = new_z;
 			m_Position.w = CalculateHeadingToTarget(x, y);
-			tar_ndx = 22 - numsteps;
+			tar_ndx = 20 - numsteps;
 			Log.Out(Logs::Detail, Logs::AI, "Next position2 (%.3f, %.3f, %.3f) (%d steps)", m_Position.x, m_Position.y, m_Position.z, numsteps);
 		}
 		else
@@ -643,7 +634,12 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 	}
 
 	else {
-		tar_vector/=20;
+		tar_vector/=16.0f;
+		float dur = Timer::GetCurrentTime() - pLastChange;
+		if(dur < 1.0f) {
+			dur = 1.0f;
+		}
+		tar_vector = (tar_vector * AImovement_duration) / 100.0f;
 
 		float new_x = m_Position.x + m_TargetV.x*tar_vector;
 		float new_y = m_Position.y + m_TargetV.y*tar_vector;
@@ -699,25 +695,25 @@ bool Mob::MakeNewPositionAndSendUpdate(float x, float y, float z, float speed, b
 	m_Delta = glm::vec4(m_Position.x - nx, m_Position.y - ny, m_Position.z - nz, 0.0f);
 
 	if (IsClient())
+	{
 		SendPosUpdate(1);
+		CastToClient()->ResetPositionTimer();
+	}
 	else
+	{
 		SendPosUpdate();
+		SetAppearance(eaStanding, false);
+	}
 
-	SetAppearance(eaStanding, false);
 	pLastChange = Timer::GetCurrentTime();
 	return true;
 }
 
-bool Mob::CalculateNewPosition2(float x, float y, float z, float speed, bool checkZ) {
-	if(IsNPC() || IsClient() || IsPet()) {
-		pRunAnimSpeed = (int8)(speed*NPC_RUNANIM_RATIO);
-		speed *= NPC_SPEED_MULTIPLIER;
-	}
-
+bool Mob::CalculateNewPosition2(float x, float y, float z, int speed, bool checkZ, bool calcHeading) {
 	return MakeNewPositionAndSendUpdate(x, y, z, speed, checkZ);
 }
 
-bool Mob::CalculateNewPosition(float x, float y, float z, float speed, bool checkZ) {
+bool Mob::CalculateNewPosition(float x, float y, float z, int speed, bool checkZ, bool calcHeading) {
 	if(GetID()==0)
 		return true;
 
@@ -726,14 +722,12 @@ bool Mob::CalculateNewPosition(float x, float y, float z, float speed, bool chec
 	float nz = m_Position.z;
 
 	// if NPC is rooted
-	if (speed == 0.0) {
+	if (speed == 0) {
 		SetHeading(CalculateHeadingToTarget(x, y));
 		if(moved){
-			SendPosition();
-			SetMoving(false);
+			SetCurrentSpeed(0);
 			moved=false;
 		}
-		SetRunAnimSpeed(0);
 		Log.Out(Logs::Detail, Logs::AI, "Rooted while calculating new position to (%.3f, %.3f, %.3f)", x, y, z);
 		return true;
 	}
@@ -745,8 +739,8 @@ bool Mob::CalculateNewPosition(float x, float y, float z, float speed, bool chec
 
 	if (m_TargetV.x == 0 && m_TargetV.y == 0)
 		return false;
-	pRunAnimSpeed = (uint8)(speed*NPC_RUNANIM_RATIO);
-	speed *= NPC_SPEED_MULTIPLIER;
+	SetCurrentSpeed((int8)(speed)); //*NPC_RUNANIM_RATIO);
+	//speed *= NPC_SPEED_MULTIPLIER;
 
 	Log.Out(Logs::Detail, Logs::AI, "Calculating new position to (%.3f, %.3f, %.3f) vector (%.3f, %.3f, %.3f) rate %.3f RAS %d", x, y, z, m_TargetV.x, m_TargetV.y, m_TargetV.z, speed, pRunAnimSpeed);
 
@@ -1039,7 +1033,7 @@ void ZoneDatabase::AssignGrid(Client *client, int grid, int spawn2id) {
 
 	if (!results.Success())
 		return;
-	
+
 	if (results.RowsAffected() != 1) {
 		return;
 	}

@@ -446,7 +446,10 @@ namespace SoD
 		OUT(type);
 		OUT(spellid);
 		OUT(damage);
-		eq->sequence = emu->sequence;
+		OUT(force);
+		OUT(meleepush_xy);
+		OUT(meleepush_z);
+		OUT(special);
 
 		FINISH_ENCODE();
 	}
@@ -1556,6 +1559,7 @@ namespace SoD
 		for (r = 0; r < MAX_PP_AA_ARRAY; r++) {
 			OUT(aa_array[r].AA);
 			OUT(aa_array[r].value);
+			OUT(aa_array[r].charges);
 		}
 		//	OUT(unknown02220[4]);
 		OUT(mana);
@@ -1674,8 +1678,8 @@ namespace SoD
 		OUT(copper_bank);
 		OUT(platinum_shared);
 		//	OUT(unknown13156[84]);
-		//OUT(expansions);
-		eq->expansions = 16383;
+		OUT(expansions);
+		//eq->expansions = 16383;
 		//	OUT(unknown13244[12]);
 		OUT(autosplit);
 		//	OUT(unknown13260[16]);
@@ -1859,54 +1863,56 @@ namespace SoD
 
 	ENCODE(OP_SendAATable)
 	{
-		ENCODE_LENGTH_ATLEAST(SendAA_Struct);
-		SETUP_VAR_ENCODE(SendAA_Struct);
-		ALLOC_VAR_ENCODE(structs::SendAA_Struct, sizeof(structs::SendAA_Struct) + emu->total_abilities*sizeof(structs::AA_Ability));
+		EQApplicationPacket *inapp = *p;
+		*p = nullptr;
+		AARankInfo_Struct *emu = (AARankInfo_Struct*)inapp->pBuffer;
 
-		// Check clientver field to verify this AA should be sent for SoF
-		// clientver 1 is for all clients and 5 is for SoD
-		if (emu->clientver <= 5)
-		{
-			OUT(id);
-			eq->unknown004 = 1;
-			//eq->hotkey_sid = (emu->hotkey_sid==4294967295UL)?0:(emu->id - emu->current_level + 1);
-			//eq->hotkey_sid2 = (emu->hotkey_sid2==4294967295UL)?0:(emu->id - emu->current_level + 1);
-			//eq->title_sid = emu->id - emu->current_level + 1;
-			//eq->desc_sid = emu->id - emu->current_level + 1;
-			eq->hotkey_sid = (emu->hotkey_sid == 4294967295UL) ? 0 : (emu->sof_next_skill);
-			eq->hotkey_sid2 = (emu->hotkey_sid2 == 4294967295UL) ? 0 : (emu->sof_next_skill);
-			eq->title_sid = emu->sof_next_skill;
-			eq->desc_sid = emu->sof_next_skill;
-			OUT(class_type);
-			OUT(cost);
-			OUT(seq);
-			OUT(current_level);
-			OUT(prereq_skill);
-			OUT(prereq_minpoints);
-			eq->type = emu->sof_type;
-			OUT(spellid);
-			OUT(spell_type);
-			OUT(spell_refresh);
-			OUT(classes);
-			OUT(berserker);
-			//eq->max_level = emu->sof_max_level;
-			OUT(max_level);
-			OUT(last_id);
-			OUT(next_id);
-			OUT(cost2);
-			eq->aa_expansion = emu->aa_expansion;
-			eq->special_category = emu->special_category;
-			OUT(total_abilities);
-			unsigned int r;
-			for (r = 0; r < emu->total_abilities; r++) {
-				OUT(abilities[r].skill_id);
-				OUT(abilities[r].base1);
-				OUT(abilities[r].base2);
-				OUT(abilities[r].slot);
-			}
+		EQApplicationPacket *outapp = new EQApplicationPacket(OP_SendAATable, sizeof(structs::SendAA_Struct) + emu->total_effects * sizeof(structs::AA_Ability));
+		structs::SendAA_Struct *eq = (structs::SendAA_Struct*)outapp->pBuffer;
+
+		inapp->SetReadPosition(sizeof(AARankInfo_Struct));
+		outapp->SetWritePosition(sizeof(structs::SendAA_Struct));
+
+		eq->id = emu->id;
+		eq->unknown004 = 1;
+		eq->id = emu->id;
+		eq->hotkey_sid = emu->upper_hotkey_sid;
+		eq->hotkey_sid2 = emu->lower_hotkey_sid;
+		eq->desc_sid = emu->desc_sid;
+		eq->title_sid = emu->title_sid;
+		eq->class_type = emu->level_req;
+		eq->cost = emu->cost;
+		eq->seq = emu->seq;
+		eq->current_level = emu->current_level;
+		eq->type = emu->type;
+		eq->spellid = emu->spell;
+		eq->spell_type = emu->spell_type;
+		eq->spell_refresh = emu->spell_refresh;
+		eq->classes = emu->classes;
+		eq->max_level = emu->max_level;
+		eq->last_id = emu->prev_id;
+		eq->next_id = emu->next_id;
+		eq->cost2 = emu->total_cost;
+		eq->grant_only = emu->grant_only;
+		eq->expendable_charges = emu->charges;
+		eq->aa_expansion = emu->expansion;
+		eq->special_category = emu->category;
+		eq->total_abilities = emu->total_effects;
+
+		for(auto i = 0; i < eq->total_abilities; ++i) {
+			eq->abilities[i].skill_id = inapp->ReadUInt32();
+			eq->abilities[i].base1 = inapp->ReadUInt32();
+			eq->abilities[i].base2 = inapp->ReadUInt32();
+			eq->abilities[i].slot = inapp->ReadUInt32();
 		}
 
-		FINISH_ENCODE();
+		if(emu->total_prereqs > 0) {
+			eq->prereq_skill = inapp->ReadUInt32();
+			eq->prereq_minpoints = inapp->ReadUInt32();
+		}
+
+		dest->FastQueuePacket(&outapp);
+		delete inapp;
 	}
 
 	ENCODE(OP_SendCharInfo)
@@ -1960,15 +1966,16 @@ namespace SoD
 
 		for (int counter = 0; counter < character_count; ++counter) {
 			emu_cse = (CharacterSelectEntry_Struct *)emu_ptr;
-			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr;
+			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr; // base address
 
 			eq_cse->Level = emu_cse->Level;
 			eq_cse->HairStyle = emu_cse->HairStyle;
 			eq_cse->Gender = emu_cse->Gender;
 
 			strcpy(eq_cse->Name, emu_cse->Name);
-			eq_ptr += strlen(eq_cse->Name);
-			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr;
+			eq_ptr += strlen(emu_cse->Name);
+			eq_cse = (structs::CharacterSelectEntry_Struct *)eq_ptr; // offset address (base + name length offset)
+			eq_cse->Name[0] = '\0'; // (offset)eq_cse->Name[0] = (base)eq_cse->Name[strlen(emu_cse->Name)]
 
 			eq_cse->Beard = emu_cse->Beard;
 			eq_cse->HairColor = emu_cse->HairColor;
@@ -2735,7 +2742,7 @@ namespace SoD
 			VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0); // unknown12
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->petOwnerId);
 			VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0); // unknown13
-			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown14 - Stance 64 = normal 4 = aggressive 40 = stun/mezzed
+			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, emu->PlayerState);
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown15
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown16
 			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0); // unknown17
@@ -3349,7 +3356,7 @@ namespace SoD
 		default:
 			emu->command = eq->command;
 		}
-		OUT(unknown);
+		IN(target);
 
 		FINISH_DIRECT_DECODE();
 	}

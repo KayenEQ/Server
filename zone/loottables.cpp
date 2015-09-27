@@ -58,7 +58,7 @@ void ZoneDatabase::AddLootTableToNPC(NPC* npc,uint32 loottable_id, ItemList* ite
 	if(max_cash > 0 && lts->avgcoin > 0 && EQEmu::ValueWithin(lts->avgcoin, min_cash, max_cash)) {
 		float upper_chance = (float)(lts->avgcoin - min_cash) / (float)(max_cash - min_cash);
 		float avg_cash_roll = (float)zone->random.Real(0.0, 1.0);
-		
+
 		if(avg_cash_roll < upper_chance) {
 			cash = zone->random.Int(lts->avgcoin, max_cash);
 		} else {
@@ -120,7 +120,7 @@ void ZoneDatabase::AddLootDropToNPC(NPC* npc,uint32 lootdrop_id, ItemList* iteml
 			for(int j = 0; j < charges; ++j) {
 				if(zone->random.Real(0.0, 100.0) <= lds->Entries[i].chance) {
 					const Item_Struct* dbitem = GetItem(lds->Entries[i].item_id);
-					npc->AddLootDrop(dbitem, itemlist, lds->Entries[i].item_charges, lds->Entries[i].minlevel, 
+					npc->AddLootDrop(dbitem, itemlist, lds->Entries[i].item_charges, lds->Entries[i].minlevel,
 									lds->Entries[i].maxlevel, lds->Entries[i].equip_item > 0 ? true : false, false);
 				}
 			}
@@ -137,6 +137,7 @@ void ZoneDatabase::AddLootDropToNPC(NPC* npc,uint32 lootdrop_id, ItemList* iteml
 	}
 
 	float roll_t = 0.0f;
+	float roll_t_min = 0.0f;
 	bool active_item_list = false;
 	for(uint32 i = 0; i < lds->NumEntries; ++i) {
 		const Item_Struct* db_item = GetItem(lds->Entries[i].item_id);
@@ -146,15 +147,44 @@ void ZoneDatabase::AddLootDropToNPC(NPC* npc,uint32 lootdrop_id, ItemList* iteml
 		}
 	}
 
+	roll_t_min = roll_t;
 	roll_t = EQEmu::ClampLower(roll_t, 100.0f);
 
 	if(!active_item_list) {
 		return;
 	}
 
-	mindrop = EQEmu::ClampLower(mindrop, (uint8)1);
-	int item_count = zone->random.Int(mindrop, droplimit);
-	for(int i = 0; i < item_count; ++i) {
+	for(int i = 0; i < mindrop; ++i) {
+		float roll = (float)zone->random.Real(0.0, roll_t_min);
+		for(uint32 j = 0; j < lds->NumEntries; ++j) {
+			const Item_Struct* db_item = GetItem(lds->Entries[j].item_id);
+			if(db_item) {
+				if(roll < lds->Entries[j].chance) {
+					npc->AddLootDrop(db_item, itemlist, lds->Entries[j].item_charges, lds->Entries[j].minlevel,
+									 lds->Entries[j].maxlevel, lds->Entries[j].equip_item > 0 ? true : false, false);
+
+					int charges = (int)lds->Entries[i].multiplier;
+					charges = EQEmu::ClampLower(charges, 1);
+
+					for(int k = 1; k < charges; ++k) {
+						float c_roll = (float)zone->random.Real(0.0, 100.0);
+						if(c_roll <= lds->Entries[i].chance) {
+							npc->AddLootDrop(db_item, itemlist, lds->Entries[j].item_charges, lds->Entries[j].minlevel,
+											 lds->Entries[j].maxlevel, lds->Entries[j].equip_item > 0 ? true : false, false);
+						}
+					}
+
+					j = lds->NumEntries;
+					break;
+				}
+				else {
+					roll -= lds->Entries[j].chance;
+				}
+			}
+		}
+	}
+
+	for(int i = mindrop; i < droplimit; ++i) {
 		float roll = (float)zone->random.Real(0.0, roll_t);
 		for(uint32 j = 0; j < lds->NumEntries; ++j) {
 			const Item_Struct* db_item = GetItem(lds->Entries[j].item_id);
@@ -302,9 +332,13 @@ void NPC::AddLootDrop(const Item_Struct *item2, ItemList* itemlist, int16 charge
 				CastToMob()->AddProcToWeapon(item2->Proc.Effect, true);
 
 			eslot = MaterialPrimary;
+			if (item2->Damage > 0)
+				SendAddPlayerState(PlayerState::PrimaryWeaponEquipped);
+			if (item2->ItemType == ItemType2HBlunt || item2->ItemType == ItemType2HSlash || item2->ItemType == ItemType2HPiercing)
+				SetTwoHanderEquipped(true);
 		}
 		else if (foundslot == MainSecondary
-			&& (GetOwner() != nullptr || (GetLevel() >= 13 && zone->random.Roll(NPC_DW_CHANCE)) || (item2->Damage==0)) &&
+			&& (GetOwner() != nullptr || (CanThisClassDualWield() && zone->random.Roll(NPC_DW_CHANCE)) || (item2->Damage==0)) &&
 			(item2->ItemType == ItemType1HSlash || item2->ItemType == ItemType1HBlunt || item2->ItemType == ItemTypeShield ||
 			item2->ItemType == ItemType1HPiercing))
 		{
@@ -312,6 +346,8 @@ void NPC::AddLootDrop(const Item_Struct *item2, ItemList* itemlist, int16 charge
 				CastToMob()->AddProcToWeapon(item2->Proc.Effect, true);
 
 			eslot = MaterialSecondary;
+			if (item2->Damage > 0)
+				SendAddPlayerState(PlayerState::SecondaryWeaponEquipped);
 		}
 		else if (foundslot == MainHead) {
 			eslot = MaterialHead;

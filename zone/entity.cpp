@@ -58,7 +58,6 @@ extern uint32 numclients;
 extern PetitionList petition_list;
 
 extern char errorname[32];
-extern uint16 adverrornum;
 
 Entity::Entity()
 {
@@ -79,7 +78,7 @@ Client *Entity::CastToClient()
 	}
 #ifdef _EQDEBUG
 	if (!IsClient()) {
-		Log.Out(Logs::General, Logs::Error, "CastToClient error (not client)"); 
+		Log.Out(Logs::General, Logs::Error, "CastToClient error (not client)");
 		return 0;
 	}
 #endif
@@ -173,6 +172,11 @@ Beacon *Entity::CastToBeacon()
 	return static_cast<Beacon *>(this);
 }
 
+Encounter *Entity::CastToEncounter()
+{
+	return static_cast<Encounter *>(this);
+}
+
 const Client *Entity::CastToClient() const
 {
 	if (this == 0x00) {
@@ -261,6 +265,11 @@ const Doors *Entity::CastToDoors() const
 const Beacon* Entity::CastToBeacon() const
 {
 	return static_cast<const Beacon *>(this);
+}
+
+const Encounter* Entity::CastToEncounter() const
+{
+	return static_cast<const Encounter *>(this);
 }
 
 #ifdef BOTS
@@ -533,6 +542,21 @@ void EntityList::BeaconProcess()
 	}
 }
 
+void EntityList::EncounterProcess()
+{
+	auto it = encounter_list.begin();
+	while (it != encounter_list.end()) {
+		if (!it->second->Process()) {
+			safe_delete(it->second);
+			free_ids.push(it->first);
+			it = encounter_list.erase(it);
+		}
+		else {
+			++it;
+		}
+	}
+}
+
 void EntityList::AddGroup(Group *group)
 {
 	if (group == nullptr)	//this seems to be happening somehow...
@@ -540,7 +564,7 @@ void EntityList::AddGroup(Group *group)
 
 	uint32 gid = worldserver.NextGroupID();
 	if (gid == 0) {
-		Log.Out(Logs::General, Logs::Error, 
+		Log.Out(Logs::General, Logs::Error,
 				"Unable to get new group ID from world server. group is going to be broken.");
 		return;
 	}
@@ -569,7 +593,7 @@ void EntityList::AddRaid(Raid *raid)
 
 	uint32 gid = worldserver.NextGroupID();
 	if (gid == 0) {
-		Log.Out(Logs::General, Logs::Error, 
+		Log.Out(Logs::General, Logs::Error,
 				"Unable to get new group ID from world server. group is going to be broken.");
 		return;
 	}
@@ -618,6 +642,8 @@ void EntityList::AddNPC(NPC *npc, bool SendSpawnPacket, bool dontqueue)
 			EQApplicationPacket *app = new EQApplicationPacket;
 			npc->CreateSpawnPacket(app, npc);
 			QueueClients(npc, app);
+			npc->SendArmorAppearance();
+			npc->SetAppearance(npc->GetGuardPointAnim(),false);
 			safe_delete(app);
 		} else {
 			NewSpawn_Struct *ns = new NewSpawn_Struct;
@@ -706,6 +732,12 @@ void EntityList::AddBeacon(Beacon *beacon)
 	beacon_list.insert(std::pair<uint16, Beacon *>(beacon->GetID(), beacon));
 }
 
+void EntityList::AddEncounter(Encounter *encounter)
+{
+	encounter->SetID(GetFreeID());
+	encounter_list.insert(std::pair<uint16, Encounter *>(encounter->GetID(), encounter));
+}
+
 void EntityList::AddToSpawnQueue(uint16 entityid, NewSpawn_Struct **ns)
 {
 	uint32 count;
@@ -726,10 +758,23 @@ void EntityList::CheckSpawnQueue()
 		EQApplicationPacket *outapp = 0;
 
 		iterator.Reset();
+		NewSpawn_Struct	*ns;
+
 		while(iterator.MoreElements()) {
 			outapp = new EQApplicationPacket;
-			Mob::CreateSpawnPacket(outapp, iterator.GetData());
+			ns = iterator.GetData();
+			Mob::CreateSpawnPacket(outapp, ns);
 			QueueClients(0, outapp);
+			auto it = npc_list.find(ns->spawn.spawnId);
+			if (it == npc_list.end()) {
+				// We must of despawned, hope that's the reason!
+				Log.Out(Logs::General, Logs::Error, "Error in EntityList::CheckSpawnQueue: Unable to find NPC for spawnId '%u'", ns->spawn.spawnId);
+			}
+			else {
+				NPC *pnpc = it->second;
+				pnpc->SendArmorAppearance();
+				pnpc->SetAppearance(pnpc->GetGuardPointAnim(), false);
+			}
 			safe_delete(outapp);
 			iterator.RemoveCurrent();
 		}
@@ -920,6 +965,11 @@ Entity *EntityList::GetEntityBeacon(uint16 id)
 	return beacon_list.count(id) ? beacon_list.at(id) : nullptr;
 }
 
+Entity *EntityList::GetEntityEncounter(uint16 id)
+{
+	return encounter_list.count(id) ? encounter_list.at(id) : nullptr;
+}
+
 Entity *EntityList::GetID(uint16 get_id)
 {
 	Entity *ent = 0;
@@ -934,6 +984,8 @@ Entity *EntityList::GetID(uint16 get_id)
 	else if ((ent=entity_list.GetEntityTrap(get_id)) != 0)
 		return ent;
 	else if ((ent=entity_list.GetEntityBeacon(get_id)) != 0)
+		return ent;
+	else if ((ent = entity_list.GetEntityEncounter(get_id)) != 0)
 		return ent;
 	else
 		return 0;
@@ -1149,19 +1201,39 @@ void EntityList::SendZoneSpawnsBulk(Client *client)
 	NewSpawn_Struct ns;
 	Mob *spawn;
 	uint32 maxspawns = 100;
+	EQApplicationPacket *app;
 
 	if (maxspawns > mob_list.size())
 		maxspawns = mob_list.size();
 	BulkZoneSpawnPacket *bzsp = new BulkZoneSpawnPacket(client, maxspawns);
+
+	int32 race=-1;
 	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
 		spawn = it->second;
 		if (spawn && spawn->InZone()) {
 			if (spawn->IsClient() && (spawn->CastToClient()->GMHideMe(client) ||
 					spawn->CastToClient()->IsHoveringForRespawn()))
 				continue;
-			memset(&ns, 0, sizeof(NewSpawn_Struct));
-			spawn->FillSpawnStruct(&ns, client);
-			bzsp->AddSpawn(&ns);
+
+			race = spawn->GetRace();
+
+			// Illusion races on PCs don't work as a mass spawn
+			// But they will work as an add_spawn AFTER CLIENT_CONNECTED.
+			if (spawn->IsClient() && (race == MINOR_ILL_OBJ || race == TREE)) {
+				app = new EQApplicationPacket;
+				spawn->CreateSpawnPacket(app);
+				client->QueuePacket(app, true, Client::CLIENT_CONNECTED);
+				safe_delete(app);
+			}
+			else {
+				memset(&ns, 0, sizeof(NewSpawn_Struct));
+				spawn->FillSpawnStruct(&ns, client);
+				bzsp->AddSpawn(&ns);
+			}
+
+			// Despite being sent in the OP_ZoneSpawns packet, the client
+			// does not display worn armor correctly so display it.
+			spawn->SendArmorAppearance(client);
 		}
 	}
 	safe_delete(bzsp);
@@ -1301,7 +1373,7 @@ void EntityList::RefreshAutoXTargets(Client *c)
 			continue;
 
 		if (m->CheckAggro(c) && !c->IsXTarget(m)) {
-			c->AddAutoXTarget(m);
+			c->AddAutoXTarget(m, false); // we only call this before a bulk, so lets not send right away
 			break;
 		}
 
@@ -1356,7 +1428,9 @@ void EntityList::QueueClientsByTarget(Mob *sender, const EQApplicationPacket *ap
 		if (c != sender) {
 			if (Target == sender) {
 				if (inspect_buffs) { // if inspect_buffs is true we're sending a mob's buffs to those with the LAA
-					if (c->IsRaidGrouped()) {
+					if (c->GetGM() || RuleB(Spells, AlwaysSendTargetsBuffs)) {
+						Send = true;
+					} else if (c->IsRaidGrouped()) {
 						Raid *raid = c->GetRaid();
 						if (!raid)
 							continue;
@@ -2995,56 +3069,24 @@ bool EntityList::Fighting(Mob *targ)
 	return false;
 }
 
-void EntityList::AddHealAggro(Mob *target, Mob *caster, uint16 thedam)
+void EntityList::AddHealAggro(Mob *target, Mob *caster, uint16 hate)
 {
-	NPC *cur = nullptr;
-	uint16 count = 0;
-	std::list<NPC *> npc_sub_list;
-	auto it = npc_list.begin();
-	while (it != npc_list.end()) {
-		cur = it->second;
+	if (hate == 0)
+		return;
 
-		if (!cur->CheckAggro(target)) {
-			++it;
+	for (auto &e : npc_list) {
+		auto &npc = e.second;
+		if (!npc->CheckAggro(target) || npc->IsFeared())
 			continue;
-		}
-		if (!cur->IsMezzed() && !cur->IsStunned() && !cur->IsFeared()) {
-			npc_sub_list.push_back(cur);
-			++count;
-		}
-		++it;
-	}
 
+		if (zone->random.Roll(50)) // witness check -- place holder
+			// This is either a level check (con color check?) or a stat roll
+			continue;
 
-	if (thedam > 1) {
-		if (count > 0)
-			thedam /= count;
-
-		if (thedam < 1)
-			thedam = 1;
-	}
-
-	cur = nullptr;
-	auto sit = npc_sub_list.begin();
-	while (sit != npc_sub_list.end()) {
-		cur = *sit;
-
-		if (cur->IsPet()) {
-			if (caster) {
-				if (cur->CheckAggro(caster)) {
-					cur->AddToHateList(caster, thedam);
-				}
-			}
-		} else {
-			if (caster) {
-				if (cur->CheckAggro(caster)) {
-					cur->AddToHateList(caster, thedam);
-				} else {
-					cur->AddToHateList(caster, thedam * 0.33);
-				}
-			}
-		}
-		++sit;
+		if ((npc->IsMezzed() || npc->IsStunned()) && hate > 4) // patch notes say stunned/mezzed NPCs get a fraction of the hate
+			npc->AddToHateList(caster, hate / 4); // made up number
+		else
+			npc->AddToHateList(caster, hate);
 	}
 }
 
@@ -3390,6 +3432,15 @@ bool EntityList::IsMobInZone(Mob *who)
 		}
 		++it;
 	}
+
+	auto enc_it = encounter_list.begin();
+	while (enc_it != encounter_list.end()) {
+		if (enc_it->second == who) {
+			return true;
+		}
+		++enc_it;
+	}
+
 	return false;
 }
 
@@ -4620,5 +4671,13 @@ void EntityList::StopMobAI()
 	for (auto &mob : mob_list) {
 		mob.second->AI_Stop();
 		mob.second->AI_ShutDown();
+	}
+}
+
+void EntityList::SendAlternateAdvancementStats() {
+	for(auto &c : client_list) {
+		c.second->SendAlternateAdvancementTable();
+		c.second->SendAlternateAdvancementStats();
+		c.second->SendAlternateAdvancementPoints();
 	}
 }

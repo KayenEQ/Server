@@ -104,9 +104,9 @@ public:
 
 	//abstract virtual function implementations requird by base abstract class
 	virtual bool Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillUseTypes attack_skill);
-	virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillUseTypes attack_skill, bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false);
+	virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillUseTypes attack_skill, bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false, int special = 0);
 	virtual bool Attack(Mob* other, int Hand = MainPrimary, bool FromRiposte = false, bool IsStrikethrough = false,
-		bool IsFromSpell = false, ExtraAttackOptions *opts = nullptr);
+		bool IsFromSpell = false, ExtraAttackOptions *opts = nullptr, int special = 0);
 	virtual bool HasRaid() { return false; }
 	virtual bool HasGroup() { return false; }
 	virtual Raid* GetRaid() { return 0; }
@@ -119,6 +119,7 @@ public:
 	virtual void	AI_Start(uint32 iMoveDelay = 0);
 	virtual void	AI_Stop();
 	void			AI_DoMovement();
+	void			AI_SetupNextWaypoint();
 	bool			AI_AddNPCSpells(uint32 iDBSpellsID);
 	bool			AI_AddNPCSpellsEffects(uint32 iDBSpellsEffectsID);
 	virtual bool	AI_EngagedCastCheck();
@@ -406,6 +407,7 @@ public:
 	void	SetHeroForgeModel(uint32 model) { herosforgemodel = model; }
 
 	bool IsRaidTarget() const { return raid_target; };
+	void ResetHPUpdateTimer() { sendhpupdate_timer.Start(); }
 
 
 	//C!Kayen - START

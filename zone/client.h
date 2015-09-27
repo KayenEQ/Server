@@ -45,7 +45,6 @@ struct Item_Struct;
 #include "../common/item_struct.h"
 #include "../common/clientversions.h"
 
-#include "aa.h"
 #include "common.h"
 #include "merc.h"
 #include "mob.h"
@@ -176,6 +175,7 @@ typedef enum
 struct XTarget_Struct
 {
 	XTargetType Type;
+	bool dirty;
 	uint16 ID;
 	char Name[65];
 };
@@ -218,9 +218,9 @@ public:
 
 	//abstract virtual function implementations required by base abstract class
 	virtual bool Death(Mob* killerMob, int32 damage, uint16 spell_id, SkillUseTypes attack_skill);
-	virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillUseTypes attack_skill, bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false);
+	virtual void Damage(Mob* from, int32 damage, uint16 spell_id, SkillUseTypes attack_skill, bool avoidable = true, int8 buffslot = -1, bool iBuffTic = false, int special = 0);
 	virtual bool Attack(Mob* other, int Hand = MainPrimary, bool FromRiposte = false, bool IsStrikethrough = false, bool IsFromSpell = false,
-			ExtraAttackOptions *opts = nullptr);
+			ExtraAttackOptions *opts = nullptr, int special = 0);
 	virtual bool HasRaid() { return (GetRaid() ? true : false); }
 	virtual bool HasGroup() { return (GetGroup() ? true : false); }
 	virtual Raid* GetRaid() { return entity_list.GetRaidByClient(this); }
@@ -229,6 +229,7 @@ public:
 	virtual int32 GetMeleeMitDmg(Mob *attacker, int32 damage, int32 minhit, float mit_rating, float atk_rating);
 	virtual void SetAttackTimer();
 	float GetQuiverHaste();
+	void DoAttackRounds(Mob *target, int hand, bool IsFromSpell = false);
 
 	void AI_Init();
 	void AI_Start(uint32 iMoveDelay = 0);
@@ -543,7 +544,6 @@ public:
 
 	bool Flurry();
 	bool Rampage();
-	void DurationRampage(uint32 duration);
 
 	inline uint32 GetEXP() const { return m_pp.exp; }
 
@@ -559,6 +559,7 @@ public:
 	void SendCrystalCounts();
 
 	void AddEXP(uint32 in_add_exp, uint8 conlevel = 0xFF, bool resexp = false);
+	uint32 CalcEXP(uint8 conlevel = 0xFF);
 	void SetEXP(uint32 set_exp, uint32 set_aaxp, bool resexp=false);
 	void AddLevelBasedExp(uint8 exp_percentage, uint8 max_level=0);
 	void SetLeadershipEXP(uint32 group_exp, uint32 raid_exp);
@@ -613,7 +614,7 @@ public:
 	void SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 faction_before_hit, int32 totalvalue, uint8 temp,  int32 this_faction_min, int32 this_faction_max);
 
 	void UpdatePersonalFaction(int32 char_id, int32 npc_value, int32 faction_id, int32 *current_value, int32 temp, int32 this_faction_min, int32 this_faction_max);
-	void SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity);
+	void SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity, bool quest = false);
 	void SetFactionLevel2(uint32 char_id, int32 faction_id, uint8 char_class, uint8 char_race, uint8 char_deity, int32 value, uint8 temp);
 	int32 GetRawItemAC();
 	uint16 GetCombinedAC_TEST();
@@ -624,6 +625,7 @@ public:
 	inline uint32 AccountID() const { return account_id; }
 
 	inline const char* AccountName()const { return account_name; }
+	inline int GetAccountCreation() const { return account_creation; }
 	inline int16 Admin() const { return admin; }
 	inline uint32 CharacterID() const { return character_id; }
 	void UpdateAdmin(bool iFromDB = true);
@@ -664,6 +666,8 @@ public:
 	bool HasMoney(uint64 copper);
 	uint64 GetCarriedMoney();
 	uint64 GetAllMoney();
+	uint32 GetMoney(uint8 type, uint8 subtype);
+	int GetAccountAge();
 
 	bool IsDiscovered(uint32 itemid);
 	void DiscoverItem(uint32 itemid);
@@ -760,45 +764,35 @@ public:
 
 	inline PTimerList &GetPTimers() { return(p_timers); }
 
-	//AA Methods
-	void SendAAList();
-	void ResetAA();
-	void SendClearAA();
-	void SendAA(uint32 id, int seq=1);
-	void SendPreviousAA(uint32 id, int seq=1);
-	void BuyAA(AA_Action* action);
-	//this function is used by some AA stuff
-	void MemorizeSpell(uint32 slot,uint32 spellid,uint32 scribing);
-	void SetAATitle(const char *Title);
-	void SetTitleSuffix(const char *txt);
-	inline uint32 GetMaxAAXP(void) const { return max_AAXP; }
-	inline uint32 GetAAXP() const { return m_pp.expAA; }
-	void SendAAStats();
-	void SendAATable();
-	void SendAATimers();
-	int GetAATimerID(aaID activate);
-	int CalcAAReuseTimer(const AA_DBAction *caa);
-	void ActivateAA(aaID activate);
-	void SendAATimer(uint32 ability, uint32 begin, uint32 end);
-	void EnableAAEffect(aaEffectType type, uint32 duration = 0);
-	void DisableAAEffect(aaEffectType type);
-	bool CheckAAEffect(aaEffectType type);
-	void HandleAAAction(aaID activate);
-	uint32 GetAA(uint32 aa_id) const;
-	bool SetAA(uint32 aa_id, uint32 new_value);
-	inline uint32 GetAAPointsSpent() { return m_pp.aapoints_spent; }
-	int16 CalcAAFocusEffect(focusType type, uint16 focus_spell, uint16 spell_id);
-	int16 CalcAAFocus(focusType type, uint32 aa_ID, uint16 spell_id);
-	void SetAAPoints(uint32 points) { m_pp.aapoints = points; SendAAStats(); }
-	void AddAAPoints(uint32 points) { m_pp.aapoints += points; SendAAStats(); }
+	//New AA Methods
+	void SendAlternateAdvancementRank(int aa_id, int level);
+	void SendAlternateAdvancementTable();
+	void SendAlternateAdvancementStats();
+	void PurchaseAlternateAdvancementRank(int rank_id);
+	bool GrantAlternateAdvancementAbility(int aa_id, int points, bool ignore_cost = false);
+	void IncrementAlternateAdvancementRank(int rank_id);
+	void ActivateAlternateAdvancementAbility(int rank_id, int target_id);
+	void SendAlternateAdvancementPoints();
+	void SendAlternateAdvancementTimer(int ability, int begin, int end);
+	void SendAlternateAdvancementTimers();
+	void ResetAlternateAdvancementTimer(int ability);
+	void ResetAlternateAdvancementTimers();
+
+	void SetAAPoints(uint32 points) { m_pp.aapoints = points; SendAlternateAdvancementStats(); }
+	void AddAAPoints(uint32 points) { m_pp.aapoints += points; SendAlternateAdvancementStats(); }
 	int GetAAPoints() { return m_pp.aapoints; }
 	int GetSpentAA() { return m_pp.aapoints_spent; }
+
+	//old AA methods that we still use
+	void ResetAA();
 	void RefundAA();
-	void IncrementAA(int aa_id);
-	int32 GetAAEffectDataBySlot(uint32 aa_ID, uint32 slot_id, bool GetEffect, bool GetBase1, bool GetBase2);
-	int32 GetAAEffectid(uint32 aa_ID, uint32 slot_id) { return GetAAEffectDataBySlot(aa_ID, slot_id, true, false,false); }
-	int32 GetAABase1(uint32 aa_ID, uint32 slot_id) { return GetAAEffectDataBySlot(aa_ID, slot_id, false, true,false); }
-	int32 GetAABase2(uint32 aa_ID, uint32 slot_id) { return GetAAEffectDataBySlot(aa_ID, slot_id, false, false,true); }
+	void SendClearAA();
+	inline uint32 GetMaxAAXP(void) const { return max_AAXP; }
+	inline uint32 GetAAXP() const { return m_pp.expAA; }
+	int16 CalcAAFocus(focusType type, const AA::Rank &rank, uint16 spell_id);
+	void SetAATitle(const char *Title);
+	void SetTitleSuffix(const char *txt);
+	void MemorizeSpell(uint32 slot, uint32 spellid, uint32 scribing);
 	int32 acmod();
 
 	// Item methods
@@ -899,14 +893,17 @@ public:
 	bool CheckTradeLoreConflict(Client* other);
 	void LinkDead();
 	void Insight(uint32 t_id);
-	bool CheckDoubleAttack(bool tripleAttack = false);
+	bool CheckDoubleAttack();
+	bool CheckTripleAttack();
 	bool CheckDoubleRangedAttack();
+	bool CheckDualWield();
 
 	//remove charges/multiple objects from inventory:
 	//bool DecreaseByType(uint32 type, uint8 amt);
 	bool DecreaseByID(uint32 type, uint8 amt);
 	uint8 SlotConvert2(uint8 slot); //Maybe not needed.
 	void Escape(); //AA Escape
+	void DisenchantSummonedBags(bool client_update = true);
 	void RemoveNoRent(bool client_update = true);
 	void RemoveDuplicateLore(bool client_update = true);
 	void MoveSlotNotAllowed(bool client_update = true);
@@ -999,13 +996,13 @@ public:
 	inline void UpdateTasksForItem(ActivityType Type, int ItemID, int Count=1) { if(taskstate) taskstate->UpdateTasksForItem(this, Type, ItemID, Count); }
 	inline void UpdateTasksOnExplore(int ExploreID) { if(taskstate) taskstate->UpdateTasksOnExplore(this, ExploreID); }
 	inline bool UpdateTasksOnSpeakWith(int NPCTypeID) { if(taskstate) return taskstate->UpdateTasksOnSpeakWith(this, NPCTypeID); else return false; }
-	inline bool UpdateTasksOnDeliver(uint32 *Items, int Cash, int NPCTypeID) { if(taskstate) return taskstate->UpdateTasksOnDeliver(this, Items, Cash, NPCTypeID); else return false; }
+	inline bool UpdateTasksOnDeliver(std::list<ItemInst*>& Items, int Cash, int NPCTypeID) { if (taskstate) return taskstate->UpdateTasksOnDeliver(this, Items, Cash, NPCTypeID); else return false; }
 	inline void TaskSetSelector(Mob *mob, int TaskSetID) { if(taskmanager) taskmanager->TaskSetSelector(this, taskstate, mob, TaskSetID); }
 	inline void EnableTask(int TaskCount, int *TaskList) { if(taskstate) taskstate->EnableTask(CharacterID(), TaskCount, TaskList); }
 	inline void DisableTask(int TaskCount, int *TaskList) { if(taskstate) taskstate->DisableTask(CharacterID(), TaskCount, TaskList); }
 	inline bool IsTaskEnabled(int TaskID) { return (taskstate ? taskstate->IsTaskEnabled(TaskID) : false); }
 	inline void ProcessTaskProximities(float X, float Y, float Z) { if(taskstate) taskstate->ProcessTaskProximities(this, X, Y, Z); }
-	inline void AssignTask(int TaskID, int NPCID) { if(taskstate) taskstate->AcceptNewTask(this, TaskID, NPCID); }
+	inline void AssignTask(int TaskID, int NPCID, bool enforce_level_requirement = false) { if (taskstate) taskstate->AcceptNewTask(this, TaskID, NPCID, enforce_level_requirement); }
 	inline int ActiveSpeakTask(int NPCID) { if(taskstate) return taskstate->ActiveSpeakTask(NPCID); else return 0; }
 	inline int ActiveSpeakActivity(int NPCID, int TaskID) { if(taskstate) return taskstate->ActiveSpeakActivity(NPCID, TaskID); else return 0; }
 	inline void FailTask(int TaskID) { if(taskstate) taskstate->FailTask(this, TaskID); }
@@ -1131,6 +1128,7 @@ public:
 	inline bool IsDraggingCorpse() { return (DraggedCorpses.size() > 0); }
 	void DragCorpses();
 	inline void ClearDraggedCorpses() { DraggedCorpses.clear(); }
+	inline void ResetPositionTimer() { position_timer_counter = 0; }
 	void SendAltCurrencies();
 	void SetAlternateCurrencyValue(uint32 currency_id, uint32 new_amount);
 	void AddAlternateCurrencyValue(uint32 currency_id, int32 amount, int8 method = 0);
@@ -1149,13 +1147,15 @@ public:
 	bool IsClientXTarget(const Client *c) const;
 	void UpdateClientXTarget(Client *c);
 	void UpdateXTargetType(XTargetType Type, Mob *m, const char *Name = nullptr);
-	void AddAutoXTarget(Mob *m);
+	void AddAutoXTarget(Mob *m, bool send = true);
 	void RemoveXTarget(Mob *m, bool OnlyAutoSlots);
 	void SendXTargetPacket(uint32 Slot, Mob *m);
+	void SendXTargetUpdates();
 	void RemoveGroupXTargets();
 	void RemoveAutoXTargets();
 	void ShowXTargets(Client *c);
 	bool GroupFollow(Client* inviter);
+	inline bool  GetRunMode() const { return runmode; }
 
 	void InitializeMercInfo();
 	bool CheckCanSpawnMerc(uint32 template_id);
@@ -1305,6 +1305,11 @@ public:
 	virtual int32 Tune_GetMeleeMitDmg(Mob* GM, Mob *attacker, int32 damage, int32 minhit, float mit_rating, float atk_rating);
 	int32 GetMeleeDamage(Mob* other, bool GetMinDamage = false);
 
+	void QuestReward(Mob* target, uint32 copper = 0, uint32 silver = 0, uint32 gold = 0, uint32 platinum = 0, uint32 itemid = 0, uint32 exp = 0, bool faction = false);
+
+	void ResetHPUpdateTimer() { hpupdate_timer.Start(); }
+
+	void SendHPUpdateMarquee();
 
 protected:
 	friend class Mob;
@@ -1313,14 +1318,14 @@ protected:
 	void AdditiveWornBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug = false);
 	int CalcRecommendedLevelBonus(uint8 level, uint8 reclevel, int basestat);
 	void CalcEdibleBonuses(StatBonuses* newbon);
-	void CalcAABonuses(StatBonuses* newbon);
-	void ApplyAABonuses(uint32 aaid, uint32 slots, StatBonuses* newbon);
 	void ProcessItemCaps();
 	void MakeBuffFadePacket(uint16 spell_id, int slot_id, bool send_message = true);
 	bool client_data_loaded;
 
 	int16 GetFocusEffect(focusType type, uint16 spell_id);
-	int16 GetSympatheticFocusEffect(focusType type, uint16 spell_id);
+	uint16 GetSympatheticFocusEffect(focusType type, uint16 spell_id);
+
+	void FinishAlternateAdvancementPurchase(AA::Rank *rank, bool ignore_cost);
 
 	Mob* bind_sight_target;
 
@@ -1446,6 +1451,7 @@ private:
 	bool AFK;
 	bool auto_attack;
 	bool auto_fire;
+	bool runmode;
 	uint8 gmspeed;
 	bool medding;
 	uint16 horseId;
@@ -1508,6 +1514,9 @@ private:
 	Timer position_timer;
 	uint8 position_timer_counter;
 
+	// this is used to try to cut back on position update reflections
+	int position_update_same_count;
+
 	PTimerList p_timers; //persistent timers
 	Timer hpupdate_timer;
 	Timer camp_timer;
@@ -1550,11 +1559,7 @@ private:
 
 	uint32 tribute_master_id;
 
-	FILE *SQL_log;
 	uint32 max_AAXP;
-	uint32 staminacount;
-	AA_Array* aa[MAX_PP_AA_ARRAY]; //this list contains pointers into our player profile
-	std::map<uint32,uint8> aa_points;
 	bool npcflag;
 	uint8 npclevel;
 	bool feigned;

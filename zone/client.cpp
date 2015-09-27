@@ -107,12 +107,16 @@ Client::Client(EQStreamInterface* ieqs)
 	0,
 	0,	// qglobal
 	0,	// maxlevel
-	0	// scalerate
-
+	0,	// scalerate
+	0,
+	0,
+	0,
+	0,
+	0
 	),
 	//these must be listed in the order they appear in client.h
 	position_timer(250),
-	hpupdate_timer(1800),
+	hpupdate_timer(2000),
 	camp_timer(29000),
 	process_timer(100),
 	stamina_timer(40000),
@@ -172,7 +176,6 @@ Client::Client(EQStreamInterface* ieqs)
 	admin = 0;
 	lsaccountid = 0;
 	shield_target = nullptr;
-	SQL_log = nullptr;
 	guild_id = GUILD_NONE;
 	guildrank = 0;
 	GuildBanker = false;
@@ -194,6 +197,7 @@ Client::Client(EQStreamInterface* ieqs)
 	SetTarget(0);
 	auto_attack = false;
 	auto_fire = false;
+	runmode = false;
 	linkdead_timer.Disable();
 	zonesummon_id = 0;
 	zonesummon_ignorerestrictions = 0;
@@ -204,6 +208,7 @@ Client::Client(EQStreamInterface* ieqs)
 	npclevel = 0;
 	pQueuedSaveWorkID = 0;
 	position_timer_counter = 0;
+	position_update_same_count = 0;
 	fishing_timer.Disable();
 	shield_timer.Disable();
 	dead_timer.Disable();
@@ -295,6 +300,7 @@ Client::Client(EQStreamInterface* ieqs)
 		XTargets[i].Type = Auto;
 		XTargets[i].ID = 0;
 		XTargets[i].Name[0] = 0;
+		XTargets[i].dirty = false;
 	}
 	MaxXTargets = 5;
 	XTargetAutoAddHaters = true;
@@ -452,7 +458,7 @@ void Client::SendZoneInPackets()
 
 	//Send AA Exp packet:
 	if (GetLevel() >= 51)
-		SendAAStats();
+		SendAlternateAdvancementStats();
 
 	// Send exp packets
 	outapp = new EQApplicationPacket(OP_ExpUpdate, sizeof(ExpUpdate_Struct));
@@ -469,7 +475,7 @@ void Client::SendZoneInPackets()
 	}
 	safe_delete(outapp);
 
-	SendAATimers();
+	SendAlternateAdvancementTimers();
 
 	outapp = new EQApplicationPacket(OP_RaidUpdate, sizeof(ZoneInSendName_Struct));
 	ZoneInSendName_Struct* zonesendname = (ZoneInSendName_Struct*)outapp->pBuffer;
@@ -536,43 +542,39 @@ void Client::ReportConnectingState() {
 	};
 }
 
-bool Client::SaveAA(){
-	int first_entry = 0;
-	std::string rquery;
-	/* Save Player AA */
+bool Client::SaveAA() {
+	std::string iquery;
 	int spentpoints = 0;
-	for (int a = 0; a < MAX_PP_AA_ARRAY; a++) {
-		uint32 points = aa[a]->value;
-		if (points > HIGHEST_AA_VALUE) {
-			aa[a]->value = HIGHEST_AA_VALUE;
-			points = HIGHEST_AA_VALUE;
-		}
-		if (points > 0) {
-			SendAA_Struct* curAA = zone->FindAA(aa[a]->AA - aa[a]->value + 1);
-			if (curAA) {
-				for (int rank = 0; rank<points; rank++) {
-					std::map<uint32, AALevelCost_Struct>::iterator RequiredLevel = AARequiredLevelAndCost.find(aa[a]->AA - aa[a]->value + 1 + rank);
-					if (RequiredLevel != AARequiredLevelAndCost.end()) {
-						spentpoints += RequiredLevel->second.Cost;
-					}
-					else
-						spentpoints += (curAA->cost + (curAA->cost_inc * rank));
-				}
+	int i = 0;
+	for(auto &rank : aa_ranks) {
+		AA::Ability *ability = zone->GetAlternateAdvancementAbility(rank.first);
+		if(!ability)
+			continue;
+
+		if(rank.second.first > 0) {
+			AA::Rank *r = ability->GetRankByPointsSpent(rank.second.first);
+
+			if(!r)
+				continue;
+
+			spentpoints += r->total_cost;
+
+			if(i == 0) {
+				iquery = StringFormat("REPLACE INTO `character_alternate_abilities` (id, aa_id, aa_value, charges)"
+									  " VALUES (%u, %u, %u, %u)", character_id, ability->first_rank_id, rank.second.first, rank.second.second);
+			} else {
+				iquery += StringFormat(", (%u, %u, %u, %u)", character_id, ability->first_rank_id, rank.second.first, rank.second.second);
 			}
+			i++;
 		}
 	}
+
 	m_pp.aapoints_spent = spentpoints + m_epp.expended_aa;
-	for (int a = 0; a < MAX_PP_AA_ARRAY; a++) {
-		if (aa[a]->AA > 0 && aa[a]->value){
-			if (first_entry != 1){
-				rquery = StringFormat("REPLACE INTO `character_alternate_abilities` (id, slot, aa_id, aa_value)"
-					" VALUES (%u, %u, %u, %u)", character_id, a, aa[a]->AA, aa[a]->value);
-				first_entry = 1;
-			}
-			rquery = rquery + StringFormat(", (%u, %u, %u, %u)", character_id, a, aa[a]->AA, aa[a]->value);
-		}
+
+	if(iquery.length() > 0) {
+		database.QueryDatabase(iquery);
 	}
-	auto results = database.QueryDatabase(rquery);
+
 	return true;
 }
 
@@ -1064,11 +1066,11 @@ void Client::ChannelMessageReceived(uint8 chan_num, uint8 language, uint8 lang_s
 		if(quest_manager.ProximitySayInUse())
 			entity_list.ProcessProximitySay(message, this, language);
 
-		if (GetTarget() != 0 && GetTarget()->IsNPC()) {
+		if (GetTarget() != 0 && GetTarget()->IsNPC() &&
+			!IsInvisible(GetTarget())) {
 			if(!GetTarget()->CastToNPC()->IsEngaged()) {
 				CheckLDoNHail(GetTarget());
 				CheckEmoteHail(GetTarget(), message);
-
 
 				if(DistanceSquaredNoZ(m_Position, GetTarget()->GetPosition()) <= 200) {
 					NPC *tar = GetTarget()->CastToNPC();
@@ -2553,12 +2555,12 @@ void Client::LogMerchant(Client* player, Mob* merchant, uint32 quantity, uint32 
 
 bool Client::BindWound(Mob* bindmob, bool start, bool fail){
 	EQApplicationPacket* outapp = 0;
-	if(!fail) 
+	if(!fail)
 	{
 		outapp = new EQApplicationPacket(OP_Bind_Wound, sizeof(BindWound_Struct));
 		BindWound_Struct* bind_out = (BindWound_Struct*) outapp->pBuffer;
 		// Start bind
-		if(!bindwound_timer.Enabled()) 
+		if(!bindwound_timer.Enabled())
 		{
 			//make sure we actually have a bandage... and consume it.
 			int16 bslot = m_inv.HasItemByUse(ItemTypeBandage, 1, invWhereWorn|invWherePersonal);
@@ -2605,9 +2607,9 @@ bool Client::BindWound(Mob* bindmob, bool start, bool fail){
 					; // Binding self
 				}
 			}
-		} 
+		}
 		else if (bindwound_timer.Check()) // Did the timer finish?
-		{ 
+		{
 		// finish bind
 			// disable complete timer
 			bindwound_timer.Disable();
@@ -4973,7 +4975,7 @@ void Client::ShowSkillsWindow()
 		"Singing","Sneak","Specialize Abjuration","Specialize Alteration","Specialize Conjuration","Specialize Divination","Specialize Evocation","Pick Pockets",
 		"Stringed Instruments","Swimming","Throwing","Tiger Claw","Tracking","Wind Instruments","Fishing","Make Poison","Tinkering","Research",
 		"Alchemy","Baking","Tailoring","Sense Traps","Blacksmithing","Fletching","Brewing","Alcohol Tolerance","Begging","Jewelry Making",
-		"Pottery","Percussion Instruments","Intimidation","Berserking","Taunt","Frenzy"};
+		"Pottery","Percussion Instruments","Intimidation","Berserking","Taunt","Frenzy","Remove Traps","Triple Attack"};
 	for(int i = 0; i <= (int)HIGHEST_SKILL; i++)
 		Skills[SkillName[i]] = (SkillUseTypes)i;
 
@@ -4995,7 +4997,6 @@ void Client::ShowSkillsWindow()
 	this->SendPopupToClient(WindowTitle, WindowText.c_str());
 }
 
-
 void Client::SetShadowStepExemption(bool v)
 {
 	if(v == true)
@@ -5004,7 +5005,7 @@ void Client::SetShadowStepExemption(bool v)
 		if((cur_time - m_TimeSinceLastPositionCheck) > 1000)
 		{
 			float speed = (m_DistanceSinceLastPositionCheck * 100) / (float)(cur_time - m_TimeSinceLastPositionCheck);
-			float runs = GetRunspeed();
+			int runs = GetRunspeed();
 			if(speed > (runs * RuleR(Zone, MQWarpDetectionDistanceFactor)))
 			{
 				printf("%s %i moving too fast! moved: %.2f in %ims, speed %.2f\n", __FILE__, __LINE__,
@@ -5061,7 +5062,7 @@ void Client::SetKnockBackExemption(bool v)
 		if((cur_time - m_TimeSinceLastPositionCheck) > 1000)
 		{
 			float speed = (m_DistanceSinceLastPositionCheck * 100) / (float)(cur_time - m_TimeSinceLastPositionCheck);
-			float runs = GetRunspeed();
+			int runs = GetRunspeed();
 			if(speed > (runs * RuleR(Zone, MQWarpDetectionDistanceFactor)))
 			{
 				if(!GetGMSpeed() && (runs >= GetBaseRunspeed() || (speed > (GetBaseRunspeed() * RuleR(Zone, MQWarpDetectionDistanceFactor)))))
@@ -5118,7 +5119,7 @@ void Client::SetPortExemption(bool v)
 		if((cur_time - m_TimeSinceLastPositionCheck) > 1000)
 		{
 			float speed = (m_DistanceSinceLastPositionCheck * 100) / (float)(cur_time - m_TimeSinceLastPositionCheck);
-			float runs = GetRunspeed();
+			int runs = GetRunspeed();
 			if(speed > (runs * RuleR(Zone, MQWarpDetectionDistanceFactor)))
 			{
 				if(!GetGMSpeed() && (runs >= GetBaseRunspeed() || (speed > (GetBaseRunspeed() * RuleR(Zone, MQWarpDetectionDistanceFactor)))))
@@ -5722,8 +5723,8 @@ void Client::ProcessInspectRequest(Client* requestee, Client* requester) {
 					else if (inst && inst->GetOrnamentationIcon())
 					{
 						insr->itemicons[L] = inst->GetOrnamentationIcon();
-					}					
-					else 
+					}
+					else
 					{
 						insr->itemicons[L] = item->Icon;
 					}
@@ -7058,7 +7059,7 @@ void Client::UpdateClientXTarget(Client *c)
 	}
 }
 
-void Client::AddAutoXTarget(Mob *m)
+void Client::AddAutoXTarget(Mob *m, bool send)
 {
 	if(!XTargettingAvailable() || !XTargetAutoAddHaters)
 		return;
@@ -7071,7 +7072,10 @@ void Client::AddAutoXTarget(Mob *m)
 		if((XTargets[i].Type == Auto) && (XTargets[i].ID == 0))
 		{
 			XTargets[i].ID = m->GetID();
-			SendXTargetPacket(i, m);
+			if (send) // if we don't send we're bulk sending updates later on
+				SendXTargetPacket(i, m);
+			else
+				XTargets[i].dirty = true;
 			break;
 		}
 	}
@@ -7079,42 +7083,60 @@ void Client::AddAutoXTarget(Mob *m)
 
 void Client::RemoveXTarget(Mob *m, bool OnlyAutoSlots)
 {
-	if(!XTargettingAvailable())
+	if (!XTargettingAvailable())
 		return;
 
 	bool HadFreeAutoSlotsBefore = false;
 
 	int FreedAutoSlots = 0;
 
-	if(m->GetID() == 0)
+	if (m->GetID() == 0)
 		return;
 
-	for(int i = 0; i < GetMaxXTargets(); ++i)
-	{
-		if(OnlyAutoSlots && (XTargets[i].Type !=Auto))
+	for (int i = 0; i < GetMaxXTargets(); ++i) {
+		if (OnlyAutoSlots && XTargets[i].Type != Auto)
 			continue;
 
-		if(XTargets[i].ID == m->GetID())
-		{
-			if(XTargets[i].Type == CurrentTargetNPC)
+		if (XTargets[i].ID == m->GetID()) {
+			if (XTargets[i].Type == CurrentTargetNPC)
 				XTargets[i].Type = Auto;
 
-			if(XTargets[i].Type == Auto)
+			if (XTargets[i].Type == Auto)
 				++FreedAutoSlots;
 
 			XTargets[i].ID = 0;
-
-			SendXTargetPacket(i, nullptr);
-		}
-		else
-		{
-			if((XTargets[i].Type == Auto) && (XTargets[i].ID == 0))
+			XTargets[i].dirty = true;
+		} else {
+			if (XTargets[i].Type == Auto && XTargets[i].ID == 0)
 				HadFreeAutoSlotsBefore = true;
 		}
 	}
-	// If there are more mobs aggro on us than we had auto-hate slots, add one of those haters into the slot(s) we just freed up.
-	if(!HadFreeAutoSlotsBefore && FreedAutoSlots)
+
+	// move shit up! If the removed NPC was in a CurrentTargetNPC slot it becomes Auto
+	// and we need to potentially fill it
+	std::queue<int> empty_slots;
+	for (int i = 0; i < GetMaxXTargets(); ++i) {
+		if (XTargets[i].Type != Auto)
+			continue;
+
+		if (XTargets[i].ID == 0) {
+			empty_slots.push(i);
+			continue;
+		}
+
+		if (XTargets[i].ID != 0 && !empty_slots.empty()) {
+			int temp = empty_slots.front();
+			std::swap(XTargets[i], XTargets[temp]);
+			XTargets[i].dirty = XTargets[temp].dirty = true;
+			empty_slots.pop();
+			empty_slots.push(i);
+		}
+	}
+	// If there are more mobs aggro on us than we had auto-hate slots, add one of those haters into the slot(s) we
+	// just freed up.
+	if (!HadFreeAutoSlotsBefore && FreedAutoSlots)
 		entity_list.RefreshAutoXTargets(this);
+	SendXTargetUpdates();
 }
 
 void Client::UpdateXTargetType(XTargetType Type, Mob *m, const char *Name)
@@ -7180,6 +7202,46 @@ void Client::SendXTargetPacket(uint32 Slot, Mob *m)
 	}
 	outapp->WriteUInt32(XTargets[Slot].ID);
 	outapp->WriteString(m ? m->GetCleanName() : XTargets[Slot].Name);
+	FastQueuePacket(&outapp);
+}
+
+// This is a bulk packet, we use it when we remove something since we need to reorder the xtargets and maybe
+// add new mobs! Currently doesn't check if there is a dirty flag set, so it should only be called when there is
+void Client::SendXTargetUpdates()
+{
+	if (!XTargettingAvailable())
+		return;
+
+	int count = 0;
+	// header is 4 bytes max xtargets, 4 bytes count
+	// entry is 4 bytes slot, 1 byte unknown, 4 bytes ID, 65 char name
+	auto outapp = new EQApplicationPacket(OP_XTargetResponse, 8 + 74 * GetMaxXTargets()); // fuck it max size
+	outapp->WriteUInt32(GetMaxXTargets());
+	outapp->WriteUInt32(1); // we will correct this later
+	for (int i = 0; i < GetMaxXTargets(); ++i) {
+		if (XTargets[i].dirty) {
+			outapp->WriteUInt32(i);
+			outapp->WriteUInt8(0); // no idea what this is
+			outapp->WriteUInt32(XTargets[i].ID);
+			outapp->WriteString(XTargets[i].Name);
+			count++;
+			XTargets[i].dirty = false;
+		}
+	}
+
+	// RemoveXTarget probably got called with a mob not on our xtargets
+	if (count == 0) {
+		safe_delete(outapp);
+		return;
+	}
+
+	auto newbuff = new uchar[outapp->GetWritePosition()];
+	memcpy(newbuff, outapp->pBuffer, outapp->GetWritePosition());
+	safe_delete_array(outapp->pBuffer);
+	outapp->pBuffer = newbuff;
+	outapp->size = outapp->GetWritePosition();
+	outapp->SetWritePosition(4);
+	outapp->WriteUInt32(count);
 	FastQueuePacket(&outapp);
 }
 
@@ -7504,6 +7566,10 @@ void Client::GarbleMessage(char *message, uint8 variance)
 	const char delimiter = 0x12;
 	int delimiter_count = 0;
 
+	// Don't garble # commands
+	if (message[0] == '#')
+		return;
+
 	for (size_t i = 0; i < strlen(message); i++) {
 		// Client expects hex values inside of a text link body
 		if (message[i] == delimiter) {
@@ -7513,7 +7579,7 @@ void Client::GarbleMessage(char *message, uint8 variance)
 		}
 
 		uint8 chance = (uint8)zone->random.Int(0, 115); // variation just over worst possible scrambling
-		if (isalpha(message[i]) && (chance <= variance)) {
+		if (isalpha((unsigned char)message[i]) && (chance <= variance)) {
 			uint8 rand_char = (uint8)zone->random.Int(0,51); // choose a random character from the alpha list
 			message[i] = alpha_list[rand_char];
 		}
@@ -7597,7 +7663,7 @@ FACTION_VALUE Client::GetFactionLevel(uint32 char_id, uint32 npc_id, uint32 p_ra
 }
 
 //Sets the characters faction standing with the specified NPC.
-void Client::SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity)
+void Client::SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, uint8 char_race, uint8 char_deity, bool quest)
 {
 	int32 faction_id[MAX_NPC_FACTIONS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	int32 npc_value[MAX_NPC_FACTIONS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -7621,8 +7687,17 @@ void Client::SetFactionLevel(uint32 char_id, uint32 npc_id, uint8 char_class, ui
 		// Find out starting faction for this faction
 		// It needs to be used to adj max and min personal
 		// The range is still the same, 1200-3000(4200), but adjusted for base
-		database.GetFactionData(&fm, GetClass(), GetRace(), GetDeity(), 
+		database.GetFactionData(&fm, GetClass(), GetRace(), GetDeity(),
 			faction_id[i]);
+
+		if (quest)
+		{
+			//The ole switcheroo
+			if (npc_value[i] > 0)
+				npc_value[i] = -abs(npc_value[i]);
+			else if (npc_value[i] < 0)
+				npc_value[i] = abs(npc_value[i]);
+		}
 
 		// Adjust the amount you can go up or down so the resulting range
 		// is PERSONAL_MAX - PERSONAL_MIN
@@ -7662,7 +7737,7 @@ void Client::SetFactionLevel2(uint32 char_id, int32 faction_id, uint8 char_class
 		// Find out starting faction for this faction
 		// It needs to be used to adj max and min personal
 		// The range is still the same, 1200-3000(4200), but adjusted for base
-		database.GetFactionData(&fm, GetClass(), GetRace(), GetDeity(), 
+		database.GetFactionData(&fm, GetClass(), GetRace(), GetDeity(),
 			faction_id);
 
 		// Adjust the amount you can go up or down so the resulting range
@@ -7780,7 +7855,8 @@ void Client::MerchantRejectMessage(Mob *merchant, int primaryfaction)
 	if (primaryfaction > 0) {
 		if (database.GetFactionData(&fmod, GetClass(), GetRace(), GetDeity(), primaryfaction)) {
 			tmpFactionValue = GetCharacterFactionLevel(primaryfaction);
-			lowestvalue = std::min(tmpFactionValue, std::min(fmod.class_mod, fmod.race_mod));
+			lowestvalue = std::min(std::min(tmpFactionValue, fmod.deity_mod),
+						  std::min(fmod.class_mod, fmod.race_mod));
 		}
 	}
 	// If no primary faction or biggest influence is your faction hit
@@ -7828,6 +7904,11 @@ void Client::MerchantRejectMessage(Mob *merchant, int primaryfaction)
 		}
 	} else if (lowestvalue == fmod.class_mod) {
 		merchant->Say_StringID(zone->random.Int(WONT_SELL_CLASS1, WONT_SELL_CLASS5), itoa(GetClass()));
+	} else {
+		// Must be deity - these two sound the best for that.
+		// Can't use a message with a field, GUI wants class/race names.
+		// for those message IDs.  These are straight text.
+		merchant->Say_StringID(zone->random.Int(WONT_SELL_DEEDS1, WONT_SELL_DEEDS2));
 	}
 	return;
 }
@@ -7842,14 +7923,14 @@ void Client::SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 faction_
 	char name[50];
 	int32 faction_value;
 
-	// If we're dropping from MAX or raising from MIN or repairing, 
+	// If we're dropping from MAX or raising from MIN or repairing,
 	// we should base the message on the new updated value so we don't show
 	// a min MAX message
 	//
 	// If we're changing any other place, we use the value before the
 	// hit.  For example, if we go from 1199 to 1200 which is the MAX
 	// we still want to say faction got better this time around.
-	
+
 	if ( (faction_before_hit >= this_faction_max) ||
 	     (faction_before_hit <= this_faction_min))
 		faction_value = totalvalue;
@@ -8026,56 +8107,6 @@ void Client::TryItemTimer(int slot)
 			++it_iter;
 		}
 	}
-}
-
-void Client::RefundAA() {
-	int cur = 0;
-	bool refunded = false;
-
-	for(int x = 0; x < aaHighestID; x++) {
-		cur = GetAA(x);
-		if(cur > 0){
-			SendAA_Struct* curaa = zone->FindAA(x);
-			if(cur){
-				SetAA(x, 0);
-				for(int j = 0; j < cur; j++) {
-					m_pp.aapoints += curaa->cost + (curaa->cost_inc * j);
-					refunded = true;
-				}
-			}
-			else
-			{
-				m_pp.aapoints += cur;
-				SetAA(x, 0);
-				refunded = true;
-			}
-		}
-	}
-
-	if(refunded) {
-		SaveAA();
-		Save();
-		// Kick();
-	}
-}
-
-void Client::IncrementAA(int aa_id) {
-	SendAA_Struct* aa2 = zone->FindAA(aa_id);
-
-	if(aa2 == nullptr)
-		return;
-
-	if(GetAA(aa_id) == aa2->max_level)
-		return;
-
-	SetAA(aa_id, GetAA(aa_id) + 1);
-
-	SaveAA();
-
-	SendAA(aa_id);
-	SendAATable();
-	SendAAStats();
-	CalcBonuses();
 }
 
 void Client::SendItemScale(ItemInst *inst) {
@@ -8385,10 +8416,10 @@ std::string Client::TextLink::GenerateLink()
 	m_Link.clear();
 	m_LinkBody.clear();
 	m_LinkText.clear();
-	
+
 	generate_body();
 	generate_text();
-	
+
 	if ((m_LinkBody.length() == EmuConstants::TEXT_LINK_BODY_LENGTH) && (m_LinkText.length() > 0)) {
 		m_Link.push_back(0x12);
 		m_Link.append(m_LinkBody);
@@ -8427,7 +8458,7 @@ void Client::TextLink::generate_body()
 {
 	/*
 	Current server mask: EQClientRoF2
-	
+
 	RoF2: "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%02X" "%05X" "%08X" (56)
 	RoF:  "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X"  "%05X" "%08X" (55)
 	SoF:  "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X"		"%1X" "%04X" "%1X"  "%05X" "%08X" (50)
@@ -8435,7 +8466,7 @@ void Client::TextLink::generate_body()
 	*/
 
 	memset(&m_LinkBodyStruct, 0, sizeof(TextLinkBody_Struct));
-	
+
 	const Item_Struct* item_data = nullptr;
 
 	switch (m_LinkType) {
@@ -8482,7 +8513,7 @@ void Client::TextLink::generate_body()
 	default:
 		break;
 	}
-	
+
 	if (m_ProxyItemID != NOT_USED) {
 		m_LinkBodyStruct.item_id = m_ProxyItemID;
 	}
@@ -8586,4 +8617,136 @@ bool Client::TextLink::GenerateLinkBody(std::string& textLinkBody, const TextLin
 
 	if (textLinkBody.length() != EmuConstants::TEXT_LINK_BODY_LENGTH) { return false; }
 	return true;
+}
+
+void Client::QuestReward(Mob* target, uint32 copper, uint32 silver, uint32 gold, uint32 platinum, uint32 itemid, uint32 exp, bool faction) {
+
+	EQApplicationPacket* outapp = new EQApplicationPacket(OP_Sound, sizeof(QuestReward_Struct));
+	memset(outapp->pBuffer, 0, sizeof(outapp->pBuffer));
+	QuestReward_Struct* qr = (QuestReward_Struct*)outapp->pBuffer;
+
+	qr->mob_id = target->GetID();		// Entity ID for the from mob name
+	qr->target_id = GetID();			// The Client ID (this)
+	qr->copper = copper;
+	qr->silver = silver;
+	qr->gold = gold;
+	qr->platinum = platinum;
+	qr->item_id = itemid;
+	qr->exp_reward = exp;
+
+	if (copper > 0 || silver > 0 || gold > 0 || platinum > 0)
+		AddMoneyToPP(copper, silver, gold, platinum, false);
+
+	if (itemid > 0)
+		SummonItem(itemid, 0, 0, 0, 0, 0, 0, false, MainPowerSource);
+
+	if (faction)
+	{
+		if (target->IsNPC())
+		{
+			int32 nfl_id = target->CastToNPC()->GetNPCFactionID();
+			SetFactionLevel(CharacterID(), nfl_id, GetBaseClass(), GetBaseRace(), GetDeity(), true);
+			qr->faction = target->CastToNPC()->GetPrimaryFaction();
+			qr->faction_mod = 1; // Too lazy to get real value, not sure if this is even used by client anyhow.
+		}
+	}
+
+	if (exp > 0)
+		AddEXP(exp);
+
+	QueuePacket(outapp, false, Client::CLIENT_CONNECTED);
+	safe_delete(outapp);
+}
+
+void Client::SendHPUpdateMarquee(){
+	if (!RuleB(Character, MarqueeHPUpdates))
+		return;
+
+	/* Health Update Marquee Display: Custom*/
+	uint32 health_percentage = (uint32)(this->cur_hp * 100 / this->max_hp);
+	if (health_percentage == 100)
+		return;
+
+	std::string health_update_notification = StringFormat("Health: %u%%", health_percentage);
+	this->SendMarqueeMessage(15, 510, 0, 3000, 3000, health_update_notification);
+}
+
+uint32 Client::GetMoney(uint8 type, uint8 subtype) {
+	uint32 value = 0;
+	switch (type) {
+		case 0: {
+			switch (subtype) {
+				case 0:
+					value = static_cast<uint32>(m_pp.copper);
+					break;
+				case 1:
+					value = static_cast<uint32>(m_pp.copper_bank);
+					break;
+				case 2:
+					value = static_cast<uint32>(m_pp.copper_cursor);
+					break;
+				default:
+					break;
+			}
+			break;
+		}
+		case 1: {
+			switch (subtype) {
+				case 0:
+					value = static_cast<uint32>(m_pp.silver);
+					break;
+				case 1:
+					value = static_cast<uint32>(m_pp.silver_bank);
+					break;
+				case 2:
+					value = static_cast<uint32>(m_pp.silver_cursor);
+					break;
+				default:
+					break;
+			}
+			break;
+		}
+		case 2: {
+			switch (subtype) {
+				case 0:
+					value = static_cast<uint32>(m_pp.gold);
+					break;
+				case 1:
+					value = static_cast<uint32>(m_pp.gold_bank);
+					break;
+				case 2:
+					value = static_cast<uint32>(m_pp.gold_cursor);
+					break;
+				default:
+					break;
+			}
+			break;
+		}
+		case 3: {
+			switch (subtype) {
+				case 0:
+					value = static_cast<uint32>(m_pp.platinum);
+					break;
+				case 1:
+					value = static_cast<uint32>(m_pp.platinum_bank);
+					break;
+				case 2:
+					value = static_cast<uint32>(m_pp.platinum_cursor);
+					break;
+				case 3:
+					value = static_cast<uint32>(m_pp.platinum_shared);
+					break;
+				default:
+					break;
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	return value;
+}
+
+int Client::GetAccountAge() {
+	return (time(nullptr) - GetAccountCreation());
 }

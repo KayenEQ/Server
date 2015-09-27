@@ -790,7 +790,7 @@ bool Lua_Mob::CastSpell(int spell_id, int target_id, int slot, int cast_time, in
 	int16 res = resist_adjust;
 
 	return self->CastSpell(spell_id, target_id, slot, cast_time, mana_cost, nullptr, static_cast<uint32>(item_slot),
-		static_cast<uint32>(timer), static_cast<uint32>(timer_duration), 0, &res);
+		static_cast<uint32>(timer), static_cast<uint32>(timer_duration), &res);
 }
 
 bool Lua_Mob::SpellFinished(int spell_id, Lua_Mob target) {
@@ -1172,27 +1172,42 @@ bool Lua_Mob::Charmed() {
 
 int Lua_Mob::CheckAggroAmount(int spell_id) {
 	Lua_Safe_Call_Int();
-	return self->CheckAggroAmount(spell_id);
+	return self->CheckAggroAmount(spell_id, nullptr);
 }
 
 int Lua_Mob::CheckAggroAmount(int spell_id, bool is_proc) {
 	Lua_Safe_Call_Int();
-	return self->CheckAggroAmount(spell_id, is_proc);
+	return self->CheckAggroAmount(spell_id, nullptr, is_proc);
 }
 
 int Lua_Mob::CheckHealAggroAmount(int spell_id) {
 	Lua_Safe_Call_Int();
-	return self->CheckHealAggroAmount(spell_id);
+	return self->CheckHealAggroAmount(spell_id, nullptr);
 }
 
 int Lua_Mob::CheckHealAggroAmount(int spell_id, uint32 heal_possible) {
 	Lua_Safe_Call_Int();
-	return self->CheckHealAggroAmount(spell_id, heal_possible);
+	return self->CheckHealAggroAmount(spell_id, nullptr, heal_possible);
 }
 
 int Lua_Mob::GetAA(int id) {
 	Lua_Safe_Call_Int();
 	return self->GetAA(id);
+}
+
+int Lua_Mob::GetAAByAAID(int id) {
+	Lua_Safe_Call_Int();
+	return self->GetAAByAAID(id);
+}
+
+bool Lua_Mob::SetAA(int rank_id, int new_value) {
+	Lua_Safe_Call_Bool();
+	return self->SetAA(rank_id, new_value);
+}
+
+bool Lua_Mob::SetAA(int rank_id, int new_value, int charges) {
+	Lua_Safe_Call_Bool();
+	return self->SetAA(rank_id, new_value, charges);
 }
 
 bool Lua_Mob::DivineAura() {
@@ -1590,26 +1605,6 @@ void Lua_Mob::SendIllusionPacket(luabind::adl::object illusion) {
 		beard, aa_title, drakkin_heritage, drakkin_tattoo, drakkin_details, size);
 }
 
-void Lua_Mob::QuestReward(Lua_Client c) {
-	Lua_Safe_Call_Void();
-	self->QuestReward(c);
-}
-
-void Lua_Mob::QuestReward(Lua_Client c, uint32 silver) {
-	Lua_Safe_Call_Void();
-	self->QuestReward(c, silver);
-}
-
-void Lua_Mob::QuestReward(Lua_Client c, uint32 silver, uint32 gold) {
-	Lua_Safe_Call_Void();
-	self->QuestReward(c, silver, gold);
-}
-
-void Lua_Mob::QuestReward(Lua_Client c, uint32 silver, uint32 gold, uint32 platinum) {
-	Lua_Safe_Call_Void();
-	self->QuestReward(c, silver, gold, platinum);
-}
-
 void Lua_Mob::CameraEffect(uint32 duration, uint32 intensity) {
 	Lua_Safe_Call_Void();
 	self->CameraEffect(duration, intensity);
@@ -1649,6 +1644,11 @@ void Lua_Mob::TempName() {
 void Lua_Mob::TempName(const char *newname) {
 	Lua_Safe_Call_Void();
 	self->TempName(newname);
+}
+
+std::string Lua_Mob::GetGlobal(const char *varname) {
+	Lua_Safe_Call_String();
+	return self->GetGlobal(varname);
 }
 
 void Lua_Mob::SetGlobal(const char *varname, const char *newvalue, int options, const char *duration) {
@@ -1866,6 +1866,10 @@ int Lua_Mob::CanBuffStack(int spell_id, int caster_level, bool fail_if_overwrite
 	return self->CanBuffStack(spell_id, caster_level, fail_if_overwrite);
 }
 
+void Lua_Mob::SetPseudoRoot(bool in) {
+	Lua_Safe_Call_Void();
+	self->SetPseudoRoot(in);
+}
 
 luabind::scope lua_register_mob() {
 	return luabind::class_<Lua_Mob, Lua_Entity>("Mob")
@@ -2085,6 +2089,9 @@ luabind::scope lua_register_mob() {
 		.def("CheckHealAggroAmount", (int(Lua_Mob::*)(int))&Lua_Mob::CheckHealAggroAmount)
 		.def("CheckHealAggroAmount", (int(Lua_Mob::*)(int,uint32))&Lua_Mob::CheckHealAggroAmount)
 		.def("GetAA", (int(Lua_Mob::*)(int))&Lua_Mob::GetAA)
+		.def("GetAAByAAID", (int(Lua_Mob::*)(int))&Lua_Mob::GetAAByAAID)
+		.def("SetAA", (bool(Lua_Mob::*)(int,int))&Lua_Mob::SetAA)
+		.def("SetAA", (bool(Lua_Mob::*)(int,int,int))&Lua_Mob::SetAA)
 		.def("DivineAura", (bool(Lua_Mob::*)(void))&Lua_Mob::DivineAura)
 		.def("SetOOCRegen", (void(Lua_Mob::*)(int))&Lua_Mob::SetOOCRegen)
 		.def("GetEntityVariable", (const char*(Lua_Mob::*)(const char*))&Lua_Mob::GetEntityVariable)
@@ -2132,10 +2139,6 @@ luabind::scope lua_register_mob() {
 		.def("SetRace", (void(Lua_Mob::*)(int))&Lua_Mob::SetRace)
 		.def("SetGender", (void(Lua_Mob::*)(int))&Lua_Mob::SetGender)
 		.def("SendIllusionPacket", (void(Lua_Mob::*)(luabind::adl::object))&Lua_Mob::SendIllusionPacket)
-		.def("QuestReward", (void(Lua_Mob::*)(Lua_Client))&Lua_Mob::QuestReward)
-		.def("QuestReward", (void(Lua_Mob::*)(Lua_Client,uint32))&Lua_Mob::QuestReward)
-		.def("QuestReward", (void(Lua_Mob::*)(Lua_Client,uint32,uint32))&Lua_Mob::QuestReward)
-		.def("QuestReward", (void(Lua_Mob::*)(Lua_Client,uint32,uint32,uint32))&Lua_Mob::QuestReward)
 		.def("CameraEffect", (void(Lua_Mob::*)(uint32,uint32))&Lua_Mob::CameraEffect)
 		.def("CameraEffect", (void(Lua_Mob::*)(uint32,uint32,Lua_Client))&Lua_Mob::CameraEffect)
 		.def("CameraEffect", (void(Lua_Mob::*)(uint32,uint32,Lua_Client,bool))&Lua_Mob::CameraEffect)
@@ -2144,6 +2147,7 @@ luabind::scope lua_register_mob() {
 		.def("SendSpellEffect", (void(Lua_Mob::*)(uint32,uint32,uint32,bool,uint32,bool,Lua_Client))&Lua_Mob::SendSpellEffect)
 		.def("TempName", (void(Lua_Mob::*)(void))&Lua_Mob::TempName)
 		.def("TempName", (void(Lua_Mob::*)(const char*))&Lua_Mob::TempName)
+		.def("GetGlobal", (std::string(Lua_Mob::*)(const char*))&Lua_Mob::GetGlobal)
 		.def("SetGlobal", (void(Lua_Mob::*)(const char*,const char*,int,const char*))&Lua_Mob::SetGlobal)
 		.def("SetGlobal", (void(Lua_Mob::*)(const char*,const char*,int,const char*,Lua_Mob))&Lua_Mob::SetGlobal)
 		.def("TarGlobal", (void(Lua_Mob::*)(const char*,const char*,const char*,int,int,int))&Lua_Mob::TarGlobal)
@@ -2186,7 +2190,8 @@ luabind::scope lua_register_mob() {
 		.def("BuffFadeBySlot", (void(Lua_Mob::*)(int))&Lua_Mob::BuffFadeBySlot)
 		.def("BuffFadeBySlot", (void(Lua_Mob::*)(int,bool))&Lua_Mob::BuffFadeBySlot)
 		.def("CanBuffStack", (int(Lua_Mob::*)(int,int))&Lua_Mob::CanBuffStack)
-		.def("CanBuffStack", (int(Lua_Mob::*)(int,int,bool))&Lua_Mob::CanBuffStack);
+		.def("CanBuffStack", (int(Lua_Mob::*)(int,int,bool))&Lua_Mob::CanBuffStack)
+		.def("SetPseudoRoot", (void(Lua_Mob::*)(bool))&Lua_Mob::SetPseudoRoot);
 }
 
 luabind::scope lua_register_special_abilities() {
@@ -2229,7 +2234,14 @@ luabind::scope lua_register_special_abilities() {
 				luabind::value("destructible_object", static_cast<int>(DESTRUCTIBLE_OBJECT)),
 				luabind::value("no_harm_from_client", static_cast<int>(NO_HARM_FROM_CLIENT)),
 				luabind::value("always_flee", static_cast<int>(ALWAYS_FLEE)),
-				luabind::value("flee_percent", static_cast<int>(FLEE_PERCENT))
+				luabind::value("flee_percent", static_cast<int>(FLEE_PERCENT)),
+				luabind::value("allow_beneficial", static_cast<int>(ALLOW_BENEFICIAL)),
+				luabind::value("disable_melee", static_cast<int>(DISABLE_MELEE)),
+				luabind::value("npc_chase_distance", static_cast<int>(NPC_CHASE_DISTANCE)),
+				luabind::value("allow_to_tank", static_cast<int>(ALLOW_TO_TANK)),
+				luabind::value("ignore_root_aggro_rules", static_cast<int>(IGNORE_ROOT_AGGRO_RULES)),
+				luabind::value("casting_resist_diff", static_cast<int>(CASTING_RESIST_DIFF)),
+				luabind::value("counter_avoid_damage", static_cast<int>(COUNTER_AVOID_DAMAGE))
 		];
 }
 

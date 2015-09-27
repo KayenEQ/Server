@@ -152,7 +152,13 @@ void Client::SendEnterWorld(std::string name)
 void Client::SendExpansionInfo() {
 	auto outapp = new EQApplicationPacket(OP_ExpansionInfo, sizeof(ExpansionInfo_Struct));
 	ExpansionInfo_Struct *eis = (ExpansionInfo_Struct*)outapp->pBuffer;
-	eis->Expansions = (RuleI(World, ExpansionSettings));
+	if(RuleB(World, UseClientBasedExpansionSettings)) {
+		eis->Expansions = ExpansionFromClientVersion(eqs->GetClientVersion());
+		//eis->Expansions = ExpansionFromClientVersion(this->GetCLE.
+	} else {
+		eis->Expansions = (RuleI(World, ExpansionSettings));
+	}
+
 	QueuePacket(outapp);
 	safe_delete(outapp);
 }
@@ -1211,30 +1217,39 @@ void Client::Clearance(int8 response)
 		return;
 	}
 
-	// @bp This is the chat server
-	/*
-	char packetData[] = "64.37.148.34.9876,MyServer,Testchar,23cd2c95";
-	outapp = new EQApplicationPacket(OP_0x0282, sizeof(packetData));
-	strcpy((char*)outapp->pBuffer, packetData);
-	QueuePacket(outapp);
-	delete outapp;
-	*/
-
 	// Send zone server IP data
 	outapp = new EQApplicationPacket(OP_ZoneServerInfo, sizeof(ZoneServerInfo_Struct));
 	ZoneServerInfo_Struct* zsi = (ZoneServerInfo_Struct*)outapp->pBuffer;
-	const char *zs_addr=zs->GetCAddress();
-	if (!zs_addr[0]) {
-		if (cle->IsLocalClient()) {
+
+	const char *zs_addr = nullptr;
+	if(cle && cle->IsLocalClient()) {
+		const char *local_addr = zs->GetCLocalAddress();
+
+		if(local_addr[0]) {
+			zs_addr = local_addr;
+		} else {
 			struct in_addr in;
 			in.s_addr = zs->GetIP();
-			zs_addr=inet_ntoa(in);
-			if (!strcmp(zs_addr,"127.0.0.1"))
-				zs_addr=WorldConfig::get()->LocalAddress.c_str();
+			zs_addr = inet_ntoa(in);
+
+			if(strcmp(zs_addr, "127.0.0.1") == 0)
+			{
+				Log.Out(Logs::Detail, Logs::World_Server, "Local zone address was %s, setting local address to: %s", zs_addr, WorldConfig::get()->LocalAddress.c_str());
+				zs_addr = WorldConfig::get()->LocalAddress.c_str();
+			} else {
+				Log.Out(Logs::Detail, Logs::World_Server, "Local zone address %s", zs_addr);
+			}
+		}
+
+	} else {
+		const char *addr = zs->GetCAddress();
+		if(addr[0]) {
+			zs_addr = addr;
 		} else {
-			zs_addr=WorldConfig::get()->WorldAddress.c_str();
+			zs_addr = WorldConfig::get()->WorldAddress.c_str();
 		}
 	}
+
 	strcpy(zsi->ip, zs_addr);
 	zsi->port =zs->GetCPort();
 	Log.Out(Logs::Detail, Logs::World_Server,"Sending client to zone %s (%d:%d) at %s:%d",zonename,zoneID,instanceID,zsi->ip,zsi->port);
@@ -1933,21 +1948,21 @@ void Client::SetRacialLanguages( PlayerProfile_Struct *pp )
 		}
 	case IKSAR:
 		{
-			pp->languages[LANG_COMMON_TONGUE] = 95;
+			pp->languages[LANG_COMMON_TONGUE] = RuleI(Character, IksarCommonTongue);
 			pp->languages[LANG_DARK_SPEECH] = 100;
 			pp->languages[LANG_LIZARDMAN] = 100;
 			break;
 		}
 	case OGRE:
 		{
-			pp->languages[LANG_COMMON_TONGUE] = 95;
+			pp->languages[LANG_COMMON_TONGUE] = RuleI(Character, OgreCommonTongue);
 			pp->languages[LANG_DARK_SPEECH] = 100;
 			pp->languages[LANG_OGRE] = 100;
 			break;
 		}
 	case TROLL:
 		{
-			pp->languages[LANG_COMMON_TONGUE] = 95;
+			pp->languages[LANG_COMMON_TONGUE] = RuleI(Character, TrollCommonTongue);
 			pp->languages[LANG_DARK_SPEECH] = 100;
 			pp->languages[LANG_TROLL] = 100;
 			break;

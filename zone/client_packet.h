@@ -218,6 +218,8 @@
 	void Handle_OP_PetitionRefresh(const EQApplicationPacket *app);
 	void Handle_OP_PetitionResolve(const EQApplicationPacket *app);
 	void Handle_OP_PetitionUnCheckout(const EQApplicationPacket *app);
+	void Handle_OP_PlayerStateAdd(const EQApplicationPacket *app);
+	void Handle_OP_PlayerStateRemove(const EQApplicationPacket *app);
 	void Handle_OP_PickPocket(const EQApplicationPacket *app);
 	void Handle_OP_PopupResponse(const EQApplicationPacket *app);
 	void Handle_OP_PotionBelt(const EQApplicationPacket *app);
@@ -293,3 +295,4 @@
 	void Handle_OP_XTargetRequest(const EQApplicationPacket *app);
 	void Handle_OP_YellForHelp(const EQApplicationPacket *app);
 	void Handle_OP_ZoneChange(const EQApplicationPacket *app);
+	void Handle_OP_ResetAA(const EQApplicationPacket *app);

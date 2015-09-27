@@ -26,6 +26,7 @@
 #include <limits.h>
 #include <math.h>
 #include <sstream>
+#include <algorithm>
 
 #ifdef BOTS
 #include "bot.h"
@@ -83,7 +84,12 @@ Mob::Mob(const char* in_name,
 		int32		in_mana_regen,
 		uint8		in_qglobal,
 		uint8		in_maxlevel,
-		uint32		in_scalerate
+		uint32		in_scalerate,
+		uint8		in_armtexture,
+		uint8		in_bracertexture,
+		uint8		in_handtexture,
+		uint8		in_legtexture,
+		uint8		in_feettexture
 		) :
 		attack_timer(2000),
 		attack_dw_timer(2000),
@@ -144,6 +150,29 @@ Mob::Mob(const char* in_name,
 	size		= in_size;
 	base_size	= size;
 	runspeed	= in_runspeed;
+	// neotokyo: sanity check
+	if (runspeed < 0 || runspeed > 20)
+		runspeed = 1.25f;
+	base_runspeed = (int)((float)runspeed * 40.0f);
+	// clients
+	if (runspeed == 0.7f) {
+		base_runspeed = 28;
+		walkspeed = 0.3f;
+		base_walkspeed = 12;
+		fearspeed = 0.625f;
+		base_fearspeed = 25;
+		// npcs
+	} else {
+		base_walkspeed = base_runspeed * 100 / 265;
+		walkspeed = ((float)base_walkspeed) * 0.025f;
+		base_fearspeed = base_runspeed * 100 / 127;
+		fearspeed = ((float)base_fearspeed) * 0.025f;
+	}
+
+
+	current_speed = base_runspeed;
+
+	m_PlayerState	= 0;
 
 
 	// sanity check
@@ -156,9 +185,16 @@ Mob::Mob(const char* in_name,
 	m_Light.Level.Spell = m_Light.Type.Spell = 0;
 	m_Light.Type.Active = m_Light.Type.Innate;
 	m_Light.Level.Active = m_Light.Level.Innate;
-	
+
 	texture		= in_texture;
 	helmtexture	= in_helmtexture;
+	armtexture = in_armtexture;
+	bracertexture = in_bracertexture;
+	handtexture = in_handtexture;
+	legtexture = in_legtexture;
+	feettexture = in_feettexture;
+	multitexture = (armtexture || bracertexture || handtexture || legtexture || feettexture);
+
 	haircolor	= in_haircolor;
 	beardcolor	= in_beardcolor;
 	eyecolor1	= in_eyecolor1;
@@ -176,6 +212,7 @@ Mob::Mob(const char* in_name,
 	trackable	= true;
 	has_shieldequiped = false;
 	has_twohandbluntequiped = false;
+	has_twohanderequipped = false;
 	has_numhits = false;
 	has_MGB = false;
 	has_ProjectIllusion = false;
@@ -228,15 +265,19 @@ Mob::Mob(const char* in_name,
 		PermaProcs[j].spellID = SPELL_UNKNOWN;
 		PermaProcs[j].chance = 0;
 		PermaProcs[j].base_spellID = SPELL_UNKNOWN;
+		PermaProcs[j].level_override = -1;
 		SpellProcs[j].spellID = SPELL_UNKNOWN;
 		SpellProcs[j].chance = 0;
 		SpellProcs[j].base_spellID = SPELL_UNKNOWN;
+		SpellProcs[j].level_override = -1;
 		DefensiveProcs[j].spellID = SPELL_UNKNOWN;
 		DefensiveProcs[j].chance = 0;
 		DefensiveProcs[j].base_spellID = SPELL_UNKNOWN;
+		DefensiveProcs[j].level_override = -1;
 		RangedProcs[j].spellID = SPELL_UNKNOWN;
 		RangedProcs[j].chance = 0;
 		RangedProcs[j].base_spellID = SPELL_UNKNOWN;
+		RangedProcs[j].level_override = -1;
 	}
 
 	for (i = 0; i < _MaterialCount; i++)
@@ -268,8 +309,8 @@ Mob::Mob(const char* in_name,
 	casting_spell_id = 0;
 	casting_spell_timer = 0;
 	casting_spell_timer_duration = 0;
-	casting_spell_type = 0;
 	casting_spell_inventory_slot = 0;
+	casting_spell_aa_id = 0;
 	target = 0;
 
 	ActiveProjectileATK = false;
@@ -302,7 +343,7 @@ Mob::Mob(const char* in_name,
 	pLastChange = 0;
 	SetPetID(0);
 	SetOwnerID(0);
-	typeofpet = petCharmed;		//default to charmed...
+	typeofpet = petNone; // default to not a pet
 	petpower = 0;
 	held = false;
 	nocast = false;
@@ -573,51 +614,34 @@ bool Mob::IsInvisible(Mob* other) const
 	return(false);
 }
 
-float Mob::_GetMovementSpeed(int mod) const
-{
-	// List of movement speed modifiers, including AAs & spells:
-	// http://everquest.allakhazam.com/db/item.html?item=1721;page=1;howmany=50#m10822246245352
-	if (IsRooted())
-		return 0.0f;
+int Mob::_GetWalkSpeed() const {
+
+	if (IsRooted() || IsStunned() || IsMezzed())
+		return 0;
+
 	else if (IsPseudoRooted())
-		return 0.00001f;
+		return 0;
 
+	//speed_mod += GetMomentum(); //C!Kayen 
 
-	float speed_mod = runspeed;
+	int aa_mod = 0;
+	int speed_mod = base_walkspeed;
+	int base_run = base_runspeed;
+	bool has_horse = false;
+	int runspeedcap = RuleI(Character,BaseRunSpeedCap);
+	runspeedcap += itembonuses.IncreaseRunSpeedCap + spellbonuses.IncreaseRunSpeedCap + aabonuses.IncreaseRunSpeedCap;
+	aa_mod += aabonuses.BaseMovementSpeed;
 
-	speed_mod += GetMomentum(); //C!Kayen 
-
-	// These two cases ignore the cap, be wise in the DB for horses.
 	if (IsClient()) {
-		if (CastToClient()->GetGMSpeed()) {
-			speed_mod = 3.125f;
-			if (mod != 0)
-				speed_mod += speed_mod * static_cast<float>(mod) / 100.0f;
+		Mob *horse = entity_list.GetMob(CastToClient()->GetHorseId());
+		if (horse) {
+			speed_mod = horse->GetBaseRunspeed();
 			return speed_mod;
-		} else {
-			Mob *horse = entity_list.GetMob(CastToClient()->GetHorseId());
-			if (horse) {
-				speed_mod = horse->GetBaseRunspeed();
-				if (mod != 0)
-					speed_mod += speed_mod * static_cast<float>(mod) / 100.0f;
-				return speed_mod;
-			}
 		}
 	}
 
-	int aa_mod = 0;
-	int spell_mod = 0;
-	int runspeedcap = RuleI(Character,BaseRunSpeedCap);
+	int spell_mod = spellbonuses.movementspeed + itembonuses.movementspeed;
 	int movemod = 0;
-	float frunspeedcap = 0.0f;
-
-	runspeedcap += itembonuses.IncreaseRunSpeedCap + spellbonuses.IncreaseRunSpeedCap + aabonuses.IncreaseRunSpeedCap;
-	aa_mod += itembonuses.BaseMovementSpeed + spellbonuses.BaseMovementSpeed + aabonuses.BaseMovementSpeed;
-	spell_mod += spellbonuses.movementspeed + itembonuses.movementspeed;
-
-	// hard cap
-	if (runspeedcap > 225)
-		runspeedcap = 225;
 
 	if (spell_mod < 0)
 		movemod += spell_mod;
@@ -626,27 +650,189 @@ float Mob::_GetMovementSpeed(int mod) const
 	else
 		movemod = aa_mod;
 
-	// cap negative movemods from snares mostly
-	if (movemod < -85)
+	// hard cap
+	if (runspeedcap > 225)
+		runspeedcap = 225;
+
+	if(movemod < -85) //cap it at moving very very slow
 		movemod = -85;
 
-	if (movemod != 0)
-		speed_mod += speed_mod * static_cast<float>(movemod) / 100.0f;
+	if (!has_horse && movemod != 0)
+		speed_mod += (base_run * movemod / 100);
 
-	// runspeed caps
-	frunspeedcap = static_cast<float>(runspeedcap) / 100.0f;
-	if (IsClient() && speed_mod > frunspeedcap)
-		speed_mod = frunspeedcap;
+	if(speed_mod < 1)
+		return(0);
 
-	// apply final mod such as the -47 for walking
-	// use runspeed since it should stack with snares
-	// and if we get here, we know runspeed was the initial
-	// value before we applied movemod.
-	if (mod != 0)
-		speed_mod += runspeed * static_cast<float>(mod) / 100.0f;
+	//runspeed cap.
+	if(IsClient())
+	{
+		if(speed_mod > runspeedcap)
+			speed_mod = runspeedcap;
+	}
+	return speed_mod;
+}
 
-	if (speed_mod <= 0.0f)
-		speed_mod = IsClient() ? 0.0001f : 0.0f;
+int Mob::_GetRunSpeed() const {
+	if (IsRooted() || IsStunned() || IsMezzed() || IsPseudoRooted())
+		return 0;
+
+	int aa_mod = 0;
+	int speed_mod = base_runspeed;
+	int base_walk = base_walkspeed;
+	bool has_horse = false;
+	if (IsClient())
+	{
+		if(CastToClient()->GetGMSpeed())
+		{
+			speed_mod = 325;
+		}
+		else
+		{
+			Mob* horse = entity_list.GetMob(CastToClient()->GetHorseId());
+			if(horse)
+			{
+				speed_mod = horse->GetBaseRunspeed();
+				base_walk = horse->GetBaseWalkspeed();
+				has_horse = true;
+			}
+		}
+	}
+
+	int runspeedcap = RuleI(Character,BaseRunSpeedCap);
+	runspeedcap += itembonuses.IncreaseRunSpeedCap + spellbonuses.IncreaseRunSpeedCap + aabonuses.IncreaseRunSpeedCap;
+
+	aa_mod = itembonuses.IncreaseRunSpeedCap + spellbonuses.IncreaseRunSpeedCap + aabonuses.IncreaseRunSpeedCap;
+	int spell_mod = spellbonuses.movementspeed + itembonuses.movementspeed;
+	int movemod = 0;
+
+	if(spell_mod < 0)
+	{
+		movemod += spell_mod;
+	}
+	else if(spell_mod > aa_mod)
+	{
+		movemod = spell_mod;
+	}
+	else
+	{
+		movemod = aa_mod;
+	}
+
+	if(movemod < -85) //cap it at moving very very slow
+		movemod = -85;
+
+	if (!has_horse && movemod != 0)
+	{
+		if (IsClient())
+		{
+			speed_mod += (speed_mod * movemod / 100);
+		} else {
+			if (movemod < 0) {
+				speed_mod += (50 * movemod / 100);
+				// basically stoped
+				if(speed_mod < 1)
+				{
+					return(0);
+				}
+				// moving slowly
+				if (speed_mod < 8)
+					return(8);
+			} else {
+				speed_mod += GetBaseWalkspeed();
+				if (movemod > 50)
+					speed_mod += 4;
+				if (movemod > 40)
+					speed_mod += 3;
+			}
+		}
+	}
+
+	if(speed_mod < 1)
+	{
+		return(0);
+	}
+	//runspeed cap.
+	if(IsClient())
+	{
+		if(speed_mod > runspeedcap)
+			speed_mod = runspeedcap;
+	}
+	return speed_mod;
+}
+
+int Mob::_GetFearSpeed() const {
+
+	if (IsRooted() || IsStunned() || IsMezzed())
+		return 0;
+
+	//float speed_mod = fearspeed;
+	int speed_mod = GetBaseFearSpeed();
+
+	// use a max of 1.75f in calcs.
+	int base_run = std::min(GetBaseRunspeed(), 70);
+
+	int spell_mod = spellbonuses.movementspeed + itembonuses.movementspeed;
+	int movemod = 0;
+
+	if(spell_mod < 0)
+	{
+		movemod += spell_mod;
+	}
+
+	if(movemod < -85) //cap it at moving very very slow
+		movemod = -85;
+
+	if (IsClient()) {
+		if (CastToClient()->GetRunMode())
+			speed_mod = GetBaseRunspeed();
+		else
+			speed_mod = GetBaseWalkspeed();
+		if (movemod < 0)
+			return GetBaseWalkspeed();
+		speed_mod += (base_run * movemod / 100);
+		return speed_mod;
+	} else {
+		int hp_ratio = GetIntHPRatio();
+		// very large snares 50% or higher
+		if (movemod < -49)
+		{
+			if (hp_ratio < 25)
+			{
+				return (0);
+			}
+			if (hp_ratio < 50)
+				return (8);
+			else
+				return (12);
+		}
+		if (hp_ratio < 5) {
+			speed_mod = base_walkspeed / 3;
+		} else if (hp_ratio < 15) {
+			speed_mod = base_walkspeed / 2;
+		} else if (hp_ratio < 25) {
+			speed_mod = base_walkspeed + 1; // add the +1 so they do the run animation
+		} else if (hp_ratio < 50) {
+			speed_mod *= 82;
+			speed_mod /= 100;
+		}
+		if (movemod > 0) {
+			speed_mod += GetBaseWalkspeed();
+			if (movemod > 50)
+				speed_mod += 4;
+			if (movemod > 40)
+				speed_mod += 3;
+			return speed_mod;
+		}
+		else if (movemod < 0) {
+			speed_mod += (base_run * movemod / 100);
+		}
+	}
+	if (speed_mod < 1)
+		return (0);
+	if (speed_mod < 9)
+		return (8);
+	if (speed_mod < 13)
+		return (12);
 
 	return speed_mod;
 }
@@ -785,7 +971,7 @@ void Mob::CreateSpawnPacket(EQApplicationPacket* app, Mob* ForWho) {
 	NewSpawn_Struct* ns = (NewSpawn_Struct*)app->pBuffer;
 	FillSpawnStruct(ns, ForWho);
 
-	if(strlen(ns->spawn.lastName) == 0) 
+	if(strlen(ns->spawn.lastName) == 0)
 	{
 		switch(ns->spawn.class_)
 		{
@@ -957,10 +1143,11 @@ void Mob::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 	ns->spawn.max_hp	= 100;		//this field needs a better name
 	ns->spawn.race		= race;
 	ns->spawn.runspeed	= runspeed;
-	ns->spawn.walkspeed	= runspeed * 0.5f;
+	ns->spawn.walkspeed	= walkspeed;
 	ns->spawn.class_	= class_;
 	ns->spawn.gender	= gender;
 	ns->spawn.level		= level;
+	ns->spawn.PlayerState	= m_PlayerState;
 	ns->spawn.deity		= deity;
 	ns->spawn.animation	= 0;
 	ns->spawn.findable	= findable?1:0;
@@ -988,7 +1175,7 @@ void Mob::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 	ns->spawn.drakkin_heritage = drakkin_heritage;
 	ns->spawn.drakkin_tattoo = drakkin_tattoo;
 	ns->spawn.drakkin_details = drakkin_details;
-	ns->spawn.equip_chest2 = GetHerosForgeModel(1) != 0 ? 0xff : texture;
+	ns->spawn.equip_chest2 = GetHerosForgeModel(1) != 0 || multitexture? 0xff : texture;
 
 //	ns->spawn.invis2 = 0xff;//this used to be labeled beard.. if its not FF it will turn mob invis
 
@@ -1012,6 +1199,10 @@ void Mob::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 		ns->spawn.flymode = FindType(SE_Levitate) ? 2 : 0;
 	else
 		ns->spawn.flymode = flymode;
+
+	if(IsBoat()) {
+		ns->spawn.flymode = 1;
+	}
 
 	ns->spawn.lastName[0] = '\0';
 
@@ -1137,7 +1328,7 @@ void Mob::CreateHPPacket(EQApplicationPacket* app)
 }
 
 // sends hp update of this mob to people who might care
-void Mob::SendHPUpdate()
+void Mob::SendHPUpdate(bool skip_self)
 {
 	EQApplicationPacket hp_app;
 	Group *group;
@@ -1225,9 +1416,12 @@ void Mob::SendHPUpdate()
 		}
 	}
 
+	bool dospam = RuleB(Character, SpamHPUpdates);
 	// send to self - we need the actual hps here
-	if(IsClient())
-	{
+	if(IsClient() && (!skip_self || dospam)) {
+
+		this->CastToClient()->SendHPUpdateMarquee();
+
 		EQApplicationPacket* hp_app2 = new EQApplicationPacket(OP_HPUpdate,sizeof(SpawnHPUpdate_Struct));
 		SpawnHPUpdate_Struct* ds = (SpawnHPUpdate_Struct*)hp_app2->pBuffer;
 		ds->cur_hp = CastToClient()->GetHP() - itembonuses.HP;
@@ -1236,6 +1430,8 @@ void Mob::SendHPUpdate()
 		CastToClient()->QueuePacket(hp_app2);
 		safe_delete(hp_app2);
 	}
+	if (!dospam)
+		ResetHPUpdateTimer(); // delay the timer
 }
 
 // this one just warps the mob to the current location
@@ -1256,19 +1452,23 @@ void Mob::SendPosUpdate(uint8 iSendToSelf) {
 	MakeSpawnUpdate(spu);
 
 	if (iSendToSelf == 2) {
-		if (this->IsClient())
-			this->CastToClient()->FastQueuePacket(&app,false);
+		if (IsClient()) {
+			CastToClient()->FastQueuePacket(&app,false);
+		}
 	}
 	else
 	{
 		if(move_tic_count == RuleI(Zone, NPCPositonUpdateTicCount))
 		{
-			entity_list.QueueClients(this, app, (iSendToSelf==0), false);
+			entity_list.QueueClients(this, app, (iSendToSelf == 0), false);
 			move_tic_count = 0;
 		}
-		else
+		else if(move_tic_count % 2 == 0)
 		{
-			entity_list.QueueCloseClients(this, app, (iSendToSelf==0), 800, nullptr, false);
+			entity_list.QueueCloseClients(this, app, (iSendToSelf == 0), 700, nullptr, false);
+			move_tic_count++;
+		} 
+		else {
 			move_tic_count++;
 		}
 	}
@@ -1346,7 +1546,7 @@ void Mob::ShowStats(Client* client)
 			if(n->respawn2 != 0)
 				spawngroupid = n->respawn2->SpawnGroupID();
 			client->Message(0, "  NPCID: %u  SpawnGroupID: %u Grid: %i LootTable: %u FactionID: %i SpellsID: %u ", GetNPCTypeID(),spawngroupid, n->GetGrid(), n->GetLoottableID(), n->GetNPCFactionID(), n->GetNPCSpellsID());
-			client->Message(0, "  Accuracy: %i MerchantID: %i EmoteID: %i Runspeed: %f Walkspeed: %f", n->GetAccuracyRating(), n->MerchantType, n->GetEmoteID(), n->GetRunspeed(), n->GetWalkspeed());
+			client->Message(0, "  Accuracy: %i MerchantID: %i EmoteID: %i Runspeed: %.3f Walkspeed: %.3f", n->GetAccuracyRating(), n->MerchantType, n->GetEmoteID(), static_cast<float>(0.025f * n->GetRunspeed()), static_cast<float>(0.025f * n->GetWalkspeed()));
 			n->QueryLoot(client);
 		}
 		if (IsAIControlled()) {
@@ -1360,12 +1560,12 @@ void Mob::DoAnim(const int animnum, int type, bool ackreq, eqFilterType filter) 
 	Animation_Struct* anim = (Animation_Struct*)outapp->pBuffer;
 	anim->spawnid = GetID();
 	if(type == 0){
-		anim->action = 10;
-		anim->value=animnum;
+		anim->action = animnum;
+		anim->speed = 10;
 	}
 	else{
 		anim->action = animnum;
-		anim->value=type;
+		anim->speed = type;
 	}
 	entity_list.QueueCloseClients(this, outapp, false, 200, 0, ackreq, filter);
 	safe_delete(outapp);
@@ -1833,7 +2033,7 @@ bool Mob::IsPlayerRace(uint16 in_race) {
 
 
 uint8 Mob::GetDefaultGender(uint16 in_race, uint8 in_gender) {
-	if (Mob::IsPlayerRace(in_race) || in_race == 15 || in_race == 50 || in_race == 57 || in_race == 70 || in_race == 98 || in_race == 118) {
+	if (Mob::IsPlayerRace(in_race) || in_race == 15 || in_race == 50 || in_race == 57 || in_race == 70 || in_race == 98 || in_race == 118 || in_race == 23) {
 		if (in_gender >= 2) {
 			// Male default for PC Races
 			return 0;
@@ -1954,22 +2154,6 @@ void Mob::SendTargetable(bool on, Client *specific_target) {
 	safe_delete(outapp);
 }
 
-void Mob::QuestReward(Client *c, uint32 silver, uint32 gold, uint32 platinum) {
-
-	EQApplicationPacket* outapp = new EQApplicationPacket(OP_Sound, sizeof(QuestReward_Struct));
-	QuestReward_Struct* qr = (QuestReward_Struct*) outapp->pBuffer;
-
-	qr->from_mob = GetID();		// Entity ID for the from mob name
-	qr->silver = silver;
-	qr->gold = gold;
-	qr->platinum = platinum;
-
-	if(c)
-		c->QueuePacket(outapp, false, Client::CLIENT_CONNECTED);
-
-	safe_delete(outapp);
-}
-
 void Mob::CameraEffect(uint32 duration, uint32 intensity, Client *c, bool global) {
 
 
@@ -2086,12 +2270,12 @@ const int32& Mob::SetMana(int32 amount)
 
 
 void Mob::SetAppearance(EmuAppearance app, bool iIgnoreSelf) {
-	if (_appearance != app) {
-		_appearance = app;
-		SendAppearancePacket(AT_Anim, GetAppearanceValue(app), true, iIgnoreSelf);
-		if (this->IsClient() && this->IsAIControlled())
-			SendAppearancePacket(AT_Anim, ANIM_FREEZE, false, false);
-	}
+	if (_appearance == app)
+		return;
+	_appearance = app;
+	SendAppearancePacket(AT_Anim, GetAppearanceValue(app), true, iIgnoreSelf);
+	if (this->IsClient() && this->IsAIControlled())
+		SendAppearancePacket(AT_Anim, ANIM_FREEZE, false, false);
 }
 
 bool Mob::UpdateActiveLight()
@@ -2183,8 +2367,10 @@ void Mob::SetOwnerID(uint16 NewOwnerID) {
 	if (NewOwnerID == GetID() && NewOwnerID != 0) // ok, no charming yourself now =p
 		return;
 	ownerid = NewOwnerID;
-	if (ownerid == 0 && this->IsNPC() && this->GetPetType() != petCharmed)
-		this->Depop();
+	// if we're setting the owner ID to 0 and they're not either charmed or not-a-pet then
+	// they're a normal pet and should be despawned
+	if (ownerid == 0 && IsNPC() && GetPetType() != petCharmed && GetPetType() != petNone)
+		Depop();
 }
 
 // used in checking for behind (backstab) and checking in front (melee LoS)
@@ -2282,6 +2468,14 @@ bool Mob::CanThisClassDoubleAttack(void) const
 		}
 		return(CastToClient()->HasSkill(SkillDoubleAttack));
 	}
+}
+
+bool Mob::CanThisClassTripleAttack() const
+{
+	if (!IsClient())
+		return false; // When they added the real triple attack skill, mobs lost the ability to triple
+	else
+		return CastToClient()->HasSkill(SkillTripleAttack);
 }
 
 bool Mob::IsWarriorClass(void) const
@@ -2598,7 +2792,35 @@ uint32 NPC::GetEquipment(uint8 material_slot) const
 	return equipment[invslot];
 }
 
-void Mob::SendWearChange(uint8 material_slot)
+void Mob::SendArmorAppearance(Client *one_client)
+{
+	// one_client of 0 means sent to all clients
+	//
+	// Despite the fact that OP_NewSpawn and OP_ZoneSpawns include the
+	// armor being worn and its mats, the client doesn't update the display
+	// on arrival of these packets reliably.
+	//
+	// Send Wear changes if mob is a PC race and item is an armor slot.
+	// The other packets work for primary/secondary.
+
+	if (IsPlayerRace(race))
+	{
+		if (!IsClient())
+		{
+			const Item_Struct *item;
+			for (int i=0; i< 7 ; ++i)
+			{
+				item=database.GetItem(GetEquipment(i));
+				if (item != 0)
+				{
+					SendWearChange(i,one_client);
+				}
+			}
+		}
+	}
+}
+
+void Mob::SendWearChange(uint8 material_slot, Client *one_client)
 {
 	EQApplicationPacket* outapp = new EQApplicationPacket(OP_WearChange, sizeof(WearChange_Struct));
 	WearChange_Struct* wc = (WearChange_Struct*)outapp->pBuffer;
@@ -2610,7 +2832,15 @@ void Mob::SendWearChange(uint8 material_slot)
 	wc->color.Color = GetEquipmentColor(material_slot);
 	wc->wear_slot_id = material_slot;
 
-	entity_list.QueueClients(this, outapp);
+	if (!one_client)
+	{
+		entity_list.QueueClients(this, outapp);
+	}
+	else
+	{
+		one_client->QueuePacket(outapp, false, Client::CLIENT_CONNECTED);
+	}
+
 	safe_delete(outapp);
 }
 
@@ -2736,7 +2966,7 @@ int32 Mob::GetHerosForgeModel(uint8 material_slot) const
 		const Item_Struct *item;
 		item = database.GetItem(GetEquipment(material_slot));
 		int16 invslot = Inventory::CalcSlotFromMaterial(material_slot);
-		
+
 		if (item != 0 && invslot != INVALID_INDEX)
 		{
 			if (IsClient())
@@ -2994,10 +3224,10 @@ uint32 Mob::GetLevelHP(uint8 tlevel)
 }
 
 int32 Mob::GetActSpellCasttime(uint16 spell_id, int32 casttime) {
-	
+
 	int32 cast_reducer = 0;
 	cast_reducer += GetFocusEffect(focusSpellHaste, spell_id);
-		
+
 	if (level >= 60 && casttime > 1000)
 	{
 		casttime = casttime / 2;
@@ -3016,8 +3246,8 @@ int32 Mob::GetActSpellCasttime(uint16 spell_id, int32 casttime) {
 	return(casttime);
 }
 
+void Mob::ExecWeaponProc(const ItemInst *inst, uint16 spell_id, Mob *on, int level_override) {
 
-void Mob::ExecWeaponProc(const ItemInst *inst, uint16 spell_id, Mob *on) {
 	// Changed proc targets to look up based on the spells goodEffect flag.
 	// This should work for the majority of weapons.
 	if(spell_id == SPELL_UNKNOWN || on->GetSpecialAbility(NO_HARM_FROM_CLIENT)) {
@@ -3056,14 +3286,14 @@ void Mob::ExecWeaponProc(const ItemInst *inst, uint16 spell_id, Mob *on) {
 		twinproc = true;
 
 	if (IsBeneficialSpell(spell_id)) {
-		SpellFinished(spell_id, this, 10, 0, -1, spells[spell_id].ResistDiff, true);
+		SpellFinished(spell_id, this, 10, 0, -1, spells[spell_id].ResistDiff, true, level_override);
 		if(twinproc)
-			SpellOnTarget(spell_id, this, false, false, 0, true);
+			SpellOnTarget(spell_id, this, false, false, 0, true, level_override);
 	}
 	else if(!(on->IsClient() && on->CastToClient()->dead)) { //dont proc on dead clients
-		SpellFinished(spell_id, on, 10, 0, -1, spells[spell_id].ResistDiff, true);
+		SpellFinished(spell_id, on, 10, 0, -1, spells[spell_id].ResistDiff, true, level_override);
 		if(twinproc)
-			SpellOnTarget(spell_id, on, false, false, 0, true);
+			SpellOnTarget(spell_id, on, false, false, 0, true, level_override);
 	}
 	return;
 }
@@ -3356,9 +3586,11 @@ void Mob::TriggerOnCast(uint32 focus_spell, uint32 spell_id, bool aa_trigger)
 
 	uint32 trigger_spell_id = 0;
 
-	if (aa_trigger && IsClient()){
-		//focus_spell = aaid
-		trigger_spell_id = CastToClient()->CalcAAFocus(focusTriggerOnCast, focus_spell, spell_id);
+	if (aa_trigger && IsClient()) {
+		// focus_spell = aaid
+		auto rank = zone->GetAlternateAdvancementRank(focus_spell);
+		if (rank)
+			trigger_spell_id = CastToClient()->CalcAAFocus(focusTriggerOnCast, *rank, spell_id);
 
 		if(IsValidSpell(trigger_spell_id) && GetTarget())
 			SpellFinished(trigger_spell_id, GetTarget(), 10, 0, -1, spells[trigger_spell_id].ResistDiff);
@@ -3616,15 +3848,11 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 	// All skill dmg mod + Skill specific
 	skilldmg_mod += itembonuses.SkillDmgTaken[HIGHEST_SKILL+1] + spellbonuses.SkillDmgTaken[HIGHEST_SKILL+1] +
 					itembonuses.SkillDmgTaken[skill_used] + spellbonuses.SkillDmgTaken[skill_used];
-	
 
 	skilldmg_mod += SkillDmgTaken_Mod[skill_used] + SkillDmgTaken_Mod[HIGHEST_SKILL+1];
 
 	skilldmg_mod += GetWpnSkillDmgBonusAmt(); //C!Kayen
 	skilldmg_mod += GetScaleMitigationNumhits(); //C!Kayen
-
-	skilldmg_mod += spellbonuses.MeleeVulnerability + itembonuses.MeleeVulnerability + aabonuses.MeleeVulnerability;
-
 
 	if(skilldmg_mod < -100)
 		skilldmg_mod = -100;
@@ -3682,36 +3910,41 @@ bool Mob::TryFadeEffect(int slot)
 
 void Mob::TrySympatheticProc(Mob *target, uint32 spell_id)
 {
-	if(target == nullptr || !IsValidSpell(spell_id))
+	if(target == nullptr || !IsValidSpell(spell_id) || !IsClient())
 		return;
 
-	int focus_spell = CastToClient()->GetSympatheticFocusEffect(focusSympatheticProc,spell_id);
+	uint16 focus_spell = CastToClient()->GetSympatheticFocusEffect(focusSympatheticProc,spell_id);
 
-		if(IsValidSpell(focus_spell)){
-			int focus_trigger = spells[focus_spell].base2[0];
-			// For beneficial spells, if the triggered spell is also beneficial then proc it on the target
-			// if the triggered spell is detrimental, then it will trigger on the caster(ie cursed items)
-			if(IsBeneficialSpell(spell_id))
-			{
-				if(IsBeneficialSpell(focus_trigger))
-					SpellFinished(focus_trigger, target);
+	if(!IsValidSpell(focus_spell))
+		return;
 
-				else
-					SpellFinished(focus_trigger, this, 10, 0, -1, spells[focus_trigger].ResistDiff);
-			}
-			// For detrimental spells, if the triggered spell is beneficial, then it will land on the caster
-			// if the triggered spell is also detrimental, then it will land on the target
-			else
-			{
-				if(IsBeneficialSpell(focus_trigger))
-					SpellFinished(focus_trigger, this);
+	uint16 focus_trigger = GetSympatheticSpellProcID(focus_spell);
 
-				else
-					SpellFinished(focus_trigger, target, 10, 0, -1, spells[focus_trigger].ResistDiff);
-			}
+	if(!IsValidSpell(focus_trigger))
+		return;
 
-			CheckNumHitsRemaining(NumHit::MatchingSpells, -1, focus_spell);
-		}
+	// For beneficial spells, if the triggered spell is also beneficial then proc it on the target
+	// if the triggered spell is detrimental, then it will trigger on the caster(ie cursed items)
+	if(IsBeneficialSpell(spell_id))
+	{
+		if(IsBeneficialSpell(focus_trigger))
+			SpellFinished(focus_trigger, target);
+
+		else
+			SpellFinished(focus_trigger, this, 10, 0, -1, spells[focus_trigger].ResistDiff);
+	}
+	// For detrimental spells, if the triggered spell is beneficial, then it will land on the caster
+	// if the triggered spell is also detrimental, then it will land on the target
+	else
+	{
+		if(IsBeneficialSpell(focus_trigger))
+			SpellFinished(focus_trigger, this);
+
+		else
+			SpellFinished(focus_trigger, target, 10, 0, -1, spells[focus_trigger].ResistDiff);
+	}
+
+	CheckNumHitsRemaining(NumHit::MatchingSpells, -1, focus_spell);
 }
 
 int32 Mob::GetItemStat(uint32 itemid, const char *identifier)
@@ -4053,6 +4286,39 @@ int32 Mob::GetItemStat(uint32 itemid, const char *identifier)
 
 	safe_delete(inst);
 	return stat;
+}
+
+std::string Mob::GetGlobal(const char *varname) {
+	int qgCharid = 0;
+	int qgNpcid = 0;
+
+	if (this->IsNPC())
+		qgNpcid = this->GetNPCTypeID();
+
+	if (this->IsClient())
+		qgCharid = this->CastToClient()->CharacterID();
+
+	QGlobalCache *qglobals = nullptr;
+	std::list<QGlobal> globalMap;
+
+	if (this->IsClient())
+		qglobals = this->CastToClient()->GetQGlobals();
+
+	if (this->IsNPC())
+		qglobals = this->CastToNPC()->GetQGlobals();
+
+	if(qglobals)
+		QGlobalCache::Combine(globalMap, qglobals->GetBucket(), qgNpcid, qgCharid, zone->GetZoneID());
+
+	std::list<QGlobal>::iterator iter = globalMap.begin();
+	while(iter != globalMap.end()) {
+		if ((*iter).name.compare(varname) == 0)
+			return (*iter).value;
+
+		++iter;
+	}
+
+	return "Undefined";
 }
 
 void Mob::SetGlobal(const char *varname, const char *newvalue, int options, const char *duration, Mob *other) {
@@ -5338,7 +5604,7 @@ int32 Mob::GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot)
 
 	if (slot < 4){
 		if (id == "components") { return spells[spell_id].components[slot];}
-		else if (id == "component_counts") { return spells[spell_id].component_counts[slot];} 
+		else if (id == "component_counts") { return spells[spell_id].component_counts[slot];}
 		else if (id == "NoexpendReagent") {return spells[spell_id].NoexpendReagent[slot];}
 	}
 
@@ -5416,7 +5682,7 @@ int32 Mob::GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot)
 	else if (id == "max_dist") {return static_cast<int32>(spells[spell_id].max_dist); }
 	else if (id == "min_range") {return static_cast<int32>(spells[spell_id].min_range); }
 	else if (id == "DamageShieldType") {return spells[spell_id].DamageShieldType; }
-	
+
 	return stat;
 }
 
@@ -5501,6 +5767,9 @@ bool Client::TrainDisciplineBySpellid(uint16 spell_id) {
 }
 
 void Client::RefundAAType(uint32 sof_type) {
+
+	/*
+
 	int cur = 0;
 	bool refunded = false;
 
@@ -5570,6 +5839,8 @@ void Client::RefundAAType(uint32 sof_type) {
 	}
 
 	Message(13, "No AA in %i to refund.", sof_type);
+
+	*/
 }
 
 uint32 Client::GetAltCurrencyItemid(uint32 alt_currency_id) {
@@ -8710,7 +8981,8 @@ void Mob::BuffFastProcess()
 			//If I decided to keep this using regular buff timer...
 			//int remainder = buffs[buffs_i].fastticsremaining % 6;
 			//if (!remainder)
-			DoBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
+			//DoBuffTic(buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining, buffs[buffs_i].casterlevel, entity_list.GetMob(buffs[buffs_i].casterid));
+			DoBuffTic(buffs[buffs_i], buffs_i, entity_list.GetMob(buffs[buffs_i].casterid));
 
 			if(buffs[buffs_i].spellid == SPELL_UNKNOWN)
 				continue;
@@ -9229,7 +9501,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 			CastToClient()->Message(0,"Your fierce attack is executed with such grace, your target did not see it coming!");
 		
 		DoBackstabSpellEffect(other,false);
-		if(IsClient() && CastToClient()->CheckDoubleAttack(false))
+		if(IsClient() && CastToClient()->CheckDoubleAttack())
 		{
 			if(other->GetHP() > 0)
 				DoBackstabSpellEffect(other,false);
@@ -9244,7 +9516,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 
 		//we can stab from any angle, we do min damage though.
 		DoBackstabSpellEffect(other, true);
-		if(IsClient() && CastToClient()->CheckDoubleAttack(false))
+		if(IsClient() && CastToClient()->CheckDoubleAttack())
 		{
 			if(other->GetHP() > 0)
 				DoBackstabSpellEffect(other,true);
@@ -10627,9 +10899,48 @@ bool Mob::CanClassEquipItem(uint32 item_id)
 
 	int bitmask = 1;
 	bitmask = bitmask << (GetClass() - 1);
-	
+
 	if(!(itm->Classes & bitmask))
 		return false;
 	else
 		return true;
+}
+
+void Mob::SendAddPlayerState(PlayerState new_state)
+{
+	auto app = new EQApplicationPacket(OP_PlayerStateAdd, sizeof(PlayerState_Struct));
+	auto ps = (PlayerState_Struct *)app->pBuffer;
+
+	ps->spawn_id = GetID();
+	ps->state = static_cast<uint32>(new_state);
+
+	AddPlayerState(ps->state);
+	entity_list.QueueClients(nullptr, app);
+	safe_delete(app);
+}
+
+void Mob::SendRemovePlayerState(PlayerState old_state)
+{
+	auto app = new EQApplicationPacket(OP_PlayerStateRemove, sizeof(PlayerState_Struct));
+	auto ps = (PlayerState_Struct *)app->pBuffer;
+
+	ps->spawn_id = GetID();
+	ps->state = static_cast<uint32>(old_state);
+
+	RemovePlayerState(ps->state);
+	entity_list.QueueClients(nullptr, app);
+	safe_delete(app);
+}
+
+void Mob::SetCurrentSpeed(int in){
+	if (current_speed != in)
+	{
+		current_speed = in;
+		tar_ndx = 20;
+		if (in == 0) {
+			SetRunAnimSpeed(0);
+			SetMoving(false);
+			SendPosition();
+		}
+	}
 }

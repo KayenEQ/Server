@@ -31,13 +31,13 @@
 #include "../common/linked_list.h"
 #include "../common/servertalk.h"
 
-#include "aa.h"
 #include "client.h"
 #include "entity.h"
 #include "npc.h"
 #include "string_ids.h"
 #include "spawn2.h"
 #include "zone.h"
+#include "quest_parser_collection.h"
 
 #include <cctype>
 #include <stdio.h>
@@ -103,14 +103,19 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, const glm::vec4& position, int if
 		d->mana_regen,
 		d->qglobal,
 		d->maxlevel,
-		d->scalerate ),
+		d->scalerate,
+		d->armtexture,
+		d->bracertexture,
+		d->handtexture,
+		d->legtexture,
+		d->feettexture),
 	attacked_timer(CombatEventTimer_expire),
 	swarm_timer(100),
 	classattack_timer(1000),
 	knightattack_timer(1000),
 	assist_timer(AIassistcheck_delay),
 	qglobal_purge_timer(30000),
-	sendhpupdate_timer(1000),
+	sendhpupdate_timer(2000),
 	enraged_timer(1000),
 	taunt_timer(TauntReuseTime * 1000),
 	m_SpawnPoint(position),
@@ -279,6 +284,18 @@ NPC::NPC(const NPCType* d, Spawn2* in_respawn, const glm::vec4& position, int if
 	int r;
 	for(r = 0; r <= HIGHEST_SKILL; r++) {
 		skills[r] = database.GetSkillCap(GetClass(),(SkillUseTypes)r,moblevel);
+	}
+	// some overrides -- really we need to be able to set skills for mobs in the DB
+	// There are some known low level SHM/BST pets that do not follow this, which supports
+	// the theory of needing to be able to set skills for each mob separately
+	if (moblevel > 50) {
+		skills[SkillDoubleAttack] = 250;
+		skills[SkillDualWield] = 250;
+	} else if (moblevel > 3) {
+		skills[SkillDoubleAttack] = moblevel * 5;
+		skills[SkillDualWield] = skills[SkillDoubleAttack];
+	} else {
+		skills[SkillDoubleAttack] = moblevel * 5;
 	}
 
 	if(d->trap_template > 0)
@@ -523,7 +540,7 @@ void NPC::QueryLoot(Client* to)
 		linker.SetItemData(item);
 
 		auto item_link = linker.GenerateLink();
-		
+
 		to->Message(0, "%s, ID: %u, Level: (min: %u, max: %u)", item_link.c_str(), item->ID, (*cur)->min_level, (*cur)->max_level);
 	}
 
@@ -570,8 +587,7 @@ bool NPC::Process()
 {
 	if (IsStunned() && stunned_timer.Check())
 	{
-		this->stunned = false;
-		this->stunned_timer.Disable();
+		Mob::UnStun();
 		this->spun_timer.Disable();
 		OpportunityFromStunClear(); //C!Kayen
 	}
@@ -597,6 +613,7 @@ bool NPC::Process()
 
 	if(tic_timer.Check())
 	{
+		parse->EventNPC(EVENT_TICK, this, nullptr, "", 0);
 		BuffProcess();
 
 		if(curfp)
@@ -656,7 +673,8 @@ bool NPC::Process()
 		}
 	}
 
-	if (sendhpupdate_timer.Check() && (IsTargeted() || (IsPet() && GetOwner() && GetOwner()->IsClient()))) {
+	// we might actually want to reset in this check ... won't until issues arise at least :P
+	if (sendhpupdate_timer.Check(false) && (IsTargeted() || (IsPet() && GetOwner() && GetOwner()->IsClient()))) {
 		if(!IsFullHP || cur_hp<max_hp){
 			SendHPUpdate();
 		}
@@ -744,7 +762,7 @@ void NPC::UpdateEquipmentLight()
 {
 	m_Light.Type.Equipment = 0;
 	m_Light.Level.Equipment = 0;
-	
+
 	for (int index = MAIN_BEGIN; index < EmuConstants::EQUIPMENT_SIZE; ++index) {
 		if (index == MainAmmo) { continue; }
 
@@ -1054,7 +1072,7 @@ uint32 ZoneDatabase::CreateNewNPCCommand(const char *zone, uint32 zone_version, 
 		query = StringFormat("INSERT INTO npc_types (id, name, level, race, class, hp, gender, "
 				     "texture, helmtexture, size, loottable_id, merchant_id, face, "
 				     "runspeed, prim_melee_type, sec_melee_type) "
-				     "VALUES(%i, \"%s\" , %i, %i, %i, %i, %i, %i, %i, %f, %i, %i, %i, %f, %i, %i)",
+					 "VALUES(%i, \"%s\" , %i, %i, %i, %i, %i, %i, %i, %f, %i, %i, %i, %i, %i, %i)",
 				     npc_type_id, tmpstr, spawn->GetLevel(), spawn->GetRace(), spawn->GetClass(),
 				     spawn->GetMaxHP(), spawn->GetGender(), spawn->GetTexture(),
 				     spawn->GetHelmTexture(), spawn->GetSize(), spawn->GetLoottableID(),
@@ -1068,7 +1086,7 @@ uint32 ZoneDatabase::CreateNewNPCCommand(const char *zone, uint32 zone_version, 
 		query = StringFormat("INSERT INTO npc_types (name, level, race, class, hp, gender, "
 				     "texture, helmtexture, size, loottable_id, merchant_id, face, "
 				     "runspeed, prim_melee_type, sec_melee_type) "
-				     "VALUES(\"%s\", %i, %i, %i, %i, %i, %i, %i, %f, %i, %i, %i, %f, %i, %i)",
+					 "VALUES(\"%s\", %i, %i, %i, %i, %i, %i, %i, %f, %i, %i, %i, %i, %i, %i)",
 				     tmpstr, spawn->GetLevel(), spawn->GetRace(), spawn->GetClass(), spawn->GetMaxHP(),
 				     spawn->GetGender(), spawn->GetTexture(), spawn->GetHelmTexture(), spawn->GetSize(),
 				     spawn->GetLoottableID(), spawn->MerchantType, 0, spawn->GetRunspeed(), 28, 28);
@@ -1085,6 +1103,9 @@ uint32 ZoneDatabase::CreateNewNPCCommand(const char *zone, uint32 zone_version, 
 		return false;
 	}
 	uint32 spawngroupid = results.LastInsertedID();
+
+	spawn->SetSp2(spawngroupid);
+	spawn->SetNPCTypeID(npc_type_id);
 
 	query = StringFormat("INSERT INTO spawn2 (zone, version, x, y, z, respawntime, heading, spawngroupID) "
 			     "VALUES('%s', %u, %f, %f, %f, %i, %f, %i)",
@@ -1333,6 +1354,16 @@ int32 NPC::GetEquipmentMaterial(uint8 material_slot) const
 			return helmtexture;
 		case MaterialChest:
 			return texture;
+		case MaterialArms:
+			return armtexture;
+		case MaterialWrist:
+			return bracertexture;
+		case MaterialHands:
+			return handtexture;
+		case MaterialLegs:
+			return legtexture;
+		case MaterialFeet:
+			return feettexture;
 		case MaterialPrimary:
 			return d_melee_texture1;
 		case MaterialSecondary:
@@ -1939,11 +1970,19 @@ void NPC::ModifyNPCStat(const char *identifier, const char *newValue)
 	else if(id == "pr") { PR = atoi(val.c_str()); return; }
 	else if(id == "dr") { DR = atoi(val.c_str()); return; }
 	else if(id == "PhR") { PhR = atoi(val.c_str()); return; }
-	else if(id == "runspeed") { runspeed = (float)atof(val.c_str()); CalcBonuses(); return; }
+	else if(id == "runspeed") {
+		runspeed = (float)atof(val.c_str());
+		base_runspeed = (int)((float)runspeed * 40.0f);
+		base_walkspeed = base_runspeed * 100 / 265;
+		walkspeed = ((float)base_walkspeed) * 0.025f;
+		base_fearspeed = base_runspeed * 100 / 127;
+		fearspeed = ((float)base_fearspeed) * 0.025f;
+		CalcBonuses(); return;
+	}
 	else if(id == "special_attacks") { NPCSpecialAttacks(val.c_str(), 0, 1); return; }
 	else if(id == "special_abilities") { ProcessSpecialAbilities(val.c_str()); return; }
 	else if(id == "attack_speed") { attack_speed = (float)atof(val.c_str()); CalcBonuses(); return; }
-	else if(id == "attack_delay") { attack_delay = atoi(val.c_str()); CalcBonuses(); return; }	
+	else if(id == "attack_delay") { attack_delay = atoi(val.c_str()); CalcBonuses(); return; }
 	else if(id == "atk") { ATK = atoi(val.c_str()); return; }
 	else if(id == "accuracy") { accuracy_rating = atoi(val.c_str()); return; }
 	else if(id == "avoidance") { avoidance_rating = atoi(val.c_str()); return; }
@@ -2428,7 +2467,7 @@ void NPC::DoQuestPause(Mob *other) {
 
 }
 
-void NPC::ChangeLastName(const char* in_lastname) 
+void NPC::ChangeLastName(const char* in_lastname)
 {
 
 	EQApplicationPacket* outapp = new EQApplicationPacket(OP_GMLastName, sizeof(GMLastName_Struct));
@@ -2478,9 +2517,9 @@ void NPC::DepopSwarmPets()
 	}
 
 	if (IsPet() && GetPetType() == petTargetLock && GetPetTargetLockID()){
-			
+
 		Mob *targMob = entity_list.GetMob(GetPetTargetLockID());
-			
+
 		if(!targMob || (targMob && targMob->IsCorpse())){
 			Kill();
 			return;

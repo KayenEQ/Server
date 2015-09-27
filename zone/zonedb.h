@@ -6,6 +6,7 @@
 #include "position.h"
 #include "../common/faction.h"
 #include "../common/eqemu_logsys.h"
+#include "aa_ability.h"
 
 class Client;
 class Corpse;
@@ -278,7 +279,7 @@ public:
 	bool	SaveCharacterBindPoint(uint32 character_id, uint32 zone_id, uint32 instance_id, const glm::vec4& position, uint8 is_home);
 	bool	SaveCharacterCurrency(uint32 character_id, PlayerProfile_Struct* pp);
 	bool	SaveCharacterData(uint32 character_id, uint32 account_id, PlayerProfile_Struct* pp, ExtendedProfile_Struct* m_epp);
-	bool	SaveCharacterAA(uint32 character_id, uint32 aa_id, uint32 current_level);
+	bool	SaveCharacterAA(uint32 character_id, uint32 aa_id, uint32 current_level, uint32 charges);
 	bool	SaveCharacterSpell(uint32 character_id, uint32 spell_id, uint32 slot_id);
 	bool	SaveCharacterMemorizedSpell(uint32 character_id, uint32 spell_id, uint32 slot_id);
 	bool	SaveCharacterMaterialColor(uint32 character_id, uint32 slot_id, uint32 color);
@@ -339,17 +340,10 @@ public:
 	bool		SetCharacterFactionLevel(uint32 char_id, int32 faction_id, int32 value, uint8 temp, faction_map &val_list); // needed for factions Dec, 16 2001
 	bool		LoadFactionData();
 
-	/* AAs   */
-	bool		LoadAAEffects();
-	bool		LoadAAEffects2();
-	bool		LoadSwarmSpells();
-	SendAA_Struct*GetAASkillVars(uint32 skill_id);
-	uint8		GetTotalAALevels(uint32 skill_id);
-	uint32		GetSizeAA();
-	uint32		CountAAs();
-	void		LoadAAs(SendAA_Struct **load);
-	uint32		CountAAEffects();
-	void		FillAAEffects(SendAA_Struct* aa_struct);
+	/* AAs New */
+	bool	LoadAlternateAdvancementAbilities(std::unordered_map<int, std::unique_ptr<AA::Ability>> &abilities,
+											  std::unordered_map<int, std::unique_ptr<AA::Rank>> &ranks);
+	bool	LoadAlternateAdvancement(Client *c);
 
 	/* Zone related   */
 	bool		GetZoneCFG(uint32 zoneid, uint16 instance_id, NewZone_Struct *data, bool &can_bind, bool &can_combat, bool &can_levitate, bool &can_castoutdoor, bool &is_city, bool &is_hotzone, bool &allow_mercs, uint8 &zone_type, int &ruleset, char **map_filename);

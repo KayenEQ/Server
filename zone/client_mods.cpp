@@ -1122,7 +1122,7 @@ int32 Client::CalcMaxMana()
 	switch (GetCasterClass()) {
 		case 'I':
 		case 'W': {
-				max_mana = (CalcBaseMana() + itembonuses.Mana + spellbonuses.Mana + GroupLeadershipAAManaEnhancement());
+				max_mana = (CalcBaseMana() + itembonuses.Mana + spellbonuses.Mana + aabonuses.Mana + GroupLeadershipAAManaEnhancement());
 				break;
 			}
 		case 'N': {
@@ -1975,101 +1975,99 @@ int32 Client::CalcATK()
 
 uint32 Mob::GetInstrumentMod(uint16 spell_id) const
 {
-	if (GetClass() != BARD) {
+	if (GetClass() != BARD || spells[spell_id].IsDisciplineBuff) // Puretone is Singing but doesn't get any mod
 		return 10;
-	}
+
 	uint32 effectmod = 10;
-	int effectmodcap = RuleI(Character, BaseInstrumentSoftCap);
-	//this should never use spell modifiers...
-	//if a spell grants better modifers, they are copied into the item mods
-	//because the spells are supposed to act just like having the intrument.
-	//item mods are in 10ths of percent increases
+	int effectmodcap = 0;
+	bool nocap = false;
+	if (RuleB(Character, UseSpellFileSongCap)) {
+		effectmodcap = spells[spell_id].songcap / 10;
+		// this looks a bit weird, but easiest way I could think to keep both systems working
+		if (effectmodcap == 0)
+			nocap = true;
+		else
+			effectmodcap += 10;
+	} else {
+		effectmodcap = RuleI(Character, BaseInstrumentSoftCap);
+	}
+	// this should never use spell modifiers...
+	// if a spell grants better modifers, they are copied into the item mods
+	// because the spells are supposed to act just like having the intrument.
+	// item mods are in 10ths of percent increases
+	// clickies (Symphony of Battle) that have a song skill don't get AA bonus for some reason
+	// but clickies that are songs (selo's on Composers Greaves) do get AA mod as well
 	switch (spells[spell_id].skill) {
-		case SkillPercussionInstruments:
-			if (itembonuses.percussionMod == 0 && spellbonuses.percussionMod == 0) {
-				effectmod = 10;
-			}
-			else if (GetSkill(SkillPercussionInstruments) == 0) {
-				effectmod = 10;
-			}
-			else if (itembonuses.percussionMod > spellbonuses.percussionMod) {
-				effectmod = itembonuses.percussionMod;
-			}
-			else {
-				effectmod = spellbonuses.percussionMod;
-			}
-			effectmod += aabonuses.percussionMod;
-			break;
-		case SkillStringedInstruments:
-			if (itembonuses.stringedMod == 0 && spellbonuses.stringedMod == 0) {
-				effectmod = 10;
-			}
-			else if (GetSkill(SkillStringedInstruments) == 0) {
-				effectmod = 10;
-			}
-			else if (itembonuses.stringedMod > spellbonuses.stringedMod) {
-				effectmod = itembonuses.stringedMod;
-			}
-			else {
-				effectmod = spellbonuses.stringedMod;
-			}
-			effectmod += aabonuses.stringedMod;
-			break;
-		case SkillWindInstruments:
-			if (itembonuses.windMod == 0 && spellbonuses.windMod == 0) {
-				effectmod = 10;
-			}
-			else if (GetSkill(SkillWindInstruments) == 0) {
-				effectmod = 10;
-			}
-			else if (itembonuses.windMod > spellbonuses.windMod) {
-				effectmod = itembonuses.windMod;
-			}
-			else {
-				effectmod = spellbonuses.windMod;
-			}
-			effectmod += aabonuses.windMod;
-			break;
-		case SkillBrassInstruments:
-			if (itembonuses.brassMod == 0 && spellbonuses.brassMod == 0) {
-				effectmod = 10;
-			}
-			else if (GetSkill(SkillBrassInstruments) == 0) {
-				effectmod = 10;
-			}
-			else if (itembonuses.brassMod > spellbonuses.brassMod) {
-				effectmod = itembonuses.brassMod;
-			}
-			else {
-				effectmod = spellbonuses.brassMod;
-			}
-			effectmod += aabonuses.brassMod;
-			break;
-		case SkillSinging:
-			if (itembonuses.singingMod == 0 && spellbonuses.singingMod == 0) {
-				effectmod = 10;
-			}
-			else if (itembonuses.singingMod > spellbonuses.singingMod) {
-				effectmod = itembonuses.singingMod;
-			}
-			else {
-				effectmod = spellbonuses.singingMod;
-			}
-			effectmod += aabonuses.singingMod + spellbonuses.Amplification;
-			break;
-		default:
+	case SkillPercussionInstruments:
+		if (itembonuses.percussionMod == 0 && spellbonuses.percussionMod == 0)
 			effectmod = 10;
-			break;
-	}
-	effectmodcap += aabonuses.songModCap + spellbonuses.songModCap + itembonuses.songModCap;
-	if (effectmod < 10) {
+		else if (GetSkill(SkillPercussionInstruments) == 0)
+			effectmod = 10;
+		else if (itembonuses.percussionMod > spellbonuses.percussionMod)
+			effectmod = itembonuses.percussionMod;
+		else
+			effectmod = spellbonuses.percussionMod;
+		if (IsBardSong(spell_id))
+			effectmod += aabonuses.percussionMod;
+		break;
+	case SkillStringedInstruments:
+		if (itembonuses.stringedMod == 0 && spellbonuses.stringedMod == 0)
+			effectmod = 10;
+		else if (GetSkill(SkillStringedInstruments) == 0)
+			effectmod = 10;
+		else if (itembonuses.stringedMod > spellbonuses.stringedMod)
+			effectmod = itembonuses.stringedMod;
+		else
+			effectmod = spellbonuses.stringedMod;
+		if (IsBardSong(spell_id))
+			effectmod += aabonuses.stringedMod;
+		break;
+	case SkillWindInstruments:
+		if (itembonuses.windMod == 0 && spellbonuses.windMod == 0)
+			effectmod = 10;
+		else if (GetSkill(SkillWindInstruments) == 0)
+			effectmod = 10;
+		else if (itembonuses.windMod > spellbonuses.windMod)
+			effectmod = itembonuses.windMod;
+		else
+			effectmod = spellbonuses.windMod;
+		if (IsBardSong(spell_id))
+			effectmod += aabonuses.windMod;
+		break;
+	case SkillBrassInstruments:
+		if (itembonuses.brassMod == 0 && spellbonuses.brassMod == 0)
+			effectmod = 10;
+		else if (GetSkill(SkillBrassInstruments) == 0)
+			effectmod = 10;
+		else if (itembonuses.brassMod > spellbonuses.brassMod)
+			effectmod = itembonuses.brassMod;
+		else
+			effectmod = spellbonuses.brassMod;
+		if (IsBardSong(spell_id))
+			effectmod += aabonuses.brassMod;
+		break;
+	case SkillSinging:
+		if (itembonuses.singingMod == 0 && spellbonuses.singingMod == 0)
+			effectmod = 10;
+		else if (itembonuses.singingMod > spellbonuses.singingMod)
+			effectmod = itembonuses.singingMod;
+		else
+			effectmod = spellbonuses.singingMod;
+		if (IsBardSong(spell_id))
+			effectmod += aabonuses.singingMod + spellbonuses.Amplification;
+		break;
+	default:
 		effectmod = 10;
+		return effectmod;
 	}
-	if (effectmod > effectmodcap) {
+	if (!RuleB(Character, UseSpellFileSongCap))
+		effectmodcap += aabonuses.songModCap + spellbonuses.songModCap + itembonuses.songModCap;
+	if (effectmod < 10)
+		effectmod = 10;
+	if (!nocap && effectmod > effectmodcap) // if the cap is calculated to be 0 using new rules, no cap.
 		effectmod = effectmodcap;
-	}
-	Log.Out(Logs::Detail, Logs::Spells, "%s::GetInstrumentMod() spell=%d mod=%d modcap=%d\n",
-	        GetName(), spell_id, effectmod, effectmodcap);
+	Log.Out(Logs::Detail, Logs::Spells, "%s::GetInstrumentMod() spell=%d mod=%d modcap=%d\n", GetName(), spell_id,
+		effectmod, effectmodcap);
 	return effectmod;
 }
 

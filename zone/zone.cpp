@@ -68,7 +68,6 @@ extern bool staticzone;
 extern NetConnection net;
 extern PetitionList petition_list;
 extern QuestParserCollection* parse;
-extern uint16 adverrornum;
 extern uint32 numclients;
 extern WorldServer worldserver;
 extern Zone* zone;
@@ -241,8 +240,8 @@ bool Zone::LoadZoneObjects() {
 		data.object_type = type;
 		data.linked_list_addr[0] = 0;
         data.linked_list_addr[1] = 0;
-        data.unknown008	= (uint32)atoi(row[11]);
-        data.unknown010	= (uint32)atoi(row[12]);
+        data.size	= (uint32)atoi(row[11]);
+		data.solidtype	= (uint32)atoi(row[12]);
         data.unknown020	= (uint32)atoi(row[13]);
         data.unknown024	= (uint32)atoi(row[14]);
         data.unknown076	= (uint32)atoi(row[15]);
@@ -697,7 +696,7 @@ void Zone::Shutdown(bool quite)
 
 	Log.Out(Logs::General, Logs::Status, "Zone Shutdown: %s (%i)", zone->GetShortName(), zone->GetZoneID());
 	petition_list.ClearPetitions();
-	zone->GotCurTime(false);
+	zone->SetZoneHasCurrentTime(false);
 	if (!quite)
 		Log.Out(Logs::General, Logs::Normal, "Zone shutdown: going to sleep");
 	ZoneLoaded = false;
@@ -760,6 +759,8 @@ Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name)
 	qGlobals = nullptr;
 	default_ruleset = 0;
 
+	is_zone_time_localized = false;
+
 	loglevelvar = 0;
 	merchantvar = 0;
 	tradevar = 0;
@@ -803,9 +804,7 @@ Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name)
 	weather_intensity = 0;
 	blocked_spells = nullptr;
 	totalBS = 0;
-	aas = nullptr;
-	totalAAs = 0;
-	gottime = false;
+	zone_has_current_time = false;
 
 	Instance_Shutdown_Timer = nullptr;
 	bool is_perma = false;
@@ -863,16 +862,6 @@ Zone::~Zone() {
 	safe_delete(qGlobals);
 	safe_delete_array(adv_data);
 	safe_delete_array(map_name);
-
-	if(aas != nullptr) {
-		int r;
-		for(r = 0; r < totalAAs; r++) {
-			uchar *data = (uchar *) aas[r];
-			safe_delete_array(data);
-		}
-		safe_delete_array(aas);
-	}
-
 	safe_delete(GuildBanks);
 }
 
@@ -951,16 +940,12 @@ bool Zone::Init(bool iStaticZone) {
 	zone->LoadAlternateCurrencies();
 	zone->LoadNPCEmotes(&NPCEmoteList);
 
-	//Load AA information
-	adverrornum = 500;
-	LoadAAs();
+	LoadAlternateAdvancement();
 
 	//Load merchant data
-	adverrornum = 501;
 	zone->GetMerchantDataForZoneLoad();
 
 	//Load temporary merchant data
-	adverrornum = 502;
 	zone->LoadTempMerchantData();
 
 	// Merc data
@@ -972,7 +957,6 @@ bool Zone::Init(bool iStaticZone) {
 	if (RuleB(Zone, LevelBasedEXPMods))
 		zone->LoadLevelEXPMods();
 
-	adverrornum = 503;
 	petition_list.ClearPetitions();
 	petition_list.ReadDatabase();
 
@@ -1362,7 +1346,6 @@ void Zone::ChangeWeather()
 
 			weathertimer = (duration*60)*1000;
 			Weather_Timer->Start(weathertimer);
-			zone->zone_weather = 0;
 			zone->weather_intensity = 0;
 		}
 		else if(tmpOldWeather == 2)
@@ -1374,7 +1357,6 @@ void Zone::ChangeWeather()
 
 			weathertimer = (duration*60)*1000;
 			Weather_Timer->Start(weathertimer);
-			zone->zone_weather = 0;
 			zone->weather_intensity = 0;
 		}
 	}
@@ -1393,6 +1375,10 @@ void Zone::ChangeWeather()
 	{
 		Log.Out(Logs::General, Logs::None, "The weather for zone: %s has changed. Old weather was = %i. New weather is = %i The next check will be in %i seconds. Rain chance: %i, Rain duration: %i, Snow chance %i, Snow duration: %i", zone->GetShortName(), tmpOldWeather, zone_weather,Weather_Timer->GetRemainingTime()/1000,rainchance,rainduration,snowchance,snowduration);
 		this->weatherSend();
+		if (zone->weather_intensity == 0)
+		{
+			zone->zone_weather = 0;
+		}
 	}
 }
 
@@ -1484,7 +1470,7 @@ void Zone::Repop(uint32 delay) {
 
 void Zone::GetTimeSync()
 {
-	if (worldserver.Connected() && !gottime) {
+	if (worldserver.Connected() && !zone_has_current_time) {
 		ServerPacket* pack = new ServerPacket(ServerOP_GetWorldTime, 0);
 		worldserver.SendPacket(pack);
 		safe_delete(pack);
@@ -1508,17 +1494,42 @@ void Zone::SetDate(uint16 year, uint8 month, uint8 day, uint8 hour, uint8 minute
 	}
 }
 
-void Zone::SetTime(uint8 hour, uint8 minute)
+void Zone::SetTime(uint8 hour, uint8 minute, bool update_world /*= true*/)
 {
 	if (worldserver.Connected()) {
 		ServerPacket* pack = new ServerPacket(ServerOP_SetWorldTime, sizeof(eqTimeOfDay));
-		eqTimeOfDay* eqtod = (eqTimeOfDay*)pack->pBuffer;
-		zone_time.getEQTimeOfDay(time(0), &eqtod->start_eqtime);
-		eqtod->start_eqtime.minute=minute;
-		eqtod->start_eqtime.hour=hour;
-		eqtod->start_realtime=time(0);
-		printf("Setting master time on world server to: %d:%d (%d)\n", hour, minute, (int)eqtod->start_realtime);
-		worldserver.SendPacket(pack);
+		eqTimeOfDay* eq_time_of_day = (eqTimeOfDay*)pack->pBuffer;
+
+		zone_time.GetCurrentEQTimeOfDay(time(0), &eq_time_of_day->start_eqtime);
+
+		eq_time_of_day->start_eqtime.minute = minute;
+		eq_time_of_day->start_eqtime.hour = hour;
+		eq_time_of_day->start_realtime = time(0);
+
+		/* By Default we update worlds time, but we can optionally no update world which updates the rest of the zone servers */
+		if (update_world){
+			Log.Out(Logs::General, Logs::Zone_Server, "Setting master time on world server to: %d:%d (%d)\n", hour, minute, (int)eq_time_of_day->start_realtime);
+			worldserver.SendPacket(pack);
+
+			/* Set Time Localization Flag */
+			zone->is_zone_time_localized = false;
+		}
+		/* When we don't update world, we are localizing ourselves, we become disjointed from normal syncs and set time locally */
+		else{
+
+			Log.Out(Logs::General, Logs::Zone_Server, "Setting zone localized time...");
+
+			zone->zone_time.SetCurrentEQTimeOfDay(eq_time_of_day->start_eqtime, eq_time_of_day->start_realtime);
+			EQApplicationPacket* outapp = new EQApplicationPacket(OP_TimeOfDay, sizeof(TimeOfDay_Struct));
+			TimeOfDay_Struct* time_of_day = (TimeOfDay_Struct*)outapp->pBuffer;
+			zone->zone_time.GetCurrentEQTimeOfDay(time(0), time_of_day);
+			entity_list.QueueClients(0, outapp, false);
+			safe_delete(outapp);
+
+			/* Set Time Localization Flag */
+			zone->is_zone_time_localized = true;
+		}
+
 		safe_delete(pack);
 	}
 }
@@ -1900,7 +1911,7 @@ bool Zone::IsSpellBlocked(uint32 spell_id, const glm::vec3& location)
 					}
 					case 2:
 					{
-						if (!IsWithinAxisAlignedBox(location, blocked_spells[x].m_Location - blocked_spells[x].m_Difference, blocked_spells[x].m_Location + blocked_spells[x].m_Difference))
+						if (IsWithinAxisAlignedBox(location, blocked_spells[x].m_Location - blocked_spells[x].m_Difference, blocked_spells[x].m_Location + blocked_spells[x].m_Difference))
 							return true;
 						break;
 					}
@@ -1934,7 +1945,7 @@ const char* Zone::GetSpellBlockedMessage(uint32 spell_id, const glm::vec3& locat
 				}
 				case 2:
 				{
-					if(!IsWithinAxisAlignedBox(location, blocked_spells[x].m_Location - blocked_spells[x].m_Difference, blocked_spells[x].m_Location + blocked_spells[x].m_Difference))
+					if(IsWithinAxisAlignedBox(location, blocked_spells[x].m_Location - blocked_spells[x].m_Difference, blocked_spells[x].m_Location + blocked_spells[x].m_Difference))
 						return blocked_spells[x].message;
 					break;
 				}
@@ -2209,9 +2220,9 @@ void Zone::ReloadWorld(uint32 Option){
 		entity_list.ClearAreas();
 		parse->ReloadQuests();
 	} else if(Option == 1) {
-		zone->Repop(0);
 		entity_list.ClearAreas();
 		parse->ReloadQuests();
+		zone->Repop(0);
 	}
 }
 
