@@ -73,6 +73,9 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 		if (spell_id == SPELL_IMP_HARM_TOUCH && IsClient() && (GetAA(aaSpellCastingFury) > 0) && (GetAA(aaUnholyTouch) > 0))
 			 chance = 100;
 
+		if (spells[spell_id].override_crit_chance > 0 && chance > spells[spell_id].override_crit_chance)
+			chance = spells[spell_id].override_crit_chance;
+
 		if (zone->random.Roll(chance)) {
 			Critical = true;
 			ratio += itembonuses.SpellCritDmgIncrease + spellbonuses.SpellCritDmgIncrease + aabonuses.SpellCritDmgIncrease;
@@ -95,6 +98,7 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 			value = value_BaseEffect*ratio/100;
 
 			value += value_BaseEffect*GetFocusEffect(focusImprovedDamage, spell_id)/100;
+			value += value_BaseEffect*GetFocusEffect(focusImprovedDamage2, spell_id)/100;
 
 			value += int(value_BaseEffect*GetFocusEffect(focusFcDamagePctCrit, spell_id)/100)*ratio/100;
 
@@ -106,6 +110,7 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 			value -= GetFocusEffect(focusFcDamageAmtCrit, spell_id)*ratio/100;
 
 			value -= GetFocusEffect(focusFcDamageAmt, spell_id);
+			value -= GetFocusEffect(focusFcDamageAmt2, spell_id);
 
 			if(itembonuses.SpellDmg && spells[spell_id].classes[(GetClass()%16) - 1] >= GetLevel() - 5)
 				value -= GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value)*ratio/100;
@@ -126,6 +131,7 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 	value = value_BaseEffect;
 
 	value += value_BaseEffect*GetFocusEffect(focusImprovedDamage, spell_id)/100;
+	value += value_BaseEffect*GetFocusEffect(focusImprovedDamage2, spell_id)/100;
 
 	value += value_BaseEffect*GetFocusEffect(focusFcDamagePctCrit, spell_id)/100;
 
@@ -137,6 +143,7 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 	value -= GetFocusEffect(focusFcDamageAmtCrit, spell_id);
 
 	value -= GetFocusEffect(focusFcDamageAmt, spell_id);
+	value -= GetFocusEffect(focusFcDamageAmt2, spell_id);
 
 	if(itembonuses.SpellDmg && spells[spell_id].classes[(GetClass()%16) - 1] >= GetLevel() - 5)
 		 value -= GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value);
@@ -162,7 +169,10 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target, int16 buff
 	chance += itembonuses.CriticalDoTChance + spellbonuses.CriticalDoTChance + aabonuses.CriticalDoTChance;
 
 	if (spellbonuses.CriticalDotDecay)
-			chance += GetDecayEffectValue(spell_id, SE_CriticalDotDecay);
+		chance += GetDecayEffectValue(spell_id, SE_CriticalDotDecay);
+
+	if (spells[spell_id].override_crit_chance > 0 && chance > spells[spell_id].override_crit_chance)
+		chance = spells[spell_id].override_crit_chance;
 
 	value_BaseEffect = value + (value*GetFocusEffect(focusFcBaseEffects, spell_id)/100);
 	value_BaseEffect = GetBaseSpellPower(value_BaseEffect,spell_id, true, false, buff_focus); //C!Kayen DOT
@@ -172,11 +182,13 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target, int16 buff
 		ratio += itembonuses.DotCritDmgIncrease + spellbonuses.DotCritDmgIncrease + aabonuses.DotCritDmgIncrease;
 		value = value_BaseEffect*ratio/100;
 		value += int(value_BaseEffect*GetFocusEffect(focusImprovedDamage, spell_id)/100)*ratio/100;
+		value += int(value_BaseEffect*GetFocusEffect(focusImprovedDamage2, spell_id)/100)*ratio/100;
 		value += int(value_BaseEffect*GetFocusEffect(focusFcDamagePctCrit, spell_id)/100)*ratio/100;
 		value += int(value_BaseEffect*target->GetVulnerability(this, spell_id, 0)/100)*ratio/100;
 		extra_dmg = target->GetFcDamageAmtIncoming(this, spell_id) +
 					int(GetFocusEffect(focusFcDamageAmtCrit, spell_id)*ratio/100) +
-					GetFocusEffect(focusFcDamageAmt, spell_id);
+					GetFocusEffect(focusFcDamageAmt, spell_id) +
+					GetFocusEffect(focusFcDamageAmt2, spell_id);
 
 		if (extra_dmg) {
 			int duration = CalcBuffDuration(this, this, spell_id);
@@ -190,11 +202,13 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target, int16 buff
 
 		value = value_BaseEffect;
 		value += value_BaseEffect*GetFocusEffect(focusImprovedDamage, spell_id)/100;
+		value += value_BaseEffect*GetFocusEffect(focusImprovedDamage2, spell_id)/100;
 		value += value_BaseEffect*GetFocusEffect(focusFcDamagePctCrit, spell_id)/100;
 		value += value_BaseEffect*target->GetVulnerability(this, spell_id, 0)/100;
 		extra_dmg = target->GetFcDamageAmtIncoming(this, spell_id) +
 					GetFocusEffect(focusFcDamageAmtCrit, spell_id) +
-					GetFocusEffect(focusFcDamageAmt, spell_id);
+					GetFocusEffect(focusFcDamageAmt, spell_id) +
+					GetFocusEffect(focusFcDamageAmt2, spell_id);
 
 		if (extra_dmg) {
 			int duration = CalcBuffDuration(this, this, spell_id);
@@ -262,6 +276,9 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target, int16 b
 
 		if (spellbonuses.CriticalHealDecay)
 			chance += GetDecayEffectValue(spell_id, SE_CriticalHealDecay);
+
+		if (spells[spell_id].override_crit_chance > 0 && chance > spells[spell_id].override_crit_chance)
+			chance = spells[spell_id].override_crit_chance;
 
 		if(chance && (zone->random.Roll(chance))) {
 			Critical = true;

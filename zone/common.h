@@ -62,6 +62,7 @@ typedef enum {	//focus types
 	focusManaCost,
 	focusImprovedHeal,
 	focusImprovedDamage,
+	focusImprovedDamage2,
 	focusImprovedDOT,		//i dont know about this...
 	focusFcDamagePctCrit,
 	focusImprovedUndeadDamage,
@@ -73,6 +74,7 @@ typedef enum {	//focus types
 	focusTwincast,
 	focusSympatheticProc,
 	focusFcDamageAmt,
+	focusFcDamageAmt2,
 	focusFcDamageAmtCrit,
 	focusSpellDurByTic,
 	focusSwarmPetDuration,
@@ -407,6 +409,7 @@ struct StatBonuses {
 	bool	LimitToSkill[HIGHEST_SKILL+2];		// Determines if we need to search for a skill proc.
 	uint32  SkillProc[MAX_SKILL_PROCS];			// Max number of spells containing skill_procs.
 	uint32  SkillProcSuccess[MAX_SKILL_PROCS];	// Max number of spells containing skill_procs_success.
+	uint32  PC_Pet_Rampage[2];					// 0= % chance to rampage, 1=damage modifier
 
 	// AAs
 	int8	Packrat;							//weight reduction for items, 1 point = 10%

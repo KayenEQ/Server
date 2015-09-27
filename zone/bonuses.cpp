@@ -1417,6 +1417,13 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 		case SE_IncreaseExtTargetWindow:
 			newbon->extra_xtargets += base1;
 			break;
+
+		case SE_PC_Pet_Rampage: {
+			newbon->PC_Pet_Rampage[0] += base1; //Chance to rampage
+			if (newbon->PC_Pet_Rampage[1] < base2)
+				newbon->PC_Pet_Rampage[1] = base2; //Damage modifer - take highest
+			break;
+		}	
 		// to do
 		case SE_PetDiscipline:
 			break;
@@ -3125,6 +3132,13 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				break;
 			}
 
+			case SE_PC_Pet_Rampage: {
+				new_bonus->PC_Pet_Rampage[0] += effect_value; //Chance to rampage
+				if (new_bonus->PC_Pet_Rampage[1] < base2)
+					new_bonus->PC_Pet_Rampage[1] = base2; //Damage modifer - take highest
+				break;
+			}		
+
 			//Special custom cases for loading effects on to NPC from 'npc_spels_effects' table
 			if (IsAISpellEffect) {
 
@@ -3605,6 +3619,8 @@ uint8 Mob::IsFocusEffect(uint16 spell_id,int effect_index, bool AA,uint32 aa_eff
 	{
 		case SE_ImprovedDamage:
 			return focusImprovedDamage;
+		case SE_ImprovedDamage2:
+			return focusImprovedDamage2;
 		case SE_ImprovedHeal:
 			return focusImprovedHeal;
 		case SE_ReduceManaCost:
@@ -3643,6 +3659,8 @@ uint8 Mob::IsFocusEffect(uint16 spell_id,int effect_index, bool AA,uint32 aa_eff
 			return focusSympatheticProc;
 		case SE_FcDamageAmt:
 			return focusFcDamageAmt;
+		case SE_FcDamageAmt2:
+			return focusFcDamageAmt2;
 		case SE_FcDamageAmtCrit:
 			return focusFcDamageAmtCrit;
 		case SE_FcDamagePctCrit:
