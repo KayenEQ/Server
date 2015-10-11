@@ -777,14 +777,6 @@ bool Client::CheckFizzle(uint16 spell_id)
 	// always at least 1% chance to fail or 5% to succeed
 	fizzlechance = fizzlechance < 1 ? 1 : (fizzlechance > 95 ? 95 : fizzlechance);
 
-	/*
-	if(IsBardSong(spell_id))
-	{
-		//This was a channel chance modifier - no evidence for fizzle reduction
-		fizzlechance -= GetAA(aaInternalMetronome) * 1.5f;
-	}
-	*/
-
 	float fizzle_roll = zone->random.Real(0, 100);
 
 	Log.Out(Logs::Detail, Logs::Spells, "Check Fizzle %s  spell %d  fizzlechance: %0.2f%%   diff: %0.2f  roll: %0.2f", GetName(), spell_id, fizzlechance, diff, fizzle_roll);
@@ -3800,6 +3792,8 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 	// not all unresistable, so changing this to only check certain spells
 	if(IsResistableSpell(spell_id))
 	{
+		spelltar->BreakInvisibleSpells(); //Any detrimental spell cast on you will drop invisible (can be AOE, non damage ect).
+
 		if (IsCharmSpell(spell_id) || IsMezSpell(spell_id) || IsFearSpell(spell_id))
 			spell_effectiveness = spelltar->ResistSpell(spells[spell_id].resisttype, spell_id, this, use_resist_adjust, resist_adjust, true, false, false, level_override);
 		else
@@ -3833,12 +3827,18 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 					}
 				}
 
+				if (spelltar->IsClient())
+					spelltar->CastToClient()->BreakSneakWhenCastOn(this, true);
+				
 				spelltar->CheckNumHitsRemaining(NumHit::IncomingSpells);
 				CheckNumHitsRemaining(NumHit::OutgoingSpells);
 
 				safe_delete(action_packet);
 				return false;
 			}
+		}
+		if (spelltar->IsClient()){
+			spelltar->CastToClient()->BreakSneakWhenCastOn(this, false);
 		}
 	}
 	else
@@ -4194,7 +4194,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 			if(aggro > 0) {
 				AddToHateList(caster, aggro);
 			} else {
-				AddToHateList(caster, 1);
+				AddToHateList(caster, 1,0,true,false,false,spell_id);
 			}
 			return true;
 		}
@@ -4232,7 +4232,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 		if(aggro > 0) {
 			AddToHateList(caster, aggro);
 		} else {
-			AddToHateList(caster, 1);
+			AddToHateList(caster, 1,0,true,false,false,spell_id);
 		}
 		return true;
 	}
@@ -4248,7 +4248,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 			if(aggro > 0) {
 				AddToHateList(caster, aggro);
 			} else {
-				AddToHateList(caster, 1);
+				AddToHateList(caster, 1,0,true,false,false,spell_id);
 			}
 			return true;
 		} else if(IsClient() && caster->IsClient() && (caster->CastToClient()->GetGM() == false))
@@ -4265,7 +4265,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 			if (aggro > 0) {
 				AddToHateList(caster, aggro);
 			} else {
-				AddToHateList(caster, 1);
+				AddToHateList(caster, 1,0,true,false,false,spell_id);
 			}
 			return true;
 		}
@@ -4288,7 +4288,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 			if(aggro > 0) {
 				AddToHateList(caster, aggro);
 			} else {
-				AddToHateList(caster, 1);
+				AddToHateList(caster, 1,0,true,false,false,spell_id);
 			}
 			return true;
 		}
@@ -4328,7 +4328,7 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 			if(aggro > 0) {
 				AddToHateList(caster, aggro);
 			} else {
-				AddToHateList(caster, 1);
+				AddToHateList(caster, 1,0,true,false,false,spell_id);
 			}
 			return true;
 		}
@@ -4439,7 +4439,7 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 	}
 
 	//Get the resist chance for the target
-	if(resist_type == RESIST_NONE)
+	if(resist_type == RESIST_NONE || spells[spell_id].no_resist)
 	{
 		Log.Out(Logs::Detail, Logs::Spells, "Spell was unresistable");
 		return 100;

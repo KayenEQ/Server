@@ -825,7 +825,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 				// define spells with fixed duration
 				// charm spells with -1 in field 209 are all of fixed duration, so lets use that instead of spell_ids
-				if(spells[spell_id].powerful_flag == -1)
+				if(spells[spell_id].no_resist)
 					bBreak = true;
 
 				if (!bBreak)
@@ -5893,6 +5893,9 @@ int16 Client::GetFocusEffect(focusType type, uint16 spell_id)
 	if (IsBardSong(spell_id) && type != focusFcBaseEffects && type != focusSpellDuration)
 		return 0;
 
+	if (spells[spell_id].not_focusable)
+		return 0;
+
 	int16 realTotal = 0;
 	int16 realTotal2 = 0;
 	int16 realTotal3 = 0;
@@ -6163,6 +6166,9 @@ int16 Client::GetFocusEffect(focusType type, uint16 spell_id)
 }
 
 int16 NPC::GetFocusEffect(focusType type, uint16 spell_id) {
+
+	if (spells[spell_id].not_focusable)
+		return 0;
 
 	int16 realTotal = 0;
 	int16 realTotal2 = 0;
@@ -7364,5 +7370,69 @@ void Mob::CalcSpellPowerDistanceMod(uint16 spell_id, float range, Mob* caster)
 		mod *= 100.0f;
 
 		SetSpellPowerDistanceMod(static_cast<int>(mod));
+	}
+}
+
+void Mob::BreakInvisibleSpells()
+{
+	if(invisible) {
+		BuffFadeByEffect(SE_Invisibility);
+		BuffFadeByEffect(SE_Invisibility2);
+		invisible = false;
+	}
+	if(invisible_undead) {
+		BuffFadeByEffect(SE_InvisVsUndead);
+		BuffFadeByEffect(SE_InvisVsUndead2);
+		invisible_undead = false;
+	}
+	if(invisible_animals){
+		BuffFadeByEffect(SE_InvisVsAnimals);
+		invisible_animals = false;
+	}
+}
+
+void Client::BreakSneakWhenCastOn(Mob* caster, bool IsResisted)
+{
+	bool IsCastersTarget = false; //Chance to avoid only applies to AOE spells when not targeted.
+	if(hidden || improved_hidden){
+
+		if (caster){
+			Mob* target = nullptr;
+			target = caster->GetTarget();
+			if (target && target == this){
+				IsCastersTarget = true;
+			}
+		}
+
+		if (!IsCastersTarget){
+
+			int chance = spellbonuses.NoBreakAESneak + itembonuses.NoBreakAESneak + aabonuses.NoBreakAESneak;
+
+			if (IsResisted)
+				chance *= 2;
+
+			if(chance && (zone->random.Roll(chance)))
+				return; // Do not drop Sneak/Hide
+		}
+	
+		//TODO: The skill buttons should reset when this occurs. Not sure how to force that yet. - Kayen
+		hidden = false;
+		improved_hidden = false;
+		EQApplicationPacket* outapp = new EQApplicationPacket(OP_SpawnAppearance, sizeof(SpawnAppearance_Struct));
+		SpawnAppearance_Struct* sa_out = (SpawnAppearance_Struct*)outapp->pBuffer;
+		sa_out->spawn_id = GetID();
+		sa_out->type = 0x03;
+		sa_out->parameter = 0;
+		entity_list.QueueClients(this, outapp, false);
+		safe_delete(outapp);
+
+		Message_StringID(MT_Skills,NO_LONGER_HIDDEN);
+
+		//Sneaking alone will not be disabled from spells, only hide+sneak.
+		if (sneaking){
+			sneaking = false;
+			SendAppearancePacket(AT_Sneak, 0);
+			Message_StringID(MT_Skills,STOP_SNEAKING);
+		}
 	}
 }

@@ -1094,6 +1094,14 @@ bool DetrimentalSpellAllowsRest(uint16 spell_id)
 	return false;
 }
 
+bool NoDetrimentalSpellAggro(uint16 spell_id)
+{
+	if (IsValidSpell(spell_id))
+		return spells[spell_id].no_detrimental_spell_aggro;
+
+	return false;
+}
+
 uint32 GetNimbusEffect(uint16 spell_id)
 {
 	if (IsValidSpell(spell_id))
@@ -1168,7 +1176,7 @@ bool IsFastBuffTicSpell(uint16 spell_id)
 		spells[spell_id].viral_range == -1 &&
 		spells[spell_id].buffduration > 0 && 
 		spells[spell_id].buffduration <= 3 && 
-		spells[spell_id].not_extendable == 1)
+		spells[spell_id].not_focusable == 1) //C!Kayen: TODO UPDATE THIS FLAG
 		return true;
 
 	return false;

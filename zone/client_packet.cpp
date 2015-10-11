@@ -3742,7 +3742,7 @@ void Client::Handle_OP_BuffRemoveRequest(const EQApplicationPacket *app)
 
 	uint16 SpellID = m->GetSpellIDFromSlot(brrs->SlotID);
 
-	if (SpellID && IsBeneficialSpell(SpellID))
+	if (SpellID && IsBeneficialSpell(SpellID) && !spells[SpellID].no_remove)
 		m->BuffFadeBySlot(brrs->SlotID, true);
 }
 
@@ -5089,18 +5089,12 @@ void Client::Handle_OP_DisarmTraps(const EQApplicationPacket *app)
 		Message(13, "Ability recovery time not yet met.");
 		return;
 	}
-	int reuse = DisarmTrapsReuseTime;
-	switch (GetAA(aaAdvTrapNegotiation)) {
-	case 1:
-		reuse -= 1;
-		break;
-	case 2:
-		reuse -= 3;
-		break;
-	case 3:
-		reuse -= 5;
-		break;
-	}
+
+	int reuse = DisarmTrapsReuseTime - GetSkillReuseTime(SkillDisarmTraps);
+
+	if (reuse < 1)
+		reuse = 1;
+
 	p_timers.Start(pTimerDisarmTraps, reuse - 1);
 
 	Trap* trap = entity_list.FindNearbyTrap(this, 60);
@@ -5376,17 +5370,9 @@ void Client::Handle_OP_EnvDamage(const EQApplicationPacket *app)
 
 	if (ed->dmgtype == 252) {
 
-		switch (GetAA(aaAcrobatics)) { //Don't know what acrobatics effect is yet but it should be done client side via aa effect.. till then
-		case 1:
-			damage = damage * 95 / 100;
-			break;
-		case 2:
-			damage = damage * 90 / 100;
-			break;
-		case 3:
-			damage = damage * 80 / 100;
-			break;
-		}
+		int mod = spellbonuses.ReduceFallDamage + itembonuses.ReduceFallDamage + aabonuses.ReduceFallDamage;
+
+		damage -= damage * mod / 100;
 	}
 
 	if (damage < 0)
@@ -5460,19 +5446,13 @@ void Client::Handle_OP_FeignDeath(const EQApplicationPacket *app)
 		Message(13, "Ability recovery time not yet met.");
 		return;
 	}
+	
 	int reuse = FeignDeathReuseTime;
-	switch (GetAA(aaRapidFeign))
-	{
-	case 1:
-		reuse -= 1;
-		break;
-	case 2:
-		reuse -= 2;
-		break;
-	case 3:
-		reuse -= 5;
-		break;
-	}
+	reuse -= GetSkillReuseTime(SkillFeignDeath);
+
+	if (reuse < 1)
+		reuse = 1;
+
 	p_timers.Start(pTimerFeignDeath, reuse - 1);
 
 	//BreakInvis();
@@ -7779,7 +7759,11 @@ void Client::Handle_OP_Hide(const EQApplicationPacket *app)
 		Message(13, "Ability recovery time not yet met.");
 		return;
 	}
-	int reuse = HideReuseTime - GetAA(209);
+	int reuse = HideReuseTime - GetSkillReuseTime(SkillHide);
+
+	if (reuse < 1)
+		reuse = 1;
+
 	p_timers.Start(pTimerHide, reuse - 1);
 
 	float hidechance = ((GetSkill(SkillHide) / 250.0f) + .25) * 100;
@@ -7793,7 +7777,7 @@ void Client::Handle_OP_Hide(const EQApplicationPacket *app)
 		sa_out->parameter = 1;
 		entity_list.QueueClients(this, outapp, true);
 		safe_delete(outapp);
-		if (GetAA(aaShroudofStealth)){
+		if (spellbonuses.ShroudofStealth || aabonuses.ShroudofStealth || itembonuses.ShroudofStealth){
 			improved_hidden = true;
 			hidden = true;
 		}
@@ -11722,18 +11706,12 @@ void Client::Handle_OP_SenseTraps(const EQApplicationPacket *app)
 		Message(13, "Ability recovery time not yet met.");
 		return;
 	}
-	int reuse = SenseTrapsReuseTime;
-	switch (GetAA(aaAdvTrapNegotiation)) {
-	case 1:
-		reuse -= 1;
-		break;
-	case 2:
-		reuse -= 3;
-		break;
-	case 3:
-		reuse -= 5;
-		break;
-	}
+
+	int reuse = SenseTrapsReuseTime - GetSkillReuseTime(SkillSenseTraps);
+
+	if (reuse < 1)
+		reuse = 1;
+
 	p_timers.Start(pTimerSenseTraps, reuse - 1);
 
 	Trap* trap = entity_list.FindNearbyTrap(this, 800);
