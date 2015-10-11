@@ -5868,8 +5868,8 @@ void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtarget
 	int hit_count = 0;
 	int32 AmtHit_mod = GetSpellPowerAmtHitsEffect(spell_id);
 
-	if (spells[spell_id].aemaxtargets && spells[spell_id].maxtargets)
-		hit_count = spells[spell_id].maxtargets; //Hijack this field if set WITH aemaxtargets, should equal or > aemaxtargets. 
+	if (spells[spell_id].aemaxtargets)
+		hit_count = AOEMaxHitCount(spell_id); //Uses [Numhits] should equal or < aemaxtargets. 
 
 	uint32 CurrentDistance, ClosestDistance = 4294967295u;
 	Mob *ClosestMob, *erase_value = nullptr;
@@ -6700,7 +6700,7 @@ void Mob::SpellProjectileEffectTargetRing()
 			if (target){
 				uint16 p_spell_id = projectile_spell_id_ring[i];
 				if (IsValidSpell(p_spell_id)){
-					if (spells[p_spell_id].powerful_flag){ //Powerful Flag denotes 'Spell Projectile'
+					if (IsProjectile(p_spell_id)){ //Powerful Flag denotes 'Spell Projectile'
 						entity_list.AESpell(this, target, p_spell_id, false, spells[p_spell_id].ResistDiff);
 
 						if (HasProjectileAESpellHitTarget())
@@ -7275,7 +7275,7 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	//mod = mod*spells[spell_id].cast_from_crouch/100;
 
 	//SetChargeTimeCasting(time_casting);
-	if (GetProjSpeed(spell_id)){ //Need to use seperate variable if dealing with projectile (clears at different time).
+	if (IsProjectile(spell_id)){ //Need to use seperate variable if dealing with projectile (clears at different time).
 		SetCastFromCrouchIntervalProj(charge_interval);
 		SetCastFromCrouchInterval(charge_interval); //For recast adjust code purposes.
 	}
@@ -7300,7 +7300,7 @@ int32 Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int ef
 		return 0;
 
 	int32 interval = 0;
-	if (GetProjSpeed(spell_id)){
+	if (IsProjectile(spell_id)){
 		//See CasterRestriction - If these is true we fire MORE projectiles instead of scaling.
 		if (spells[spell_id].base2[effectid] <= -20000 && spells[spell_id].base2[effectid] >= -20010)
 			return 0;

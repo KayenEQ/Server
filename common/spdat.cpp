@@ -1246,6 +1246,20 @@ bool IsNoTargetRequiredSpell(uint16 spell_id)
 	return false;
 }
 
+int AOEMaxHitCount(uint16 spell_id)
+{
+	/*This flags the AOE so it must hit a specific number of times.
+	Ie. Hit 3 targets OR hit the same target 3 times.
+	Only used for non duration spells*/
+	
+	if (spells[spell_id].aemaxtargets && 
+		spells[spell_id].buffduration == 0 && 
+		spells[spell_id].numhitstype == 0)
+		return spells[spell_id].numhits;
+
+	return 0;
+}
+
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 
@@ -1265,4 +1279,5 @@ int GetProjCastingAnimation(uint16 spell_id) { return spells[spell_id].viral_ran
 int GetProjTilt(uint16 spell_id) { return spells[spell_id].pvpresistbase; }
 int GetProjArc(uint16 spell_id) { return spells[spell_id].pvpresistcap; }
 int GetProjAngle(uint16 spell_id) { return spells[spell_id].pvpresistcalc; }
-int GetProjSpeed(uint16 spell_id) { return spells[spell_id].powerful_flag; }
+int GetProjSpeed(uint16 spell_id) { return spells[spell_id].projectile_speed; }
+bool IsProjectile(uint16 spell_id) { if (spells[spell_id].projectile_speed) { return true; } return false;}

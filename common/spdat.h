@@ -820,8 +820,8 @@ struct SPDat_Spell_Struct
 
 /* 169 */	bool cast_while_moving; //C!Kayen
 /* 170 */	int cast_from_crouch; //C!Kayen - Mod the modifer [Start - Remain Time / 100]... (Base 100)
-/* 171 */	int AppEffect;
-/* 172 */	int EndurDrain;
+/* 171 */	int AppEffect; //C!Kayen 
+/* 172 */	int EndurDrain; //C!Kayen
 
 /* 173 */	int HateAdded;
 /* 174 */	int EndurUpkeep;
@@ -831,7 +831,7 @@ struct SPDat_Spell_Struct
 /* 178 */	int pvpresistcalc;
 /* 179 */	int pvpresistcap;
 /* 180 */	int spell_category;
-/* 181 */	//unknown - likely buff duration related
+/* 181 */	int projectile_speed; //C!Kayen
 /* 182 */   //unknown - likely buff duration related
 /* 183 */
 /* 184 */
@@ -1006,6 +1006,7 @@ bool IsTargetRingSpell(uint16 spell_id);
 bool IsMeleeRangeSpellEffect(uint16 spell_id);
 bool IsRangeSpellEffect(uint16 spell_id);
 bool IsNoTargetRequiredSpell(uint16 spell_id);
+int AOEMaxHitCount(uint16 spell_id);
 
 //Disc Hacks
 bool GetDiscLimitToBehind(uint16 spell_id);
@@ -1021,5 +1022,6 @@ int GetProjArc(uint16 spell_id);
 int GetProjTilt(uint16 spell_id);
 int GetProjAngle(uint16 spell_id);
 int GetProjSpeed(uint16 spell_id);
+bool IsProjectile(uint16 spell_id);
 
 #endif

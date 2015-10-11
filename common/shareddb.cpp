@@ -1660,6 +1660,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 		sp[tempid].pvpresistcalc=atoi(row[178]);
 		sp[tempid].pvpresistcap=atoi(row[179]);
 		sp[tempid].spell_category=atoi(row[180]);
+		sp[tempid].projectile_speed=atoi(row[181]); //C!Kayen
 		sp[tempid].can_mgb=atoi(row[185]);
 		sp[tempid].dispel_flag = atoi(row[186]);
 		sp[tempid].MinResist = atoi(row[189]);
