@@ -6054,7 +6054,10 @@ void Mob::ClientFaceTarget(Mob* MobToFace)
 	}
 }
 
-bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
+bool Mob::AACastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
+	int32 cast_time, int32 mana_cost, uint32* oSpellWillFinish, uint32 item_slot,
+	uint32 timer, uint32 timer_duration, int16 *resist_adjust,
+	uint32 aa_id)
 {
 	if (!IsValidSpell(spell_id))
 		return false;
@@ -6068,7 +6071,7 @@ bool Mob::AACastSpell(uint16 spell_id, uint16 target_id)
 		}
 	}
 
-	if(!CastSpell(spell_id, target_id))
+	if (!CastSpell(spell_id, target_id, ALTERNATE_ABILITY_SPELL_SLOT, -1, -1, 0, -1, timer, timer_duration, nullptr, aa_id))
 		return false;
 
 	return true;

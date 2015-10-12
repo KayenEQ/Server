@@ -1205,32 +1205,23 @@ void Client::ActivateAlternateAdvancementAbility(int rank_id, int target_id) {
 	if (rank->spell == GetWarriorBraverySpell()){
 		SetBraveryRecast(GetBraveryRecast() + 6);
 		if (GetBraveryRecast() <= 30){ //Lowering this will lower how much can be spammed
-			AACastSpell(rank->spell,target_id);
+			CastSpell(rank->spell, target_id, ALTERNATE_ABILITY_SPELL_SLOT, -1, -1, 0, -1, rank->spell_type + pTimerAAStart, cooldown, nullptr, rank->id);
 			if (GetPTimers().Enabled((uint32)rank->spell_type + pTimerAAStart))
 				p_timers.Clear(&database, rank->spell_type + pTimerAAStart);
 				return;
 		}
 	}
 
-	//C!Kayen
-	if (cooldown == 0)
-	{
-		if (!AACastSpell(rank->spell,target_id))
+	// Bards can cast instant cast AAs while they are casting another song
+	if(spells[rank->spell].cast_time == 0 && GetClass() == BARD && IsBardSong(casting_spell_id)) {
+		if(!SpellFinished(rank->spell, entity_list.GetMob(target_id), ALTERNATE_ABILITY_SPELL_SLOT, spells[rank->spell].mana, -1, spells[rank->spell].ResistDiff, false)) {
 			return;
-	}//Need to revaluate this statement
-	else
-	{
-
-		// Bards can cast instant cast AAs while they are casting another song
-		if(spells[rank->spell].cast_time == 0 && GetClass() == BARD && IsBardSong(casting_spell_id)) {
-			if(!SpellFinished(rank->spell, entity_list.GetMob(target_id), ALTERNATE_ABILITY_SPELL_SLOT, spells[rank->spell].mana, -1, spells[rank->spell].ResistDiff, false)) {
-				return;
-			}
-			ExpendAlternateAdvancementCharge(ability->id);
-		} else {
-			if(!CastSpell(rank->spell, target_id, ALTERNATE_ABILITY_SPELL_SLOT, -1, -1, 0, -1, rank->spell_type + pTimerAAStart, cooldown, nullptr, rank->id)) {
-				return;
-			}
+		}
+		ExpendAlternateAdvancementCharge(ability->id);
+	} else {
+		//C!Kayen - Go through routine AACastSpell to check for custom behaviors.
+		if(!AACastSpell(rank->spell, target_id, ALTERNATE_ABILITY_SPELL_SLOT, -1, -1, 0, -1, rank->spell_type + pTimerAAStart, cooldown, nullptr, rank->id)) {
+			return;
 		}
 	}
 
