@@ -612,7 +612,7 @@ typedef struct
 	float origin_z;
 } tLeap; //Leap spell effect
 
-//C!KAyen - STRUCTS END
+//C!Kayen - STRUCTS END
 
 class ItemInst;
 class Mob;
