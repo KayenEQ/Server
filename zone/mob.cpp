@@ -6071,8 +6071,9 @@ bool Mob::AACastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		}
 	}
 
-	if (!CastSpell(spell_id, target_id, ALTERNATE_ABILITY_SPELL_SLOT, -1, -1, 0, -1, timer, timer_duration, nullptr, aa_id))
+	if (!CastSpell(spell_id, target_id, ALTERNATE_ABILITY_SPELL_SLOT, -1, -1, 0, -1, timer, timer_duration, nullptr, aa_id)){
 		return false;
+	}
 
 	return true;
 }
@@ -6418,7 +6419,7 @@ void Mob::TargetRingTempPet(uint16 spell_id)
 
 	char pet_name[64];
 	snprintf(pet_name, sizeof(pet_name), "%s`s manifestation", GetCleanName());
-	TemporaryPets(spell_id, nullptr, pet_name); //Create pet.
+	TemporaryPets(spell_id, nullptr, pet_name,false,false); //Create pet.
 }
 
 bool Mob::TryTargetRingEffects(uint16 spell_id)
@@ -6433,13 +6434,6 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 			if (spells[spell_id].effectid[i] == SE_TeleportLocation){
 				if(IsClient()){
 					
-					/* Min Distance required to use spell. - Disabled makes it clunky to use atm due to inability to make target ring red.
-					if (CalculateDistance(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ()) < 50){
-						Message(MT_SpellFailure, "You portal is too unstable, and collapses.");
-						return false;
-					}
-					*/
-
 					CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), GetHeading()*2);
 					Message(MT_Spells, "You enter a temporal rift.");
 					SendSpellEffect(spells[spell_id].spellanim, 4000, 0,true, false);
@@ -7577,8 +7571,10 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 
 		if (!limit)
 			GMMove(owner->GetTargetRingX(), owner->GetTargetRingY(), owner->GetTargetRingZ(), GetHeading(), true);
-		else if (limit == 1)
-			MoveTo(static_cast<glm::vec4>(owner->GetTargetRingX(), owner->GetTargetRingY(),owner->GetTargetRingZ()), true);
+		else if (limit == 1){
+			auto position = glm::vec4(owner->GetTargetRingX(), owner->GetTargetRingY(),owner->GetTargetRingZ(), GetHeading());
+			MoveTo(position, true);
+		}
 	}
 
 	//3. Effect Fields on Temp Pets

@@ -2966,15 +2966,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					
 					//This is specific for the limits used if obtained from a 'Charge' Effect
 					if (interval){
-						Shout("SE_CastonChargeCondition Interval %i Condition %i", interval, condition);
 						if (interval == condition) {
-							Shout("SE_CastonChargeCondition Found! %i", i);
 							caster->SpellFinished(spells[spell_id].base[i], this);
 							break;
 						}
 					}
 				}
-
 			}
 
 			case SE_AuraCustom:
@@ -3017,7 +3014,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			{
 				char pet_name[64];
 				snprintf(pet_name, sizeof(pet_name), "%s`s manifestation", caster->GetCleanName());
-				caster->TemporaryPets(spell_id, nullptr, pet_name);
+				caster->TemporaryPets(spell_id, nullptr, pet_name, false, false);
 				break;
 			}
 
