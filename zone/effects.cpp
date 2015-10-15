@@ -649,6 +649,14 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 		return(false);
 	}
 
+	//C!Kayen -  Can use instantly until recast timer is hit (will degrade -6 sec / tick)
+	if (DiscSpamLimiter(spell_id)){
+		CastSpell(spell_id, target, DISCIPLINE_SPELL_SLOT);
+		if (GetPTimers().Enabled((uint32)DiscTimer))
+			GetPTimers().Clear(&database, (uint32)DiscTimer);
+		return true;
+	}
+
 	if(spell.recast_time > 0)
 	{
 		uint32 reduced_recast = spell.recast_time / 1000;

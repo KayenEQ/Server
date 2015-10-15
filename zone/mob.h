@@ -1225,10 +1225,9 @@ public:
 	
 	int16 GetCriticalChanceFlankBonus(Mob *defender, uint16 skill);
 	inline uint16 GetWarriorBraverySpell() const { return 105; }
-	inline void SetBraveryRecast(uint8 value) { bravery_recast = value; }
-	inline uint8 GetBraveryRecast() const { return  bravery_recast; }
-	void CustomTickUpdates();
-
+	inline void SetBraveryRecast(int16 value) { bravery_recast = value; }
+	inline int16 GetBraveryRecast() const { return  bravery_recast; }
+	
 	void LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 	int CalcDistributionModifer(int range, int min_range, int max_range, int min_mod, int max_mod);
 	
@@ -1256,6 +1255,10 @@ public:
 
 	bool TryRangerCastingConditions(uint16 spell_id, uint16 target_id);
 	inline float UseRangeFromRangedWpn() const { return 351.0f; }
+
+	void BreakMovementDebuffs();
+
+	bool MinCastingRange(uint16 spell_id, uint16 target_id);
 
 
 	void BalanceResourceEffect(uint16 spell_id, int e);
@@ -1674,7 +1677,8 @@ protected:
 
 	bool has_fast_buff; //Check if mob has a buff that uses fast timer.
 
-	uint8 bravery_recast;
+	int16 bravery_recast;
+	int16 flurry_recast;
 	
 private:
 	void _StopSong(); //this is not what you think it is

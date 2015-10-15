@@ -1202,9 +1202,9 @@ void Client::ActivateAlternateAdvancementAbility(int rank_id, int target_id) {
 	}
 
 	//C!Kayen - Warrior innate AA - Can use instantly until recast timer is hit (will degrade -6 sec / tick)
-	if (rank->spell == GetWarriorBraverySpell()){
+	if (rank->spell == SPELL_BRAVERY){
 		SetBraveryRecast(GetBraveryRecast() + 6);
-		if (GetBraveryRecast() <= 30){ //Lowering this will lower how much can be spammed
+		if (GetBraveryRecast() <= 30){ //Lowering this will lower how much can be spammed [Multiples of 6]
 			CastSpell(rank->spell, target_id, ALTERNATE_ABILITY_SPELL_SLOT, -1, -1, 0, -1, rank->spell_type + pTimerAAStart, cooldown, nullptr, rank->id);
 			if (GetPTimers().Enabled((uint32)rank->spell_type + pTimerAAStart))
 				p_timers.Clear(&database, rank->spell_type + pTimerAAStart);

@@ -1217,13 +1217,37 @@ bool IsTargetRingSpell(uint16 spell_id)
 	return false;
 }
 
+bool IsTargetableSpell(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	if (spells[spell_id].targettype == ST_Target || spells[spell_id].targettype == ST_AETarget
+		|| spells[spell_id].targettype == ST_TargetOptional)
+		return true;
+
+	return false;
+}
+
 bool IsMeleeRangeSpellEffect(uint16 spell_id)
 {
 	if (!IsValidSpell(spell_id))
 		return false;
 
 	//Range set to 101 will always be checked as InCombat range
-	if (spells[spell_id].range == 101)
+	if (spells[spell_id].range == 101.0f)
+		return true;
+
+	return false;
+}
+
+bool UseEquipedBowRange(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	//Range set to 351 will always be checked as InCombat range
+	if (spells[spell_id].range == 351.0f)
 		return true;
 
 	return false;
@@ -1267,6 +1291,16 @@ int AOEMaxHitCount(uint16 spell_id)
 
 	return 0;
 }
+
+bool SpellRequiresSpectralBlade(uint16 spell_id)
+{
+	if (spells[spell_id].classes[ENCHANTER])
+		return spells[spell_id].LightType;
+
+	return false;
+}
+
+int GetMinAtks(uint16 spell_id) { return spells[spell_id].LightType;}
 
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.

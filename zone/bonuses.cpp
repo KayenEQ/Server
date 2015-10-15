@@ -1457,6 +1457,17 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 				newbon->NoBreakAESneak = base1;
 			break;
 
+		//C!Kayen - Custom AA Bonus
+		case SE_MeleeManaTap:
+			newbon->MeleeManaTap += base1;
+			break;
+
+		case SE_MeleeEndurTap:
+			newbon->MeleeEndurTap += base1;
+			break;
+
+		//C!Kayen - END
+
 		// to do
 		case SE_PetDiscipline:
 			break;
@@ -1483,9 +1494,6 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 		case SE_TrapCircumvention:
 			break;
 		case SE_FeignedMinion:
-			break;
-		case SE_MeleeManaTap: //C!Kayen
-			newbon->MeleeManaTap += base1;
 			break;
 
 		// not handled here

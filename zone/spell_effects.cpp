@@ -2839,8 +2839,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					}
 
 					int numattacks = spells[spell_id].base[i];
-					if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
-						numattacks = zone->random.Int(spells[spell_id].LightType, spells[spell_id].base[i]);
+					if (GetMinAtks(spell_id)) //Number of attacks MIN for random amount of attacks [LightType].
+						numattacks = zone->random.Int(GetMinAtks(spell_id), spells[spell_id].base[i]);
 	
 					if (spells[spell_id].base2[i])
 						opts.damage_percent = static_cast<float>(spells[spell_id].base2[i] + 100.0f)/100.0f;
@@ -2885,8 +2885,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 					int numattacks = spells[spell_id].base[i];
 
-					if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
-						numattacks = zone->random.Int(spells[spell_id].LightType, spells[spell_id].base[i]);
+					if (GetMinAtks(spell_id)) //Number of attacks MIN for random amount of attacks.
+						numattacks = zone->random.Int(GetMinAtks(spell_id), spells[spell_id].base[i]);
 	
 					for(int x = 0; x < numattacks; x++){
 						if (!HasDied()){
@@ -3116,7 +3116,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				if (IsValidSpell(spells[spell_id].base[i])){
 					int slot = GetBuffSlotFromSpellID(spells[spell_id].base[i]);
 					if (slot >= 0 && buffs[slot].numhits){
-						int _numhits = buffs[slot].numhits + spells[spell_id].base2[i];
+						int _numhits = static_cast<int>(buffs[slot].numhits) + spells[spell_id].base2[i];
 						
 						if (_numhits <= 0)
 							_numhits = 1; //Min
@@ -3209,6 +3209,25 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				if (caster->IsClient())
 					caster->CastToClient()->AdjustDiscTimer(spells[spell_id].base[i], spells[spell_id].base2[i]);
 				break;
+			}
+
+			case SE_TeleportLocation:
+			{
+				if (!IsTargetRingSpell(spell_id)){
+					if(caster->IsClient())
+						caster->CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), caster->GetHeading());
+					else
+						caster->GMMove(GetX(), GetY(), GetZ(), caster->GetHeading());
+
+					//Grappling Hook Effect
+					if (spells[spell_id].base[i] == 2){
+						
+						if (caster->IsClient())
+							caster->Message(11, "Your grappling hook retracts! You are pulled toward your target with lightning speed.");
+
+						caster->BreakMovementDebuffs();
+					}
+				}
 			}
 
 			case SE_SpellAwareness:{

@@ -5623,7 +5623,7 @@ int32 Mob::GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot)
 	else if (id == "buffduration") {return spells[spell_id].buffduration;}
 	else if (id == "AEDuration") {return spells[spell_id].AEDuration;}
 	else if (id == "mana") {return spells[spell_id].mana;}
-	//else if (id == "LightType") {stat = spells[spell_id].LightType;} - Not implemented
+	else if (id == "LightType") {stat = spells[spell_id].LightType;} 
 	else if (id == "goodEffect") {return spells[spell_id].goodEffect;}
 	else if (id == "Activated") {return spells[spell_id].Activated;}
 	else if (id == "resisttype") {return spells[spell_id].resisttype;}
@@ -5636,7 +5636,7 @@ int32 Mob::GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot)
 	else if (id == "CastingAnim") {return spells[spell_id].CastingAnim;}
 	else if (id == "SpellAffectIndex") {return spells[spell_id].SpellAffectIndex; }
 	else if (id == "disallow_sit") {return spells[spell_id].disallow_sit; }
-	//else if (id == "spellanim") {stat = spells[spell_id].spellanim; } - Not implemented
+	else if (id == "spellanim") {stat = spells[spell_id].spellanim; }
 	else if (id == "uninterruptable") {return spells[spell_id].uninterruptable; }
 	else if (id == "ResistDiff") {return spells[spell_id].ResistDiff; }
 	else if (id == "dot_stacking_exemp") {return spells[spell_id].dot_stacking_exempt; }
@@ -6866,7 +6866,7 @@ bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
 		ProjectileAnimation(spell_target,0, false, speed,angle,tilt,arc, item_IDFile,skillinuse);
 
 		//Enchanter triple blade effect - Requires adjusting angle based on heading to get correct appearance.
-		if (spells[spell_id].spellgroup == 2006){ //This will likely need to be adjusted.
+		if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY){ //This will likely need to be adjusted.
 			ClientFaceTarget(spell_target);
 			float _angle =  CalcSpecialProjectile(spell_id);
 			//Shout("DEBUG: TrySpellProjectileTargetRingSpecial ::  Angle %.2f [Heading %.2f]", _angle, GetHeading()/2);
@@ -7451,7 +7451,7 @@ bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 		*/
 
 		//For ENC class abilities that require Spectral Blade equiped - Item LightType = 1 and Spell LightType = 1
-		if((spells[spell_id].LightType == 1) && !CastToClient()->IsSpectralBladeEquiped()){
+		if((SpellRequiresSpectralBlade(spell_id)) && !CastToClient()->IsSpectralBladeEquiped()){
 			Message(MT_SpellFailure, "You must have a spectral blade equiped to use this ability.");
 			return false;
 		}		
@@ -7801,6 +7801,26 @@ uint32 Client::TryCastonDiscCastCountAmt(int slot, uint16 spell_id, uint32 reduc
 		_reduced_recast = 0;
 
 	return static_cast<uint32>(_reduced_recast);
+}
+
+bool Client::DiscSpamLimiter(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id) && (spells[spell_id].EndurTimerIndex <= MAX_DISCIPLINE_TIMERS))
+		return false;
+
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_DiscSpamLimiter){
+			SetDiscSpamLimiter(spells[spell_id].EndurTimerIndex,GetDiscSpamLimiter(spells[spell_id].EndurTimerIndex) + spells[spell_id].base[i]);
+			if (GetDiscSpamLimiter(spells[spell_id].EndurTimerIndex) <= spells[spell_id].base2[i]){
+				return true;
+			}else {
+				Message(11, "You look exhausted!");
+				return false;
+			}
+		}
+	}
+	return false;
 }
 
 //C!SpellEffects :: SE_TryCastonSpellFinished
@@ -8218,27 +8238,7 @@ void Mob::SetLeapEffect(uint16 spell_id){
 		leap.increment = 1;
 
 		//Break deterimental snares and roots.
-		int buff_count = GetMaxTotalSlots();
-		for(int i = 0; i < buff_count; i++) {
-			if (IsValidSpell(buffs[i].spellid)){
-
-				if (spells[buffs[i].spellid].dispel_flag)
-					continue;
-
-				for(int d = 0; d < EFFECT_COUNT; d++)
-				{
-					if (spells[spell_id].effectid[d] == SE_Root){
-						BuffFadeBySlot(i);
-						continue;
-					}
-
-					if (spells[spell_id].effectid[d] == SE_MovementSpeed && !spells[buffs[i].spellid].goodEffect){
-						BuffFadeBySlot(i);
-						continue;
-					}
-				}
-			}
-		}
+		BreakMovementDebuffs();
 	}
 }
 
@@ -8789,7 +8789,7 @@ int16 Mob::GetScaleMitigationNumhits()
 	int slot = spellbonuses.ScaleMitigationNumhits[1];
 
 	if (slot >= 0 && IsValidSpell(buffs[slot].spellid))
-		return (buffs[slot].numhits * spellbonuses.ScaleMitigationNumhits[0] / 100);
+		return (static_cast<int16>(buffs[slot].numhits) * spellbonuses.ScaleMitigationNumhits[0] / 100);
 	
 	return 0;
 }
@@ -8803,7 +8803,7 @@ int16 Mob::GetScaleDamageNumhits(uint16 skill)
 
 	if (spellbonuses.ScaleDamageNumhits[2] == skill || spellbonuses.ScaleDamageNumhits[2] == (HIGHEST_SKILL + 1)){
 		if (slot >= 0 && IsValidSpell(buffs[slot].spellid))
-			return (buffs[slot].numhits * spellbonuses.ScaleDamageNumhits[0] / 100);
+			return (static_cast<int16>(buffs[slot].numhits) * spellbonuses.ScaleDamageNumhits[0] / 100);
 	}
 	return 0;
 }
@@ -9084,10 +9084,24 @@ int16 Mob::GetCriticalChanceFlankBonus(Mob *defender, uint16 skill)
 		return 0;
 }
 
-void Mob::CustomTickUpdates()
+void Client::CustomTickUpdates()
 {
-	if (GetBraveryRecast())
-		SetBraveryRecast(GetBraveryRecast() - 6);
+	if (GetBraveryRecast()){
+		if (GetBraveryRecast() <= 0)
+			SetBraveryRecast(0);
+		else
+			SetBraveryRecast(GetBraveryRecast() - 6);
+	}
+
+	for(int index_timer = 0; index_timer <= MAX_DISCIPLINE_TIMERS; index_timer++)
+	{
+		if (GetDiscSpamLimiter(index_timer)){
+		if (GetDiscSpamLimiter(index_timer) <= 0)
+			SetDiscSpamLimiter(index_timer, 0);
+		else
+			SetDiscSpamLimiter(index_timer, GetDiscSpamLimiter(index_timer) - 6);
+		}
+	}
 }
 
 void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
@@ -9749,7 +9763,7 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 		//Min Distance checks for directional spells - Hit Chance -10000
 		float dist = DistanceSquared(target->GetPosition(), GetPosition());
 
-		float min_range = RuleI(Combat, MinRangedAttackDist);
+		float min_range = static_cast<float>(RuleI(Combat, MinRangedAttackDist));
 
 		if (spells[spell_id].min_range > min_range)
 			min_range = spells[spell_id].min_range;
@@ -9784,8 +9798,8 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 		}
 	}
 	
-	if (spells[spell_id].LightType) //Number of attacks MIN for random amount of attacks.
-		numattacks = zone->random.Int(spells[spell_id].LightType, spells[spell_id].base[i]);
+	if (GetMinAtks(spell_id)) //Number of attacks MIN for random amount of attacks [LightType].
+		numattacks = zone->random.Int(GetMinAtks(spell_id), spells[spell_id].base[i]);
 
 	if (spells[spell_id].targettype == ST_Directional)
 		speed = zone->random.Real(3.5, 4.5);//So they don't all clump
@@ -9833,15 +9847,15 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	if (range == 0)
 		return false;
 	
-	float range_sp = spells[spell_id].range;
+	float range_spell = spells[spell_id].range;
 	
-	if (!range_sp)
-		range_sp = spells[spell_id].aoerange;
+	if (!range_spell)
+		range_spell = spells[spell_id].aoerange;
 
-	if (range_sp != 351.0f)//Use Default value
-		range = range_sp;
+	if (!UseEquipedBowRange(spell_id))//Use Default value [Spell Range set to 351]
+		range = range_spell;
 
-	float min_range = RuleI(Combat, MinRangedAttackDist);
+	float min_range = static_cast<float>(RuleI(Combat, MinRangedAttackDist));
 	float min_range_sp = spells[spell_id].min_range;
 
 	if (min_range_sp > min_range)
@@ -9970,6 +9984,58 @@ void Mob::BalanceResourceEffect(uint16 spell_id, int e)
 
 	SetMana((GetMaxMana() * amt / 100));
 	CastToClient()->SetEndurance((CastToClient()->GetMaxEndurance() * amt / 100));
+}
+
+void Mob::BreakMovementDebuffs()
+{
+	//Break deterimental snares and roots.
+	int buff_count = GetMaxTotalSlots();
+	for(int i = 0; i < buff_count; i++) {
+		if (IsValidSpell(buffs[i].spellid)){
+
+			if (spells[buffs[i].spellid].dispel_flag)
+				continue;
+
+			for(int d = 0; d < EFFECT_COUNT; d++)
+			{
+				if (spells[buffs[i].spellid].effectid[d] == SE_Root){
+					BuffFadeBySlot(i);
+					continue;
+				}
+
+				if (spells[buffs[i].spellid].effectid[d] == SE_MovementSpeed && !spells[buffs[i].spellid].goodEffect){
+					BuffFadeBySlot(i);
+					continue;
+				}
+			}
+		}
+	}
+}
+
+bool Mob::MinCastingRange(uint16 spell_id, uint16 target_id)
+{
+	if (!spells[spell_id].min_range)
+		return false;
+
+	if (!IsTargetableSpell(spell_id))
+		return false;
+
+	Mob* spell_target = nullptr;
+	spell_target = entity_list.GetMob(target_id);
+
+	if (!spell_target)
+		return false;
+
+	if(spell_target != nullptr && spell_target != this) {
+		float dist2 = DistanceSquared(m_Position, spell_target->GetPosition());
+		float min_range2 = spells[spell_id].min_range * spells[spell_id].min_range;
+		if (dist2 < min_range2){
+			Message_StringID(13, TARGET_TOO_CLOSE);
+			return(true);
+		}
+	}
+
+	return false;
 }
 
 //C!Misc - Functions still in development

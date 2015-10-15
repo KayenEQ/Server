@@ -1280,6 +1280,12 @@ public:
 	void SetDiscCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN, int value = 0);
 	uint32 TryCastonDiscCastCountAmt(int slot, uint16 spell_id, uint32 reduced_recast);
 
+	bool DiscSpamLimiter(uint16 spell_id);
+	inline int16 GetDiscSpamLimiter(int8 timer_index) const { return disc_spam_amt[timer_index]; }
+	inline void SetDiscSpamLimiter(int8 timer_index, int16 value) { disc_spam_amt[timer_index] = value; }
+
+	void CustomTickUpdates();
+
 	void RelequishFlesh(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration, int aehate = 0);
 	void TryChargeEffect();
 	void TryChargeHit();
@@ -1364,6 +1370,7 @@ protected:
 	uint16 refreshid_mem_spells[MAX_PP_MEMSPELL]; //This is spell id used to refresh the spell gem early.
 	uint16 spell_cast_count[MAX_PP_MEMSPELL]; //Number of times a specific spell has been cast in a row.
 	uint16 disc_cast_count[MAX_DISCIPLINE_TIMERS + 25]; //Number of times a specific disc has been cast in a row.
+	int16 disc_spam_amt[MAX_DISCIPLINE_TIMERS+1]; //Number of times a specific disc has been cast in a row.
 	bool spell_awareness_enabled;
 	Timer spell_awareness_popup;
 	bool disc_reuse_awareness_enabled;

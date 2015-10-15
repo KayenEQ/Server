@@ -225,6 +225,16 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		return false;
 	}
 
+	//C!Kayen - Check Min RANGE since client does not auto stop it.
+	/*
+	if (MinCastingRange(spell_id, target_id)){
+		CastToClient()->SendSpellBarEnable(spell_id);
+		InterruptSpell(173, 0x121, false);
+		return false;
+	}
+	*/
+
+
 	if (spellbonuses.NegateIfCombat)
 		BuffFadeByEffect(SE_NegateIfCombat);
 

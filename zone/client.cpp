@@ -321,7 +321,8 @@ Client::Client(EQStreamInterface* ieqs)
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { recast_mem_spells[i] = 0; }
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { refreshid_mem_spells[i] = 0; }
 	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { spell_cast_count[i] = 0; }
-	for(int i = 0; i < MAX_PP_MEMSPELL; ++i) { disc_cast_count[i] = 0; }
+	for(int i = 0; i < (MAX_DISCIPLINE_TIMERS + 25); ++i) { disc_cast_count[i] = 0; }
+	for(int i = 0; i < (MAX_DISCIPLINE_TIMERS + 1); ++i) { disc_spam_amt[i] = 0; }
 	adjustrecast_timer.Disable();
 	spell_awareness_enabled = false;
 	spell_awareness_popup.Disable();

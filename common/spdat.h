@@ -31,6 +31,12 @@
 #define SPELL_HARM_TOUCH2 2821
 #define SPELL_IMP_HARM_TOUCH 2774
 #define SPELL_NPC_HARM_TOUCH 929
+#define SPELL_BRAVERY 105 //C!Kayen
+
+#define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006 //C!Kayen
+
+#define RANGE_USE_MELEE_COMBAT = 101 // C!Kayen
+#define RANGE_USE_BOW = 351 // C!Kayen
 
 
 #define EFFECT_COUNT 12
@@ -722,6 +728,8 @@ typedef enum {
 #define SE_BalanceResource				1077 // implemented
 #define SE_AdjustDiscTimer				1078 // implemented - Base: Timer Limit: Duration
 #define SE_RemoveBuffOnFadeComplete		1079 // implemented
+#define SE_DiscSpamLimiter				1080 // implemented
+
 
 // LAST
 
@@ -1006,10 +1014,15 @@ int32 GetSpellPowerManaModValue(uint16 spell_id);
 bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
 bool CastFromPetOwner(uint16 spell_id); //NPC use only.
 bool IsTargetRingSpell(uint16 spell_id);
+bool IsTargetableSpell(uint16 spell_id);
 bool IsMeleeRangeSpellEffect(uint16 spell_id);
 bool IsRangeSpellEffect(uint16 spell_id);
+bool UseEquipedBowRange(uint16 spell_id);
 bool IsNoTargetRequiredSpell(uint16 spell_id);
 int AOEMaxHitCount(uint16 spell_id);
+
+bool SpellRequiresSpectralBlade(uint16 spell_id);
+int GetMinAtks(uint16 spell_id);
 
 //Disc Hacks
 bool GetDiscLimitToBehind(uint16 spell_id);
