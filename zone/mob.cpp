@@ -6094,6 +6094,8 @@ bool Mob::AACastSpellResourceCheck(uint16 spell_id, uint16 target_id)
 }
 bool Mob::PassCasterRestriction(bool UseCasterRestriction,  uint16 spell_id, int16 value)
 {
+	//IS THIS IS EVEN USED ANYMORE?????? Kayen 10-16-15
+
 	//This value is always defined as a NEGATIVE in the database when doing CasterRestrictions.
 	//*NOTE IMPLMENTED YET FOR FROM CastRestriction Field - Will write as needed.
 	/*If return TRUE spell met all restrictions and can continue (this = CASTER).
@@ -9102,6 +9104,21 @@ void Client::CustomTickUpdates()
 			SetDiscSpamLimiter(index_timer, GetDiscSpamLimiter(index_timer) - 6);
 		}
 	}
+
+	//Tick down 'Hunter's Efficacy'
+	if (GetClass() == RANGER && spellbonuses.RangerGainNumhitsSP[0] && !GetAggroCount())
+	{
+		int slot = spellbonuses.RangerGainNumhitsSP[1];
+		if (slot >= 0 && buffs[slot].numhits){
+
+			if (buffs[slot].numhits <= 10)
+				buffs[slot].numhits = 1;
+			else
+				buffs[slot].numhits -= 10;
+
+			SendBuffNumHitPacket(buffs[slot], slot);
+		}
+	}
 }
 
 void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
@@ -10036,6 +10053,14 @@ bool Mob::MinCastingRange(uint16 spell_id, uint16 target_id)
 	}
 
 	return false;
+}
+
+int Mob::CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration)
+{
+	
+	//res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
+	duration += GetSpellPowerDistanceMod()/100; //C!Kayen - Add buff ticks based on distance modifer
+	return duration;
 }
 
 //C!Misc - Functions still in development

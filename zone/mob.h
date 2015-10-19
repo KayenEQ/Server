@@ -1012,7 +1012,7 @@ public:
 		uint32 timer = 0xFFFFFFFF, uint32 timer_duration = 0, int16 *resist_adjust = nullptr,
 		uint32 aa_id = 0);
 	bool AACastSpellResourceCheck(uint16 spell_id, uint16 target_id);
-	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value);
+	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value); //DO WE NEED THIS?
 	//!// EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id)
 	//!// EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id)
 	
@@ -1262,6 +1262,8 @@ public:
 
 
 	void BalanceResourceEffect(uint16 spell_id, int e);
+
+	int CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration);
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END

@@ -38,6 +38,8 @@
 #define RANGE_USE_MELEE_COMBAT = 101 // C!Kayen
 #define RANGE_USE_BOW = 351 // C!Kayen
 
+#define CASTER_RESTRICT_NO_CAST_SELF -1 //C!Kayen
+
 
 #define EFFECT_COUNT 12
 #define MAX_SPELL_TRIGGER 12	// One for each slot(only 6 for AA since AA use 2)
@@ -731,6 +733,7 @@ typedef enum {
 #define SE_DiscSpamLimiter				1080 // implemented
 
 
+
 // LAST
 
 
@@ -876,8 +879,9 @@ struct SPDat_Spell_Struct
 /* 215 - 216 */
 /* 217 */   int override_crit_chance; //Places a cap on the max chance to critical
 /* 218 */	int aemaxtargets;  //Is used for various AE effects
-/* 219 */	int no_heal_damage_item_mod; 
-/* 220 - 223 */
+/* 219 */	int no_heal_damage_item_mod;
+/* 220 */	int CasterRestriction; //C!Kayen
+/* 221 - 223 */
 /* 224 */	bool persistdeath; // buff doesn't get stripped on death
 /* 225 - 226 */
 /* 227 */	float min_dist; //spell power modified by distance from caster (Min Distance)

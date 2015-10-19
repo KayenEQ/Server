@@ -1445,9 +1445,15 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 		Message_StringID(13,SPELL_NEED_TAR);
 		return false;
 	}
-	//C!Kayen - Restrictions based on conditions placed on the caster.
+	//C!Kayen - Restrictions based on conditions placed on the caster. [Note: Is this still something we need?]
 	if (!PassCasterRestriction(true, spell_id, spells[spell_id].CastRestriction)){
 		Message(13,"Your will is not sufficient to cast this spell."); //Temp message
+		return false;
+	}
+
+	//C!Kayen - Restrict spell so that it can not be cast on self. [Note: Is this best place to check this?]
+	if (spell_target && spells[spell_id].CasterRestriction == CASTER_RESTRICT_NO_CAST_SELF && (spell_target == this)){
+		Message_StringID(13,CANNOT_AFFECT_PC);
 		return false;
 	}
 
@@ -2755,8 +2761,6 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 
 	res = mod_buff_duration(res, caster, target, spell_id);
 
-	//res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
-	res += GetSpellPowerDistanceMod()/100; //C!Kayen - Add buff ticks based on distance modifer
 	Log.Out(Logs::Detail, Logs::Spells, "Spell %d: Casting level %d, formula %d, base_duration %d: result %d",spell_id, castlevel, formula, duration, res);
 
 	return res;
@@ -3204,6 +3208,8 @@ int Mob::AddBuff(Mob *caster, uint16 spell_id, int duration, int32 level_overrid
 		if (caster && duration > 0) // negatives are perma buffs
 			duration = caster->GetActSpellDuration(spell_id, duration);
 	}
+
+	duration = CustomBuffDurationMods(caster, spell_id, duration); //C!Kayen - Handle all custom duration modifiers.
 
 	if (duration == 0) {
 		Log.Out(Logs::Detail, Logs::Spells, "Buff %d failed to add because its duration came back as 0.", spell_id);

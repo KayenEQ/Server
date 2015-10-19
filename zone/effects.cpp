@@ -738,10 +738,10 @@ void EntityList::AETaunt(Client* taunter, float range)
 void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster, int16 resist_adjust)
 { 
 	Mob *curmob;
-
+	
 	if (!caster) //C!Kayen
 		return;
-	
+
 	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
@@ -783,7 +783,6 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (spells[spell_id].targettype == ST_AreaNPCOnly && !curmob->IsNPC())
 			continue;
 
-
 		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
 		if (IsTargetRingSpell(spell_id) && !IsProjectile(spell_id)){ //C!Kayen pflag = Projectile
 			dist_targ = DistanceSquared(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetTargetRingLocation());
@@ -810,7 +809,6 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 					continue;
 			}
 		}
-
 		//finally, make sure they are within range
 		if (bad) {
 			if (!caster->IsAttackAllowed(curmob, true))
@@ -825,23 +823,17 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 			// check may still be needed. Any changes here should also reflect in BardAEPulse() -U
 
-				//C!Kayen - Not sure why we can't just use the Beneficial Check for the other two, will leave for now.
-				if ((spells[spell_id].AEDuration && spells[spell_id].goodEffect) && (!caster->IsBeneficialAllowed(curmob)))
+			//C!Kayen - Not sure why we can't just use the Beneficial Check for the other two, will leave for now.
+			if ((spells[spell_id].AEDuration && spells[spell_id].goodEffect) && (!caster->IsBeneficialAllowed(curmob)))
+				continue;
+
+			if (!spells[spell_id].AEDuration) { //C!Kayen
+				// check may still be needed. Any changes here should also reflect in BardAEPulse()
+				if (caster->IsAttackAllowed(curmob, true))
 					continue;
-
-				if (!spells[spell_id].AEDuration) {
-
-					if (caster->IsAttackAllowed(curmob, true))
-						continue;
-					if (caster->CheckAggro(curmob))
-						continue;
-				}
-
-			// check may still be needed. Any changes here should also reflect in BardAEPulse()
-			if (caster->IsAttackAllowed(curmob, true))
-				continue;
-			if (caster->CheckAggro(curmob))
-				continue;
+				if (caster->CheckAggro(curmob))
+					continue;
+			}
 		}
 
 		curmob->CalcSpellPowerDistanceMod(spell_id, dist_targ);
