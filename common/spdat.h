@@ -31,14 +31,14 @@
 #define SPELL_HARM_TOUCH2 2821
 #define SPELL_IMP_HARM_TOUCH 2774
 #define SPELL_NPC_HARM_TOUCH 929
-#define SPELL_BRAVERY 105 //C!Kayen
 
-#define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006 //C!Kayen
-
-#define RANGE_USE_MELEE_COMBAT = 101 // C!Kayen
-#define RANGE_USE_BOW = 351 // C!Kayen
-
-#define CASTER_RESTRICT_NO_CAST_SELF -1 //C!Kayen
+//C!Kayen - Custom Defines
+#define SPELL_BRAVERY 105
+#define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006 
+#define RANGE_USE_MELEE_COMBAT = 101 
+#define RANGE_USE_BOW = 351
+#define CASTER_RESTRICT_NO_CAST_SELF -1
+//C!Kayen - End
 
 
 #define EFFECT_COUNT 12
@@ -711,12 +711,12 @@ typedef enum {
 #define SE_DistanceRemovalFromCaster	1058 // implemented - Buff is removed from target when target moves X amount of distance away from where caster is.
 #define SE_IncommingCriticalMelee		1059 //
 #define SE_AbsorbMeleeDamage			1060 // implemented
-#define SE_AdjustCastTimePct			1061 // ADjust NPC cast time
+#define SE_AdjustCastTimePctNPC			1061 // Adjust NPC cast time
 #define SE_FadeCastersBuffFromAll		1062 // Fade the specified spell id from any mob where you are the caster of the buff.
 #define SE_FadeBuffFromCaster			1063 // Fades the specified spell id on the caster of the buff that is fading.
 #define SE_ApplyEffectResource			1064 // Apply effect if hp / mana /endurance condition is met. 
 #define SE_AttackThrow					1065 // implemented - Base: Number of Melees Attacks, Limit: Percent Modifier Max: Hit Modifer
-#define SE_EnduranceUpkeep				1066 // Simulates endurance drain without removing buff icon.
+#define SE_EnduranceUpkeep				1066 // NOT IMPLEMENTED - Simulates endurance drain without removing buff icon. [NOT USED]
 #define SE_DiscReuseAwareness			1067 // implemented - Enable / Disable spell awareness popup window.
 #define SE_ScaleHitChanceNumhits		1068 // implemented - Scale hit chance based on numhits Base: Damage ratio x 100
 #define SE_RangerGainNumhitsSP			1069 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
@@ -731,6 +731,8 @@ typedef enum {
 #define SE_AdjustDiscTimer				1078 // implemented - Base: Timer Limit: Duration
 #define SE_RemoveBuffOnFadeComplete		1079 // implemented
 #define SE_DiscSpamLimiter				1080 // implemented
+#define SE_CalculateDistance			1081 // implemented - Returns distance to target.
+#define SE_SpellResistMod				1082 // implemented - Lowers casters chance to be resisted (-) Lowers chance (+) Inc chance resist.
 
 
 

@@ -809,6 +809,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 					continue;
 			}
 		}
+
 		//finally, make sure they are within range
 		if (bad) {
 			if (!caster->IsAttackAllowed(curmob, true))
@@ -855,10 +856,9 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		}
 
 	}
-
-	if (maxtargets){ //C!Kayen - Max target PBAE
+	caster->Shout("CAST ON CLOSESTS %i", maxtargets);
+	if (maxtargets) //C!Kayen - Max target PBAE
 		caster->CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_ae);
-	}
 
 	//C!Kayen
 	if (!TL_TargetFound && spells[spell_id].targettype == ST_TargetLocation)

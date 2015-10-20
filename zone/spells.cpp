@@ -4420,6 +4420,9 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 	if(caster->GetSpecialAbility(CASTING_RESIST_DIFF))
 		resist_modifier += caster->GetSpecialAbilityParam(CASTING_RESIST_DIFF, 0);
 
+
+	resist_modifier -= caster->GetCustomSpellResistMod(spell_id); //C!Kayen
+
 	int focus_resist = caster->GetFocusEffect(focusResistRate, spell_id);
 	resist_modifier -= 2 * focus_resist;
 

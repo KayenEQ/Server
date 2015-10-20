@@ -10063,6 +10063,17 @@ int Mob::CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration)
 	return duration;
 }
 
+int Mob::GetCustomSpellResistMod(uint16 spell_id)
+{
+	
+	int mod = spellbonuses.SpellResistMod[HIGHEST_RESIST] + itembonuses.SpellResistMod[HIGHEST_RESIST] + aabonuses.SpellResistMod[HIGHEST_RESIST] +
+	spellbonuses.SpellResistMod[spells[spell_id].resisttype] + itembonuses.SpellResistMod[spells[spell_id].resisttype] + 
+	aabonuses.SpellResistMod[spells[spell_id].resisttype];
+
+	Shout("MOD %i");
+	return mod;
+}
+
 //C!Misc - Functions still in development
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){

@@ -3379,7 +3379,7 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				break;
 			}
 
-			case SE_AdjustCastTimePct:
+			case SE_AdjustCastTimePctNPC:
 				new_bonus->AdjustCastTimePct += effect_value;
 				break;
 
@@ -3396,6 +3396,14 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 			case SE_PetEffectOnOwner:			
 				new_bonus->PetEffectOnOwner = effect_value; 
 				break;
+
+			case SE_SpellResistMod:{
+				if (base2 == -1)
+					new_bonus->SpellResistMod[HIGHEST_RESIST] += effect_value;
+				else
+					new_bonus->SpellResistMod[base2] += effect_value; //Base2 is resist type
+				break;
+			}
 		}
 	}
 }

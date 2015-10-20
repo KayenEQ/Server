@@ -3247,7 +3247,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			}
 
-				case SE_DiscReuseAwareness:{
+			case SE_DiscReuseAwareness:{
 
 				if (IsClient()){
 					if (!CastToClient()->HasDiscReuseAwareness()){
@@ -3261,6 +3261,17 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						CastToClient()->SetDiscReuseAwareness(false);
 						Message(15, "Disc Reuse Awareness : Disabled");
 					}
+				}
+				break;
+			}
+
+			case SE_CalculateDistance:{
+
+				if (caster->IsClient()){
+					float distance = caster->CalculateDistance(GetX(), GetY(), GetZ());
+
+					std::string dist_notification = StringFormat("< %s > %i units ", GetCleanName(), static_cast<int>(distance));
+					caster->CastToClient()->SendMarqueeMessage(15, 510, 0, 0, 3000, dist_notification);
 				}
 				break;
 			}

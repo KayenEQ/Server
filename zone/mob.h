@@ -1242,7 +1242,6 @@ public:
 	void ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust);
 
 	void RangerGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used);
-	inline uint16 GetBowAffinitySpellID() const { return 108; }
 
 	void TryBackstabSpellEffect(Mob* other);
 	void DoBackstabSpellEffect(Mob* other, bool min_damage = false);
@@ -1264,6 +1263,7 @@ public:
 	void BalanceResourceEffect(uint16 spell_id, int e);
 
 	int CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration);
+	int GetCustomSpellResistMod(uint16 spell_id);
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END

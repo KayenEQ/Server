@@ -5,7 +5,7 @@
 #include "../common/spdat.h"
 
 #define	HIGHEST_RESIST 9 //Max resist type value
-#define MAX_SPELL_PROJECTILE 10 //Max amount of spell projectiles that can be active by a single mob.
+#define MAX_SPELL_PROJECTILE 20 //Max amount of spell projectiles that can be active by a single mob. //C!Kayen 20 MAX
 
 /* macros for IsAttackAllowed, IsBeneficialAllowed */
 #define _CLIENT(x) (x && x->IsClient() && !x->CastToClient()->IsBecomeNPC())
@@ -506,6 +506,7 @@ struct StatBonuses {
 	uint16 SpinAttack[2];						// 0 = spellid of trigger spell 1= speed of spell trigger
 	bool BottomHateList;						// Sets mob to bottom of hatelist like divine aura.
 	uint16 PetEffectOnOwner;					// spell id
+	int16 SpellResistMod[HIGHEST_RESIST+1];		//Mod caster resist chance by resist type
 
 };
 
