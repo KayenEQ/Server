@@ -1287,7 +1287,7 @@ void Mob::AI_Process() {
 
 				// Now pursue
 				// TODO: Check here for another person on hate list with close hate value
-				if(AI_PursueCastCheck()){
+				if(AI_PursueCastCheck() || GetAINoChase()){ // C!Kayen
 					//we did something, so do not process movement.
 				}
 				else if (AImovement_timer->Check())

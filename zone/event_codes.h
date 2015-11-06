@@ -83,6 +83,7 @@ typedef enum {
 	EVENT_DEATH_COMPLETE,
 	EVENT_UNHANDLED_OPCODE,
 	EVENT_TICK,
+	EVENT_LEAP_LAND, //C!Kayen
 
 	_LargestEventID
 } QuestEventID;

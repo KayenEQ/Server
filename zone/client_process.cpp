@@ -485,6 +485,9 @@ bool Client::Process() {
 		LeapProjectileEffect();
 		TryChargeHit();
 
+		if (leapSE_timer.Check()) //1 MS
+			LeapSpellEffect();
+
 		if (charge_effect_timer.Check())
 			TryChargeEffect();
 

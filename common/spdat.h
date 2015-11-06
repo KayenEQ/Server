@@ -733,6 +733,8 @@ typedef enum {
 #define SE_DiscSpamLimiter				1080 // implemented
 #define SE_CalculateDistance			1081 // implemented - Returns distance to target.
 #define SE_SpellResistMod				1082 // implemented - Lowers casters chance to be resisted (-) Lowers chance (+) Inc chance resist.
+#define SE_LeapSpellEffect				1083 // implemented - Needs further review.
+#define SE_Push							1084 // implemented - Needs further review.
 
 
 

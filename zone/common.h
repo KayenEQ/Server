@@ -611,7 +611,20 @@ typedef struct
 	float origin_x;
 	float origin_y;
 	float origin_z;
-} tLeap; //Leap spell effect
+} tLeap; //Leap spell effect (using modified knockback)
+
+typedef struct
+{
+	uint16 increment;
+	uint16 spell_id;
+	int velocity;
+	float dest_x;
+	float dest_y;
+	float dest_z;
+	float dest_h;
+	float z_bound_mod;
+	float mod;
+} tLeapSE; //Leap spell effect (using forced movement)
 
 //C!Kayen - STRUCTS END
 

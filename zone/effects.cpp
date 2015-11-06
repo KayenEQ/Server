@@ -856,7 +856,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		}
 
 	}
-	caster->Shout("CAST ON CLOSESTS %i", maxtargets);
+
 	if (maxtargets) //C!Kayen - Max target PBAE
 		caster->CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_ae);
 

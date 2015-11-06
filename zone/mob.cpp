@@ -448,6 +448,16 @@ Mob::Mob(const char* in_name,
 	leap.origin_x = 0.0f;
 	leap.origin_y = 0.0f;
 	leap.origin_z = 0.0f;
+
+	leapSE.increment = 0;
+	leapSE.spell_id = SPELL_UNKNOWN;
+	leapSE.velocity = 0;
+	leapSE.dest_x = 0.0f;
+	leapSE.dest_y = 0.0f;
+	leapSE.dest_z = 0.0f;
+	leapSE.dest_h = 0.0f;
+	leapSE.z_bound_mod = 0.0f;
+	leapSE.mod = 0.0f;
 		
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_spell_id_ring[i] = 0; }
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
@@ -481,12 +491,15 @@ Mob::Mob(const char* in_name,
 
 	bravery_recast = 0;
 
+	AI_no_chase = false;
+
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	pet_buff_owner_timer.Disable();
 	fast_buff_tick_timer.Disable();
 	stun_resilience_timer.Disable();
 	charge_effect_timer.Disable();
+	leapSE_timer.Disable();
 
 }
 
@@ -6443,6 +6456,12 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 				else
 					GMMove(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), GetHeading());
 			}
+
+			if (spells[spell_id].effectid[i] == SE_LeapSpellEffect){
+				if(IsClient()){
+					SetLeapSpellEffect(spell_id, spells[spell_id].base[i],0,0, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
+				}
+			}
 		}
 	}
 
@@ -10069,9 +10088,214 @@ int Mob::GetCustomSpellResistMod(uint16 spell_id)
 	int mod = spellbonuses.SpellResistMod[HIGHEST_RESIST] + itembonuses.SpellResistMod[HIGHEST_RESIST] + aabonuses.SpellResistMod[HIGHEST_RESIST] +
 	spellbonuses.SpellResistMod[spells[spell_id].resisttype] + itembonuses.SpellResistMod[spells[spell_id].resisttype] + 
 	aabonuses.SpellResistMod[spells[spell_id].resisttype];
-
-	Shout("MOD %i");
 	return mod;
+}
+
+void Mob::SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float zmod2, float dX, float dY, float dZ, float dH)
+{
+	if (leapSE.increment)
+		return; //Do not set a leap effect if currently in motion.
+
+	if (!zmod1)
+		zmod1 = 3.0f;
+	if (!zmod2)
+		zmod2 = 1.5f;
+	if (zmod2 == -1)
+		zmod2 = zmod1/2.0f;
+
+	Shout("Zmod1 %.2f Zmod2 %.2f", zmod1,zmod2);
+
+	leapSE.increment = 1;
+	leapSE.spell_id = spell_id;
+	leapSE.velocity = velocity;
+	leapSE.dest_x = dX;
+	leapSE.dest_y = dY;
+	leapSE.dest_z = dZ;
+	leapSE.dest_h = dH;
+	float pre_mod = CalculateDistance(dX, dY, dZ);
+	leapSE.z_bound_mod = pre_mod / zmod1;
+	leapSE.mod = pre_mod / zmod2;
+	
+	SetFlyMode(1);
+	SetAINoChase(1);
+	leapSE_timer.Start(100);
+}
+
+void Mob::ClearLeapSpellEffectData()
+{
+	leapSE.increment = 0;
+	leapSE.spell_id = SPELL_UNKNOWN;
+	leapSE.velocity = 0;
+	leapSE.dest_x = 0;
+	leapSE.dest_y = 0;
+	leapSE.dest_z = 0;
+	leapSE.dest_h = 0;
+	leapSE.z_bound_mod = 0;
+	leapSE.mod = 0;
+	
+	SetFlyMode(0);
+	SetAINoChase(0);
+	leapSE_timer.Disable();
+}
+
+void Mob::LeapSpellEffect()
+{
+	//This requires further review and refinement when ultimately used.
+	//#15 Seems acceptable for clients
+	//Timer is mili second, to move faster do it mulitiple times per mili second (veloctiy value)
+	if (!leapSE.increment && IsValidSpell(leapSE.spell_id))
+		return;
+	
+	for(int i = 0; i < leapSE.velocity; i++){
+      
+		if(leapSE.increment >= leapSE.mod){
+
+			if (IsNPC()){
+				char temp[64];
+				sprintf(temp, "%d", leapSE.spell_id);
+				parse->EventNPC(EVENT_LEAP_LAND, CastToNPC(), nullptr, temp, 0);
+			}
+			
+			ClearLeapSpellEffectData();
+			return;
+		}
+
+		GlideWithBounceTimer(
+		GetX(),
+		GetY(),
+		GetZ(),		
+		leapSE.dest_x,
+		leapSE.dest_y, 
+		leapSE.dest_z,
+		leapSE.dest_h,
+		leapSE.z_bound_mod,
+		leapSE.mod,
+		leapSE.increment);
+
+		leapSE.increment++;
+	 }
+
+	leapSE.increment++;
+	return;
+}
+
+void Mob::GlideWithBounceTimer(float StartX, float StartY, float StartZ, float DestX, float DestY, float DestZ, float DestH, float z_bounce, float mod, int i)
+{
+	float dir_x = DestX - StartX;
+    float dir_y = DestY - StartY;
+    float dir_z = DestZ - StartZ;
+    float cur_x = (i / mod) * dir_x + StartX;
+    float cur_y = (i / mod) * dir_y + StartY;
+    float cur_z = (i / mod) * dir_z + StartZ;
+      
+    if((i / mod) <= 0.5) {
+        cur_z += z_bounce * (i / mod);
+    } else {
+        cur_z += z_bounce * (1 - (i / mod));
+    }
+   
+	if (IsClient())
+		CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(),  cur_x, cur_y, cur_z, DestH);
+	else
+		GMMove(cur_x, cur_y, cur_z, DestH);
+}
+
+bool Mob::GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z)
+{
+	
+	float dX = 0;
+	float dY = 0;
+	float dZ = 0;
+		
+	int current_distance = d_interval;
+	
+	float last_dX = GetX();
+	float last_dY = GetY();
+	float last_dZ = GetZ();
+	
+	while (current_distance <= d_max)
+	{
+		CalcDestFromHeading(heading, static_cast<float>(current_distance), 0, GetX(), GetY(), dX, dY, dZ); //Pass cooridinates	
+
+		if (!CheckLosFN(dX,dY,dZ,GetSize()))
+		{
+			loc_X = last_dX;
+			loc_Y = last_dY;
+			loc_Z = last_dZ;
+			return 1;
+		}
+		
+		current_distance = current_distance + d_interval;
+		
+		if (current_distance > d_max)
+		{
+			loc_X = dX;
+			loc_Y = dY;
+			loc_Z = dZ;	
+			return 1;
+		}
+		
+		last_dX = dX;
+		last_dY = dY;
+		last_dZ = dZ;
+	}
+
+	return 0;
+}
+
+bool Mob::GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, float &loc_Z)
+{
+	float dX = 0;
+	float dY = 0;
+	float dZ = 0;
+
+	for(int i = 0; i < 100; i++){
+		
+		int rnd_Heading = zone->random.Int(0, 256);
+
+		CalcDestFromHeading(static_cast<float>(rnd_Heading), distance, 0, GetX(), GetY(), dX, dY, dZ); //Pass cooridinates
+
+		if (CheckLosFN(dX,dY,dZ,GetSize()))
+		{
+			loc_X = dX;
+			loc_Y = dY;
+			loc_Z = dZ;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+void Mob::Push(Mob *caster, uint16 spell_id, int i)
+{
+	float dX = 0;
+	float dY = 0;
+	float dZ = 0;
+
+	float Direction = GetReverseHeading(GetHeading());
+
+	if (caster){
+		Direction = CalculateHeadingToTarget(caster->GetX(), caster->GetY());
+		Direction = GetReverseHeading(Direction);
+	}
+
+	GetFurthestLocationLOS(Direction, 1, spells[spell_id].base[i], dX, dY, dZ); //Pass cooridinates through
+	DoAnim(spells[spell_id].TargetAnim,3); //20 = Jump Up
+	SetLeapSpellEffect(spell_id, 2,spells[spell_id].base2[i],-1, dX, dY, dZ, GetHeading());
+
+	//GetFurthestLocationLOS(Direction, 1, spells[spell_id].base[i], dX, dY, dZ); //Pass cooridinates through
+	//GMMove(dX, dY, dZ + 2.0f, GetHeading());
+}
+
+float Mob::GetReverseHeading(float Heading)
+{
+	float ReverseHeading = 128 + Heading;
+	
+	if (ReverseHeading >= 256)
+		ReverseHeading = ReverseHeading - 256;
+
+	return ReverseHeading;
 }
 
 //C!Misc - Functions still in development

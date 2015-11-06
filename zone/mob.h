@@ -1265,6 +1265,20 @@ public:
 	int CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration);
 	int GetCustomSpellResistMod(uint16 spell_id);
 
+	void SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float zmod2, float dX, float dY, float dZ, float dH);
+	void ClearLeapSpellEffectData();
+	void LeapSpellEffect();
+	void GlideWithBounceTimer(float StartX, float StartY, float StartZ, float DestX, float DestY, float DestZ, float DestH, float z_bounce, float mod, int i);
+	//glm::vec3 GetFurthestLocationLOS(float heading, int d_interval, int d_max);
+	bool GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z);
+	bool GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, float &loc_Z);
+	float GetReverseHeading(float Heading);
+
+	inline bool GetAINoChase() const { return AI_no_chase; }
+	inline void SetAINoChase(int16 value) { AI_no_chase = value; }
+
+	void Push(Mob *caster, uint16 spell_id, int i);
+
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 
@@ -1635,7 +1649,8 @@ protected:
 	int32 WpnSkillDmgBonus[HIGHEST_SKILL+2];
 	int32 SpellResistTypeDmgBonus[HIGHEST_RESIST+2];
 	
-	tProjatk leap;
+	tLeap leap;
+	tLeapSE leapSE;
 
 	uint32 projectile_spell_id_ring[MAX_SPELL_PROJECTILE];
 	uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];
@@ -1679,8 +1694,12 @@ protected:
 
 	bool has_fast_buff; //Check if mob has a buff that uses fast timer.
 
+	bool AI_no_chase;
+
 	int16 bravery_recast;
 	int16 flurry_recast;
+
+	Timer leapSE_timer;
 	
 private:
 	void _StopSong(); //this is not what you think it is

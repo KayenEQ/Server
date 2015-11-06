@@ -701,6 +701,9 @@ bool NPC::Process()
 	MeleeCharge();
 	SpellProjectileEffectTargetRing();
 	SpellCastingTimerDisplay();
+
+	if (leapSE_timer.Check()) //1 MS
+		LeapSpellEffect();
 	
 	if (effect_field_timer.Check())
 		DoEffectField();

@@ -3276,6 +3276,45 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			}
 
+			case SE_LeapSpellEffect:{
+
+				if (spells[spell_id].targettype == ST_Ring) //Fail safe should not work from Target Ring effects(calc esle where)
+					break;
+	
+					float dX = 0;
+					float dY = 0;
+					float dZ = 0;
+
+					float Direction = GetHeading();
+
+					if (spells[spell_id].max[i] == -1)//Jump Backwards
+						Direction = GetReverseHeading(GetHeading());
+
+					if (spells[spell_id].max[i] == -10)//Jump Random
+						Direction = zone->random.Real(0.0, 256.0);
+
+					GetFurthestLocationLOS(Direction, 5, spells[spell_id].base2[i], dX, dY, dZ); //Pass cooridinates through
+					float distance = CalculateDistance(dX, dY, dZ); //[TODO: Bestanimation based on distance 100 = 3)]
+					
+					float Face = CalculateHeadingToTarget(dX, dY);
+
+					if (spells[spell_id].max[i] == -1)
+						Face = GetHeading();//Jump Backwards
+
+					if (distance > 0){
+						DoAnim(19,3);
+						SetLeapSpellEffect(spell_id, spells[spell_id].base[i],0,0, dX, dY, dZ, Face);
+					}
+				
+				break;
+			}
+
+			case SE_Push:{
+
+				Push(caster, spell_id, i);
+				break;
+			}
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:

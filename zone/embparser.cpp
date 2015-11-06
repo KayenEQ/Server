@@ -114,7 +114,8 @@ const char *QuestEventSubroutines[_LargestEventID] = {
 	"EVENT_RESPAWN",
 	"EVENT_DEATH_COMPLETE",
 	"EVENT_UNHANDLED_OPCODE",
-	"EVENT_TICK"
+	"EVENT_TICK",
+	"EVENT_LEAP_LAND" //C!Kayen
 };
 
 PerlembParser::PerlembParser() : perl(nullptr) {
@@ -1407,6 +1408,11 @@ void PerlembParser::ExportEventVariables(std::string &package_name, QuestEventID
 			ExportVar(package_name.c_str(), "itemid", iteminst->GetItem()->ID);
 			ExportVar(package_name.c_str(), "spell_id", iteminst->GetItem()->Click.Effect);
 			ExportVar(package_name.c_str(), "slotid", extradata);
+			break;
+		}
+
+		case EVENT_LEAP_LAND: { //C!Kayen
+			ExportVar(package_name.c_str(), "spell_id", data);
 			break;
 		}
 
