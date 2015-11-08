@@ -1265,9 +1265,10 @@ public:
 	int CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration);
 	int GetCustomSpellResistMod(uint16 spell_id);
 
+	void DoLeapSpellEffect(uint16 spell_id, int anim, int anin_speed, int DirOpts, int d_interval, int d_max, int velocity, float zmod1, float zmod2, float set_x, float set_y, float set_z);
 	void SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float zmod2, float dX, float dY, float dZ, float dH);
 	void ClearLeapSpellEffectData();
-	void LeapSpellEffect();
+	void LeapSpellEffect(); //Triggered by interval timer
 	void GlideWithBounceTimer(float StartX, float StartY, float StartZ, float DestX, float DestY, float DestZ, float DestH, float z_bounce, float mod, int i);
 	//glm::vec3 GetFurthestLocationLOS(float heading, int d_interval, int d_max);
 	bool GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z);

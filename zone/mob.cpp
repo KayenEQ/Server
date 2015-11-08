@@ -10091,6 +10091,85 @@ int Mob::GetCustomSpellResistMod(uint16 spell_id)
 	return mod;
 }
 
+void Mob::DoLeapSpellEffect(uint16 spell_id, int anim, int anim_speed, int DirOpts, int d_interval, int d_max, int velocity, float zmod1, float zmod2, 
+							float set_x, float set_y, float set_z)
+{
+	//PERL FUNCTION - Leap
+	float dX = 0;
+	float dY = 0;
+	float dZ = 0;
+
+	float Direction = 0;
+
+	if (!spell_id)
+		spell_id = SPELL_UNKNOWN;
+
+	bool loc_override = false;
+	if (set_x && set_y && set_z){
+		loc_override = true;
+	}
+
+	//Headings
+	if (!DirOpts){
+		Direction = GetHeading();
+	}
+	else if (DirOpts < 0) { // Automatic Special Cases
+		if (DirOpts == -1)//Jump Backwards
+			Direction = GetReverseHeading(GetHeading());
+
+		else if (DirOpts == -10)//Jump Random
+			Direction = zone->random.Real(0.0, 255.0);
+
+		else if (DirOpts == -11) //Random Front Angle
+			Direction = GetHeading() + zone->random.Real((- 45.0f), (45.0f));
+		
+		else if (DirOpts == -2) //Random Back Angle
+			Direction = GetReverseHeading(GetHeading()) + zone->random.Real((- 45.0f), (45.0f));
+
+		if (Direction >= 256)//Fail safe
+			Direction = Direction - 256;
+		else if (Direction < 0)//Fail safe
+			Direction = 256 + Direction;
+	}
+	else{
+		if (DirOpts >= 255)
+			Direction = GetHeading();
+		else
+			Direction = DirOpts; //Set Direction manually
+	}
+
+	if (!d_interval)
+		d_interval = 5;
+
+	if (!d_max)
+		d_max = 100;
+
+	if (!loc_override)
+		GetFurthestLocationLOS(Direction, d_interval , d_max, dX, dY, dZ); //Pass cooridinates through
+	else{
+		dX = set_x;
+		dY = set_y;
+		dZ = set_z;
+	}
+
+	float distance = CalculateDistance(dX, dY, dZ); //[TODO: Bestanimation based on distance 100 = 3)]
+					
+	float Face = CalculateHeadingToTarget(dX, dY);
+
+	if (DirOpts  == -1 || DirOpts  == -2)
+		Face = GetHeading();//Jump Backwards
+
+	if (!anim)
+		anim = 9;
+	if (!anim_speed)
+		anim_speed = 3;
+
+	if (distance > 0){
+		DoAnim(anim,anim_speed); //This should be replaced by target animation
+		SetLeapSpellEffect(spell_id, velocity,zmod1,zmod2, dX, dY, dZ, Face);
+	}
+}
+
 void Mob::SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float zmod2, float dX, float dY, float dZ, float dH)
 {
 	if (leapSE.increment)
@@ -10102,6 +10181,9 @@ void Mob::SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float z
 		zmod2 = 1.5f;
 	if (zmod2 == -1)
 		zmod2 = zmod1/2.0f;
+
+	if (!velocity)
+		velocity = 2;
 
 	Shout("Zmod1 %.2f Zmod2 %.2f", zmod1,zmod2);
 
@@ -10143,7 +10225,7 @@ void Mob::LeapSpellEffect()
 	//This requires further review and refinement when ultimately used.
 	//#15 Seems acceptable for clients
 	//Timer is mili second, to move faster do it mulitiple times per mili second (veloctiy value)
-	if (!leapSE.increment && IsValidSpell(leapSE.spell_id))
+	if (!leapSE.increment)
 		return;
 	
 	for(int i = 0; i < leapSE.velocity; i++){
@@ -10153,7 +10235,7 @@ void Mob::LeapSpellEffect()
 			if (IsNPC()){
 				char temp[64];
 				sprintf(temp, "%d", leapSE.spell_id);
-				parse->EventNPC(EVENT_LEAP_LAND, CastToNPC(), nullptr, temp, 0);
+				parse->EventNPC(EVENT_LEAP_LAND, CastToNPC(), nullptr, temp, 0);//PERLCUSTOM
 			}
 			
 			ClearLeapSpellEffectData();

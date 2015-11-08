@@ -3287,6 +3287,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 					float Direction = GetHeading();
 
+					if (!spells[spell_id].max[i])
+						Direction = GetHeading();
+
 					if (spells[spell_id].max[i] == -1)//Jump Backwards
 						Direction = GetReverseHeading(GetHeading());
 
@@ -3302,7 +3305,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						Face = GetHeading();//Jump Backwards
 
 					if (distance > 0){
-						DoAnim(19,3);
+						DoAnim(19,3); //This should be replaced by target animation
 						SetLeapSpellEffect(spell_id, spells[spell_id].base[i],0,0, dX, dY, dZ, Face);
 					}
 				

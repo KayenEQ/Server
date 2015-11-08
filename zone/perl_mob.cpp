@@ -8640,6 +8640,42 @@ XS(XS_Mob_SendAppearanceEffectTest)
 	XSRETURN_EMPTY;
 }
 
+XS(XS_Mob_Leap); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_Leap)
+{
+	dXSARGS;
+	if (items < 13)
+		Perl_croak(aTHX_ "Usage: Mob::DoLeapSpellEffect(THIS, spell_id, anim, anim, Speed, DirOpts, d_interval, d_max, velocity, zmod1, zmod2, set_x, set_y, float set_z)");
+	{
+		Mob *		THIS;
+		uint16		spell_id = (uint16)SvUV(ST(1));
+		int		anim = (int)SvIV(ST(2));
+		int		anim_speed = (int)SvIV(ST(3));
+		int		DirOpts = (int)SvIV(ST(4));
+		int		d_interval = (int)SvIV(ST(5));
+		int		d_max = (int)SvIV(ST(6));
+		int		velocity = (int)SvIV(ST(7));
+		float	zmod1 = (float)SvIV(ST(8));
+		float	zmod2 = (float)SvIV(ST(9));
+		float	set_x = (float)SvNV(ST(10));
+		float	set_y = (float)SvNV(ST(11));
+		float	set_z = (float)SvNV(ST(12));
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+
+		THIS->DoLeapSpellEffect(spell_id, anim, anim_speed, DirOpts, d_interval, d_max, velocity, zmod1, zmod2, set_x, set_y, set_z);
+	}
+	XSRETURN_EMPTY;
+}
+
 
 #ifdef __cplusplus
 extern "C"
@@ -8962,6 +8998,7 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "GetOnlyAggroLast"), XS_Mob_GetOnlyAggroLast, file, "$$");
 		newXSproto(strcpy(buf, "SendAppearanceEffect2"), XS_Mob_SendAppearanceEffect2, file, "$$;$$$$");
 		newXSproto(strcpy(buf, "SendAppearanceEffectTest"), XS_Mob_SendAppearanceEffectTest, file, "$$$$$");
+		newXSproto(strcpy(buf, "Leap"), XS_Mob_Leap, file, "$$$$$$$$$$$$$");
 		
 
 	XSRETURN_YES;
