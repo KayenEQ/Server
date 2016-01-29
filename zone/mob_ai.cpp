@@ -1743,8 +1743,10 @@ void Mob::AI_Event_Engaged(Mob* attacker, bool iYellForHelp) {
 	if (iYellForHelp) {
 		if(IsPet()) {
 			GetOwner()->AI_Event_Engaged(attacker, iYellForHelp);
-		} else {
+		} else if (!HasAssistAggro() && NPCAssistCap() < RuleI(Combat, NPCAssistCap)) {
 			entity_list.AIYellForHelp(this, attacker);
+			if (NPCAssistCap() > 0 && !assist_cap_timer.Enabled())
+				assist_cap_timer.Start(RuleI(Combat, NPCAssistCapTimer));
 		}
 	}
 
@@ -1795,6 +1797,8 @@ void Mob::AI_Event_NoLongerEngaged() {
 
 	if(IsNPC())
 	{
+		SetPrimaryAggro(false);
+		SetAssistAggro(false);
 		if(CastToNPC()->GetCombatEvent() && GetHP() > 0)
 		{
 			if(entity_list.GetNPCByID(this->GetID()))

@@ -1179,7 +1179,7 @@ uint16 Bot::GetPrimarySkillValue() {
 				break;
 			}
 			case ItemType2HPiercing: {
-				skill = Skill1HPiercing; // change to Skill2HPiercing once activated
+				skill = Skill2HPiercing;
 				break;
 			}
 			case ItemTypeMartial: {
@@ -2026,6 +2026,16 @@ void Bot::LoadPetBuffs(SpellBuff_Struct* petBuffs, uint32 botPetSaveId) {
 		petBuffs[buffIndex].spellid = atoi(row[0]);
 		petBuffs[buffIndex].level = atoi(row[1]);
 		petBuffs[buffIndex].duration = atoi(row[2]);
+		//Work around for loading the counters and setting them back to max. Need entry in DB for saved counters
+		if(CalculatePoisonCounters(petBuffs[buffIndex].spellid) > 0)
+			petBuffs[buffIndex].counters = CalculatePoisonCounters(petBuffs[buffIndex].spellid);
+		else if(CalculateDiseaseCounters(petBuffs[buffIndex].spellid) > 0)
+			petBuffs[buffIndex].counters = CalculateDiseaseCounters(petBuffs[buffIndex].spellid);
+		else if(CalculateCurseCounters(petBuffs[buffIndex].spellid) > 0)
+			petBuffs[buffIndex].counters = CalculateCurseCounters(petBuffs[buffIndex].spellid);
+		else if(CalculateCorruptionCounters(petBuffs[buffIndex].spellid) > 0)
+			petBuffs[buffIndex].counters = CalculateCorruptionCounters(petBuffs[buffIndex].spellid);
+
 		buffIndex++;
 	}
 	query = StringFormat("DELETE FROM `bot_pet_buffs` WHERE `pets_index` = %u;", botPetSaveId);
@@ -6226,31 +6236,44 @@ float Bot::GetProcChances(float ProcBonus, uint16 hand) {
 	return ProcChance;
 }
 
-int Bot::GetMonkHandToHandDamage(void) {
-	static int damage[66] = {
-		// 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
-		99, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7,
-		8, 8, 8, 8, 8, 9, 9, 9, 9, 9,10,10,10,10,10,11,11,11,11,11,
-		12,12,12,12,12,13,13,13,13,13,14,14,14,14,14,14,14,14,14,14,
-		14,14,15,15,15,15 };
+int Bot::GetHandToHandDamage(void) {
+	if (RuleB(Combat, UseRevampHandToHand)) {
+		// everyone uses this in the revamp!
+		int skill = GetSkill(SkillHandtoHand);
+		int epic = 0;
+		if (CastToNPC()->GetEquipment(MaterialHands) == 10652 && GetLevel() > 46)
+			epic = 280;
+		if (epic > skill)
+			skill = epic;
+		return skill / 15 + 3;
+	}
 
-		uint32 botWeaponId = INVALID_ID;
-		botWeaponId = CastToNPC()->GetEquipment(MaterialHands);
-		if(botWeaponId == 10652)
+	static uint8 mnk_dmg[] = {99,
+				4, 4, 4, 4, 5, 5, 5, 5, 5, 6,           // 1-10
+				6, 6, 6, 6, 7, 7, 7, 7, 7, 8,           // 11-20
+				8, 8, 8, 8, 9, 9, 9, 9, 9, 10,          // 21-30
+				10, 10, 10, 10, 11, 11, 11, 11, 11, 12, // 31-40
+				12, 12, 12, 12, 13, 13, 13, 13, 13, 14, // 41-50
+				14, 14, 14, 14, 14, 14, 14, 14, 14, 14, // 51-60
+				14, 14};                                // 61-62
+	static uint8 bst_dmg[] = {99,
+				4, 4, 4, 4, 4, 5, 5, 5, 5, 5,        // 1-10
+				5, 6, 6, 6, 6, 6, 6, 7, 7, 7,        // 11-20
+				7, 7, 7, 8, 8, 8, 8, 8, 8, 9,        // 21-30
+				9, 9, 9, 9, 9, 10, 10, 10, 10, 10,   // 31-40
+				10, 11, 11, 11, 11, 11, 11, 12, 12}; // 41-49
+	if (GetClass() == MONK) {
+		if (CastToNPC()->GetEquipment(MaterialHands) == 10652 && GetLevel() > 50)
 			return 9;
-		else {
-			int Level = GetLevel();
-			if(Level > 65)
-				return 19;
-			else
-				return damage[Level];
-		}
-
-		int Level = GetLevel();
-		if (Level > 65)
-			return 19;
-		else
-			return damage[Level];
+		if (level > 62)
+			return 15;
+		return mnk_dmg[level];
+	} else if (GetClass() == BEASTLORD) {
+		if (level > 49)
+			return 13;
+		return bst_dmg[level];
+	}
+	return 2;
 }
 
 bool Bot::TryFinishingBlow(Mob *defender, SkillUseTypes skillinuse) {
@@ -6470,7 +6493,7 @@ void Bot::RogueBackstab(Mob* other, bool min_damage, int ReuseTime) {
 		ndamage = -5;
 
 	DoSpecialAttackDamage(other, SkillBackstab, ndamage, min_hit, hate, ReuseTime);
-	DoAnim(animPiercing);
+	DoAnim(anim1HPiercing);
 }
 
 void Bot::RogueAssassinate(Mob* other) {
@@ -6482,7 +6505,7 @@ void Bot::RogueAssassinate(Mob* other) {
 			other->Damage(this, -5, SPELL_UNKNOWN, SkillBackstab);
 	}
 
-	DoAnim(animPiercing);
+	DoAnim(anim1HPiercing);
 }
 
 void Bot::DoClassAttacks(Mob *target, bool IsRiposte) {
@@ -7002,8 +7025,7 @@ void Bot::SetAttackTimer() {
 		int speed = 0;
 		int delay = 36;
 		if (ItemToUse == nullptr) {
-			if ((GetClass() == MONK) || (GetClass() == BEASTLORD))
-				delay = GetMonkHandToHandDelay();
+			delay = GetHandToHandDelay();
 		} else {
 			delay = ItemToUse->Delay;
 		}
@@ -8807,7 +8829,7 @@ void Bot::CalcItemBonuses(StatBonuses* newbon)
 		newbon->EnduranceRegen = CalcEnduranceRegenCap();
 }
 
-void Bot::AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug, bool isTribute) {
+void Bot::AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug, bool isTribute, int rec_override) {
 	if(!inst || !inst->IsType(ItemClassCommon))
 	{
 		return;
@@ -8826,12 +8848,13 @@ void Bot::AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug, 
 			return;
 	}
 
-	if(GetLevel() < item->ReqLevel)
+	if(GetLevel() < inst->GetItemRequiredLevel(true))
 	{
 		return;
 	}
 
-	if(GetLevel() >= item->RecLevel)
+	auto rec_level = isAug ? rec_override : inst->GetItemRecommendedLevel(true);
+	if(GetLevel() >= rec_level)
 	{
 		newbon->AC += item->AC;
 		newbon->HP += item->HP;
@@ -8885,55 +8908,54 @@ void Bot::AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug, 
 	else
 	{
 		int lvl = GetLevel();
-		int reclvl = item->RecLevel;
 
-		newbon->AC += CalcRecommendedLevelBonus( lvl, reclvl, item->AC );
-		newbon->HP += CalcRecommendedLevelBonus( lvl, reclvl, item->HP );
-		newbon->Mana += CalcRecommendedLevelBonus( lvl, reclvl, item->Mana );
-		newbon->Endurance += CalcRecommendedLevelBonus( lvl, reclvl, item->Endur );
-		newbon->ATK += CalcRecommendedLevelBonus( lvl, reclvl, item->Attack );
-		newbon->STR += CalcRecommendedLevelBonus( lvl, reclvl, (item->AStr + item->HeroicStr) );
-		newbon->STA += CalcRecommendedLevelBonus( lvl, reclvl, (item->ASta + item->HeroicSta) );
-		newbon->DEX += CalcRecommendedLevelBonus( lvl, reclvl, (item->ADex + item->HeroicDex) );
-		newbon->AGI += CalcRecommendedLevelBonus( lvl, reclvl, (item->AAgi + item->HeroicAgi) );
-		newbon->INT += CalcRecommendedLevelBonus( lvl, reclvl, (item->AInt + item->HeroicInt) );
-		newbon->WIS += CalcRecommendedLevelBonus( lvl, reclvl, (item->AWis + item->HeroicWis) );
-		newbon->CHA += CalcRecommendedLevelBonus( lvl, reclvl, (item->ACha + item->HeroicCha) );
+		newbon->AC += CalcRecommendedLevelBonus( lvl, rec_level, item->AC );
+		newbon->HP += CalcRecommendedLevelBonus( lvl, rec_level, item->HP );
+		newbon->Mana += CalcRecommendedLevelBonus( lvl, rec_level, item->Mana );
+		newbon->Endurance += CalcRecommendedLevelBonus( lvl, rec_level, item->Endur );
+		newbon->ATK += CalcRecommendedLevelBonus( lvl, rec_level, item->Attack );
+		newbon->STR += CalcRecommendedLevelBonus( lvl, rec_level, (item->AStr + item->HeroicStr) );
+		newbon->STA += CalcRecommendedLevelBonus( lvl, rec_level, (item->ASta + item->HeroicSta) );
+		newbon->DEX += CalcRecommendedLevelBonus( lvl, rec_level, (item->ADex + item->HeroicDex) );
+		newbon->AGI += CalcRecommendedLevelBonus( lvl, rec_level, (item->AAgi + item->HeroicAgi) );
+		newbon->INT += CalcRecommendedLevelBonus( lvl, rec_level, (item->AInt + item->HeroicInt) );
+		newbon->WIS += CalcRecommendedLevelBonus( lvl, rec_level, (item->AWis + item->HeroicWis) );
+		newbon->CHA += CalcRecommendedLevelBonus( lvl, rec_level, (item->ACha + item->HeroicCha) );
 
-		newbon->MR += CalcRecommendedLevelBonus( lvl, reclvl, (item->MR + item->HeroicMR) );
-		newbon->FR += CalcRecommendedLevelBonus( lvl, reclvl, (item->FR + item->HeroicFR) );
-		newbon->CR += CalcRecommendedLevelBonus( lvl, reclvl, (item->CR + item->HeroicCR) );
-		newbon->PR += CalcRecommendedLevelBonus( lvl, reclvl, (item->PR + item->HeroicPR) );
-		newbon->DR += CalcRecommendedLevelBonus( lvl, reclvl, (item->DR + item->HeroicDR) );
-		newbon->Corrup += CalcRecommendedLevelBonus( lvl, reclvl, (item->SVCorruption + item->HeroicSVCorrup) );
+		newbon->MR += CalcRecommendedLevelBonus( lvl, rec_level, (item->MR + item->HeroicMR) );
+		newbon->FR += CalcRecommendedLevelBonus( lvl, rec_level, (item->FR + item->HeroicFR) );
+		newbon->CR += CalcRecommendedLevelBonus( lvl, rec_level, (item->CR + item->HeroicCR) );
+		newbon->PR += CalcRecommendedLevelBonus( lvl, rec_level, (item->PR + item->HeroicPR) );
+		newbon->DR += CalcRecommendedLevelBonus( lvl, rec_level, (item->DR + item->HeroicDR) );
+		newbon->Corrup += CalcRecommendedLevelBonus( lvl, rec_level, (item->SVCorruption + item->HeroicSVCorrup) );
 
-		newbon->STRCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicStr );
-		newbon->STACapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicSta );
-		newbon->DEXCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicDex );
-		newbon->AGICapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicAgi );
-		newbon->INTCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicInt );
-		newbon->WISCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicWis );
-		newbon->CHACapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicCha );
-		newbon->MRCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicMR );
-		newbon->CRCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicFR );
-		newbon->FRCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicCR );
-		newbon->PRCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicPR );
-		newbon->DRCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicDR );
-		newbon->CorrupCapMod += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicSVCorrup );
+		newbon->STRCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicStr );
+		newbon->STACapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicSta );
+		newbon->DEXCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicDex );
+		newbon->AGICapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicAgi );
+		newbon->INTCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicInt );
+		newbon->WISCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicWis );
+		newbon->CHACapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicCha );
+		newbon->MRCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicMR );
+		newbon->CRCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicFR );
+		newbon->FRCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicCR );
+		newbon->PRCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicPR );
+		newbon->DRCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicDR );
+		newbon->CorrupCapMod += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicSVCorrup );
 
-		newbon->HeroicSTR += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicStr );
-		newbon->HeroicSTA += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicSta );
-		newbon->HeroicDEX += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicDex );
-		newbon->HeroicAGI += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicAgi );
-		newbon->HeroicINT += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicInt );
-		newbon->HeroicWIS += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicWis );
-		newbon->HeroicCHA += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicCha );
-		newbon->HeroicMR += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicMR );
-		newbon->HeroicFR += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicFR );
-		newbon->HeroicCR += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicCR );
-		newbon->HeroicPR += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicPR );
-		newbon->HeroicDR += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicDR );
-		newbon->HeroicCorrup += CalcRecommendedLevelBonus( lvl, reclvl, item->HeroicSVCorrup );
+		newbon->HeroicSTR += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicStr );
+		newbon->HeroicSTA += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicSta );
+		newbon->HeroicDEX += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicDex );
+		newbon->HeroicAGI += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicAgi );
+		newbon->HeroicINT += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicInt );
+		newbon->HeroicWIS += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicWis );
+		newbon->HeroicCHA += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicCha );
+		newbon->HeroicMR += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicMR );
+		newbon->HeroicFR += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicFR );
+		newbon->HeroicCR += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicCR );
+		newbon->HeroicPR += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicPR );
+		newbon->HeroicDR += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicDR );
+		newbon->HeroicCorrup += CalcRecommendedLevelBonus( lvl, rec_level, item->HeroicSVCorrup );
 	}
 
 	//FatherNitwit: New style haste, shields, and regens
@@ -9102,10 +9124,8 @@ void Bot::AddItemBonuses(const ItemInst *inst, StatBonuses* newbon, bool isAug, 
 
 	if (!isAug)
 	{
-		int i;
-		for (i = 0; i < EmuConstants::ITEM_COMMON_SIZE; i++) {
-			AddItemBonuses(inst->GetAugment(i),newbon,true);
-		}
+		for (int i = 0; i < EmuConstants::ITEM_COMMON_SIZE; i++)
+			AddItemBonuses(inst->GetAugment(i),newbon,true, false, rec_level);
 	}
 
 }
@@ -13754,11 +13774,10 @@ std::string Bot::CreateSayLink(Client* c, const char* message, const char* name)
 	}
 	safe_delete_array(escaped_string);
 
-	sayid += 500000;
-
 	Client::TextLink linker;
 	linker.SetLinkType(linker.linkItemData);
-	linker.SetProxyItemID(sayid);
+	linker.SetProxyItemID(SAYLINK_ITEM_ID);
+	linker.SetProxyAugment1ID(sayid);
 	linker.SetProxyText(name);
 
 	auto say_link = linker.GenerateLink();

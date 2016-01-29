@@ -233,6 +233,8 @@ enum {	//some random constants
 #define GROUP_EXP_PER_POINT 1000
 #define RAID_EXP_PER_POINT 2000
 
+#define ZONE_CONTROLLER_NPC_ID 10
+
 //Some hard coded statuses from commands and other places:
 enum {
 	minStatusToBeGM = 40,
@@ -270,6 +272,9 @@ enum {
 #define CLIENT_DEFAULT_LOGGING_ENABLED true
 #define NPC_DEFAULT_LOGGING_ENABLED false
 
+
+// This is the item ID we use for say links, we use the max that fits in 5 ASCII chars
+#define SAYLINK_ITEM_ID 0xFFFFF
 
 
 /*

@@ -437,6 +437,10 @@ Mob::Mob(const char* in_name,
 
 	emoteid = 0;
 	endur_upkeep = false;
+
+	PrimaryAggro = false;
+	AssistAggro = false;
+	npc_assist_cap = 0;
 	
 	//C!Kayen
 	momentum = 0.0f; 
@@ -2763,6 +2767,8 @@ bool Mob::RemoveFromHateList(Mob* mob)
 		{
 			AI_Event_NoLongerEngaged();
 			zone->DelAggroMob();
+			if (IsNPC() && !RuleB(Aggro, AllowTickPulling))
+				ResetAssistCap();
 		}
 	}
 	if(GetTarget() == mob)
@@ -5108,7 +5114,10 @@ uint16 Mob::GetSkillByItemType(int ItemType)
 		case ItemType2HBlunt:
 			return Skill2HBlunt;
 		case ItemType2HPiercing:
-			return Skill1HPiercing; // change to 2HPiercing once activated
+			if (IsClient() && CastToClient()->GetClientVersion() < ClientVersion::RoF2)
+				return Skill1HPiercing;
+			else
+				return Skill2HPiercing;
 		case ItemTypeBow:
 			return SkillArchery;
 		case ItemTypeLargeThrowing:
@@ -5136,6 +5145,8 @@ uint8 Mob::GetItemTypeBySkill(SkillUseTypes skill)
 			return ItemType2HSlash;
 		case Skill1HPiercing:
 			return ItemType1HPiercing;
+		case Skill2HPiercing: // watch for undesired client behavior
+			return ItemType2HPiercing;
 		case Skill1HBlunt:
 			return ItemType1HBlunt;
 		case Skill2HBlunt:
@@ -9493,7 +9504,7 @@ void Client::SpinAttack() {
 	int anim = zone->random.Int(0,1);
 
 	if (anim)
-		DoAnim(animPiercing);
+		DoAnim(anim1HPiercing);
 	else
 		DoAnim(animDualWield);
 
@@ -9662,7 +9673,7 @@ void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
 	}
 
 	DoSpecialAttackDamage(other, SkillBackstab, ndamage, min_hit, hate, ReuseTime, false, false);
-	DoAnim(animPiercing);
+	DoAnim(anim1HPiercing);
 }
 
 void Mob::TryBackstabHeal(Mob* other, uint16 spell_id)
@@ -11350,4 +11361,178 @@ void Mob::SetCurrentSpeed(int in){
 			SendPosition();
 		}
 	}
+}
+
+int32 Mob::GetMeleeMitigation() {
+	int32 mitigation = 0;
+	mitigation += spellbonuses.MeleeMitigationEffect;
+	mitigation += itembonuses.MeleeMitigationEffect;
+	mitigation += aabonuses.MeleeMitigationEffect;
+	return mitigation;
+}
+
+/* this is the mob being attacked.
+ * Pass in the weapon's ItemInst
+ */
+int Mob::ResistElementalWeaponDmg(const ItemInst *item)
+{
+	if (!item)
+		return 0;
+	int magic = 0, fire = 0, cold = 0, poison = 0, disease = 0, chromatic = 0, prismatic = 0, physical = 0,
+	    corruption = 0;
+	int resist = 0;
+	int roll = 0;
+	/*  this is how the client does the resist rolls for these.
+	 *  Given the difficulty of parsing out these resists, I'll trust the client
+	 */
+	if (item->GetItemElementalDamage(magic, fire, cold, poison, disease, chromatic, prismatic, physical, corruption, true)) {
+		if (magic) {
+			resist = GetMR();
+			if (resist >= 201) {
+				magic = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					magic = 0;
+				else if (roll < 100)
+					magic = magic * roll / 100;
+			}
+		}
+
+		if (fire) {
+			resist = GetFR();
+			if (resist >= 201) {
+				fire = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					fire = 0;
+				else if (roll < 100)
+					fire = fire * roll / 100;
+			}
+		}
+
+		if (cold) {
+			resist = GetCR();
+			if (resist >= 201) {
+				cold = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					cold = 0;
+				else if (roll < 100)
+					cold = cold * roll / 100;
+			}
+		}
+
+		if (poison) {
+			resist = GetPR();
+			if (resist >= 201) {
+				poison = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					poison = 0;
+				else if (roll < 100)
+					poison = poison * roll / 100;
+			}
+		}
+
+		if (disease) {
+			resist = GetDR();
+			if (resist >= 201) {
+				disease = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					disease = 0;
+				else if (roll < 100)
+					disease = disease * roll / 100;
+			}
+		}
+
+		if (corruption) {
+			resist = GetCorrup();
+			if (resist >= 201) {
+				corruption = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					corruption = 0;
+				else if (roll < 100)
+					corruption = corruption * roll / 100;
+			}
+		}
+
+		if (chromatic) {
+			resist = GetFR();
+			int temp = GetCR();
+			if (temp < resist)
+				resist = temp;
+
+			temp = GetMR();
+			if (temp < resist)
+				resist = temp;
+
+			temp = GetDR();
+			if (temp < resist)
+				resist = temp;
+
+			temp = GetPR();
+			if (temp < resist)
+				resist = temp;
+
+			if (resist >= 201) {
+				chromatic = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					chromatic = 0;
+				else if (roll < 100)
+					chromatic = chromatic * roll / 100;
+			}
+		}
+
+		if (prismatic) {
+			resist = (GetFR() + GetCR() + GetMR() + GetDR() + GetPR()) / 5;
+			if (resist >= 201) {
+				prismatic = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					prismatic = 0;
+				else if (roll < 100)
+					prismatic = prismatic * roll / 100;
+			}
+		}
+
+		if (physical) {
+			resist = GetPhR();
+			if (resist >= 201) {
+				physical = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					physical = 0;
+				else if (roll < 100)
+					physical = physical * roll / 100;
+			}
+		}
+	}
+
+	return magic + fire + cold + poison + disease + chromatic + prismatic + physical + corruption;
+}
+
+/* this is the mob being attacked.
+ * Pass in the weapon's ItemInst
+ */
+int Mob::CheckBaneDamage(const ItemInst *item)
+{
+	if (!item)
+		return 0;
+
+	int damage = item->GetItemBaneDamageBody(GetBodyType(), true);
+	damage += item->GetItemBaneDamageRace(GetRace(), true);
+
+	return damage;
 }
