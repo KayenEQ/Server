@@ -6,7 +6,7 @@
 #include "quest_parser_collection.h"
 #include "../common/string_util.h"
 
-extern volatile bool ZoneLoaded;
+extern volatile bool is_zone_loaded;
 
 // This constructor is used during the bot create command
 Bot::Bot(NPCType npcTypeData, Client* botOwner) : NPC(&npcTypeData, nullptr, glm::vec4(), 0, false), rest_timer(1) {
@@ -66,7 +66,7 @@ Bot::Bot(NPCType npcTypeData, Client* botOwner) : NPC(&npcTypeData, nullptr, glm
 	SetShowHelm(true);
 	CalcChanceToCast();
 	rest_timer.Disable();
-	SetFollowDistance(184);
+	SetFollowDistance(BOT_DEFAULT_FOLLOW_DISTANCE);
 	// Do this once and only in this constructor
 	GenerateAppearance();
 	GenerateBaseStats();
@@ -144,7 +144,7 @@ Bot::Bot(uint32 botID, uint32 botOwnerCharacterID, uint32 botSpellsID, double to
 	SetNumHealRotationMembers(0);
 	CalcChanceToCast();
 	rest_timer.Disable();
-	SetFollowDistance(184);
+	SetFollowDistance(BOT_DEFAULT_FOLLOW_DISTANCE);
 	strcpy(this->name, this->GetCleanName());
 	database.GetBotInspectMessage(this->GetBotID(), &_botInspectMessage);
 	LoadGuildMembership(&_guildId, &_guildRank, &_guildName);
@@ -1563,7 +1563,7 @@ bool Bot::Save()
 			" `race`,"
 			" `class`,"
 			" `level`,"
-			" `creation_date`,"
+			" `creation_day`,"
 			" `last_spawn`,"
 			" `time_spawned`,"
 			" `size`,"
@@ -1593,7 +1593,9 @@ bool Bot::Save()
 			" `magic`,"
 			" `poison`,"
 			" `disease`,"
-			" `corruption`"
+			" `corruption`,"
+			" `show_helm`,"
+			" `follow_distance`"
 			")"
 			" VALUES ("
 			"'%u',"				/*owner_id*/
@@ -1605,7 +1607,7 @@ bool Bot::Save()
 			" '%i',"			/*race*/
 			" '%i',"			/*class*/
 			" '%u',"			/*level*/
-			" UNIX_TIMESTAMP(),"/*creation_date*/
+			" UNIX_TIMESTAMP(),"/*creation_day*/
 			" UNIX_TIMESTAMP(),"/*last_spawn*/
 			" 0,"				/*time_spawned*/
 			" '%f',"			/*size*/
@@ -1635,7 +1637,9 @@ bool Bot::Save()
 			" '%i',"			/*magic*/
 			" '%i',"			/*poison*/
 			" '%i',"			/*disease*/
-			" '%i'"				/*corruption*/
+			" '%i',"			/*corruption*/
+			" '1',"				/*show_helm*/
+			" '%i'"				/*follow_distance*/
 			")",
 			this->_botOwnerCharacterID,
 			this->GetBotSpellID(),
@@ -1673,7 +1677,8 @@ bool Bot::Save()
 			GetMR(),
 			GetPR(),
 			GetDR(),
-			GetCorrup()
+			GetCorrup(),
+			BOT_DEFAULT_FOLLOW_DISTANCE
 		);
 		auto results = database.QueryDatabase(query);
 		if(!results.Success()) {
@@ -1734,7 +1739,9 @@ bool Bot::Save()
 		" `magic` = '%i',"
 		" `poison` = '%i',"
 		" `disease` = '%i',"
-		" `corruption` = '%i'"
+		" `corruption` = '%i',"
+		" `show_helm` = '%i',"
+		" `follow_distance` = '%i'"
 		" WHERE `bot_id` = '%u'",
 		_botOwnerCharacterID,
 		this->GetBotSpellID(),
@@ -1774,6 +1781,8 @@ bool Bot::Save()
 		_basePR,
 		_baseDR,
 		_baseCorrup,
+		(GetShowHelm() ? 1 : 0),
+		GetFollowDistance(),
 		GetBotID()
 	);
 	auto results = database.QueryDatabase(query);
@@ -2277,7 +2286,7 @@ bool Bot::Process() {
 
 		BuffProcess();
 		CalcRestState();
-		if(curfp)
+		if(currently_fleeing)
 			ProcessFlee();
 
 		if(GetHP() < GetMaxHP())
@@ -2676,7 +2685,7 @@ void Bot::AI_Process() {
 
 	if(GetHasBeenSummoned()) {
 		if(IsBotCaster() || IsBotArcher()) {
-			if (AImovement_timer->Check()) {
+			if (AI_movement_timer->Check()) {
 				if(!GetTarget() || (IsBotCaster() && !IsBotCasterCombatRange(GetTarget())) || (IsBotArcher() && IsArcheryRange(GetTarget())) || (DistanceSquaredNoZ(static_cast<glm::vec3>(m_Position), m_PreSummonLocation) < 10)) {
 					if(GetTarget())
 						FaceTarget(GetTarget());
@@ -2822,7 +2831,7 @@ void Bot::AI_Process() {
 				}
 			}
 
-			if(AImovement_timer->Check()) {
+			if(AI_movement_timer->Check()) {
 				if(!IsMoving() && GetClass() == ROGUE && !BehindMob(GetTarget(), GetX(), GetY())) {
 					// Move the rogue to behind the mob
 					float newX = 0;
@@ -2958,7 +2967,7 @@ void Bot::AI_Process() {
 					AI_PursueCastCheck();
 			}
 
-			if (AImovement_timer->Check()) {
+			if (AI_movement_timer->Check()) {
 				if(!IsRooted()) {
 					Log.Out(Logs::Detail, Logs::AI, "Pursuing %s while engaged.", GetTarget()->GetCleanName());
 					CalculateNewPosition2(GetTarget()->GetX(), GetTarget()->GetY(), GetTarget()->GetZ(), GetRunspeed());
@@ -2986,7 +2995,7 @@ void Bot::AI_Process() {
 		if (m_PlayerState & static_cast<uint32>(PlayerState::Aggressive))
 			SendRemovePlayerState(PlayerState::Aggressive);
 
-		if(!IsMoving() && AIthink_timer->Check() && !spellend_timer.Enabled()) {
+		if(!IsMoving() && AI_think_timer->Check() && !spellend_timer.Enabled()) {
 			if(GetBotStance() != BotStancePassive) {
 				if(!AI_IdleCastCheck() && !IsCasting())
 					BotMeditate(true);
@@ -2995,7 +3004,7 @@ void Bot::AI_Process() {
 				BotMeditate(true);
 		}
 
-		if(AImovement_timer->Check()) {
+		if(AI_movement_timer->Check()) {
 			if(GetFollowID()) {
 				Mob* follow = entity_list.GetMob(GetFollowID());
 				if(follow) {
@@ -3336,7 +3345,7 @@ void Bot::Spawn(Client* botCharacterOwner, std::string* errorMessage) {
 // Saves the specified item as an inventory record in the database for this bot.
 void Bot::SetBotItemInSlot(uint32 slotID, uint32 itemID, const ItemInst* inst, std::string *errorMessage)
 {
-	uint32 augslot[EmuConstants::ITEM_COMMON_SIZE] = { NO_ITEM, NO_ITEM, NO_ITEM, NO_ITEM, NO_ITEM };
+	uint32 augslot[EmuConstants::ITEM_COMMON_SIZE] = { NO_ITEM, NO_ITEM, NO_ITEM, NO_ITEM, NO_ITEM, NO_ITEM };
 	if (this->GetBotID() == 0 || slotID < EmuConstants::EQUIPMENT_BEGIN || itemID <= NO_ITEM)
 		return;
 
@@ -3355,11 +3364,16 @@ void Bot::SetBotItemInSlot(uint32 slotID, uint32 itemID, const ItemInst* inst, s
 		" `inst_charges`,"
 		" `inst_color`,"
 		" `inst_no_drop`,"
+		" `inst_custom_data`,"
+		" `ornament_icon`,"
+		" `ornament_id_file`,"
+		" `ornament_hero_model`,"
 		" `augment_1`,"
 		" `augment_2`,"
 		" `augment_3`,"
 		" `augment_4`,"
-		" `augment_5`"
+		" `augment_5`,"
+		" `augment_6`"
 		")"
 		" VALUES ("
 		"%lu,"			/*bot_id*/
@@ -3368,23 +3382,33 @@ void Bot::SetBotItemInSlot(uint32 slotID, uint32 itemID, const ItemInst* inst, s
 		" %lu,"			/*inst_charges*/
 		" %lu,"			/*inst_color*/
 		" %lu,"			/*inst_no_drop*/
+		" '%s',"		/*inst_custom_data*/
+		" %lu,"			/*ornament_icon*/
+		" %lu,"			/*ornament_id_file*/
+		" %lu,"			/*ornament_hero_model*/
 		" %lu,"			/*augment_1*/
 		" %lu,"			/*augment_2*/
 		" %lu,"			/*augment_3*/
 		" %lu,"			/*augment_4*/
-		" %lu"			/*augment_5*/
+		" %lu,"			/*augment_5*/
+		" %lu"			/*augment_6*/
 		")",
 		(unsigned long)this->GetBotID(),
 		(unsigned long)slotID,
 		(unsigned long)itemID,
 		(unsigned long)inst->GetCharges(),
 		(unsigned long)inst->GetColor(),
-		(unsigned long)(inst->IsAttuned()? 1: 0), // does this match the current flag implementation?
+		(unsigned long)(inst->IsAttuned()? 1: 0),
+		inst->GetCustomDataString().c_str(),
+		(unsigned long)inst->GetOrnamentationIcon(),
+		(unsigned long)inst->GetOrnamentationIDFile(),
+		(unsigned long)inst->GetOrnamentHeroModel(),
 		(unsigned long)augslot[0],
 		(unsigned long)augslot[1],
 		(unsigned long)augslot[2],
 		(unsigned long)augslot[3],
-		(unsigned long)augslot[4]
+		(unsigned long)augslot[4],
+		(unsigned long)augslot[5]
 	);
 	auto results = database.QueryDatabase(query);
 	if(!results.Success())
@@ -3417,12 +3441,17 @@ void Bot::GetBotItems(std::string* errorMessage, Inventory &inv)
 		" `item_id`,"
 		" `inst_charges`,"
 		" `inst_color`,"
+		" `inst_no_drop`,"
+		" `inst_custom_data`,"
+		" `ornament_icon`,"
+		" `ornament_id_file`,"
+		" `ornament_hero_model`,"
 		" `augment_1`,"
 		" `augment_2`,"
 		" `augment_3`,"
 		" `augment_4`, "
 		" `augment_5`,"
-		" `inst_no_drop`"
+		" `augment_6`"
 		" FROM `bot_inventories`"
 		" WHERE `bot_id` = %i"
 		" ORDER BY `slot_id`",
@@ -3438,39 +3467,73 @@ void Bot::GetBotItems(std::string* errorMessage, Inventory &inv)
 		int16 slot_id = atoi(row[0]);
 		uint32 item_id = atoi(row[1]);
 		uint16 charges = atoi(row[2]);
-		uint32 color = atoul(row[3]);
 		uint32 aug[EmuConstants::ITEM_COMMON_SIZE];
-		aug[0] = (uint32)atoul(row[4]);
-		aug[1] = (uint32)atoul(row[5]);
-		aug[2] = (uint32)atoul(row[6]);
-		aug[3] = (uint32)atoul(row[7]);
-		aug[4] = (uint32)atoul(row[8]);
-		bool instnodrop	= (row[9] && (uint16)atoi(row[9])) ? true : false;
-		ItemInst* inst = database.CreateItem(item_id, charges, aug[0], aug[1], aug[2], aug[3], aug[4]);
+		aug[0] = (uint32)atoul(row[9]);
+		aug[1] = (uint32)atoul(row[10]);
+		aug[2] = (uint32)atoul(row[11]);
+		aug[3] = (uint32)atoul(row[12]);
+		aug[4] = (uint32)atoul(row[13]);
+		aug[5] = (uint32)atoul(row[14]);
+		ItemInst* inst = database.CreateItem(item_id, charges, aug[0], aug[1], aug[2], aug[3], aug[4], aug[5]);
 		if (!inst) {
 			Log.Out(Logs::General, Logs::Error, "Warning: bot_id %i has an invalid item_id %i in inventory slot %i", this->GetBotID(), item_id, slot_id);
 			continue;
 		}
 		
-		int16 put_slot_id = INVALID_INDEX;
-		
-		if (instnodrop || (((slot_id >= EmuConstants::EQUIPMENT_BEGIN) && (slot_id <= EmuConstants::EQUIPMENT_END) || slot_id == 9999)  && inst->GetItem()->Attuneable))
-			inst->SetAttuned(true);
-		
-		if (color > 0)
-			inst->SetColor(color);
-		
 		if (charges == 255)
 			inst->SetCharges(-1);
 		else
 			inst->SetCharges(charges);
+
+		uint32 color = atoul(row[3]);
+		if (color > 0)
+			inst->SetColor(color);
 		
+		bool instnodrop = (row[4] && (uint16)atoi(row[4])) ? true : false;
+		if (instnodrop || (((slot_id >= EmuConstants::EQUIPMENT_BEGIN) && (slot_id <= EmuConstants::EQUIPMENT_END) || slot_id == 9999) && inst->GetItem()->Attuneable))
+			inst->SetAttuned(true);
+		
+		if (row[5]) {
+			std::string data_str(row[5]);
+			std::string idAsString;
+			std::string value;
+			bool use_id = true;
+
+			for (int i = 0; i < data_str.length(); ++i) {
+				if (data_str[i] == '^') {
+					if (!use_id) {
+						inst->SetCustomData(idAsString, value);
+						idAsString.clear();
+						value.clear();
+					}
+
+					use_id = !use_id;
+					continue;
+				}
+
+				char v = data_str[i];
+				if (use_id)
+					idAsString.push_back(v);
+				else
+					value.push_back(v);
+			}
+		}
+
+		uint32 ornament_icon = (uint32)atoul(row[6]);
+		inst->SetOrnamentIcon(ornament_icon);
+
+		uint32 ornament_idfile = (uint32)atoul(row[7]);
+		inst->SetOrnamentationIDFile(ornament_idfile);
+
+		uint32 ornament_hero_model = (uint32)atoul(row[8]);
+		inst->SetOrnamentHeroModel(ornament_hero_model);
+		
+		int16 put_slot_id = INVALID_INDEX;
 		if (slot_id < 8000 || slot_id > 8999)
 			put_slot_id = inv.PutItem(slot_id, *inst);
 		
 		safe_delete(inst);
 		
-		// Save ptr to item in inventory
 		if (put_slot_id == INVALID_INDEX)
 			Log.Out(Logs::General, Logs::Error, "Warning: Invalid slot_id for item in inventory: bot_id=%i, item_id=%i, slot_id=%i",this->GetBotID(), item_id, slot_id);
 	}
@@ -3572,13 +3635,13 @@ void Bot::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho) {
 		ns->spawn.is_npc = 0;				// 0=no, 1=yes
 		ns->spawn.is_pet = 0;
 		ns->spawn.guildrank = 0;
-		ns->spawn.showhelm = GetShowHelm();
+		ns->spawn.showhelm = GetShowHelm() ? 1 : 0;
 		ns->spawn.flymode = 0;
 		ns->spawn.size = 0;
 		ns->spawn.NPC = 0;					// 0=player,1=npc,2=pc corpse,3=npc corpse
 		UpdateActiveLight();
 		ns->spawn.light = m_Light.Type.Active;
-		ns->spawn.helm = (GetShowHelm() ? helmtexture : 0); //0xFF;
+		ns->spawn.helm = helmtexture; //(GetShowHelm() ? helmtexture : 0); //0xFF;
 		ns->spawn.equip_chest2 = texture; //0xFF;
 		const Item_Struct* item = 0;
 		const ItemInst* inst = 0;
@@ -3642,7 +3705,6 @@ uint32 Bot::GetBotIDByBotName(std::string botName) {
 
 Bot* Bot::LoadBot(uint32 botID, std::string* errorMessage)
 {
-	Bot* loadedBot = nullptr;
 	if(botID == 0)
 		return nullptr;
 	
@@ -3652,46 +3714,52 @@ Bot* Bot::LoadBot(uint32 botID, std::string* errorMessage)
 		" `spells_id`,"
 		" `name`,"
 		" `last_name`,"
-		" `level`,"
+		" `title`,"				/*planned use[4]*/
+		" `suffix`,"			/*planned use[5]*/
+		" `zone_id`,"
+		" `gender`,"
 		" `race`,"
 		" `class`,"
-		" `gender`,"
+		" `level`,"
+		" `deity`,"				/*planned use[11]*/
+		" `creation_day`,"		/*not in-use[12]*/
+		" `last_spawn`,"		/*not in-use[13]*/
+		" `time_spawned`,"
 		" `size`,"
 		" `face`,"
-		" `hair_style`,"
 		" `hair_color`,"
+		" `hair_style`,"
+		" `beard`,"
+		" `beard_color`,"
 		" `eye_color_1`,"
 		" `eye_color_2`,"
-		" `beard_color`,"
-		" `beard`,"
 		" `drakkin_heritage`,"
 		" `drakkin_tattoo`,"
 		" `drakkin_details`,"
+		" `ac`,"				/*not in-use[26]*/
+		" `atk`,"				/*not in-use[27]*/
 		" `hp`,"
 		" `mana`,"
-		" `magic`,"
-		" `cold`,"
-		" `disease`,"
-		" `fire`,"
-		" `poison`,"
-		" `corruption`,"
-		" `ac`,"
-		" `str`,"
-		" `sta`,"
-		" `dex`,"
-		" `agi`,"
-		" `int`,"
-		" `wis`,"
-		" `cha`,"
-		" `atk`,"
-		" `creation_day`,"
-		" `last_spawn`,"
-		" `time_spawned`,"
-		" `zone_id`"
+		" `str`,"				/*not in-use[30]*/
+		" `sta`,"				/*not in-use[31]*/
+		" `cha`,"				/*not in-use[32]*/
+		" `dex`,"				/*not in-use[33]*/
+		" `int`,"				/*not in-use[34]*/
+		" `agi`,"				/*not in-use[35]*/
+		" `wis`,"				/*not in-use[36]*/
+		" `fire`,"				/*not in-use[37]*/
+		" `cold`,"				/*not in-use[38]*/
+		" `magic`,"				/*not in-use[39]*/
+		" `poison`,"			/*not in-use[40]*/
+		" `disease`,"			/*not in-use[41]*/
+		" `corruption`,"		/*not in-use[42]*/
+		" `show_helm`,"//43
+		" `follow_distance`"//44
 		" FROM `bot_data`"
 		" WHERE `bot_id` = '%u'",
 		botID
 	);
+
 	auto results = database.QueryDatabase(query);
 	if(!results.Success()) {
 		*errorMessage = std::string(results.ErrorMessage());
@@ -3701,29 +3769,30 @@ Bot* Bot::LoadBot(uint32 botID, std::string* errorMessage)
 	if (results.RowCount() == 0)
 		return nullptr;
 	
+	// TODO: Consider removing resists and basic attributes from the load query above since we're using defaultNPCType values instead
 	auto row = results.begin();
-	NPCType defaultNPCTypeStruct = CreateDefaultNPCTypeStructForBot(std::string(row[2]), std::string(row[3]), atoi(row[4]), atoi(row[5]), atoi(row[6]), atoi(row[7]));
+	NPCType defaultNPCTypeStruct = CreateDefaultNPCTypeStructForBot(std::string(row[2]), std::string(row[3]), atoi(row[10]), atoi(row[8]), atoi(row[9]), atoi(row[7]));
 	NPCType tempNPCStruct = FillNPCTypeStruct(
 		atoi(row[1]),
 		std::string(row[2]),
 		std::string(row[3]),
-		atoi(row[4]),
-		atoi(row[5]),
-		atoi(row[6]),
-		atoi(row[7]),
-		atof(row[8]),
-		atoi(row[9]),
 		atoi(row[10]),
-		atoi(row[11]),
-		atoi(row[12]),
-		atoi(row[13]),
-		atoi(row[14]),
-		atoi(row[15]),
+		atoi(row[8]),
+		atoi(row[9]),
+		atoi(row[7]),
+		atof(row[15]),
 		atoi(row[16]),
-		atoi(row[17]),
 		atoi(row[18]),
-		atoi(row[19]),
+		atoi(row[17]),
+		atoi(row[21]),
+		atoi(row[22]),
 		atoi(row[20]),
+		atoi(row[19]),
+		atoi(row[23]),
+		atoi(row[24]),
+		atoi(row[25]),
+		atoi(row[28]),
+		atoi(row[29]),
 		defaultNPCTypeStruct.MR,
 		defaultNPCTypeStruct.CR,
 		defaultNPCTypeStruct.DR,
@@ -3740,7 +3809,13 @@ Bot* Bot::LoadBot(uint32 botID, std::string* errorMessage)
 		defaultNPCTypeStruct.CHA,
 		defaultNPCTypeStruct.ATK
 	);
-	loadedBot = new Bot(botID, atoi(row[0]), atoi(row[1]), atof(row[38]), atoi(row[39]), tempNPCStruct);
+
+	Bot* loadedBot = new Bot(botID, atoi(row[0]), atoi(row[1]), atof(row[14]), atoi(row[6]), tempNPCStruct);
+	if (loadedBot) {
+		loadedBot->SetShowHelm((atoi(row[43]) > 0 ? true : false));
+		loadedBot->SetFollowDistance(atoi(row[44]));
+	}
+
 	return loadedBot;
 }
 
@@ -9190,6 +9265,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 		c->Message(0, "#bot botgroup help - Displays the commands available to manage bot ONLY groups.");
 		c->Message(0, "#bot mana [<bot name or target> | all] - Displays a mana report for all your spawned bots.");
 		c->Message(0, "#bot setfollowdistance ### - sets target bots follow distance to ### (ie 30 or 250).");
+		c->Message(0, "#bot clearfollowdistance [<target> | spawned | all] - clears user-defined follow distance setting for bot target, spawned or all - includes spawned and unspawned.");
 		c->Message(0, "#bot [hair|haircolor|beard|beardcolor|face|eyes|heritage|tattoo|details <value>] - Change your bot's appearance.");
 		c->Message(0, "#bot armorcolor <slot> <red> <green> <blue> - #bot help armorcolor for info");
 		c->Message(0, "#bot taunt [on|off] - Determines whether or not your targeted bot will taunt.");
@@ -9246,6 +9322,43 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 		return;
 	}
 
+	if (!strcasecmp(sep->arg[1], "clearfollowdistance")) {
+		bool case_all = !strcasecmp(sep->arg[2], "all");
+		bool case_spawned = !strcasecmp(sep->arg[2], "spawned");
+		if (case_all || case_spawned) {
+			if (case_all) {
+				std::string query = StringFormat(
+					"UPDATE `bot_data`"
+					" SET `follow_distance` = '%u'"
+					" WHERE `owner_id` = '%u'",
+					BOT_DEFAULT_FOLLOW_DISTANCE,
+					c->CharacterID()
+					);
+				auto results = database.QueryDatabase(query);
+				if (!results.Success())
+					return;
+			}
+
+			std::list<Bot*> spawnedBots = entity_list.GetBotsByBotOwnerCharacterID(c->CharacterID());
+			if (!spawnedBots.empty()) {
+				for (std::list<Bot*>::iterator botsListItr = spawnedBots.begin(); botsListItr != spawnedBots.end(); ++botsListItr) {
+					Bot* tempBot = *botsListItr;
+					if (tempBot) {
+						tempBot->SetFollowDistance(BOT_DEFAULT_FOLLOW_DISTANCE);
+					}
+				}
+			}
+		}
+		else if ((c->GetTarget() == nullptr) || (c->GetTarget() == c) || (!c->GetTarget()->IsBot()) || (c->GetTarget()->CastToBot()->GetBotOwner() != c)) {
+			c->Message(15, "You must target a bot you own!");
+		}
+		else {
+			c->GetTarget()->SetFollowDistance(BOT_DEFAULT_FOLLOW_DISTANCE);
+		}
+
+		return;
+	}
+
 	//bot armor colors
 	if(!strcasecmp(sep->arg[1], "armorcolor")) {
 		if(c->GetTarget() && c->GetTarget()->IsBot() && (c->GetTarget()->CastToBot()->GetBotOwner() == c)) {
@@ -9265,15 +9378,28 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 			uint32 setcolor = (red << 16) | (green << 8) | blue;
 			std::string query;
 			if (setslot == -1) {
-				int slots[] = { 2, 7, 9, 12, 17, 18, 19 };
-				query = StringFormat("UPDATE `bot_inventories` SET `inst_color` = %u WHERE `slot_id` IN (2, 7, 9, 12, 17, 18, 19) AND `bot_id` = %u", setcolor, botid);
+				query = StringFormat(
+					"UPDATE `bot_inventories`"
+					" SET `inst_color` = %u"
+					" WHERE `slot_id`"
+					" IN (%u, %u, %u, %u, %u, %u, %u)"
+					" AND `bot_id` = %u",
+					setcolor,
+					MainHead,
+					MainArms,
+					MainWrist1,
+					MainHands,
+					MainChest,
+					MainLegs,
+					MainFeet,
+					botid
+				);
 				auto results = database.QueryDatabase(query);
 				if (!results.Success())
 					return;
 
-				for (int i = 0; i < 7; i++) {
-					uint8 slotmaterial = Inventory::CalcMaterialFromSlot((uint8)slots[i]);
-					c->GetTarget()->CastToBot()->SendWearChange(slotmaterial);
+				for (int i = MaterialHead; i <= MaterialFeet; ++i) {
+					c->GetTarget()->CastToBot()->SendWearChange(i);
 				}
 			} else {
 				query = StringFormat("UPDATE `bot_inventories` SET `inst_color` = %u WHERE `slot_id` = %i AND `bot_id` = %u", setcolor, setslot, botid);
@@ -9281,8 +9407,7 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				if (!results.Success())
 					return;
 
-				uint8 slotmaterial = Inventory::CalcMaterialFromSlot(setslot);
-				c->GetTarget()->CastToBot()->SendWearChange(slotmaterial);
+				c->GetTarget()->CastToBot()->SendWearChange(Inventory::CalcMaterialFromSlot(setslot));
 			}
 
 		}
@@ -9294,11 +9419,12 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 
     if(!strcasecmp(sep->arg[1], "help") && !strcasecmp(sep->arg[2], "armorcolor")){
 		c->Message(0, "-----------------#bot armorcolor help-----------------------------");
-		c->Message(0, "Armor: -1(All), 2(Helm), 7(Arms), 9(Bracer), 12(Hands), 17(Chest/Robe), 18(Legs), 19(Boots)");
+		c->Message(0, "Armor: -1(All), %u(Helm), %u(Arms), %u(Bracer), %u(Hands), %u(Chest/Robe), %u(Legs), %u(Boots)",
+			MainHead, MainArms, MainWrist1, MainHands, MainChest, MainLegs, MainFeet);
 		c->Message(0, "------------------------------------------------------------------");
 		c->Message(0, "Color: [red] [green] [blue] (enter a number from 0-255 for each");
 		c->Message(0, "------------------------------------------------------------------");
-		c->Message(0, "Example: #bot armorcolor 17 0 255 0 - this would make the chest bright green");
+		c->Message(0, "Example: #bot armorcolor %u 0 255 0 - this would make the chest bright green", MainChest);
 		return;
 	}
 
@@ -12646,6 +12772,19 @@ void Bot::ProcessBotCommands(Client *c, const Seperator *sep) {
 				Bot* b = target->CastToBot();
 				if (b) {
 					b->SetShowHelm(showhelm);
+					EQApplicationPacket* outapp = new EQApplicationPacket(OP_SpawnAppearance, sizeof(SpawnAppearance_Struct));
+					SpawnAppearance_Struct* sa_out = (SpawnAppearance_Struct*)outapp->pBuffer;
+					/*
+					[10-16-2015 :: 14:58:02] [Packet :: Client -> Server (Dump)] [OP_SpawnAppearance - 0x01d1] [Size: 10] 
+					0: A4 02 [2B 00] 00 00 00 00 - showhelm = false
+					[10-16-2015 :: 14:57:56] [Packet :: Client -> Server (Dump)] [OP_SpawnAppearance - 0x01d1] [Size: 10] 
+					0: A4 02 [2B 00] 01 00 00 00 - showhelm = true
+					*/
+					sa_out->spawn_id = b->GetID();
+					sa_out->type = AT_ShowHelm; // value = 43 (0x002B)
+					sa_out->parameter = (showhelm ? 1 : 0);
+					entity_list.QueueClients(b, outapp, true);
+					safe_delete(outapp);
 					c->Message(0, "Your bot will %s show their helmet.", (showhelm ? "now" : "no longer"));
 				}
 			}

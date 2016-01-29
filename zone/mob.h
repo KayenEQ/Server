@@ -425,6 +425,8 @@ public:
 	virtual int32 CalcMaxHP();
 	inline int32 GetMaxMana() const { return max_mana; }
 	inline int32 GetMana() const { return cur_mana; }
+	virtual int32 GetEndurance() const { return 0; }
+	virtual void SetEndurance(int32 newEnd) { return; }
 	int32 GetItemHPBonuses();
 	int32 GetSpellHPBonuses();
 	virtual const int32& SetMana(int32 amount);
@@ -924,8 +926,8 @@ public:
 	virtual FACTION_VALUE GetReverseFactionCon(Mob* iOther) { return FACTION_INDIFFERENT; }
 
 	inline bool IsTrackable() const { return(trackable); }
-	Timer* GetAIThinkTimer() { return AIthink_timer.get(); }
-	Timer* GetAIMovementTimer() { return AImovement_timer.get(); }
+	Timer* GetAIThinkTimer() { return AI_think_timer.get(); }
+	Timer* GetAIMovementTimer() { return AI_movement_timer.get(); }
 	Timer GetAttackTimer() { return attack_timer; }
 	Timer GetAttackDWTimer() { return attack_dw_timer; }
 	inline bool IsFindable() { return findable; }
@@ -1547,14 +1549,15 @@ protected:
 	uint32 maxLastFightingDelayMoving;
 	float pAggroRange;
 	float pAssistRange;
-	std::unique_ptr<Timer> AIthink_timer;
-	std::unique_ptr<Timer> AImovement_timer;
-	std::unique_ptr<Timer> AItarget_check_timer;
+	std::unique_ptr<Timer> AI_think_timer;
+	std::unique_ptr<Timer> AI_movement_timer;
+	std::unique_ptr<Timer> AI_target_check_timer;
 	bool movetimercompleted;
 	bool permarooted;
-	std::unique_ptr<Timer> AIscanarea_timer;
-	std::unique_ptr<Timer> AIwalking_timer;
-	std::unique_ptr<Timer> AIfeignremember_timer;
+	std::unique_ptr<Timer> AI_scan_area_timer;
+	std::unique_ptr<Timer> AI_walking_timer;
+	std::unique_ptr<Timer> AI_feign_remember_timer;
+	std::unique_ptr<Timer> AI_check_signal_timer;
 	uint32 pLastFightingDelayMoving;
 	HateList hate_list;
 	std::set<uint32> feign_memory_list;
@@ -1588,7 +1591,7 @@ protected:
 
 	int patrol;
 	glm::vec3 m_FearWalkTarget;
-	bool curfp;
+	bool currently_fleeing;
 
 	// Pathing
 	//
