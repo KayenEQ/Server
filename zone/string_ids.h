@@ -364,6 +364,7 @@
 #define PET_NOT_FOCUSING			9263	//No longer focusing on one target, Master.
 #define PET_NOT_CASTING				9264	//Not casting spells, Master.
 #define PET_CASTING					9291	//Casting spells normally, Master.
+#define ABILITY_INTERRUPT			9233    //Your combat ability is interrupted. //C!Kayen
 #define NO_CAST_IN_COMBAT			9190	//You can not cast this spell while in combat.
 #define NO_CAST_OUT_OF_COMBAT		9191	//You can not cast this spell while out of combat.
 #define NO_ABILITY_IN_COMBAT		9192	//You can not use this ability while in combat.

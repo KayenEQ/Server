@@ -510,16 +510,23 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 	if (oSpellWillFinish)
 		*oSpellWillFinish = Timer::GetCurrentTime() + cast_time + 100;
 
+
+	if (spells[spell_id].descnum == -100 && IsNPC()){ //C!Kayen - Custom message for NPC combat abilities
+		entity_list.MessageClose(this, true, 200, MT_Spells, "%s prepares to do combat ability. (%s)", GetCleanName(), spells[spell_id].name);
+	}
 	// now tell the people in the area
-	outapp = new EQApplicationPacket(OP_BeginCast,sizeof(BeginCast_Struct));
-	BeginCast_Struct* begincast = (BeginCast_Struct*)outapp->pBuffer;
-	begincast->caster_id = GetID();
-	begincast->spell_id = spell_id;
-	begincast->cast_time = orgcasttime; // client calculates reduced time by itself
-	outapp->priority = 3;
-	entity_list.QueueCloseClients(this, outapp, false, 200, 0, true); //IsClient() ? FILTER_PCSPELLS : FILTER_NPCSPELLS);
-	safe_delete(outapp);
-	outapp = nullptr;
+	else //C!Kayen
+	{
+		outapp = new EQApplicationPacket(OP_BeginCast,sizeof(BeginCast_Struct));
+		BeginCast_Struct* begincast = (BeginCast_Struct*)outapp->pBuffer;
+		begincast->caster_id = GetID();
+		begincast->spell_id = spell_id;
+		begincast->cast_time = orgcasttime; // client calculates reduced time by itself
+		outapp->priority = 3;
+		entity_list.QueueCloseClients(this, outapp, false, 200, 0, true); //IsClient() ? FILTER_PCSPELLS : FILTER_NPCSPELLS);
+		safe_delete(outapp);
+		outapp = nullptr;
+	}
 
 	if (IsClient() && slot == USE_ITEM_SPELL_SLOT &&item_slot != 0xFFFFFFFF) {
 		auto item = CastToClient()->GetInv().GetItem(item_slot);
@@ -869,7 +876,7 @@ void Mob::InterruptSpell(uint16 message, uint16 color, uint16 spellid)
 		message = IsBardSong(spellid) ? SONG_ENDS_ABRUPTLY : INTERRUPT_SPELL;
 
 	if (spells[spellid].IsDisciplineBuff)
-		message = 1035; //C!Kayen - This sends nothing.
+		message = 1035; //C!Kayen - This sends nothing. [1035] ABILITY_INTERRUPT
 	
 	// clients need some packets
 	if (IsClient() && message != SONG_ENDS)

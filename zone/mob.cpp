@@ -11351,6 +11351,10 @@ void Mob::SendRemovePlayerState(PlayerState old_state)
 }
 
 void Mob::SetCurrentSpeed(int in){
+
+	if (in == 0)//C!Kayen Hot Fix
+		 moved = false;
+
 	if (current_speed != in)
 	{
 		current_speed = in;
