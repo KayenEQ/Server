@@ -115,9 +115,9 @@ const char *QuestEventSubroutines[_LargestEventID] = {
 	"EVENT_DEATH_COMPLETE",
 	"EVENT_UNHANDLED_OPCODE",
 	"EVENT_TICK",
-	"EVENT_LEAP_LAND" //C!Kayen
 	"EVENT_SPAWN_ZONE",
 	"EVENT_DEATH_ZONE",
+	"EVENT_LEAP_LAND" //C!Kayen
 };
 
 PerlembParser::PerlembParser() : perl(nullptr) {

@@ -2834,6 +2834,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					ExtraAttackOptions opts;
 					opts.damage_percent = 1;
 					opts.hit_chance = spells[spell_id].max[i];
+
+					int rake_mod = 0;
+					
+					if (spells[spell_id].spellgroup == SPELL_GROUP_RAKE){
+						rake_mod = caster->GetRakePositionBonus(this) * 100;
+					}
 					
 					if (opts.hit_chance == 10001){//Increase hit chance only if from flank
 						if (caster->FlankMob(this,caster->GetX(), caster->GetY()))
@@ -2847,7 +2853,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						numattacks = zone->random.Int(GetMinAtks(spell_id), spells[spell_id].base[i]);
 	
 					if (spells[spell_id].base2[i])
-						opts.damage_percent = static_cast<float>(spells[spell_id].base2[i] + 100.0f)/100.0f;
+						opts.damage_percent = static_cast<float>(spells[spell_id].base2[i] + rake_mod + 100.0f)/100.0f;
 
 					if (spells[spell_id].HateAdded)
 						opts.hate_percent = static_cast<float>(spells[spell_id].HateAdded + 100.0f)/100.0f;
@@ -2916,6 +2922,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					else
 						caster->TryBackstabHeal(this, spell_id);
 				}
+			}
+
+			case SE_MonkAbilityEffect:
+			{
+				if (caster)
+					caster->TryMonkAbilitySpellEffect(this, spell_id, i);
 			}
 
 			case SE_AdjustRecastTimer:
@@ -3164,6 +3176,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_AbsorbMeleeDamage:
 			{
+				//Will need to add scaling to rune amount based on level
 				buffs[buffslot].melee_rune = spells[spell_id].max[i];
 				break;
 			}
@@ -3320,6 +3333,55 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 				Push(caster, spell_id, i);
 				break;
+			}
+
+			case SE_CastOnNumHitsCondition: {
+
+				int base_slot = GetBuffSlotFromSpellID(spells[spell_id].base[i]);
+
+				if (base_slot == -1)
+					break;
+
+				if (buffs[base_slot].numhits){
+
+					if (buffs[base_slot].numhits >= spells[spell_id].max[i]){
+						if (IsClient() && IsValidSpell(spells[spell_id].base2[i])){
+							SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+							buffs[base_slot].numhits = 1;
+							CastToClient()->SendBuffNumHitPacket(buffs[base_slot], base_slot);
+						}
+					}
+				}
+			}
+
+			case SE_ApplyEffectPositional: {
+				if (caster && IsValidSpell(spells[spell_id].base2[i])){
+
+					bool CanCast = true;
+
+					if (spells[spell_id].max[i] == 1 && !caster->BehindMobCustom(this, caster->GetX(), caster->GetY()))
+						CanCast = false;
+	
+					else if (spells[spell_id].max[i] == 2 && !caster->InFrontMob(this, caster->GetX(), caster->GetY()))
+						CanCast = false;
+
+					else if (spells[spell_id].max[i] == 3 && !caster->FlankMob(this, caster->GetX(), caster->GetY()))
+						CanCast = false;
+
+					if(CanCast && zone->random.Roll(spells[spell_id].base[i]))
+						caster->SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+				}
+			}
+
+			case SE_PetHPDrain: {
+
+				if (IsPet()){
+					Mob* owner = GetOwner();
+					Shout("Test");
+					owner->Shout("TEST");
+					if (owner && IsValidSpell(spells[spell_id].base2[i]))//Linked spell to be placed on owner
+						SpellFinished(spells[spell_id].base2[i], owner, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+				}
 			}
 
 			// Handled Elsewhere
@@ -4346,6 +4408,27 @@ case SE_Hate: {
 					BuffFadeBySlot(slot);
 
 				break;
+			}
+
+			case SE_PetHPDrain: {
+
+				
+				int mod = spells[buff.spellid].buffduration - buffs[slot].ticsremaining;
+				mod = mod * spells[buff.spellid].max[i];
+
+				int damage = GetMaxHP() * (spells[buff.spellid].base[i] + mod) /100;
+				int32 new_hp = GetHP() - damage;
+
+				if (new_hp >= 1){
+					SetHP(new_hp);
+				}
+				else
+				{
+					if (caster && IsValidSpell(spells[buff.spellid].base2[i]))
+						caster->BuffFadeBySpellID(spells[buff.spellid].base2[i]);
+					
+					Kill();
+				}
 			}
 
 

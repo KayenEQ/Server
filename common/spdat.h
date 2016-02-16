@@ -34,9 +34,11 @@
 
 //C!Kayen - Custom Defines
 #define SPELL_BRAVERY 105
+#define SPELL_FEROCITY 112
 #define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006 
-#define RANGE_USE_MELEE_COMBAT = 101 
-#define RANGE_USE_BOW = 351
+#define SPELL_GROUP_RAKE 5000
+#define RANGE_USE_MELEE_COMBAT 101 
+#define RANGE_USE_BOW 351
 #define CASTER_RESTRICT_NO_CAST_SELF -1
 //C!Kayen - End
 
@@ -735,6 +737,14 @@ typedef enum {
 #define SE_SpellResistMod				1082 // implemented - Lowers casters chance to be resisted (-) Lowers chance (+) Inc chance resist.
 #define SE_LeapSpellEffect				1083 // implemented - Needs further review.
 #define SE_Push							1084 // implemented - Needs further review.
+#define SE_MonkAbilityEffect			1085 // implemented
+#define SE_BeastGainNumhitsSP			1086 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
+#define SE_CastOnNumHitsCondition		1087 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
+#define SE_ApplyEffectPositional		1088 // implemented - Cast if positional requirements met (back/flank/front ect)
+#define SE_PetHPDrain					1089 // implemented - Base [Percent], Max [Trigger Spell ID], Max [Percent Inc], 
+#define SE_FadeBuffFromPet				1090 // implemented - Fades buff from owners pet
+
+
 
 
 

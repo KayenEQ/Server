@@ -7,6 +7,10 @@
 #define	HIGHEST_RESIST 9 //Max resist type value
 #define MAX_SPELL_PROJECTILE 20 //Max amount of spell projectiles that can be active by a single mob. //C!Kayen 20 MAX
 
+//C!Kayen - Custom Defines
+#define MAX_POSITION_TYPES 4
+//C!Kayen - End
+
 /* macros for IsAttackAllowed, IsBeneficialAllowed */
 #define _CLIENT(x) (x && x->IsClient() && !x->CastToClient()->IsBecomeNPC())
 #define _NPC(x) (x && x->IsNPC() && !x->CastToMob()->GetOwnerID())
@@ -509,6 +513,7 @@ struct StatBonuses {
 	bool BottomHateList;						// Sets mob to bottom of hatelist like divine aura.
 	uint16 PetEffectOnOwner;					// spell id
 	int16 SpellResistMod[HIGHEST_RESIST+1];		//Mod caster resist chance by resist type
+	int16 BeastGainNumhitsSP[4];	            //0 = Amt Numhits added per hit 1 = Buffslot 2 = Max Numhits Gained. 3= Spell ID
 
 };
 

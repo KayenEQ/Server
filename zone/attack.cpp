@@ -4448,6 +4448,7 @@ void Mob::CommonOutgoingHitSuccess(Mob* defender, int32 &damage, SkillUseTypes s
 	TryCriticalHit(defender, skillInUse, damage);
 	CheckNumHitsRemaining(NumHit::OutgoingHitSuccess);
 	RangerGainNumHitsOutgoing(NumHit::OutgoingHitSuccess, skillInUse);//C!Kayen
+	BeastGainNumHitsOutgoing(NumHit::OutgoingHitSuccess, skillInUse);//C!Kayen
 }
 
 void Mob::CommonBreakInvisibleFromCombat()

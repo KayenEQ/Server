@@ -1294,6 +1294,10 @@ public:
 
 	void Push(Mob *caster, uint16 spell_id, int i);
 
+	int GetRakePositionBonus(Mob* target);
+	void TryMonkAbilitySpellEffect(Mob* other, uint16 spell_id, int effectid);
+	void BeastGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used);
+
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 
@@ -1719,6 +1723,8 @@ protected:
 	int16 flurry_recast;
 
 	Timer leapSE_timer;
+
+	uint16 RakePosition[MAX_POSITION_TYPES + 1];
 	
 private:
 	void _StopSong(); //this is not what you think it is

@@ -497,6 +497,8 @@ Mob::Mob(const char* in_name,
 
 	AI_no_chase = false;
 
+	for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
+
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	pet_buff_owner_timer.Disable();
@@ -8564,6 +8566,8 @@ void Mob::DirectionalFailMessage(uint16 spell_id)
 	//else
 	//	Message(MT_SpellFailure, "No target found for this spell.");
 
+	DoAnim(spells[spell_id].CastingAnim);
+
 	if (spells[spell_id].IsDisciplineBuff)
 		Message(MT_SpellFailure, "Your ability failed to find a target in range.");
 	else
@@ -9145,6 +9149,21 @@ void Client::CustomTickUpdates()
 			SendBuffNumHitPacket(buffs[slot], slot);
 		}
 	}
+
+	//Tick down 'Ferocity'
+	if (GetClass() == BEASTLORD && spellbonuses.BeastGainNumhitsSP[0] && !GetAggroCount())
+	{
+		int slot = spellbonuses.BeastGainNumhitsSP[1];
+		if (slot >= 0 && buffs[slot].numhits){
+
+			if (buffs[slot].numhits <= 25)
+				buffs[slot].numhits = 1;
+			else
+				buffs[slot].numhits -= 25;
+
+			SendBuffNumHitPacket(buffs[slot], slot);
+		}
+	}
 }
 
 void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
@@ -9220,7 +9239,7 @@ void Mob::AbsorbMelee(int32 &damage, Mob* attacker)
 	if (!attacker || attacker->IsClient())
 		return;
 
-	if (!spellbonuses.AbsorbMeleeDamage[0])
+	if (!spellbonuses.AbsorbMeleeDamage[3])//Must have rune amt defined
 		return;
 
 	int slot = spellbonuses.AbsorbMeleeDamage[1];
@@ -9429,6 +9448,7 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 				DirectionalFailMessage(spell_id);
 
 }
+
 
 void Mob::RangerGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used)
 {
@@ -10358,6 +10378,10 @@ bool Mob::GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, flo
 
 void Mob::Push(Mob *caster, uint16 spell_id, int i)
 {
+
+	if (IsNPC() && (IsRooted() || IsPseudoRooted()))
+		return; //Rooted NPC can not be knocked back.
+
 	float dX = 0;
 	float dY = 0;
 	float dZ = 0;
@@ -10386,6 +10410,159 @@ float Mob::GetReverseHeading(float Heading)
 
 	return ReverseHeading;
 }
+
+int Mob::GetRakePositionBonus(Mob* target)
+{
+	if (!target)
+		return 0;
+
+	/*Position Key
+	Left	= 0
+	Right	= 1
+	Back	= 2
+	Front	= 3
+	NPC ID  = 4
+	*/
+	int position = -1;
+
+	if (LeftMob(target))
+		position = 0;
+	else if (RightMob(target))
+		position = 1;
+	else if (BehindMobCustom(target, GetX(), GetY()))
+		position = 2;
+	else if (InFrontMob(target,GetX(), GetY()))
+		position = 3;
+
+	//Shout("Find POsition %i ID COMP %i %i", position, RakePosition[4], target->GetID());
+
+	if (position == -1)
+		return 0; //Error No Position found
+
+	//Reset if change NPC
+	if (!RakePosition[4])
+		RakePosition[4] = target->GetID();
+	else if (RakePosition[4] != target->GetID()){
+		for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
+		RakePosition[4] = target->GetID();
+	}
+			
+    int highest = 0;
+
+    for(int i=0;i<MAX_POSITION_TYPES;i++)
+    {
+        if(RakePosition[i] > 0)
+			highest++;
+    }
+
+	//Shout("Highest %i", highest);
+	//Shout("Array %i %i %i %i ID %i", RakePosition[0],RakePosition[1],RakePosition[2],RakePosition[3],RakePosition[4]);
+
+	if (!RakePosition[position]){
+		RakePosition[position] = 1;
+
+		if (highest == 3){
+			for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
+		}
+
+		return highest;
+	}
+	else{ //Reset count if same 2x in a row
+		for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
+	}
+	
+	return 0;
+}
+
+void Mob::TryMonkAbilitySpellEffect(Mob *other, uint16 spell_id, int effectid) {
+	
+	if(!other)
+		return;
+
+	int32 max_dmg = 0;
+	int32 min_dmg = 1;
+	SkillUseTypes skill_type;
+
+	int bonus = spells[spell_id].base[effectid];
+	
+	switch(spells[spell_id].skill){
+
+		case SkillFlyingKick:{
+			skill_type = SkillFlyingKick;
+			max_dmg = ( (GetSTR()+GetSkill(SkillOffense)) * (RuleI(Combat, FlyingKickBonus) + bonus) / 100) + 35;
+			min_dmg = ((level*8)/10);
+			ApplySpecialAttackMod(SkillFlyingKick, max_dmg, min_dmg);
+			break;
+		}
+
+		case SkillDragonPunch:{
+			skill_type = SkillDragonPunch;
+			max_dmg = ((GetSTR()+GetSkill(SkillOffense)) * RuleI(Combat, DragonPunchBonus) / 100) + 26;
+			ApplySpecialAttackMod(skill_type, max_dmg, min_dmg);
+			break;
+		}
+
+		case SkillEagleStrike:{
+			skill_type = SkillEagleStrike;
+			max_dmg = ((GetSTR()+GetSkill(SkillOffense)) * RuleI(Combat, EagleStrikeBonus) / 100) + 19;
+			ApplySpecialAttackMod(skill_type, max_dmg, min_dmg);
+			break;
+		}
+
+		case SkillTigerClaw:{
+			skill_type = SkillTigerClaw;
+			max_dmg = ((GetSTR()+GetSkill(SkillOffense)) * RuleI(Combat, TigerClawBonus) / 100) + 12;
+			ApplySpecialAttackMod(skill_type, max_dmg, min_dmg);
+			break;
+		}
+
+		case SkillRoundKick:{
+			skill_type = SkillRoundKick;
+			max_dmg = ((GetSTR()+GetSkill(SkillOffense)) * RuleI(Combat, RoundKickBonus) / 100) + 10;
+			ApplySpecialAttackMod(skill_type, max_dmg, min_dmg);
+			break;
+		}
+
+		default:
+			return;
+	}
+
+	DoSpecialAttackDamage(other, skill_type, max_dmg, min_dmg, -1, 10, true);
+}
+
+void Mob::BeastGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used)
+{
+	if (!spellbonuses.BeastGainNumhitsSP[0])
+		return;
+	//Shout("Type: %i Amt %i Buff %i Max %i",type, spellbonuses.RangerGainNumhitsSP[0],spellbonuses.RangerGainNumhitsSP[1],spellbonuses.RangerGainNumhitsSP[2]);
+	int amt = 0;
+	int slot = -1;
+
+	if (type == NumHit::OutgoingHitSuccess) {
+
+		amt = spellbonuses.BeastGainNumhitsSP[0];
+		//Different skillls will increase AMT, ie kick ect
+		slot = spellbonuses.BeastGainNumhitsSP[1];
+
+		if (slot >= 0 && buffs[slot].numhits && IsClient()){
+
+			if (buffs[slot].numhits >= static_cast<uint16>(spellbonuses.BeastGainNumhitsSP[2]))
+				return;
+		
+			int _numhits = buffs[slot].numhits + amt;
+						
+			if (_numhits <= 0)
+				_numhits = 1; //Min
+			else if (_numhits >= spellbonuses.BeastGainNumhitsSP[2])
+				_numhits = spellbonuses.BeastGainNumhitsSP[2]; //Max
+
+			buffs[slot].numhits = _numhits;
+
+			CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+		}
+	}
+}
+
 
 //C!Misc - Functions still in development
 

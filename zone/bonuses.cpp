@@ -3325,6 +3325,16 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				
 				break;
 
+			case SE_BeastGainNumhitsSP:
+				new_bonus->BeastGainNumhitsSP[0] += effect_value;
+				new_bonus->BeastGainNumhitsSP[1] = buffslot;
+				new_bonus->BeastGainNumhitsSP[3] = spell_id;
+				
+				if (!new_bonus->BeastGainNumhitsSP[2] || base2 >= new_bonus->BeastGainNumhitsSP[2])
+					new_bonus->BeastGainNumhitsSP[2] = base2;
+				
+				break;
+
 			case SE_ChargeEffect:
 				new_bonus->ChargeEffect[0] = effect_value;
 				new_bonus->ChargeEffect[1] = buffslot;
