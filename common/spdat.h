@@ -654,7 +654,7 @@ typedef enum {
 
 //C!Kayen - Custom
 #define SE_LearnSpellId					1001 // implemented
-#define SE_CastOnLeap					1002 // implemented
+#define SE_CastOnLeap					1002 // implemented - Warrior only PC version
 #define SE_PetLifeShare					1003 // implemented - percent penalty to owner's pet.
 #define SE_SpellPowerHeightMod			1004 // implemented - base = Max Distance limit = Max Modifer
 #define SE_CastOnMeleeCharge			1005 // implemented - base = bool base2 = Trigger spellid when charge is completed
@@ -742,7 +742,11 @@ typedef enum {
 #define SE_CastOnNumHitsCondition		1087 // implemented - Base Amt Numhits Amt [Coded narrowly for effeciency]
 #define SE_ApplyEffectPositional		1088 // implemented - Cast if positional requirements met (back/flank/front ect)
 #define SE_PetHPDrain					1089 // implemented - Base [Percent], Max [Trigger Spell ID], Max [Percent Inc], 
-#define SE_FadeBuffFromPet				1090 // implemented - Fades buff from owners pet
+#define SE_ApplyEffectPetOwner			1090 // implemented - Forces pet to cast spell on owner.
+#define SE_ImprovedSnare				1091 // implemented - Increases/Decreases snare effects. (Must be snared to take hold)
+#define SE_AttackSpeed5					1092 // implemented - Stackable slow that degrades over time.
+#define SE_CastOnLeapSELand				1093 // implemented - Needs further review.
+#define SE_BreakMovementDebuffs			1094 // implemented - Breaks roots and snares
 
 
 
@@ -1039,8 +1043,10 @@ bool UseEquipedBowRange(uint16 spell_id);
 bool IsNoTargetRequiredSpell(uint16 spell_id);
 int AOEMaxHitCount(uint16 spell_id);
 
+//LightType - Variable usage
 bool SpellRequiresSpectralBlade(uint16 spell_id);
 int GetMinAtks(uint16 spell_id);
+int ApplyLeapToPet(uint16 spell_id);
 
 //Disc Hacks
 bool GetDiscLimitToBehind(uint16 spell_id);

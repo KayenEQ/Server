@@ -499,6 +499,8 @@ Mob::Mob(const char* in_name,
 
 	for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
 
+	aeduration_iteration = 0;
+
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	pet_buff_owner_timer.Disable();
@@ -718,6 +720,10 @@ int Mob::_GetRunSpeed() const {
 
 	aa_mod = itembonuses.IncreaseRunSpeedCap + spellbonuses.IncreaseRunSpeedCap + aabonuses.IncreaseRunSpeedCap;
 	int spell_mod = spellbonuses.movementspeed + itembonuses.movementspeed;
+
+	if (spell_mod < 0) //C!Kayen - Custom snare modifier
+		spell_mod =+ spell_mod * spellbonuses.ImprovedSnare / 100;
+;
 	int movemod = 0;
 
 	if(spell_mod < 0)
@@ -3327,11 +3333,27 @@ int Mob::GetHaste()
 {
 	// See notes in Client::CalcHaste
 	// Need to check if the effect of inhibit melee differs for NPCs
+
+	/*
 	if (spellbonuses.haste < 0) {
 		if (-spellbonuses.haste <= spellbonuses.inhibitmelee)
 			return 100 - spellbonuses.inhibitmelee;
 		else
 			return 100 + spellbonuses.haste;
+	}
+	*/
+
+	//C!Kayen Altered from above to account for stackable slow effect
+	if (spellbonuses.haste < 0 || spellbonuses.hastetype5 < 0) {
+		int slow1 = 0;
+		int slow2 = 0;
+		if (spellbonuses.haste > 0) { slow1 = 0; } else { slow1 = spellbonuses.haste; }
+		if (spellbonuses.hastetype5 > 0) { slow2 = 0; } else { slow2 = spellbonuses.hastetype5; }
+		int total_slow = slow1 + slow2;
+		if (-total_slow <= spellbonuses.inhibitmelee)
+			return 100 - spellbonuses.inhibitmelee;
+		else
+			return 100 + total_slow; 
 	}
 
 	if (spellbonuses.haste == 0 && spellbonuses.inhibitmelee)
@@ -6467,9 +6489,13 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 			}
 
 			if (spells[spell_id].effectid[i] == SE_LeapSpellEffect){
-				if(IsClient()){
-					SetLeapSpellEffect(spell_id, spells[spell_id].base[i],0,0, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
-				}
+
+				int velocity = spells[spell_id].base[i];
+				//if(IsClient()){
+				//	SetLeapSpellEffect(spell_id, spells[spell_id].base[i],0,0, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
+				//}
+				if (ApplyLeapToPet(spell_id) && GetPet())
+					GetPet()->SetLeapSpellEffect(spell_id, velocity,0,0, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
 			}
 		}
 	}
@@ -10264,7 +10290,8 @@ void Mob::LeapSpellEffect()
 				sprintf(temp, "%d", leapSE.spell_id);
 				parse->EventNPC(EVENT_LEAP_LAND, CastToNPC(), nullptr, temp, 0);//PERLCUSTOM
 			}
-			
+
+			CastOnLeapSELand(leapSE.spell_id);			
 			ClearLeapSpellEffectData();
 			return;
 		}
@@ -10374,6 +10401,21 @@ bool Mob::GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, flo
 	}
 
 	return 0;
+}
+
+void Mob::CastOnLeapSELand(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return;
+	Shout("TEST");
+	for (int i=0; i < EFFECT_COUNT; i++){
+		if(spells[spell_id].effectid[i] == SE_CastOnLeapSELand){
+			if (IsValidSpell(spells[spell_id].base[i]) && spell_id != spells[spell_id].base[i]){
+				Shout("Cast %i", spells[spell_id].base[i]);
+				SpellFinished(spells[spell_id].base[i], this, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+			}
+		}
+	}
 }
 
 void Mob::Push(Mob *caster, uint16 spell_id, int i)
@@ -10561,6 +10603,43 @@ void Mob::BeastGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used)
 			CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
 		}
 	}
+}
+
+int Mob::CalcSpellEffectValue_formula_custom(Mob* caster, int formula, int base, int max, int caster_level, uint16 spell_id, int ticsremaining)
+{
+	if (!caster)
+		return base;
+
+	// AEDuration interval Check - Need to consider how debuff will stack with multiple clients...
+	if (formula >= 4000 && formula < 5000){
+		base = base + ((formula - 4000) * caster->GetAEDurationIteration());
+	}
+
+	//Degrade effect by value
+	else if (formula >= 5000 && formula < 5100){
+		int ticdif = spells[spell_id].buffduration - (ticsremaining - 1);
+		if(ticdif < 0)
+			ticdif = 0;
+
+		base = base - ((formula - 5000) * ticdif);
+	}
+
+	//Upgrade effect by value (Use this if you want slows to get weaker)
+	else if (formula >= 5100 && formula < 5200){
+		int ticdif = spells[spell_id].buffduration - (ticsremaining - 1);
+		if(ticdif < 0)
+			ticdif = 0;
+
+		base = base + ((formula - 5100) * ticdif);
+	}
+
+	if (max != 0)
+	{
+		if (base > max)
+			base = max;
+	}
+
+	return base;
 }
 
 

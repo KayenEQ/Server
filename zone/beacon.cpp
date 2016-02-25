@@ -97,6 +97,7 @@ bool Beacon::Process()
 		{
 			bool affect_caster = (!caster->IsNPC() && !caster->IsAIControlled());	//NPC AE spells do not affect the NPC caster
 			entity_list.AESpell(caster, this, spell_id, affect_caster, resist_adjust);
+			caster->SetAEDurationIteration(((spells[spell_id].AEDuration / 2500) - spell_iterations)); 	//C!Kayen - Iteration bonuses
 		}
 		else
 		{
@@ -126,6 +127,7 @@ void Beacon::AELocationSpell(Mob *caster, uint16 cast_spell_id, int16 resist_adj
 	this->resist_adjust = resist_adjust;
 	spell_iterations = spells[spell_id].AEDuration / 2500;
 	spell_iterations = spell_iterations < 1 ? 1 : spell_iterations;	// at least 1
+	caster->SetAEDurationIteration(0); //C!Kayen - Reset variable
 	spell_timer.Start(2500);
 	spell_timer.Trigger();
 }

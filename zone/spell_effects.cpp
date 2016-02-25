@@ -3352,6 +3352,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						}
 					}
 				}
+				break;
 			}
 
 			case SE_ApplyEffectPositional: {
@@ -3371,18 +3372,44 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					if(CanCast && zone->random.Roll(spells[spell_id].base[i]))
 						caster->SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 				}
+				break;
 			}
 
 			case SE_PetHPDrain: {
 
 				if (IsPet()){
 					Mob* owner = GetOwner();
-					Shout("Test");
-					owner->Shout("TEST");
-					if (owner && IsValidSpell(spells[spell_id].base2[i]))//Linked spell to be placed on owner
-						SpellFinished(spells[spell_id].base2[i], owner, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+
+					//if (owner && IsValidSpell(spells[spell_id].base2[i]))//Linked spell to be placed on owner
+						//SpellFinished(spells[spell_id].base2[i], owner, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 				}
+				break;
 			}
+
+			case SE_ApplyEffectPetOwner:
+			{
+				Mob* pet_owner = nullptr;
+				Mob* pet_caster = nullptr;	
+				if (IsPet()){
+					pet_owner = GetOwner();
+					pet_caster = this;
+				}
+				else if (GetPet()){
+					pet_owner = caster;
+					pet_caster = GetPet();
+				}
+
+
+				if (pet_owner && pet_caster && IsValidSpell(spells[spell_id].base[i])){
+					pet_caster->SpellFinished(spells[spell_id].base[i], pet_owner, 10, 0, -1, spells[spell_id].ResistDiff);
+				}
+				break;
+			}
+
+			case SE_BreakMovementDebuffs: {
+				BreakMovementDebuffs();
+				break;
+			 }
 
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
@@ -3674,6 +3701,7 @@ int Mob::CalcSpellEffectValue(uint16 spell_id, int effect_id, int caster_level, 
 		return 0;
 
 	effect_value = CalcSpellEffectValue_formula(formula, base, max, caster_level, spell_id, ticsremaining);
+	effect_value = CalcSpellEffectValue_formula_custom(caster, formula, effect_value, max, caster_level, spell_id, ticsremaining); //C!Kayen Try Custom formula
 
 	// this doesn't actually need to be a song to get mods, just the right skill
 	if (EQEmu::IsBardInstrumentSkill(spells[spell_id].skill) &&
@@ -3950,8 +3978,10 @@ snare has both of them negative, yet their range should work the same:
 				// Source: http://crucible.samanna.net/viewtopic.php?f=38&t=6259
 				result = ubase * (caster_level * (formula - 2000) + 1);
 			}
-			else
+			else {
 				Log.Out(Logs::General, Logs::None, "Unknown spell effect value forumula %d", formula);
+				result = ubase; //C!Kayen
+			}
 		}
 	}
 
@@ -4145,7 +4175,7 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 			break;
 		}
 
-case SE_Hate: {
+		case SE_Hate: {
 			effect_value = CalcSpellEffectValue(buff.spellid, i, buff.casterlevel, buff.instrument_mod);
 			if (caster) {
 				if (effect_value > 0) {
@@ -4220,7 +4250,7 @@ case SE_Hate: {
 			break;
 		}
 
-	case SE_Fear: {
+		case SE_Fear: {
 			if (zone->random.Roll(RuleI(Spells, FearBreakCheckChance))) {
 				float resist_check = ResistSpell(spells[buff.spellid].resisttype, buff.spellid, caster);
 
@@ -4337,7 +4367,8 @@ case SE_Hate: {
 			}
 			break;
 		}
-			//C!Kayen - Custom Buff Ticks
+
+		//C!Kayen - Custom Buff Ticks
 			case SE_CastOnFadeEffectSF:
 			{
 				if (buff.ticsremaining == 1)
@@ -4421,14 +4452,19 @@ case SE_Hate: {
 
 				if (new_hp >= 1){
 					SetHP(new_hp);
+
+					if (caster)
+						caster->Message(MT_Spells, "Your pet staggers taking %i damage as its life force empowers you.", damage);
 				}
 				else
-				{
-					if (caster && IsValidSpell(spells[buff.spellid].base2[i]))
-						caster->BuffFadeBySpellID(spells[buff.spellid].base2[i]);
-					
 					Kill();
-				}
+
+				break;
+			}
+
+			case SE_AttackSpeed5: {
+				CalcSpellBonuses(&spellbonuses); //Adjust value of the slow / haste
+				break;
 			}
 
 

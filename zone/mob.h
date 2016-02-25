@@ -1288,6 +1288,7 @@ public:
 	bool GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z);
 	bool GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, float &loc_Z);
 	float GetReverseHeading(float Heading);
+	void CastOnLeapSELand(uint16 spell_id);
 
 	inline bool GetAINoChase() const { return AI_no_chase; }
 	inline void SetAINoChase(int16 value) { AI_no_chase = value; }
@@ -1297,6 +1298,11 @@ public:
 	int GetRakePositionBonus(Mob* target);
 	void TryMonkAbilitySpellEffect(Mob* other, uint16 spell_id, int effectid);
 	void BeastGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used);
+
+	inline int GetAEDurationIteration() const { return aeduration_iteration; }
+	inline void SetAEDurationIteration(int value) { aeduration_iteration = value; }
+
+	int CalcSpellEffectValue_formula_custom(Mob* caster, int formula, int base, int max, int caster_level, uint16 spell_id, int ticsremaining = 0);
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
@@ -1725,6 +1731,8 @@ protected:
 	Timer leapSE_timer;
 
 	uint16 RakePosition[MAX_POSITION_TYPES + 1];
+
+	int aeduration_iteration;
 	
 private:
 	void _StopSong(); //this is not what you think it is

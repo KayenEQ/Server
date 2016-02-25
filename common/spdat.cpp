@@ -1301,6 +1301,7 @@ bool SpellRequiresSpectralBlade(uint16 spell_id)
 }
 
 int GetMinAtks(uint16 spell_id) { return spells[spell_id].LightType;}
+int ApplyLeapToPet(uint16 spell_id) { return spells[spell_id].LightType;}
 
 bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
 bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.

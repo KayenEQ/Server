@@ -830,9 +830,14 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (isnpc && curmob->IsNPC()) {	//check npc->npc casting
 			FACTION_VALUE f = curmob->GetReverseFactionCon(caster);
 			if (bad) {
+
+				//C!Kayen - Pet Logic and expections
+				if (CanAOEHitNPC(spell_id) || (caster->IsPet() && caster->IsPetOwnerClient() && !curmob->IsPetOwnerClient())){
+					//ALLOW
+				}
 				//affect mobs that are on our hate list, or
 				//which have bad faction with us
-				if (!CanAOEHitNPC(spell_id) && !(caster->CheckAggro(curmob) || f == FACTION_THREATENLY || f == FACTION_SCOWLS) ) //C!Kayen
+				else if (!(caster->CheckAggro(curmob) || f == FACTION_THREATENLY || f == FACTION_SCOWLS) ) //C!Kayen
 					continue;
 			} else {
 				//only affect mobs we would assist.

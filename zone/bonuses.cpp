@@ -3405,6 +3405,27 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 					new_bonus->SpellResistMod[base2] += effect_value; //Base2 is resist type
 				break;
 			}
+
+			case SE_ImprovedSnare:
+				new_bonus->ImprovedSnare = effect_value; 
+				break;
+			
+			case SE_AttackSpeed5:
+			{
+				if ((effect_value - 100) > 0) { // Haste
+					if (new_bonus->hastetype5 < 0) break; // Slowed - Don't apply haste
+					if ((effect_value - 100) > new_bonus->hastetype5) {
+						new_bonus->hastetype5 = effect_value - 100;
+					}
+				}
+				else if ((effect_value - 100) < 0) { // Slow
+					int real_slow_value = (100 - effect_value) * -1;
+					real_slow_value -= ((real_slow_value * GetSlowMitigation()/100));
+					if (real_slow_value < new_bonus->hastetype5)
+						new_bonus->hastetype5 = real_slow_value;
+				}
+				break;
+			}
 		}
 	}
 }
