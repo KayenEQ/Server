@@ -226,6 +226,12 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		return false;
 	}
 
+	//C!Kayen
+	if (!TryLeapSECastingConditions(spell_id)){
+		CastToClient()->SendSpellBarEnable(spell_id);
+		InterruptSpell(173, 0x121, false);//if no targets found in AEspell then set 6 sec timer
+		return false;
+	}
 	//C!Kayen - Check Min RANGE since client does not auto stop it.
 	/*
 	if (MinCastingRange(spell_id, target_id)){

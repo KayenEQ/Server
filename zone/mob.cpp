@@ -496,6 +496,7 @@ Mob::Mob(const char* in_name,
 	bravery_recast = 0;
 
 	AI_no_chase = false;
+	AE_no_target_found = false;
 
 	for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
 
@@ -504,6 +505,7 @@ Mob::Mob(const char* in_name,
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	pet_buff_owner_timer.Disable();
+	pet_resume_autofollow.Disable();
 	fast_buff_tick_timer.Disable();
 	stun_resilience_timer.Disable();
 	charge_effect_timer.Disable();
@@ -3364,7 +3366,7 @@ int Mob::GetHaste()
 	int level = GetLevel();
 
 	if (spellbonuses.haste)
-		h += spellbonuses.haste - spellbonuses.inhibitmelee;
+		h += spellbonuses.haste + spellbonuses.hastetype5 - spellbonuses.inhibitmelee; //C!Kayen
 	if (spellbonuses.hastetype2 && level > 49)
 		h += spellbonuses.hastetype2 > 10 ? 10 : spellbonuses.hastetype2;
 
@@ -6491,16 +6493,75 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 			if (spells[spell_id].effectid[i] == SE_LeapSpellEffect){
 
 				int velocity = spells[spell_id].base[i];
+				float zmod1 = static_cast<float>(spells[spell_id].base2[i])/100;
+				float zmod2 = zmod1/2.0f;
+				int max_range_anim = spells[spell_id].max[i];
+				if (!max_range_anim)
+					max_range_anim = 3;
+				
 				//if(IsClient()){
 				//	SetLeapSpellEffect(spell_id, spells[spell_id].base[i],0,0, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
 				//}
-				if (ApplyLeapToPet(spell_id) && GetPet())
-					GetPet()->SetLeapSpellEffect(spell_id, velocity,0,0, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
+				if (ApplyLeapToPet(spell_id) && GetPet()){
+
+					int anim_speed = 3;
+
+					//Modify NPC jump animation for distance - Still needs some work...
+					if (max_range_anim){
+						anim_speed =  static_cast<int>(CalculateDistance(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ()))/(static_cast<int>(spells[spell_id].range)/max_range_anim);
+						anim_speed = max_range_anim + (max_range_anim - anim_speed);
+					}
+
+					//Need range check
+					Shout("Anim speed %i", anim_speed);
+					GetPet()->SetPetOrder(SPO_Guard);
+					GetPet()->DoAnim(19,anim_speed); //This should be replaced by target animation [Distance 100 = 3]
+					GetPet()->SetLeapSpellEffect(spell_id, velocity,zmod1,zmod2, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
+				}
 			}
 		}
 	}
 
 	return true;
+}
+
+bool Mob::TryLeapSECastingConditions(uint16 spell_id)
+{
+	if (spells[spell_id].targettype == ST_Ring && IsEffectInSpell(spell_id, SE_LeapSpellEffect) && ApplyLeapToPet(spell_id) && GetPet()){
+	
+		float dist = GetPet()->CalculateDistance(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ());
+
+		if (dist <= 40){ //Hard coded for now
+			Message(MT_SpellFailure, "Your warder is too close to the selected location to perform this ability.");
+			return false;
+		}
+
+		if (dist > spells[spell_id].range){
+			Message(MT_SpellFailure, "Your warder is too far from the selected location to perform this ability.");
+			return false;
+		}
+	}
+
+	return true;
+
+}
+
+void Mob::AENoTargetFoundRecastAdjust(uint16 spell_id)
+{
+	if (!IsClient())
+		return;
+
+	for(int i = 0; i < EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_TryCastonSpellFinished)
+		{
+			if(spells[spell_id].max[i] == 2) //Flag for when used to adjust recast times based on AE No Cast
+			{
+				SetAENoTargetFound(true);
+				return;
+			}
+		}
+	}
 }
 
 void Mob::SetTargetLocationLoc(uint16 target_id, uint16 spell_id)
@@ -10213,7 +10274,7 @@ void Mob::DoLeapSpellEffect(uint16 spell_id, int anim, int anim_speed, int DirOp
 		Face = GetHeading();//Jump Backwards
 
 	if (!anim)
-		anim = 9;
+		anim = 19;
 	if (!anim_speed)
 		anim_speed = 3;
 
@@ -10238,8 +10299,6 @@ void Mob::SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float z
 	if (!velocity)
 		velocity = 2;
 
-	Shout("Zmod1 %.2f Zmod2 %.2f", zmod1,zmod2);
-
 	leapSE.increment = 1;
 	leapSE.spell_id = spell_id;
 	leapSE.velocity = velocity;
@@ -10248,6 +10307,7 @@ void Mob::SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float z
 	leapSE.dest_z = dZ;
 	leapSE.dest_h = dH;
 	float pre_mod = CalculateDistance(dX, dY, dZ);
+	Shout("Leap Debug: Zmod1 %.2f Zmod2 %.2f [Distance %.2f", zmod1,zmod2, pre_mod);
 	leapSE.z_bound_mod = pre_mod / zmod1;
 	leapSE.mod = pre_mod / zmod2;
 	
@@ -10293,6 +10353,13 @@ void Mob::LeapSpellEffect()
 
 			CastOnLeapSELand(leapSE.spell_id);			
 			ClearLeapSpellEffectData();
+
+			if (IsPet()){
+				pet_resume_autofollow.Start(6000); //Cleans up animation issues.
+				SetPetOrder(SPO_Guard);
+				CastToNPC()->SaveGuardSpot();
+			}
+
 			return;
 		}
 
@@ -10407,11 +10474,10 @@ void Mob::CastOnLeapSELand(uint16 spell_id)
 {
 	if (!IsValidSpell(spell_id))
 		return;
-	Shout("TEST");
+
 	for (int i=0; i < EFFECT_COUNT; i++){
 		if(spells[spell_id].effectid[i] == SE_CastOnLeapSELand){
 			if (IsValidSpell(spells[spell_id].base[i]) && spell_id != spells[spell_id].base[i]){
-				Shout("Cast %i", spells[spell_id].base[i]);
 				SpellFinished(spells[spell_id].base[i], this, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
 			}
 		}

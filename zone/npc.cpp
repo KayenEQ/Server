@@ -710,6 +710,14 @@ bool NPC::Process()
 
 	if (pet_buff_owner_timer.Check())
 		DoPetEffectOnOwner();
+
+	if (pet_resume_autofollow.Check() && IsPet()){
+		SetPetOrder(SPO_Follow); //Used as part of pet leap effect.
+		pet_resume_autofollow.Disable();
+	}
+
+	if (aura_field_timer.Check())
+		DoAuraField();
 	
 	if (stun_resilience_timer.Check())
 		StunResilienceRegen();

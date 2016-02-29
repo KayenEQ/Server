@@ -774,6 +774,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		return;
 
 	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
+	bool AE_TargetFound = false; //C! Kayen - Check if AE found any targets.
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
 
@@ -884,6 +885,8 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			//C!Kayen
 			if (spells[spell_id].targettype == ST_TargetLocation && caster->GetSpellTargetID() == curmob->GetID())
 				TL_TargetFound = true;
+			else
+				AE_TargetFound = true;
 
 			if (maxtargets)
 				targets_in_ae.push_back(curmob); //C!Kayen - push all PBAE into vector
@@ -899,6 +902,8 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	//C!Kayen
 	if (!TL_TargetFound && spells[spell_id].targettype == ST_TargetLocation)
 		caster->CustomSpellMessages(caster->GetSpellTargetID(), spell_id, 2);
+	if (!AE_TargetFound)
+		caster->AENoTargetFoundRecastAdjust(spell_id);
 }
 
 void EntityList::MassGroupBuff(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster)

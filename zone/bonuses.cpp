@@ -3426,6 +3426,12 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				}
 				break;
 			}
+
+			case SE_HateOnPetOwnerAll:
+			{
+				new_bonus->HateOnPetOwnerAll += effect_value;
+				break;
+			}
 		}
 	}
 }

@@ -2932,8 +2932,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_AdjustRecastTimer:
 			{
-				if (IsClient())
-					CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+				if (IsClient()){
+					if (spells[spell_id].max[i] <= 1)  //Default
+						CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+					else if (spells[spell_id].max[i] == 2 && GetAENoTargetFound()){ //Trigger if AE No Target found only
+						CastToClient()->EffectAdjustRecastTimer(spell_id, i);
+						SetAENoTargetFound(false);
+					}
+				}
 				break;
 			}
 
@@ -3399,10 +3405,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					pet_caster = GetPet();
 				}
 
-
-				if (pet_owner && pet_caster && IsValidSpell(spells[spell_id].base[i])){
-					pet_caster->SpellFinished(spells[spell_id].base[i], pet_owner, 10, 0, -1, spells[spell_id].ResistDiff);
-				}
+				if (pet_owner && pet_caster && IsValidSpell(spells[spell_id].base2[i])){
+					if(zone->random.Roll(spells[spell_id].base[i]))
+						pet_caster->SpellFinished(spells[spell_id].base2[i], pet_owner, 10, 0, -1, spells[spell_id].ResistDiff);
+				}	
 				break;
 			}
 

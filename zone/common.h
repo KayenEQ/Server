@@ -516,6 +516,7 @@ struct StatBonuses {
 	int16 BeastGainNumhitsSP[4];	            //0 = Amt Numhits added per hit 1 = Buffslot 2 = Max Numhits Gained. 3= Spell ID
 	int16 ImprovedSnare;						//
 	int32 hastetype5;							//
+	int32 HateOnPetOwnerAll;					//Pct Hate Transferred
 
 };
 

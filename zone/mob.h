@@ -1289,9 +1289,15 @@ public:
 	bool GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, float &loc_Z);
 	float GetReverseHeading(float Heading);
 	void CastOnLeapSELand(uint16 spell_id);
+	bool TryLeapSECastingConditions(uint16 spell_id);
+
+	void AENoTargetFoundRecastAdjust(uint16 spell_id);
 
 	inline bool GetAINoChase() const { return AI_no_chase; }
-	inline void SetAINoChase(int16 value) { AI_no_chase = value; }
+	inline void SetAINoChase(bool value) { AI_no_chase = value; }
+
+	inline bool GetAENoTargetFound() const { return AE_no_target_found; }
+	inline void SetAENoTargetFound(bool value) { AE_no_target_found = value; }
 
 	void Push(Mob *caster, uint16 spell_id, int i);
 
@@ -1713,6 +1719,7 @@ protected:
 	Timer effect_field_timer;
 	Timer aura_field_timer;
 	Timer pet_buff_owner_timer;
+	Timer pet_resume_autofollow;
 
 	Timer fast_buff_tick_timer; //used for special case
 	int fast_buff_tick_count; //used for special case
@@ -1724,10 +1731,10 @@ protected:
 	bool has_fast_buff; //Check if mob has a buff that uses fast timer.
 
 	bool AI_no_chase;
+	bool AE_no_target_found;
 
 	int16 bravery_recast;
-	int16 flurry_recast;
-
+	
 	Timer leapSE_timer;
 
 	uint16 RakePosition[MAX_POSITION_TYPES + 1];

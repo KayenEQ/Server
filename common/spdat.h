@@ -35,11 +35,15 @@
 //C!Kayen - Custom Defines
 #define SPELL_BRAVERY 105
 #define SPELL_FEROCITY 112
+#define SPELL_WARDER_POUNCE_REFRESH 5053
+
 #define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006 
 #define SPELL_GROUP_RAKE 5000
+
 #define RANGE_USE_MELEE_COMBAT 101 
 #define RANGE_USE_BOW 351
 #define CASTER_RESTRICT_NO_CAST_SELF -1
+
 //C!Kayen - End
 
 
@@ -682,7 +686,7 @@ typedef enum {
 #define SE_SpellPowerManaMod			1027 // implemented - Enchanter effect that focuses spells from % mana base: Mod% Limit % divider mana amt mod
 #define SE_ApplyEffectProjectileHit		1028 // implemented - Apply an effect on CASTER when projectile hits target
 #define SE_TemporaryPetsNoAggro			1029 // implemented - Base #Pets Limit (0=At Loc/1=Move to Loc) Max = Duration
-#define SE_HateOnPetOwner				1030 // implemented - add hate to pet's owner - Base = Amt Hate Limit = %Tx from pet hate to caster
+#define SE_HateOnPetOwner				1030 // implemented - add hate to pet's owner - Base = Amt Hate Limit = %Tx from pet hate to caster [Applied to a specific spell only]
 #define SE_RemoveFromHateList			1031 // implemented - Remove's caster from hatelist
 #define SE_MeleeLifeTapPetOwner			1032 // implemented -
 #define SE_MeleeManaTapPetOwner			1033 // implemented -
@@ -747,6 +751,7 @@ typedef enum {
 #define SE_AttackSpeed5					1092 // implemented - Stackable slow that degrades over time.
 #define SE_CastOnLeapSELand				1093 // implemented - Needs further review.
 #define SE_BreakMovementDebuffs			1094 // implemented - Breaks roots and snares
+#define SE_HateOnPetOwnerAll			1095 // implemented - add hate to pet's owner - Base=Pct Transferred (100) [Applied to a ALL melee and spells]
 
 
 
