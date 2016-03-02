@@ -1,5 +1,17 @@
 EQEMu Changelog (Started on Sept 24, 2003 15:50)
 -------------------------------------------------------
+== 03/01/2016 ==
+Uleat: Fix for LDoN treasure 'npcs' not leaving a corpse (please report any issues..)
+
+== 02/29/2016 ==
+Uleat: Change in AddItemBonuses - now includes ammo slot for skill mods only. Defined SoD- client SkillModMax packet property (client does not show..but, does enforce.)
+
+== 02/11/2016 ==
+Hateborne: Added IgnoreSpellDmgLvlRestriction rule (boolean) to ignore the 5 level spread when checking to add SpellDmg
+
+== 02/10/2016 ==
+Hateborne: Added FlatItemExtraSpellAmt rule (boolean) to allow SpellDmg on items to be added as raw damage versus scaled.
+
 == 01/26/2016 ==
 Uleat: Fix for Berserker 'Piercing' skill issues. Server Admins: If you run custom skill sets, this patch touches the code segments that you will need to modify if you have changed the default berserker 1H-/2H-piercing skill values.
 Uleat (Daerath): Fix for precision-loss item weight conversions in older clients.
