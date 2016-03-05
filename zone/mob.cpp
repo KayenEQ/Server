@@ -487,7 +487,7 @@ Mob::Mob(const char* in_name,
 	OnlyAggroLast = false;
 	origin_caster_id = 0;
 	AppearanceEffect = false;
-	fast_buff_tick_count = 0;
+	fast_tic_special_count = 0;
 	has_fast_buff = false;
 
 	charge_effect = 0;
@@ -506,7 +506,7 @@ Mob::Mob(const char* in_name,
 	aura_field_timer.Disable();
 	pet_buff_owner_timer.Disable();
 	pet_resume_autofollow.Disable();
-	fast_buff_tick_timer.Disable();
+	fast_tic_special_timer.Disable();
 	stun_resilience_timer.Disable();
 	charge_effect_timer.Disable();
 	leapSE_timer.Disable();
@@ -5994,7 +5994,7 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 	if (!IsClient() && taget_exclude_npc)
 		target_client_only = true;
 
-	//Shout("Start Cube ae_width %.2f AOE range %.2f min range %.2f", ae_width, radius, spells[spell_id].min_range);
+	Shout("Start Cube ae_width %.2f AOE range %.2f min range %.2f", ae_width, radius, spells[spell_id].min_range);
 	
 	std::list<Mob*> targets_in_range;
 	std::list<Mob*> targets_in_rectangle;
@@ -6022,7 +6022,7 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 	}
 
 	
-	//Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
+	Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
 	//'DEFENDER' is the virtual end point of the line being drawn based on range from which slope is derived. 
 
 	float DEFENDER_X = dX;
@@ -6067,7 +6067,7 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 					
 			if (d <= ae_width)
 			{
-				//(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
+				(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
 
 				if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
 					(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
@@ -6771,7 +6771,7 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 		ProjectileAnimation(spell_target,0, false, speed,angle,tilt,arc, item_IDFile,skillinuse);
 
 		//Enchanter triple blade effect - Requires adjusting angle based on heading to get correct appearance.
-		if (spell_id == 2006){ //This will likely need to be adjusted.
+		if (spell_id == SPELL_GROUP_SPECTRAL_BLADE_FLURRY){ //This will likely need to be adjusted.
 			float _angle =  CalcSpecialProjectile(spell_id);
 			//Shout("DEBUG: TrySpellProjectileTargetRingSpecial ::  Angle %.2f [Heading %.2f]", _angle, GetHeading()/2);
 			if (GetCastFromCrouchInterval() >= 1){
@@ -7092,6 +7092,9 @@ void Mob::CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* ca
 	mod += CalcSpellPowerHeightMod(damage, spell_id, caster);
 	mod += CalcFromCrouchMod(damage, spell_id,caster, effectid);
 	mod += CalcSpellPowerFromBuffSpellGroup(spell_id, caster);
+	mod += CalcSpellPowerFromAEDuration(spell_id, caster, 1);
+
+	mod += caster->GetAEDurationIteration() * 10; //Need to revise this.
 
 	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
 	if (mod)
@@ -7424,7 +7427,8 @@ int32 Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int ef
 	else
 		interval = caster->GetCastFromCrouchInterval();
 
-	if (!interval)
+	//Define (-1) if no damage modifier is applied from the crounch spell (Ie when it mods somethinge else)
+	if (!interval || spells[spell_id].cast_from_crouch == -1)
 		return 0;
 
 	//Spell will fizzel if allowed to go full duration.
@@ -7443,6 +7447,27 @@ int32 Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int ef
 
 }
 
+int32 Mob::CalcCrouchModFromType(uint16 spell_id, int type)
+{
+	//Valid spell checked earlier.
+	if (!spells[spell_id].cast_from_crouch)
+		return 0;
+
+	/*
+	1 = empty
+	2 = Range Mod - Percent Increase
+	3 = Stun Mod - Flat second increase
+	*/
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_SpellPowerCrouchType){
+			if (type == spells[spell_id].base2[i]){
+				return GetCastFromCrouchInterval() * spells[spell_id].base[i];
+			}
+		}
+	}
+	return 0;
+}
 //#### C!Wizard :: Functions related to spell power from endurance
 
 int16 Mob::GetBaseSpellPowerWizard()
@@ -8211,6 +8236,10 @@ bool Mob::IsImmuneToSpellEffectField(uint16 spell_id)
 	if (GetSpecialAbility(IMMUNE_MAGIC))
 		return true;
 
+	//Do not check effects if these immunities do not exist.
+	if (!GetSpecialAbility(UNSLOWABLE) && !GetSpecialAbility(UNSNAREABLE) && !GetSpecialAbility(UNFEARABLE) && !GetSpecialAbility(UNMEZABLE))
+		return false;
+
 	for (int j = 0; j < EFFECT_COUNT; j++){
 
 		int effect = spells[spell_id].effectid[j];
@@ -8702,15 +8731,15 @@ void Mob::DoSpecialFastBuffTick()
 	{
 		//Coded very narrowly to only allow one effect up (If necessary can change from bonus to iterating buffs) LIMITED
 		SetMana(GetMana() + spellbonuses.FastManaRegen[0] + (GetMaxMana() * spellbonuses.FastManaRegen[1] / 100));
-		fast_buff_tick_count += 1;
+		fast_tic_special_count += 1;
 
-		if (fast_buff_tick_count >= spellbonuses.FastManaRegen[2]){
+		if (fast_tic_special_count >= spellbonuses.FastManaRegen[2]){
 			BuffFadeBySpellID(spellbonuses.FastManaRegen[3]);
-			fast_buff_tick_count = 0;
+			fast_tic_special_count = 0;
 		}
 	}
 	else
-		fast_buff_tick_timer.Disable();
+		fast_tic_special_timer.Disable();
 }
 
 void Client::RelequishFlesh(uint16 spell_id, Mob *target, const char *name_override, int pet_count, int pet_duration, int aehate)
@@ -9112,7 +9141,7 @@ void Mob::BuffFastProcess()
 			--buffs[buffs_i].fastticsremaining;
 			buffs[buffs_i].ticsremaining = 1 + buffs[buffs_i].fastticsremaining/6;
 			
-			//Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
+			Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
 			if (buffs[buffs_i].fastticsremaining == 0) 
 				BuffFadeBySlot(buffs_i);
 
@@ -10706,6 +10735,27 @@ int Mob::CalcSpellEffectValue_formula_custom(Mob* caster, int formula, int base,
 	}
 
 	return base;
+}
+
+int32 Mob::CalcSpellPowerFromAEDuration(uint16 spell_id, Mob* caster, int type)
+{
+	if (!caster || !spells[spell_id].AEDuration)
+		return 0;
+
+	/*TYPE
+	1 = Dmg Focus
+	2 = Ramge
+
+	*/
+
+	for (int i = 0; i <= EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_SpellPowerAEDurationType){
+			if (spells[spell_id].base2[i] == type)
+				return caster->GetAEDurationIteration() * spells[spell_id].base[i];
+		}
+	}
+	return 0;
 }
 
 

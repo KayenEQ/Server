@@ -1173,7 +1173,7 @@ bool IsAAToggleSpell(uint16 spell_id)
 bool IsFastBuffTicSpell(uint16 spell_id)
 {
 	if (IsValidSpell(spell_id) && 
-		spells[spell_id].viral_range == -1 &&
+		spells[spell_id].viral_range < 0 &&
 		spells[spell_id].buffduration > 0 && 
 		spells[spell_id].buffduration <= 3 && 
 		spells[spell_id].not_focusable == 1) //C!Kayen: TODO UPDATE THIS FLAG

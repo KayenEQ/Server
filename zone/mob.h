@@ -1104,6 +1104,7 @@ public:
 	//C!CastFromCrouch - Spell Field CastFromCrouch
 	//!// Client::CastFromCrouch(uint16 spell_id)
 	int32 CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
+	int32 CalcCrouchModFromType(uint16 spell_id, int type);
 	inline void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
 	inline void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
@@ -1307,6 +1308,7 @@ public:
 
 	inline int GetAEDurationIteration() const { return aeduration_iteration; }
 	inline void SetAEDurationIteration(int value) { aeduration_iteration = value; }
+	int32 CalcSpellPowerFromAEDuration(uint16 spell_id, Mob* caster, int type);
 
 	int CalcSpellEffectValue_formula_custom(Mob* caster, int formula, int base, int max, int caster_level, uint16 spell_id, int ticsremaining = 0);
 
@@ -1721,8 +1723,8 @@ protected:
 	Timer pet_buff_owner_timer;
 	Timer pet_resume_autofollow;
 
-	Timer fast_buff_tick_timer; //used for special case
-	int fast_buff_tick_count; //used for special case
+	Timer fast_tic_special_timer; //used for special case
+	int fast_tic_special_count; //used for special case
 
 	Timer charge_effect_timer;
 	uint32 charge_effect;

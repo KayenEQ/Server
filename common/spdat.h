@@ -35,9 +35,8 @@
 //C!Kayen - Custom Defines
 #define SPELL_BRAVERY 105
 #define SPELL_FEROCITY 112
-#define SPELL_WARDER_POUNCE_REFRESH 5053
 
-#define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006 
+#define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006
 #define SPELL_GROUP_RAKE 5000
 
 #define RANGE_USE_MELEE_COMBAT 101 
@@ -752,6 +751,9 @@ typedef enum {
 #define SE_CastOnLeapSELand				1093 // implemented - Needs further review.
 #define SE_BreakMovementDebuffs			1094 // implemented - Breaks roots and snares
 #define SE_HateOnPetOwnerAll			1095 // implemented - add hate to pet's owner - Base=Pct Transferred (100) [Applied to a ALL melee and spells]
+#define SE_SpellPowerCrouchType			1096 // implemented - Limit type definer for CastFromCrouch spells
+#define SE_SpellPowerAEDurationType		1097 // implemented - Base =Type, Limit - Percent increase from AE Duration based on iteration
+
 
 
 

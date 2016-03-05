@@ -4849,6 +4849,9 @@ float Mob::GetAOERange(uint16 spell_id) {
 
 	range = GetActSpellRange(spell_id, range);
 
+	range += range*static_cast<float>(CalcCrouchModFromType(spell_id, 2))/100.0f; //C!Kayen - Mod Range from interval
+	range += range*static_cast<float>(CalcSpellPowerFromAEDuration(spell_id, this, 2))/100.0f; //C!Kayen
+
 	return(range);
 }
 

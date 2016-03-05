@@ -194,7 +194,11 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 		if (IsFastBuffTicSpell(spell_id)){
 			SetFastBuff(true);
-			buffs[buffslot].fastticsremaining = spells[spell_id].buffduration * 6;
+
+			if (spells[spell_id].viral_range == -1)
+				buffs[buffslot].fastticsremaining = spells[spell_id].buffduration * 6;
+			else
+				buffs[buffslot].fastticsremaining = spells[spell_id].viral_range * -1;
 		}
 
 		//C!Kayen - always set these for all buffs.
@@ -732,6 +736,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 						if (caster->IsClient())
 							effect_value += effect_value*caster->GetFocusEffect(focusFcStunTimeMod, spell_id)/100;
+
+						effect_value += CalcCrouchModFromType(spell_id, 3); //C!Kayen - Mod Duration from interval
 
 						//C!Kayen - START :: Stun Resilience
 						if (IsStunned() || GetOpportunityMitigation()){
@@ -3104,7 +3110,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_FastManaRegen:
 			{
-				fast_buff_tick_timer.Start(1000);
+				fast_tic_special_timer.Start(1000);
 				break;
 			}
 

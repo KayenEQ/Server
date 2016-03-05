@@ -506,7 +506,7 @@ bool Client::Process() {
 		if (aura_field_timer.Check())
 			DoAuraField();
 
-		if (fast_buff_tick_timer.Check() && !dead) //1 seconds
+		if (fast_tic_special_timer.Check() && !dead) //1 seconds
 			DoSpecialFastBuffTick();
 
 		if (spun_timer.Check())

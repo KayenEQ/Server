@@ -2388,10 +2388,8 @@ void Mob::AddToHateList(Mob* other, uint32 hate /*= 0*/, int32 damage /*= 0*/, b
 	if (other->spellbonuses.HateOnPetOwnerAll && owner){
 		int temp_hate = hate + hate*(static_cast<uint32>(other->spellbonuses.HateOnPetOwnerAll) - 100)/100; //Setting value 100 = Full transfer]
 		hate_list.AddEntToHateList(owner, temp_hate, damage, bFrenzy, !iBuffTic);
-		Shout("Owner Add Hate %i %i", hate, temp_hate, other->spellbonuses.HateOnPetOwnerAll);
 	}
 
-	Shout("Add Hate %i", hate);
 	hate_list.AddEntToHateList(other, hate, damage, bFrenzy, !iBuffTic);
 
 	if(other->IsClient())
