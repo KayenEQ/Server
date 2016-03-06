@@ -3167,6 +3167,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			}
 
+			case SE_NumHitsAmtFaith:
+			{
+				if (caster && spells[spell_id].base2[i] != -1)
+					caster->AdjustNumHitsFaith(spell_id, i);
+
+				break;
+			}
+
 			case SE_FadeBuffBySpellGroup:
 			{
 				if (spells[spell_id].base[i])

@@ -3426,8 +3426,15 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 			}
 
 			case SE_HateOnPetOwnerAll:
-			{
 				new_bonus->HateOnPetOwnerAll += effect_value;
+				break;
+
+			case SE_Faith:
+			{
+				new_bonus->Faith[0] = effect_value;
+				new_bonus->Faith[1] = buffslot;
+				new_bonus->Faith[2] = base2;
+				new_bonus->Faith[3] = spell_id;
 				break;
 			}
 		}

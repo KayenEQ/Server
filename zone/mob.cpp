@@ -724,8 +724,8 @@ int Mob::_GetRunSpeed() const {
 	int spell_mod = spellbonuses.movementspeed + itembonuses.movementspeed;
 
 	if (spell_mod < 0) //C!Kayen - Custom snare modifier
-		spell_mod =+ spell_mod * spellbonuses.ImprovedSnare / 100;
-;
+		spell_mod += spell_mod * spellbonuses.ImprovedSnare / 100;
+
 	int movemod = 0;
 
 	if(spell_mod < 0)
@@ -5988,6 +5988,8 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 			
 	bool target_client_only = false;
 
+	bool target_found = false;
+
 	if (IsBeneficialSpell(spell_id) && IsClient())
 		target_client_only = true;
 
@@ -6022,7 +6024,7 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 	}
 
 	
-	Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
+	//Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
 	//'DEFENDER' is the virtual end point of the line being drawn based on range from which slope is derived. 
 
 	float DEFENDER_X = dX;
@@ -6067,10 +6069,11 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 					
 			if (d <= ae_width)
 			{
-				(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
+				//(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
 
 				if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
 					(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+					target_found = true;
 					if (maxtargets) 
 						targets_in_rectangle.push_back(*iter);
 					else
@@ -6083,6 +6086,9 @@ bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTa
 
 	if (maxtargets)
 		CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_rectangle);
+
+	if (!target_found)
+		DirectionalFailMessage(spell_id);
 	
 	return true;
 }
@@ -6490,7 +6496,7 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 					GMMove(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), GetHeading());
 			}
 
-			if (spells[spell_id].effectid[i] == SE_LeapSpellEffect){
+			else if (spells[spell_id].effectid[i] == SE_LeapSpellEffect){
 
 				int velocity = spells[spell_id].base[i];
 				float zmod1 = static_cast<float>(spells[spell_id].base2[i])/100;
@@ -6513,7 +6519,6 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 					}
 
 					//Need range check
-					Shout("Anim speed %i", anim_speed);
 					GetPet()->SetPetOrder(SPO_Guard);
 					GetPet()->DoAnim(19,anim_speed); //This should be replaced by target animation [Distance 100 = 3]
 					GetPet()->SetLeapSpellEffect(spell_id, velocity,zmod1,zmod2, GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
@@ -6607,7 +6612,7 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 	TypesTemporaryPets(GetProjectileTargetRingPetID(), nullptr, "#",duration, false);
 	NPC* temppet = nullptr;
 	//temppet = GetTempPetByTypeID(GetProjectileTargetRingPetID(), true); //NOT USED ANYMORE- Save for now.
-	temppet = entity_list.GetTempPetByNPCTypeID(GetProjectileTargetRingPetID(), GetID(), true);
+	temppet = entity_list.GetOwnersTempPetByNPCTypeID(GetProjectileTargetRingPetID(), GetID(), true);
 	
 	if (temppet){
 		temppet->GMMove(GetTargetRingX(), GetTargetRingY(),GetTargetRingZ(), 0, true);
@@ -6646,14 +6651,14 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 	return false;
 }
 
-NPC *EntityList::GetTempPetByNPCTypeID(uint32 npc_id, uint16 ownerid, bool SetVarTargetRing)
+NPC *EntityList::GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, bool SetVarTargetRing)
 {
-	if (npc_id == 0 || npc_list.empty())
+	if (npctype_id == 0 || npc_list.empty())
 		return nullptr;
 
 	auto it = npc_list.begin();
 	while (it != npc_list.end()) {
-		if (it->second->GetNPCTypeID() == npc_id){
+		if (it->second->GetNPCTypeID() == npctype_id){
 			if (it->second->GetSwarmOwner() == ownerid){
 				if (SetVarTargetRing){
 					if (!it->second->IsProjectilePet()){
@@ -8693,9 +8698,9 @@ void Mob::DirectionalFailMessage(uint16 spell_id)
 
 void Mob::ProjectileTargetRingFailMessage(uint16 spell_id)
 {
-	if (spells[spell_id].spellgroup == 2000)
+	if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE)
 		Message(MT_SpellFailure, "Your spectral blade missed!");
-	else if (spells[spell_id].spellgroup == 2006)
+	else if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY)
 		Message(MT_SpellFailure, "Your spectral blades missed!");
 
 	else
@@ -9185,6 +9190,7 @@ void Mob::DoFastBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 c
 		effect = spell.effectid[i];
 		effect_value = spell.base[i];
 
+		/*
 		switch(effect)
 		{
 			default:
@@ -9192,6 +9198,7 @@ void Mob::DoFastBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 c
 				// do we need to do anyting here?
 			}
 		}
+		*/
 	}
 }
 
@@ -9280,6 +9287,13 @@ void Client::CustomTickUpdates()
 			SendBuffNumHitPacket(buffs[slot], slot);
 		}
 	}
+
+	if (GetClass() == CLERIC && !spellbonuses.Faith[0])
+	{
+		SpellFinished(SPELL_FAITH, this, 10, 0, -1, spells[SPELL_FAITH].ResistDiff);
+		SpellFinished(SPELL_LOSE_FAITH_1, this, 10, 0, -1, spells[SPELL_LOSE_FAITH_1].ResistDiff);
+	}
+
 }
 
 void Mob::LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker)
@@ -10758,6 +10772,76 @@ int32 Mob::CalcSpellPowerFromAEDuration(uint16 spell_id, Mob* caster, int type)
 	return 0;
 }
 
+void Mob::AdjustNumHitsFaith(uint16 spell_id, int effectid)
+{
+	//If used as a resource to be drained after casting completed, set Limit to -1
+	//Otherwise spell is checked in regular spell effect routine.
+
+	if (IsClient() && spellbonuses.Faith[0] && IsValidSpell(spell_id)){
+
+		//Shout("1 SE_NumHitsAmtFaith 1 Faith %i %i %i %i [%i]", spellbonuses.Faith[0],spellbonuses.Faith[1],spellbonuses.Faith[2],spellbonuses.Faith[3], effectid);
+		
+		int i = effectid;
+		if (i == -1)//Determines if checked as resource drain.
+			i = GetSpellEffectIndex(spell_id, SE_NumHitsAmtFaith); //-1 = No effect found
+
+		if (i == -1 || (effectid == -1 && spells[spell_id].base2[i] != -1))
+			return; //Do not try a consume at spell casting finished if not used as resource.
+
+		int slot = spellbonuses.Faith[1];
+		if (slot >= 0 && spellbonuses.Faith[3] == buffs[slot].spellid && i >= 0){
+
+			int _numhits = static_cast<int>(buffs[slot].numhits) + spells[spell_id].base[i];
+
+			if (_numhits <= 0)
+				_numhits = 0; //Min
+			else if	(_numhits >= spellbonuses.Faith[2])
+				_numhits = spellbonuses.Faith[2]; //Max
+
+			buffs[slot].numhits = _numhits;
+
+			CastToClient()->SendBuffNumHitPacket(buffs[slot], slot);
+		}
+	}
+}
+
+bool Mob::TryClericCastingConditions(uint16 spell_id)
+{
+	if (!spellbonuses.Faith[0])
+		return true;
+
+	int slot = spellbonuses.Faith[1];
+	if (slot >= 0){
+
+		int RequiredFaith = GetRequiredFaith(spell_id);
+		if (RequiredFaith && buffs[slot].numhits < RequiredFaith){
+			Message(MT_SpellFailure, "You have insufficient faith to use this ability.");
+			return false;
+		}
+	}
+	return true;
+}
+
+bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
+{
+	if (!TryEnchanterCastingConditions(spell_id))
+		return false;
+
+	if (!TryRangerCastingConditions(spell_id, target_id))
+		return false;
+
+	if (!TryClericCastingConditions(spell_id))
+		return false;
+
+	if (!TryLeapSECastingConditions(spell_id))
+		return false;
+
+	//Check Min RANGE since client does not auto stop it.
+	//if (MinCastingRange(spell_id, target_id))
+		//return false;
+
+	return true;
+}
 
 //C!Misc - Functions still in development
 

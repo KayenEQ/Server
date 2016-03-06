@@ -212,35 +212,12 @@ bool Mob::CastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		return(false);
 	}
 
-	//C!Kayen - Check various enchanter casting conditions.
-	if (!TryEnchanterCastingConditions(spell_id)){
+	//C!Kayen - Various different classes requirements.
+	if (IsClient() && !TryCustomCastingConditions(spell_id, target_id)){
 		CastToClient()->SendSpellBarEnable(spell_id);
 		InterruptSpell(173, 0x121, false);
 		return false;
 	}
-
-	//C!Kayen - Check various Ranger casting conditions.
-	if (!TryRangerCastingConditions(spell_id, target_id)){
-		CastToClient()->SendSpellBarEnable(spell_id);
-		InterruptSpell(173, 0x121, false);
-		return false;
-	}
-
-	//C!Kayen
-	if (!TryLeapSECastingConditions(spell_id)){
-		CastToClient()->SendSpellBarEnable(spell_id);
-		InterruptSpell(173, 0x121, false);//if no targets found in AEspell then set 6 sec timer
-		return false;
-	}
-	//C!Kayen - Check Min RANGE since client does not auto stop it.
-	/*
-	if (MinCastingRange(spell_id, target_id)){
-		CastToClient()->SendSpellBarEnable(spell_id);
-		InterruptSpell(173, 0x121, false);
-		return false;
-	}
-	*/
-
 
 	if (spellbonuses.NegateIfCombat)
 		BuffFadeByEffect(SE_NegateIfCombat);
@@ -2392,6 +2369,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 	TryWizardEnduranceConsume(spell_id); //C!Kayen
 	TryEnchanterManaFocusConsume(spell_id); //C!Kayen
+	AdjustNumHitsFaith(spell_id, -1); //C!Kayen
 
 	// one may want to check if this is a disc or not, but we actually don't, there are non disc stuff that have end cost
 	// lets not consume end for custom items that have disc procs.
@@ -2464,8 +2442,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 	//C!Kayen - Hack to fix numhits display issue.
 	if (IsClient() && spells[spell_id].numhits){
-		SpellOnTarget(16, this);
-		BuffFadeBySpellID(16);
+		SpellOnTarget(SPELL_NUMHIT_DISPLAY_FIX, this);
+		BuffFadeBySpellID(SPELL_NUMHIT_DISPLAY_FIX);
 	}
 
 	return true;

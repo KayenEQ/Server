@@ -81,8 +81,8 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 	//C!Kayen - Failsafe to disable having multiple of the same Effect Field spawned at same time.
 	if (IsEffectFieldSpell(spell_id)){
 		NPC* temp = nullptr;
-		//BAD NEED TO FIND ALL TEMP PETS BY OWNER ON THE FEILD
-		temp = entity_list.GetTempPetByNPCTypeID(pet.npc_id, GetID(), false);
+		//This checks if there is already an Effect Field pet on the field for this owner.
+		temp = entity_list.GetOwnersTempPetByNPCTypeID(pet.npc_id, GetID(), false);
 		if (temp)
 			temp->Depop();
 	}

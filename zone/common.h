@@ -517,6 +517,7 @@ struct StatBonuses {
 	int16 ImprovedSnare;						//
 	int32 hastetype5;							//
 	int32 HateOnPetOwnerAll;					//Pct Hate Transferred
+	int16 Faith[4];								//0 = Base  1 = Buffslot 2 = Max Numhits Gained. 3= Spell ID
 
 };
 

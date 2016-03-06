@@ -1312,6 +1312,11 @@ public:
 
 	int CalcSpellEffectValue_formula_custom(Mob* caster, int formula, int base, int max, int caster_level, uint16 spell_id, int ticsremaining = 0);
 
+	bool TryClericCastingConditions(uint16 spell_id);
+	void AdjustNumHitsFaith(uint16 spell_id, int effectid);
+
+	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);
+
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	//C!Kayen END
 

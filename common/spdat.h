@@ -35,13 +35,17 @@
 //C!Kayen - Custom Defines
 #define SPELL_BRAVERY 105
 #define SPELL_FEROCITY 112
+#define SPELL_FAITH 610
+#define SPELL_LOSE_FAITH_1 605
 
+#define SPELL_GROUP_SPECTRAL_BLADE 2000
 #define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2006
 #define SPELL_GROUP_RAKE 5000
 
 #define RANGE_USE_MELEE_COMBAT 101 
 #define RANGE_USE_BOW 351
 #define CASTER_RESTRICT_NO_CAST_SELF -1
+#define SPELL_NUMHIT_DISPLAY_FIX 16
 
 //C!Kayen - End
 
@@ -753,6 +757,8 @@ typedef enum {
 #define SE_HateOnPetOwnerAll			1095 // implemented - add hate to pet's owner - Base=Pct Transferred (100) [Applied to a ALL melee and spells]
 #define SE_SpellPowerCrouchType			1096 // implemented - Limit type definer for CastFromCrouch spells
 #define SE_SpellPowerAEDurationType		1097 // implemented - Base =Type, Limit - Percent increase from AE Duration based on iteration
+#define SE_Faith						1098 // implemented - Base = 
+#define SE_NumHitsAmtFaith				1099 // implemented - Base = Amt numhits (+/-) Limit (-1 if used as resource)
 
 
 
@@ -1049,6 +1055,7 @@ bool IsRangeSpellEffect(uint16 spell_id);
 bool UseEquipedBowRange(uint16 spell_id);
 bool IsNoTargetRequiredSpell(uint16 spell_id);
 int AOEMaxHitCount(uint16 spell_id);
+int GetRequiredFaith(uint16 spell_id);
 
 //LightType - Variable usage
 bool SpellRequiresSpectralBlade(uint16 spell_id);

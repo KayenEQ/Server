@@ -96,6 +96,10 @@ bool Beacon::Process()
 		if(caster && spell_iterations--)
 		{
 			bool affect_caster = (!caster->IsNPC() && !caster->IsAIControlled());	//NPC AE spells do not affect the NPC caster
+
+			if (caster->GetClass() == CLERIC && spells[spell_id].goodEffect != 1)
+				affect_caster = false; //C!Kayen - Clerics are not affected by their deterimental rains
+
 			entity_list.AESpell(caster, this, spell_id, affect_caster, resist_adjust);
 			caster->SetAEDurationIteration(((spells[spell_id].AEDuration / 2500) - spell_iterations)); 	//C!Kayen - Iteration bonuses
 		}

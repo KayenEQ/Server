@@ -1292,6 +1292,21 @@ int AOEMaxHitCount(uint16 spell_id)
 	return 0;
 }
 
+int GetRequiredFaith(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_NumHitsAmtFaith){
+			if (spells[spell_id].base[i] < 0)
+				return spells[spell_id].base[i] * -1;
+		}
+	}
+
+	return 0;
+}
+
 bool SpellRequiresSpectralBlade(uint16 spell_id)
 {
 	if (spells[spell_id].classes[ENCHANTER])
