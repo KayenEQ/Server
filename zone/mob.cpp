@@ -462,13 +462,21 @@ Mob::Mob(const char* in_name,
 	leapSE.dest_h = 0.0f;
 	leapSE.z_bound_mod = 0.0f;
 	leapSE.mod = 0.0f;
+
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++)
+	{
+		ProjectileRing[i].increment = 0;
+		ProjectileRing[i].hit_increment = 0;
+		ProjectileRing[i].target_id = 0;
+		ProjectileRing[i].spell_id = SPELL_UNKNOWN;
+	}
 		
-	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_spell_id_ring[i] = 0; }
-	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
-	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_increment_ring[i] = 0; }
-	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_hit_ring[i] = 0; }
-	ActiveProjectileRing = false;
+	//for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_spell_id_ring[i] = 0; }
+	//for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
+	//for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_increment_ring[i] = 0; }
+	//for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_hit_ring[i] = 0; }
 	ProjectilePet = false;
+	ActiveProjectileRing = false;
 	ProjectileAESpellHitTarget = false;
 
 	MeleeChargeActive = false;
@@ -5736,6 +5744,247 @@ int32 Mob::GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot)
 	return stat;
 }
 
+bool Mob::CanClassEquipItem(uint32 item_id)
+{
+	const Item_Struct* itm = nullptr;
+	itm = database.GetItem(item_id);
+
+	if (!itm)
+		return false;
+
+	if(itm->Classes == 65535 )
+		return true;
+
+	if (GetClass() > 16)
+		return false;
+
+	int bitmask = 1;
+	bitmask = bitmask << (GetClass() - 1);
+
+	if(!(itm->Classes & bitmask))
+		return false;
+	else
+		return true;
+}
+
+void Mob::SendAddPlayerState(PlayerState new_state)
+{
+	auto app = new EQApplicationPacket(OP_PlayerStateAdd, sizeof(PlayerState_Struct));
+	auto ps = (PlayerState_Struct *)app->pBuffer;
+
+	ps->spawn_id = GetID();
+	ps->state = static_cast<uint32>(new_state);
+
+	AddPlayerState(ps->state);
+	entity_list.QueueClients(nullptr, app);
+	safe_delete(app);
+}
+
+void Mob::SendRemovePlayerState(PlayerState old_state)
+{
+	auto app = new EQApplicationPacket(OP_PlayerStateRemove, sizeof(PlayerState_Struct));
+	auto ps = (PlayerState_Struct *)app->pBuffer;
+
+	ps->spawn_id = GetID();
+	ps->state = static_cast<uint32>(old_state);
+
+	RemovePlayerState(ps->state);
+	entity_list.QueueClients(nullptr, app);
+	safe_delete(app);
+}
+
+void Mob::SetCurrentSpeed(int in){
+
+	if (in == 0)//C!Kayen Hot Fix
+		 moved = false;
+
+	if (current_speed != in)
+	{
+		current_speed = in;
+		tar_ndx = 20;
+		if (in == 0) {
+			SetRunAnimSpeed(0);
+			SetMoving(false);
+			SendPosition();
+		}
+	}
+}
+
+int32 Mob::GetMeleeMitigation() {
+	int32 mitigation = 0;
+	mitigation += spellbonuses.MeleeMitigationEffect;
+	mitigation += itembonuses.MeleeMitigationEffect;
+	mitigation += aabonuses.MeleeMitigationEffect;
+	return mitigation;
+}
+
+/* this is the mob being attacked.
+ * Pass in the weapon's ItemInst
+ */
+int Mob::ResistElementalWeaponDmg(const ItemInst *item)
+{
+	if (!item)
+		return 0;
+	int magic = 0, fire = 0, cold = 0, poison = 0, disease = 0, chromatic = 0, prismatic = 0, physical = 0,
+	    corruption = 0;
+	int resist = 0;
+	int roll = 0;
+	/*  this is how the client does the resist rolls for these.
+	 *  Given the difficulty of parsing out these resists, I'll trust the client
+	 */
+	if (item->GetItemElementalDamage(magic, fire, cold, poison, disease, chromatic, prismatic, physical, corruption, true)) {
+		if (magic) {
+			resist = GetMR();
+			if (resist >= 201) {
+				magic = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					magic = 0;
+				else if (roll < 100)
+					magic = magic * roll / 100;
+			}
+		}
+
+		if (fire) {
+			resist = GetFR();
+			if (resist >= 201) {
+				fire = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					fire = 0;
+				else if (roll < 100)
+					fire = fire * roll / 100;
+			}
+		}
+
+		if (cold) {
+			resist = GetCR();
+			if (resist >= 201) {
+				cold = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					cold = 0;
+				else if (roll < 100)
+					cold = cold * roll / 100;
+			}
+		}
+
+		if (poison) {
+			resist = GetPR();
+			if (resist >= 201) {
+				poison = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					poison = 0;
+				else if (roll < 100)
+					poison = poison * roll / 100;
+			}
+		}
+
+		if (disease) {
+			resist = GetDR();
+			if (resist >= 201) {
+				disease = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					disease = 0;
+				else if (roll < 100)
+					disease = disease * roll / 100;
+			}
+		}
+
+		if (corruption) {
+			resist = GetCorrup();
+			if (resist >= 201) {
+				corruption = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					corruption = 0;
+				else if (roll < 100)
+					corruption = corruption * roll / 100;
+			}
+		}
+
+		if (chromatic) {
+			resist = GetFR();
+			int temp = GetCR();
+			if (temp < resist)
+				resist = temp;
+
+			temp = GetMR();
+			if (temp < resist)
+				resist = temp;
+
+			temp = GetDR();
+			if (temp < resist)
+				resist = temp;
+
+			temp = GetPR();
+			if (temp < resist)
+				resist = temp;
+
+			if (resist >= 201) {
+				chromatic = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					chromatic = 0;
+				else if (roll < 100)
+					chromatic = chromatic * roll / 100;
+			}
+		}
+
+		if (prismatic) {
+			resist = (GetFR() + GetCR() + GetMR() + GetDR() + GetPR()) / 5;
+			if (resist >= 201) {
+				prismatic = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					prismatic = 0;
+				else if (roll < 100)
+					prismatic = prismatic * roll / 100;
+			}
+		}
+
+		if (physical) {
+			resist = GetPhR();
+			if (resist >= 201) {
+				physical = 0;
+			} else {
+				roll = zone->random.Int(0, 200) - resist;
+				if (roll < 1)
+					physical = 0;
+				else if (roll < 100)
+					physical = physical * roll / 100;
+			}
+		}
+	}
+
+	return magic + fire + cold + poison + disease + chromatic + prismatic + physical + corruption;
+}
+
+/* this is the mob being attacked.
+ * Pass in the weapon's ItemInst
+ */
+int Mob::CheckBaneDamage(const ItemInst *item)
+{
+	if (!item)
+		return 0;
+
+	int damage = item->GetItemBaneDamageBody(GetBodyType(), true);
+	damage += item->GetItemBaneDamageRace(GetRace(), true);
+
+	return damage;
+}
+
+
 //!CKayen - Custom MOB functions
 
 //#### C!SpecialAASystem - see client.h - Helper functions for purchasing AA
@@ -6674,7 +6923,7 @@ NPC *EntityList::GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, 
 	}
 	return nullptr;
 }
-
+/*OLD VERSION 3/7/16
 bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	
 	if (!spell_target || !IsValidSpell(spell_id))
@@ -6802,10 +7051,11 @@ bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	return true;
 }
 
+
 void Mob::SpellProjectileEffectTargetRing()
 {
 	if (!HasProjectileRing())
-		return;;
+		return;
 
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
 	
@@ -6824,8 +7074,11 @@ void Mob::SpellProjectileEffectTargetRing()
 
 						if (HasProjectileAESpellHitTarget())
 							TryApplyEffectProjectileHit(p_spell_id, this);
-						else
-							ProjectileTargetRingFailMessage(p_spell_id);
+						else{
+							//ProjectileTargetRingFailMessage(p_spell_id); //No longer needed since does graphic.
+							//This provides a particle effect even if the projectile MISSES. Casts a graphic only spell.
+							SpellFinished((spells[p_spell_id].spellanim + 10000), target, 10, 0, -1, -1000);
+						}
 						
 						//Reset Projectile Ring Variables
 						SetCastFromCrouchIntervalProj(0);
@@ -6855,6 +7108,137 @@ bool Mob::ExistsProjectileRing()
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
 	
 		if (projectile_increment_ring[i])
+			return true;
+	}
+	return false;
+}
+
+*/
+
+bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
+	
+	if (!spell_target || !IsValidSpell(spell_id))
+		return false;
+	
+	int slot = -1;
+
+	//Make sure there is an avialable bolt to be cast.
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+		if (ProjectileRing[i].target_id == 0){
+			slot = i;
+			break;
+		}
+	}
+
+	if (slot < 0)
+		return false;
+
+	const char *item_IDFile = spells[spell_id].player_1;
+
+	bool SendProjectile = true;
+	int caster_anim = GetProjCastingAnimation(spell_id);
+	float speed = static_cast<float>(GetProjSpeed(spell_id)) / 1000.0f; 
+	float angle = static_cast<float>(GetProjAngle(spell_id));
+	float tilt = static_cast<float>(GetProjTilt(spell_id));
+	float arc = static_cast<float>(GetProjArc(spell_id));
+
+	if (tilt == 525){ //Straightens out most melee weapons. [May need to re evaluate this]
+		//angle = 1000.0f;
+
+		if ( (GetZ() - spell_target->GetZ()) > 10.0f) //This may need adjustment
+			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
+	}
+
+	float speed_mod = speed * 0.45f; //Constant for adjusting speeds to match calculated impact time.
+	float distance = spell_target->CalculateDistance(GetX(), GetY(), GetZ());
+	float hit = 60.0f + (distance / speed_mod);
+
+	//Shout("Debug: Compare Hit Values [NEW %i OLD %i]", static_cast<uint16>(hit), GetOldProjectileHit(spell_target, spell_id));
+
+	ProjectileRing[slot].increment = 1;
+	ProjectileRing[slot].hit_increment = static_cast<uint16>(hit);
+	ProjectileRing[slot].target_id = spell_target->GetID();
+	ProjectileRing[slot].spell_id = spell_id;
+	SetProjectileRing(true);
+	
+	SkillUseTypes skillinuse;
+	
+	if (caster_anim != 44) //44 is standard 'nuke' spell animation.
+		skillinuse = static_cast<SkillUseTypes>(caster_anim);
+	else
+		skillinuse = SkillArchery;
+
+	if (SendProjectile)
+		ProjectileAnimation(spell_target,0, false, speed,angle,tilt,arc, item_IDFile,skillinuse);
+
+	if (IsClient())
+		ClientFaceTarget(spell_target);
+	else
+		FaceTarget(spell_target);
+	
+	//Override the default projectile animation which is based on item type.
+	if (caster_anim == 44)
+		DoAnim(caster_anim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells);
+	
+	return true;
+}
+
+void Mob::SpellProjectileEffectTargetRing()
+{
+	if (!HasProjectileRing())
+		return;
+
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+	
+		if (!ProjectileRing[i].increment)
+			continue;
+		
+		if (ProjectileRing[i].increment > ProjectileRing[i].hit_increment){
+		//Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
+
+			Mob* target = entity_list.GetMobID(ProjectileRing[i].target_id);
+			if (target){
+				uint16 p_spell_id = ProjectileRing[i].spell_id;
+				if (IsValidSpell(p_spell_id)){
+					if (IsProjectile(p_spell_id)){
+						entity_list.AESpell(this, target, p_spell_id, false, spells[p_spell_id].ResistDiff);
+
+						if (HasProjectileAESpellHitTarget())
+							TryApplyEffectProjectileHit(p_spell_id, this);
+						else{
+							//ProjectileTargetRingFailMessage(p_spell_id); //No longer needed since does graphic.
+							//This provides a particle effect even if the projectile MISSES. Casts a graphic only spell.
+							SpellFinished((spells[p_spell_id].spellanim + 10000), target, 10, 0, -1, -1000);
+						}
+						
+						//Reset Projectile Ring Variables
+						SetCastFromCrouchIntervalProj(0);
+						SetProjectileAESpellHitTarget(false);
+					}
+				}
+				//target->Depop(); //Depop Temp Pet at Ring Location - Now pets auto depop after 10 seconds
+			}
+
+			//Reset Projectile Ring variables.
+			ProjectileRing[i].increment = 0;
+			ProjectileRing[i].hit_increment = 0;
+			ProjectileRing[i].target_id = 0;
+			ProjectileRing[i].spell_id = SPELL_UNKNOWN;
+			
+			if (!ExistsProjectileRing())
+				SetProjectileRing(false);
+
+		}
+		else
+			ProjectileRing[i].increment++;
+	}
+}
+
+bool Mob::ExistsProjectileRing()
+{
+	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {
+	
+		if (ProjectileRing[i].increment)
 			return true;
 	}
 	return false;
@@ -6909,14 +7293,12 @@ float Mob::CalcSpecialProjectile(uint16 spell_id)
 	return value;
 }
 
-//#### C!Projectile2
+//#### C!SpellProjectileCustom
 
-bool Mob::TrySpellProjectile2(Mob* spell_target,  uint16 spell_id){
+bool Mob::TrySpellProjectileCustom(Mob* spell_target,  uint16 spell_id){
 
 	if (!spell_target || !IsValidSpell(spell_id))
 		return false;
-	//Note: Field209 / powerful_flag : Used as Speed Variable (in MS > 500) and to flag TargetType Ring/Location as a Projectile
-	//Note: pvpresistbase : Used to set tilt
 
 	int slot = -1;
 
@@ -11750,6 +12132,54 @@ void Client::MarkNPCTest(Mob* Target, int Number)
 	//UpdateXTargetMarkedNPC(Number, m);
 }
 
+int Mob::GetOldProjectileHit(Mob* spell_target, uint16 spell_id)
+{
+	int caster_anim = GetProjCastingAnimation(spell_id);
+	float angle = static_cast<float>(GetProjAngle(spell_id));
+	float tilt = static_cast<float>(GetProjTilt(spell_id));
+	float arc = static_cast<float>(GetProjArc(spell_id));
+
+	if (tilt == 525){ //Straightens out most melee weapons.
+		//angle = 1000.0f;
+		if ( (GetZ() - spell_target->GetZ()) > 10.0f)
+			tilt = 200.0f; //Ajdust til for Z axis - Not perfect but good enough.
+	}
+
+	//Note: Field209 / powerful_flag : Used as Speed Variable and to flag TargetType Ring/Location as a Projectile
+	//Note: pvpresistbase : Used to set tilt
+	//Baseline 280 mod was calculated on how long it takes for projectile to hit target at 1 speed.
+	float speed = static_cast<float>(GetProjSpeed(spell_id)) / 1000.0f; 
+	float distance = CalculateDistance(spell_target->GetX(), spell_target->GetY(), spell_target->GetZ());
+	float hit = 0.0f;
+	float dist_mod = 270.0f;
+	float speed_mod = 0.0f;
+
+	if (speed >= 0.5f && speed < 1.0f)
+		speed_mod = 175.0f - ((speed - 0.5f) * (175.0f - 100.0f));
+	else if (speed >= 1.0f && speed < 2.0f)
+		speed_mod = 100.0f - ((speed - 1.0f) * (100.0f - 70.0f));
+	else if (speed >= 2.0f && speed < 3.0f)
+		speed_mod = 70.0f - ((speed - 2.0f) * (70.0f - 60.0f));
+	else if (speed >= 3.0f && speed < 4.0f)
+		speed_mod = 60.0f - ((speed - 3.0f) * (60.0f - 50.0f));
+	else if (speed >= 4.0f && speed <= 5.0f)
+		speed_mod = 50.0f - ((speed - 4.0f) * (50.0f - 40.0f));
+
+	dist_mod = (dist_mod * speed_mod) / 100.0f;
+	hit = (distance * dist_mod) / 100; //#1
+
+	//Shout("A Proj Speed %.2f Distance %.2f SpeedMod %.2f DistMod %.2f HIT [%.2f]", speed, distance, speed_mod, dist_mod, hit);
+	//Close Distance Modifiers
+	if (distance <= 35 && distance > 25)
+		hit *= 1.6f;
+	if (distance <= 25 && distance > 15)
+		hit *= 1.8f;
+	if (distance <= 15) 
+		hit *= 2.0f;
+
+	return hit;
+}
+
 /* DEPRECIATED
 Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
 {
@@ -11775,243 +12205,3 @@ Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
 	return nullptr;
 }
 */
-
-bool Mob::CanClassEquipItem(uint32 item_id)
-{
-	const Item_Struct* itm = nullptr;
-	itm = database.GetItem(item_id);
-
-	if (!itm)
-		return false;
-
-	if(itm->Classes == 65535 )
-		return true;
-
-	if (GetClass() > 16)
-		return false;
-
-	int bitmask = 1;
-	bitmask = bitmask << (GetClass() - 1);
-
-	if(!(itm->Classes & bitmask))
-		return false;
-	else
-		return true;
-}
-
-void Mob::SendAddPlayerState(PlayerState new_state)
-{
-	auto app = new EQApplicationPacket(OP_PlayerStateAdd, sizeof(PlayerState_Struct));
-	auto ps = (PlayerState_Struct *)app->pBuffer;
-
-	ps->spawn_id = GetID();
-	ps->state = static_cast<uint32>(new_state);
-
-	AddPlayerState(ps->state);
-	entity_list.QueueClients(nullptr, app);
-	safe_delete(app);
-}
-
-void Mob::SendRemovePlayerState(PlayerState old_state)
-{
-	auto app = new EQApplicationPacket(OP_PlayerStateRemove, sizeof(PlayerState_Struct));
-	auto ps = (PlayerState_Struct *)app->pBuffer;
-
-	ps->spawn_id = GetID();
-	ps->state = static_cast<uint32>(old_state);
-
-	RemovePlayerState(ps->state);
-	entity_list.QueueClients(nullptr, app);
-	safe_delete(app);
-}
-
-void Mob::SetCurrentSpeed(int in){
-
-	if (in == 0)//C!Kayen Hot Fix
-		 moved = false;
-
-	if (current_speed != in)
-	{
-		current_speed = in;
-		tar_ndx = 20;
-		if (in == 0) {
-			SetRunAnimSpeed(0);
-			SetMoving(false);
-			SendPosition();
-		}
-	}
-}
-
-int32 Mob::GetMeleeMitigation() {
-	int32 mitigation = 0;
-	mitigation += spellbonuses.MeleeMitigationEffect;
-	mitigation += itembonuses.MeleeMitigationEffect;
-	mitigation += aabonuses.MeleeMitigationEffect;
-	return mitigation;
-}
-
-/* this is the mob being attacked.
- * Pass in the weapon's ItemInst
- */
-int Mob::ResistElementalWeaponDmg(const ItemInst *item)
-{
-	if (!item)
-		return 0;
-	int magic = 0, fire = 0, cold = 0, poison = 0, disease = 0, chromatic = 0, prismatic = 0, physical = 0,
-	    corruption = 0;
-	int resist = 0;
-	int roll = 0;
-	/*  this is how the client does the resist rolls for these.
-	 *  Given the difficulty of parsing out these resists, I'll trust the client
-	 */
-	if (item->GetItemElementalDamage(magic, fire, cold, poison, disease, chromatic, prismatic, physical, corruption, true)) {
-		if (magic) {
-			resist = GetMR();
-			if (resist >= 201) {
-				magic = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					magic = 0;
-				else if (roll < 100)
-					magic = magic * roll / 100;
-			}
-		}
-
-		if (fire) {
-			resist = GetFR();
-			if (resist >= 201) {
-				fire = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					fire = 0;
-				else if (roll < 100)
-					fire = fire * roll / 100;
-			}
-		}
-
-		if (cold) {
-			resist = GetCR();
-			if (resist >= 201) {
-				cold = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					cold = 0;
-				else if (roll < 100)
-					cold = cold * roll / 100;
-			}
-		}
-
-		if (poison) {
-			resist = GetPR();
-			if (resist >= 201) {
-				poison = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					poison = 0;
-				else if (roll < 100)
-					poison = poison * roll / 100;
-			}
-		}
-
-		if (disease) {
-			resist = GetDR();
-			if (resist >= 201) {
-				disease = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					disease = 0;
-				else if (roll < 100)
-					disease = disease * roll / 100;
-			}
-		}
-
-		if (corruption) {
-			resist = GetCorrup();
-			if (resist >= 201) {
-				corruption = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					corruption = 0;
-				else if (roll < 100)
-					corruption = corruption * roll / 100;
-			}
-		}
-
-		if (chromatic) {
-			resist = GetFR();
-			int temp = GetCR();
-			if (temp < resist)
-				resist = temp;
-
-			temp = GetMR();
-			if (temp < resist)
-				resist = temp;
-
-			temp = GetDR();
-			if (temp < resist)
-				resist = temp;
-
-			temp = GetPR();
-			if (temp < resist)
-				resist = temp;
-
-			if (resist >= 201) {
-				chromatic = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					chromatic = 0;
-				else if (roll < 100)
-					chromatic = chromatic * roll / 100;
-			}
-		}
-
-		if (prismatic) {
-			resist = (GetFR() + GetCR() + GetMR() + GetDR() + GetPR()) / 5;
-			if (resist >= 201) {
-				prismatic = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					prismatic = 0;
-				else if (roll < 100)
-					prismatic = prismatic * roll / 100;
-			}
-		}
-
-		if (physical) {
-			resist = GetPhR();
-			if (resist >= 201) {
-				physical = 0;
-			} else {
-				roll = zone->random.Int(0, 200) - resist;
-				if (roll < 1)
-					physical = 0;
-				else if (roll < 100)
-					physical = physical * roll / 100;
-			}
-		}
-	}
-
-	return magic + fire + cold + poison + disease + chromatic + prismatic + physical + corruption;
-}
-
-/* this is the mob being attacked.
- * Pass in the weapon's ItemInst
- */
-int Mob::CheckBaneDamage(const ItemInst *item)
-{
-	if (!item)
-		return 0;
-
-	int damage = item->GetItemBaneDamageBody(GetBodyType(), true);
-	damage += item->GetItemBaneDamageRace(GetRace(), true);
-
-	return damage;
-}

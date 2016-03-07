@@ -2139,7 +2139,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				if (spells[spell_id].targettype == ST_TargetOptional){
 					if (spell_target && spell_target == this)//C!Kayen
 						return false;
-					if (!TrySpellProjectile2(spell_target, spell_id)) //C!Kayen - Modified formula / Speed Changes
+					if (!TrySpellProjectileCustom(spell_target, spell_id)) //C!Kayen - Modified formula / Speed Changes
 						return false;
 				}
 				//C!Kayen - Beam Type spells that hit everything in a straight line to target.

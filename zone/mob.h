@@ -1078,7 +1078,7 @@ public:
 	inline void SetProjectileAESpellHitTarget(bool value) { ProjectileAESpellHitTarget = value; } 
 
 	//C!Projectile2
-	bool TrySpellProjectile2(Mob* spell_target,  uint16 spell_id);
+	bool TrySpellProjectileCustom(Mob* spell_target,  uint16 spell_id);
 	
 	//C!MeleeCharge - THIS NEEDS TO BE FINISHED
 	void MeleeCharge();
@@ -1318,6 +1318,7 @@ public:
 	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
+	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
 	//C!Kayen END
 
 protected:
@@ -1694,12 +1695,13 @@ protected:
 	tLeap leap;
 	tLeapSE leapSE;
 
-	uint32 projectile_spell_id_ring[MAX_SPELL_PROJECTILE];
-	uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];
-	uint32 projectile_increment_ring[MAX_SPELL_PROJECTILE];
-	uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
-	bool ActiveProjectileRing;
+	tProjring ProjectileRing[MAX_SPELL_PROJECTILE];
+	//uint32 projectile_spell_id_ring[MAX_SPELL_PROJECTILE];
+	//uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];
+	//uint32 projectile_increment_ring[MAX_SPELL_PROJECTILE];
+	//uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
 	bool ProjectilePet;
+	bool ActiveProjectileRing;
 	bool ProjectileAESpellHitTarget; //USed with projectile target rings.
 
 	bool MeleeChargeActive;

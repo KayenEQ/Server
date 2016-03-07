@@ -637,6 +637,13 @@ typedef struct
 	float mod;
 } tLeapSE; //Leap spell effect (using forced movement)
 
+typedef struct
+{
+	uint16 spell_id;
+	uint16 target_id;
+	uint16 increment;
+	uint16 hit_increment;
+} tProjring; //Target ring projectiles
 //C!Kayen - STRUCTS END
 
 class ItemInst;
