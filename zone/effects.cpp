@@ -782,8 +782,12 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	if (!caster) //C!Kayen
 		return;
 
-	bool TL_TargetFound = false; //C! Kayen - From ST_TargetLocation
-	bool AE_TargetFound = false; //C! Kayen - Check if AE found any targets.
+	bool use_min_range = true; //C!Kayen - We don't check min range from projectile target ring AOE. 
+	if (IsTargetRingSpell(spell_id) && IsProjectile(spell_id))
+		use_min_range = false;
+
+	bool TL_TargetFound = false; //C!Kayen - From ST_TargetLocation
+	bool AE_TargetFound = false; //C!Kayen - Check if AE found any targets.
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
 
@@ -834,7 +838,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 		if (dist_targ > dist2)	//make sure they are in range
 			continue;
-		if (dist_targ < min_range2)	//make sure they are in range
+		if (use_min_range && dist_targ < min_range2)	//make sure they are in range [C!Kayen - bool added]
 			continue;
 
 		if (isnpc && curmob->IsNPC()) {	//check npc->npc casting

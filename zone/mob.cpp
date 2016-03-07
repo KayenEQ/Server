@@ -8703,6 +8703,9 @@ void Mob::ProjectileTargetRingFailMessage(uint16 spell_id)
 	else if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY)
 		Message(MT_SpellFailure, "Your spectral blades missed!");
 
+	if (GetClass() == CLERIC)
+		Message(MT_SpellFailure, "The holy flame dissipates.");
+
 	else
 		Message(MT_SpellFailure, "Your spell failed to find a target.");
 
@@ -10055,7 +10058,7 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 		min_range = min_range_sp;
 
 	float dist = DistanceSquared(target->GetPosition(), GetPosition());
-	Shout("Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
+	//Shout("Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
 	if(dist > (range * range)) {
 		Message_StringID(13, TARGET_OUT_OF_RANGE);
 		return false;
@@ -10210,20 +10213,34 @@ bool Mob::MinCastingRange(uint16 spell_id, uint16 target_id)
 	if (!spells[spell_id].min_range)
 		return false;
 
-	if (!IsTargetableSpell(spell_id))
-		return false;
+	float dist2 = 0;
+	bool target_ring = false;
 
-	Mob* spell_target = nullptr;
-	spell_target = entity_list.GetMob(target_id);
+	if (IsTargetableSpell(spell_id)){
 
-	if (!spell_target)
-		return false;
+		Mob* spell_target = nullptr;
+		spell_target = entity_list.GetMob(target_id);
 
-	if(spell_target != nullptr && spell_target != this) {
-		float dist2 = DistanceSquared(m_Position, spell_target->GetPosition());
+		if (!spell_target || spell_target == nullptr || spell_target == this)
+			return false;
+
+		dist2 = DistanceSquared(m_Position, spell_target->GetPosition());
+	}
+
+	if (IsTargetRingSpell(spell_id)){
+		dist2 =  DistanceSquared(static_cast<glm::vec3>(GetPosition()), GetTargetRingLocation());
+		target_ring = true;
+	}
+
+	if (dist2){
+
 		float min_range2 = spells[spell_id].min_range * spells[spell_id].min_range;
 		if (dist2 < min_range2){
-			Message_StringID(13, TARGET_TOO_CLOSE);
+			
+			if (!target_ring)
+				Message_StringID(13, TARGET_TOO_CLOSE);
+			else
+				Message(MT_SpellFailure, "You are too close to your targeted location. Get farther away.");
 			return(true);
 		}
 	}
@@ -10824,6 +10841,8 @@ bool Mob::TryClericCastingConditions(uint16 spell_id)
 
 bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 {
+	//Note this method of interrupting casting does not work well for instant spells (cast time 150 is shortest)
+
 	if (!TryEnchanterCastingConditions(spell_id))
 		return false;
 
@@ -10837,8 +10856,8 @@ bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 		return false;
 
 	//Check Min RANGE since client does not auto stop it.
-	//if (MinCastingRange(spell_id, target_id))
-		//return false;
+	if (MinCastingRange(spell_id, target_id))
+		return false;
 
 	return true;
 }
