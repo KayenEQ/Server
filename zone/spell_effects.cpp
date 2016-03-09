@@ -4933,7 +4933,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 	// notify caster (or their master) of buff that it's worn off
 	Mob *p = entity_list.GetMob(buffs[slot].casterid);
-	if (p && p != this && !IsBardSong(buffs[slot].spellid) && !IsEffectFieldSpell(buffs[slot].spellid)) //C!Kayen
+	if (p && p != this && !IsBardSong(buffs[slot].spellid) && !IsEffectFieldSpell(buffs[slot].spellid) && !spells[buffs[slot].spellid].no_wear_off_msg) //C!Kayen
 	{
 		Mob *notify = p;
 		if(p->IsPet())

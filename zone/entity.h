@@ -438,7 +438,8 @@ public:
 	void FadeCastersBuffFromAll(uint16 caster_id, uint16 spell_id);
 	void FadeBuffFromCaster(uint16 caster_id, uint16 spell_id);
 	void SendAppearanceEffects(Client *c);
-	NPC* GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, bool SetVarTargetRing);
+	NPC* GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, bool SetVarTargetRing, uint16 spell_id);
+	void DisplaySpellGFXonTempPet(Mob *caster, uint16 spell_id, uint32 npctype_id, uint16 ownerid);
 	void AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_id);
 
 protected:

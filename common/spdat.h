@@ -891,7 +891,7 @@ struct SPDat_Spell_Struct
 /* 196 */   bool sneak; // effect can only be used if sneaking (rogue 'Daggerfall' ect)
 /* 197 */	bool not_focusable; //prevents focus effects from being applied to spell
 /* 198 */   bool no_detrimental_spell_aggro; 
-/* 199 */
+/* 199 */	bool no_wear_off_msg; //C!Kayen
 /* 200 */	bool suspendable; // buff is suspended in suspended buff zones
 /* 201 */	int viral_range;
 /* 202 */	int songcap; // individual song cap

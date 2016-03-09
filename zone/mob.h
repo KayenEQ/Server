@@ -1066,11 +1066,11 @@ public:
 	//!// NPC *EntityList::GetTempPetByNPCTypeID(uint32 npc_id, uint16 ownerid, bool SetVarTargetRing)
 	bool TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id);
 	void SpellProjectileEffectTargetRing();
-	inline uint32 GetProjectileTargetRingPetID() { return 1000000; } //HARDCODED - npctypesid from database for temp pet
+	inline uint32 GetProjectileTargetRingPetDBID() { return 1000000; } //HARDCODED - npctypesid from database for temp pet
 	inline bool HasProjectileRing() const { return ActiveProjectileRing; }
 	inline void SetProjectileRing(bool HasProjectileRing_value) { ActiveProjectileRing = HasProjectileRing_value; }
-	inline bool IsProjectilePet() const { return ProjectilePet; }
-	inline void SetProjectilePet(bool value) { ProjectilePet = value; }
+	inline uint16 GetUtilityTempPetSpellID() const { return UtilityTempPetSpellID; }
+	inline void SetUtilityTempPetSpellID(uint16 value) { UtilityTempPetSpellID = value; }
 	bool ExistsProjectileRing();
 	void TryApplyEffectProjectileHit(uint16 spell_id, Mob* target=nullptr);
 	float CalcSpecialProjectile(uint16 spell_id);
@@ -1317,8 +1317,17 @@ public:
 
 	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);
 
+	//Experimental - tremor needs camera shake
+	void SpellGraphicTempPet(uint16 spell_id);
+	void SpawnSpellGraphicTempPet(uint16 spell_id, float aoerange);
+	inline uint32 GetSpellGraphicPetDBID() { return 1000010; } //HARDCODED - npctypesid from database for temp pet
+	float GetSpacerAngle(float aoerange, float total_angle);
+	NPC* TypesTemporaryPetsGFX(uint32 typesid, const char *name_override = nullptr, uint32 duration_override = 0, float dX=0.0f, float dY=0.0f, float dZ=0.0f, uint16 spell_id = 0);
+
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
+	float GetHeadingChangeFromAngle(float a) { return (256.0f * a / 360.0f); }
+	float FixHeadingAngle(float a) { if (a >= 256) { return (a - 256.0f); } else if (a < 0) {return (256.0f + a); } else return a;}
 	//C!Kayen END
 
 protected:
@@ -1696,11 +1705,13 @@ protected:
 	tLeapSE leapSE;
 
 	tProjring ProjectileRing[MAX_SPELL_PROJECTILE];
+
 	//uint32 projectile_spell_id_ring[MAX_SPELL_PROJECTILE];
 	//uint16 projectile_target_id_ring[MAX_SPELL_PROJECTILE];
 	//uint32 projectile_increment_ring[MAX_SPELL_PROJECTILE];
 	//uint32 projectile_hit_ring[MAX_SPELL_PROJECTILE];
-	bool ProjectilePet;
+
+	uint16 UtilityTempPetSpellID;
 	bool ActiveProjectileRing;
 	bool ProjectileAESpellHitTarget; //USed with projectile target rings.
 

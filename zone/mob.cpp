@@ -475,7 +475,8 @@ Mob::Mob(const char* in_name,
 	//for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_target_id_ring[i] = 0; }
 	//for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_increment_ring[i] = 0; }
 	//for (int i = 0; i < MAX_SPELL_PROJECTILE; i++) {projectile_hit_ring[i] = 0; }
-	ProjectilePet = false;
+
+	UtilityTempPetSpellID = 0;
 	ActiveProjectileRing = false;
 	ProjectileAESpellHitTarget = false;
 
@@ -6858,10 +6859,9 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 	if (!IsMeleeCharge)
 		duration = 10; //Fade in 10 seconds if used from projectile
 
-	TypesTemporaryPets(GetProjectileTargetRingPetID(), nullptr, "#",duration, false);
+	TypesTemporaryPets(GetProjectileTargetRingPetDBID(), nullptr, "#",duration, false);
 	NPC* temppet = nullptr;
-	//temppet = GetTempPetByTypeID(GetProjectileTargetRingPetID(), true); //NOT USED ANYMORE- Save for now.
-	temppet = entity_list.GetOwnersTempPetByNPCTypeID(GetProjectileTargetRingPetID(), GetID(), true);
+	temppet = entity_list.GetOwnersTempPetByNPCTypeID(GetProjectileTargetRingPetDBID(), GetID(), true, spell_id);
 	
 	if (temppet){
 		temppet->GMMove(GetTargetRingX(), GetTargetRingY(),GetTargetRingZ(), 0, true);
@@ -6895,12 +6895,12 @@ bool Mob::ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge)
 		return true;
 	}
 	else
-		Shout("DEBUG::ProjectileTargetRing: Critical error no temppet (%i) Found in database", GetProjectileTargetRingPetID());
+		Shout("DEBUG::ProjectileTargetRing: Critical error no temppet (%i) Found in database", GetProjectileTargetRingPetDBID());
 
 	return false;
 }
 
-NPC *EntityList::GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, bool SetVarTargetRing)
+NPC *EntityList::GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, bool SetVarTargetRing, uint16 spell_id)
 {
 	if (npctype_id == 0 || npc_list.empty())
 		return nullptr;
@@ -6910,8 +6910,8 @@ NPC *EntityList::GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, 
 		if (it->second->GetNPCTypeID() == npctype_id){
 			if (it->second->GetSwarmOwner() == ownerid){
 				if (SetVarTargetRing){
-					if (!it->second->IsProjectilePet()){
-						it->second->SetProjectilePet(true);
+					if (!it->second->GetUtilityTempPetSpellID()){
+						it->second->SetUtilityTempPetSpellID(spell_id);
 						return it->second;
 					}
 				}
@@ -6923,6 +6923,8 @@ NPC *EntityList::GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, 
 	}
 	return nullptr;
 }
+
+
 /*OLD VERSION 3/7/16
 bool Mob::TrySpellProjectileTargetRing(Mob* spell_target,  uint16 spell_id){
 	
@@ -9864,6 +9866,8 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 				return;
 			}
 
+			SpellGraphicTempPet(spell_id); //Experimental - only cast on if YOUR pet AND not cast on yet.
+
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
 			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 			bool target_found = false; //C!Kayen - Determine if message for no targets hit.
@@ -9911,6 +9915,16 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 				if (!(*iter) || (!CastToClient()->GetGM() && target_client_only && ((*iter)->IsNPC() && !(*iter)->IsPetOwnerClient()))){
 				    ++iter;
 					continue;
+				}
+
+				if (!target_client_only && ((*iter)->IsNPC() && (*iter)->IsPetOwnerClient())){
+					++iter;
+					continue; //Skip client pets for determinetal spells
+				}
+
+				if ((*iter)->GetUtilityTempPetSpellID()){
+					++iter;
+					continue; //Skip Projectile and SpellGFX temp pets.
 				}
 
 				float heading_to_target = (CalculateHeadingToTarget((*iter)->GetX(), (*iter)->GetY()) * 360.0f / 256.0f);
@@ -11246,6 +11260,222 @@ bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 
 //C!Misc - Functions still in development
 
+
+
+void Mob::SpellGraphicTempPet(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return;
+
+	//50 diviser should be adjusted based on max range, like if 90 then diviser of 30 ect i think
+	float aoerange = spells[spell_id].aoerange;
+	int divider = 50;
+	int splitter = 0;
+
+	if (aoerange <= 150 && aoerange > 100)
+		splitter = 3;
+
+	//divider = aoerange/splitter;
+
+	int ROW_COUNT = static_cast<int>(aoerange)/divider; //[Ie. IF 150 then spawn row at 150, 100, and 50)
+	
+
+	for(int i = 1; i <= ROW_COUNT; i++){
+		SpawnSpellGraphicTempPet(spell_id, aoerange - (((ROW_COUNT) - i)*divider));
+	}
+
+	return;
+}
+
+float Mob::GetSpacerAngle(float aoerange, float total_angle)
+{
+	//DevNote: All spell angles will be in intervals of 15 degrees
+	//return total_angle / ((total_angle + 7.5f)/7.5f); Bad formula? - Can Delete at later time
+
+	int standard_angle = static_cast<int>(total_angle) % 30; //If zero, then use 30 degree formulas
+	if (standard_angle != 0)
+		standard_angle = static_cast<int>(total_angle-1) % 15;//Check if a 15 degree interval which will be 16,46 ect
+	//[16 = 352/8]
+	//Maybe add return multiplier for very large and wide spells to space it out more. Like angle > 90
+	//Point was should always be about 3 rows, the space between the rows is larger for larger range IE if 150 range divide by 50
+	//if 180 divide by 60, if 210 divide by 70, [NEED STANDARD RANGE INTERVALS divisible by 3]
+	//OR HIGHER the AOE range give more intervals but space it more after 150 (like + 1 for every 100 after 150, under 150 its 1 row per 50 ect)
+	if (standard_angle == 0){
+		if (aoerange > 150)
+			return 7.5f;
+		if (aoerange <= 150 && aoerange > 100)
+			return 7.5f;
+		if (aoerange <= 100 && aoerange > 50)
+			return 15.0f;
+		if (aoerange <= 50 && aoerange > 0){
+			if (total_angle >= 16)
+				return 30.0f;
+			else
+				return 1.0f;
+		}
+	}
+	else{
+		Shout("DEBUG: Critical Development Error: INVALID SPELL ANGLE %.2f", total_angle);
+	}
+	
+	return 0.0f;
+}
+
+void Mob::SpawnSpellGraphicTempPet(uint16 spell_id, float aoerange)
+{
+	Shout("START DEBUG: AOE RANGE %.2f", aoerange);
+	uint32 duration = 5;
+	float total_angle = spells[spell_id].directional_end * 2;
+	float angle_length = GetSpacerAngle(aoerange,total_angle);
+	float start_angle = 0;
+
+	int COLUMN_COUNT = 0;
+
+	if (angle_length == 1.0f){
+		COLUMN_COUNT = 1;
+		start_angle = GetHeading();
+	}
+	else {
+		//float angle_length = 10.0f; //Distance between graphic spawns. [This works at 150 range)
+		//float aoerange = spells[spell_id].aoerange;
+		COLUMN_COUNT = total_angle/angle_length + 1;
+		//Shout("DEBUG: Total Angle %i MAX %i", static_cast<int>(total_angle), COLUMN_COUNT);
+
+		start_angle = GetHeading() - GetHeadingChangeFromAngle(spells[spell_id].directional_end);
+		//Shout("DEBUG: Initial start angel %.2f", start_angle);
+		start_angle = FixHeadingAngle(start_angle);
+		angle_length =  GetHeadingChangeFromAngle(angle_length); //Convert 
+	}
+
+	//Shout("DEBUG: Final start angel %.2f ROW COUNT %i", start_angle, COLUMN_COUNT);
+
+	for(int i = 0; i < COLUMN_COUNT; i++){
+
+		float dX = 0.0f;
+		float dY = 0.0f;
+		float dZ = 0.0f;
+		
+		CalcDestFromHeading(start_angle, aoerange - 5.0f, 0, GetX(), GetY(), dX, dY, dZ);
+
+		NPC* temppet = nullptr;
+		temppet = TypesTemporaryPetsGFX(GetSpellGraphicPetDBID(), "#",duration, dX, dY,dZ, spell_id); //Spawn pet
+		
+		//temppet = entity_list.GetOwnersTempPetByNPCTypeID(GetSpellGraphicPetDBID(), GetID(), true, spell_id);
+	
+		if (temppet){
+			//temppet->ChangeSize(GetSize()); //Seems to work well. - Ensures straight line arc.
+			//temppet->ChangeSize(1); //Seems to work well. - Makes projectile land at feet.
+		
+			//Shout("DEBUG: Use SPELL ID %i :: Spawn: %.2f %.2f .%.2f",temppet->GetUtilityTempPetSpellID(), dX, dY, dZ);
+
+			start_angle = FixHeadingAngle((start_angle + angle_length));
+
+			//Shout("DEBUG:  Next start angel %.2f [ Distance %.2f]", start_angle, CalculateDistance(dX, dY,dZ));
+			SpellOnTarget(spells[spell_id].spellanim + 10000,temppet, false, true, -10000);
+		}
+		else
+			Shout("DEBUG:: GetSpellGraphicPetID(): Critical error no temppet (%i) Found in database", GetSpellGraphicPetDBID());
+	}
+}
+
+NPC* Mob::TypesTemporaryPetsGFX(uint32 typesid, const char *name_override, uint32 duration_override, float dX, float dY, float dZ, uint16 spell_id) {
+
+	//Used to optimize temp pets used for spell graphics, this spawns them at the location above.
+
+	AA_SwarmPet pet;
+	pet.count = 1;
+	pet.duration = 1;
+
+	pet.npc_id = typesid;
+
+	NPCType *made_npc = nullptr;
+
+	const NPCType *npc_type = database.LoadNPCTypesData(typesid);
+	if(npc_type == nullptr) {
+		//log write
+		Log.Out(Logs::General, Logs::Error, "[TypesTemporaryPetsGFX] Unknown npc type for swarm pet type id: %d", typesid);
+		Message(0,"[TypesTemporaryPetsGFX] Unable to find pet!");
+		return nullptr;
+	}
+
+	if(name_override != nullptr) {
+		//we have to make a custom NPC type for this name change
+		made_npc = new NPCType;
+		memcpy(made_npc, npc_type, sizeof(NPCType));
+		strcpy(made_npc->name, name_override);
+		npc_type = made_npc;
+	}
+
+	int summon_count = 0;
+	summon_count = pet.count;
+
+	if (summon_count) {//This is always 1
+		int pet_duration = pet.duration;
+		if(duration_override > 0)
+			pet_duration = duration_override;
+
+		//this is a little messy, but the only way to do it right
+		//it would be possible to optimize out this copy for the last pet, but oh well
+		NPCType *npc_dup = nullptr;
+		if(made_npc != nullptr) {
+			npc_dup = new NPCType;
+			memcpy(npc_dup, made_npc, sizeof(NPCType));
+		}
+
+		NPC* npca = new NPC(
+				(npc_dup!=nullptr)?npc_dup:npc_type,	//make sure we give the NPC the correct data pointer
+				0,
+				glm::vec4(dX, dY,dZ, 0.0f),
+				FlyMode3);
+
+
+		if(!npca->GetSwarmInfo()){
+			AA_SwarmPetInfo* nSI = new AA_SwarmPetInfo;
+			npca->SetSwarmInfo(nSI);
+			npca->GetSwarmInfo()->duration = new Timer(pet_duration*1000);
+		}
+		else{
+			npca->GetSwarmInfo()->duration->Start(pet_duration*1000);
+		}
+
+		//removing this prevents the pet from attacking
+		npca->GetSwarmInfo()->owner_id = GetID();
+
+		//we allocated a new NPC type object, give the NPC ownership of that memory
+		if(npc_dup != nullptr)
+			npca->GiveNPCTypeData(npc_dup);
+
+		entity_list.AddNPC(npca, true, true);
+
+		npca->SetUtilityTempPetSpellID(spell_id);
+		
+		delete made_npc;
+		return npca;
+	}
+}
+
+void EntityList::DisplaySpellGFXonTempPet(Mob *caster, uint16 spell_id, uint32 npctype_id, uint16 ownerid)
+{
+	if (npctype_id == 0 || npc_list.empty() || !caster)
+		return;
+
+	auto it = npc_list.begin();
+	while (it != npc_list.end()) {
+		if (it->second->GetNPCTypeID() == npctype_id){
+			if (it->second->GetSwarmOwner() == ownerid){
+				if (it->second->GetUtilityTempPetSpellID() == spell_id){
+					//caster->SpellFinished(spells[spell_id].spellanim + 10000, it->second, 10, 0, -1, -10000);
+					//SpellOnTarget(spell_id,(*iter), false, true, resist_adjust);
+					//it->second->Shout("Cast on me %i", spell_id);
+					//caster->Shout("Cast on me %i [ID %i]", spell_id, it->second->GetID());
+				}
+			}
+		}
+		++it;
+	}
+	return;
+}
+
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
 
 	//Set apperance effect on NPC that will fade when the NPC dies. (Use original function if want perma effects)
@@ -12179,29 +12409,56 @@ int Mob::GetOldProjectileHit(Mob* spell_target, uint16 spell_id)
 
 	return hit;
 }
-
-/* DEPRECIATED
-Mob* Mob::GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing)
+/*OLD FORMULAS
+float Mob::GetSpacerAngle(float aoerange, float total_angle)
 {
-	std::list<NPC*> npc_list;
-	entity_list.GetNPCList(npc_list);
-
- 	for(std::list<NPC*>::iterator itr = npc_list.begin(); itr != npc_list.end(); ++itr) 
-	{
-		NPC* n = *itr;
-		if (n->GetSwarmInfo()) {
-			if (n->GetSwarmInfo()->owner_id == GetID() && n->npctype_id == npc_typeid) {
-				if (SetVarTargetRing){
-					if (!n->IsProjectilePet()){
-						n->SetProjectilePet(true);
-						return n;
-					}
-				}
-				else
-					return n;
-			}
-		}
+	//Ratio of third to second row should be between 1.33-1.66 [Ie ratio = 7/4]
+	//Rows = angle / length + 1; [60/15 + 1] = 5
+	//Row = total_angle + 10 / 10;
+	if (total_angle == 90){
+		if (aoerange <= 150 && aoerange > 100)
+			return 10.0f; //10
+		if (aoerange <= 100 && aoerange > 50)
+			return 15.0f;//7 [Was 20]
+		if (aoerange <= 50 && aoerange > 0)
+			return 30.0f;//2
 	}
-	return nullptr;
+	else if (total_angle == 60){
+		if (aoerange <= 150 && aoerange > 100)
+			return 10.0f; //7
+		if (aoerange <= 100 && aoerange > 50)
+			return 20.0f;//5 [Was 20]
+		if (aoerange <= 50 && aoerange > 0)
+			return 30.0f;//2
+	}
+
+	else if (total_angle > 30 && total_angle < 60){ //Expected 45 degree [337, 23]
+		if (aoerange <= 150 && aoerange > 100)
+			return total_angle / 5.0f;//5 [Rows in angle + 5 / 10;]
+		if (aoerange <= 100 && aoerange > 50)
+			return total_angle / 3.0f;//3
+		if (aoerange <= 50 && aoerange > 0)
+			return total_angle / 2.0f;//1
+	}
+
+	else if (total_angle == 30){
+		if (aoerange <= 150 && aoerange > 100)
+			return 7.5f;//4 [Was 10]
+		if (aoerange <= 100 && aoerange > 50)
+			return 15.0f;//3
+		if (aoerange <= 50 && aoerange > 0)
+			return 30.0f;//1 used to be 1.0 for single central graphic.
+	}
+
+	else if (total_angle == 16){ //Expected 45 degree [352, 8]
+		if (aoerange <= 150 && aoerange > 100)
+			return 7.5f;//4
+		if (aoerange <= 100 && aoerange > 50)
+			return 15.0f;//3
+		if (aoerange <= 50 && aoerange > 0)
+			return 1.0f;//1 used to be 1.0 for single central graphic.
+	}
+
+	return 0.0f;
 }
 */

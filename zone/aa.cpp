@@ -82,7 +82,7 @@ void Mob::TemporaryPets(uint16 spell_id, Mob *targ, const char *name_override, u
 	if (IsEffectFieldSpell(spell_id)){
 		NPC* temp = nullptr;
 		//This checks if there is already an Effect Field pet on the field for this owner.
-		temp = entity_list.GetOwnersTempPetByNPCTypeID(pet.npc_id, GetID(), false);
+		temp = entity_list.GetOwnersTempPetByNPCTypeID(pet.npc_id, GetID(), false,spell_id);
 		if (temp)
 			temp->Depop();
 	}

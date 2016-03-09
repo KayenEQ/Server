@@ -1689,6 +1689,7 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 		sp[tempid].sneak = atoi(row[196]) != 0;
 		sp[tempid].not_focusable = atoi(row[197]) != 0;
 		sp[tempid].no_detrimental_spell_aggro = atoi(row[198]) != 0;
+		sp[tempid].no_wear_off_msg = atoi(row[199]) != 0;//C!Kayen
 		sp[tempid].suspendable = atoi(row[200]) != 0;
 		sp[tempid].viral_range = atoi(row[201]);
 		sp[tempid].songcap = atoi(row[202]);
