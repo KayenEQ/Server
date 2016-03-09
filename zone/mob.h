@@ -1317,12 +1317,13 @@ public:
 
 	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);
 
-	//Experimental - tremor needs camera shake
+	//Experimental - AOE/Directional ADVANCED GRAPHIC DISPLAYS
 	void SpellGraphicTempPet(uint16 spell_id);
-	void SpawnSpellGraphicTempPet(uint16 spell_id, float aoerange);
+	void SpawnSpellGraphicTempPet(uint16 spell_id, float aoerange, int row);
 	inline uint32 GetSpellGraphicPetDBID() { return 1000010; } //HARDCODED - npctypesid from database for temp pet
 	float GetSpacerAngle(float aoerange, float total_angle);
 	NPC* TypesTemporaryPetsGFX(uint32 typesid, const char *name_override = nullptr, uint32 duration_override = 0, float dX=0.0f, float dY=0.0f, float dZ=0.0f, uint16 spell_id = 0);
+	
 
 	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.

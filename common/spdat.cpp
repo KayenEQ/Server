@@ -1307,6 +1307,21 @@ int GetRequiredFaith(uint16 spell_id)
 	return 0;
 }
 
+uint32 GetGraphicSpellID(uint16 spell_id)
+{
+	uint16 temp_spell_id = SPELL_UNKNOWN;
+
+	if (spells[spell_id].spellanim == 138)
+		temp_spell_id = spells[spell_id].SpellAffectIndex + 10700; //Old school graphics
+	else if (spells[spell_id].spellanim)
+		spells[spell_id].spellanim + 10000;//New graphics
+
+	if (IsValidSpell(temp_spell_id))
+		return temp_spell_id;
+
+	return spell_id;
+}
+
 bool SpellRequiresSpectralBlade(uint16 spell_id)
 {
 	if (spells[spell_id].classes[ENCHANTER])

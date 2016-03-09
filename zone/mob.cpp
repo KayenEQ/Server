@@ -11267,21 +11267,41 @@ void Mob::SpellGraphicTempPet(uint16 spell_id)
 	if (!IsValidSpell(spell_id))
 		return;
 
-	//50 diviser should be adjusted based on max range, like if 90 then diviser of 30 ect i think
 	float aoerange = spells[spell_id].aoerange;
-	int divider = 50;
-	int splitter = 0;
+	int ROW_COUNT = 1;
 
-	if (aoerange <= 150 && aoerange > 100)
-		splitter = 3;
+	if (!aoerange)
+		return;//Fail safe
+
+	if (aoerange > 800)
+		ROW_COUNT = 7;
+	else if (aoerange <= 800 && aoerange > 550)
+		ROW_COUNT = 6;
+	else if (aoerange <= 550 && aoerange > 350)
+		ROW_COUNT = 5;
+	else if (aoerange <= 350 && aoerange > 200)
+		ROW_COUNT = 4;
+	if (aoerange <= 200 && aoerange > 100)
+		ROW_COUNT = 3;
+	else if (aoerange <= 100 && aoerange > 50)
+		ROW_COUNT = 2;
+	else if (aoerange <= 50)
+		ROW_COUNT = 1;
+
+	int column_distance = static_cast<int>(aoerange)/ROW_COUNT;
 
 	//divider = aoerange/splitter;
-
-	int ROW_COUNT = static_cast<int>(aoerange)/divider; //[Ie. IF 150 then spawn row at 150, 100, and 50)
+	//OLD int divider = static_cast<int>(aoerange)/splitter;//Was flat 50
+	//OLD int ROW_COUNT = static_cast<int>(aoerange)/divider; //[Ie. IF 150 then spawn row at 150, 100, and 50) [THIS SHOULD JUST BE SPLITTER]
 	
+	Shout("Start GFX: Column Distance %i ROW COUNT %i [AOE RANGE %i]", column_distance, ROW_COUNT, static_cast<int>(aoerange));
 
 	for(int i = 1; i <= ROW_COUNT; i++){
-		SpawnSpellGraphicTempPet(spell_id, aoerange - (((ROW_COUNT) - i)*divider));
+
+		if (i == 1 && spells[spell_id].targettype == ST_Directional) //On first row, place a single graphic close to caster as apex of cone.
+			SpawnSpellGraphicTempPet(spell_id, column_distance/2,-1);
+
+		SpawnSpellGraphicTempPet(spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i);
 	}
 
 	return;
@@ -11321,33 +11341,40 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 	return 0.0f;
 }
 
-void Mob::SpawnSpellGraphicTempPet(uint16 spell_id, float aoerange)
+void Mob::SpawnSpellGraphicTempPet(uint16 spell_id, float aoerange, int row)
 {
 	Shout("START DEBUG: AOE RANGE %.2f", aoerange);
+
+	if (aoerange <= spells[spell_id].min_range)
+		return;
+
 	uint32 duration = 5;
-	float total_angle = spells[spell_id].directional_end * 2;
+	float total_angle = 360.0f;
+
+	if (spells[spell_id].targettype == ST_Directional)
+		total_angle = spells[spell_id].directional_end * 2.0f;
+
 	float angle_length = GetSpacerAngle(aoerange,total_angle);
 	float start_angle = 0;
 
 	int COLUMN_COUNT = 0;
 
-	if (angle_length == 1.0f){
+	if (row == -1){ //Override for apex graphic right in front of caster.
 		COLUMN_COUNT = 1;
 		start_angle = GetHeading();
 	}
 	else {
-		//float angle_length = 10.0f; //Distance between graphic spawns. [This works at 150 range)
-		//float aoerange = spells[spell_id].aoerange;
-		COLUMN_COUNT = total_angle/angle_length + 1;
-		//Shout("DEBUG: Total Angle %i MAX %i", static_cast<int>(total_angle), COLUMN_COUNT);
-
-		start_angle = GetHeading() - GetHeadingChangeFromAngle(spells[spell_id].directional_end);
-		//Shout("DEBUG: Initial start angel %.2f", start_angle);
-		start_angle = FixHeadingAngle(start_angle);
-		angle_length =  GetHeadingChangeFromAngle(angle_length); //Convert 
+		if (angle_length == 1.0f){//Need to revaluate this one
+			COLUMN_COUNT = 1;
+			start_angle = GetHeading();
+		}
+		else {
+			COLUMN_COUNT = total_angle/angle_length + 1;
+			start_angle = GetHeading() - GetHeadingChangeFromAngle(spells[spell_id].directional_end);
+			start_angle = FixHeadingAngle(start_angle);
+			angle_length =  GetHeadingChangeFromAngle(angle_length); //Convert 
+		}
 	}
-
-	//Shout("DEBUG: Final start angel %.2f ROW COUNT %i", start_angle, COLUMN_COUNT);
 
 	for(int i = 0; i < COLUMN_COUNT; i++){
 
@@ -11355,23 +11382,14 @@ void Mob::SpawnSpellGraphicTempPet(uint16 spell_id, float aoerange)
 		float dY = 0.0f;
 		float dZ = 0.0f;
 		
-		CalcDestFromHeading(start_angle, aoerange - 5.0f, 0, GetX(), GetY(), dX, dY, dZ);
+		CalcDestFromHeading(start_angle, aoerange - 1.0f, 0, GetX(), GetY(), dX, dY, dZ);
 
 		NPC* temppet = nullptr;
 		temppet = TypesTemporaryPetsGFX(GetSpellGraphicPetDBID(), "#",duration, dX, dY,dZ, spell_id); //Spawn pet
-		
-		//temppet = entity_list.GetOwnersTempPetByNPCTypeID(GetSpellGraphicPetDBID(), GetID(), true, spell_id);
 	
 		if (temppet){
-			//temppet->ChangeSize(GetSize()); //Seems to work well. - Ensures straight line arc.
-			//temppet->ChangeSize(1); //Seems to work well. - Makes projectile land at feet.
-		
-			//Shout("DEBUG: Use SPELL ID %i :: Spawn: %.2f %.2f .%.2f",temppet->GetUtilityTempPetSpellID(), dX, dY, dZ);
-
 			start_angle = FixHeadingAngle((start_angle + angle_length));
-
-			//Shout("DEBUG:  Next start angel %.2f [ Distance %.2f]", start_angle, CalculateDistance(dX, dY,dZ));
-			SpellOnTarget(spells[spell_id].spellanim + 10000,temppet, false, true, -10000);
+			SpellOnTarget(GetGraphicSpellID(spell_id),temppet, false, true, -10000);
 		}
 		else
 			Shout("DEBUG:: GetSpellGraphicPetID(): Critical error no temppet (%i) Found in database", GetSpellGraphicPetDBID());
@@ -11452,28 +11470,6 @@ NPC* Mob::TypesTemporaryPetsGFX(uint32 typesid, const char *name_override, uint3
 		delete made_npc;
 		return npca;
 	}
-}
-
-void EntityList::DisplaySpellGFXonTempPet(Mob *caster, uint16 spell_id, uint32 npctype_id, uint16 ownerid)
-{
-	if (npctype_id == 0 || npc_list.empty() || !caster)
-		return;
-
-	auto it = npc_list.begin();
-	while (it != npc_list.end()) {
-		if (it->second->GetNPCTypeID() == npctype_id){
-			if (it->second->GetSwarmOwner() == ownerid){
-				if (it->second->GetUtilityTempPetSpellID() == spell_id){
-					//caster->SpellFinished(spells[spell_id].spellanim + 10000, it->second, 10, 0, -1, -10000);
-					//SpellOnTarget(spell_id,(*iter), false, true, resist_adjust);
-					//it->second->Shout("Cast on me %i", spell_id);
-					//caster->Shout("Cast on me %i [ID %i]", spell_id, it->second->GetID());
-				}
-			}
-		}
-		++it;
-	}
-	return;
 }
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){

@@ -1056,6 +1056,7 @@ bool UseEquipedBowRange(uint16 spell_id);
 bool IsNoTargetRequiredSpell(uint16 spell_id);
 int AOEMaxHitCount(uint16 spell_id);
 int GetRequiredFaith(uint16 spell_id);
+uint32 GetGraphicSpellID(uint16 spell_id);
 
 //LightType - Variable usage
 bool SpellRequiresSpectralBlade(uint16 spell_id);

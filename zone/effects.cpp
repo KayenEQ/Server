@@ -782,6 +782,9 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	if (!caster) //C!Kayen
 		return;
 
+	if (spells[spell_id].targettype == ST_AECaster) //C!Kayen
+		caster->SpellGraphicTempPet(spell_id);
+
 	bool use_min_range = true; //C!Kayen - We don't check min range from projectile target ring AOE. 
 	if (IsTargetRingSpell(spell_id) && IsProjectile(spell_id))
 		use_min_range = false;
