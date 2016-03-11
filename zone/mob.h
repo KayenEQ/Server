@@ -1317,7 +1317,7 @@ public:
 
 	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);
 
-	//Experimental - AOE/Directional ADVANCED GRAPHIC DISPLAYS
+	//Experimental - AOE/Directional - ADVANCED GFX Displays and ADVANCED Directional AOE functions
 	void SpellGraphicTempPet(uint16 spell_id, int type);
 	void SpawnSpellGraphicAOETempPet(uint16 spell_id, float aoerange, int row); //Directional/PBAOE
 	void SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row);
@@ -1325,13 +1325,19 @@ public:
 	float GetSpacerAngle(float aoerange, float total_angle);
 	NPC* TypesTemporaryPetsGFX(uint32 typesid, const char *name_override = nullptr, uint32 duration_override = 0, float dX=0.0f, float dY=0.0f, float dZ=0.0f, uint16 spell_id = 0);
 	void SendSpellAnimGFX(uint16 targetid, uint16 spell_id, float aoerange);
-	bool BeamDirectionalCustom(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr);
+	
+	//bool BeamDirectionalCustom(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr); DEPRECIATED
+	//!// EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
 	bool InRectangle(uint16 spell_id, float target_x, float target_y, float origin_heading);
-
-	//Mob* GetTempPetByTypeID(uint32 npc_typeid, bool SetVarTargetRing = false); //- Function now called from entity list - Save for now.
-	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
+	bool InRectangleByCoordinates(float aX, float aY, float bX, float bY, float dX, float dY);
+	bool InDirectionalAOEArea(Mob *start, float min_radius, float radius, float height);
 	float GetHeadingChangeFromAngle(float a) { return (256.0f * a / 360.0f); }
 	float FixHeadingAngle(float a) { if (a >= 256) { return (a - 256.0f); } else if (a < 0) {return (256.0f + a); } else return a;}
+
+
+	//Old calculations
+	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
+
 	//C!Kayen END
 
 protected:
