@@ -2315,13 +2315,15 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 		case DirectionalAE:
 		{
-			ConeDirectionalCustom(spell_id, resist_adjust);
+			//ConeDirectionalCustom(spell_id, resist_adjust);//C!Kayen
+			entity_list.AEConeDirectional(this, spell_id, resist_adjust);//C!Kayen
 			break;
 		}
 
 		case Beam:
 		{
-			BeamDirectional(spell_id, resist_adjust);
+			//BeamDirectional(spell_id, resist_adjust);
+			entity_list.AEBeamDirectional(this, spell_id, resist_adjust);//C!Kayen
  			break;
  		}
 		

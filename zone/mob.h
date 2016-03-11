@@ -1328,8 +1328,10 @@ public:
 	
 	//bool BeamDirectionalCustom(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr); DEPRECIATED
 	//!// EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
+	//!// EntityList::AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
 	bool InRectangle(uint16 spell_id, float target_x, float target_y, float origin_heading);
 	bool InRectangleByCoordinates(float aX, float aY, float bX, float bY, float dX, float dY);
+	bool InCone(float heading_to_target, float angle_start, float angle_end);
 	bool InDirectionalAOEArea(Mob *start, float min_radius, float radius, float height);
 	float GetHeadingChangeFromAngle(float a) { return (256.0f * a / 360.0f); }
 	float FixHeadingAngle(float a) { if (a >= 256) { return (a - 256.0f); } else if (a < 0) {return (256.0f + a); } else return a;}

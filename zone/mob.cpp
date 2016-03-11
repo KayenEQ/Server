@@ -6160,7 +6160,7 @@ uint32 Client::GetAltCurrencyItemid(uint32 alt_currency_id) {
 //#### C!Uncategorized
 
 void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtargets, std::list<Mob*> m_list)
-{
+{Shout("Cast on Closest Target start");
 	int hit_count = 0;
 	int32 AmtHit_mod = GetSpellPowerAmtHitsEffect(spell_id);
 
@@ -6221,7 +6221,7 @@ void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtarget
 		}
 	}
 }
-
+//!DEPRECIATED
 bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget, Mob *target)
 {
 	/*
@@ -6570,6 +6570,7 @@ bool Mob::SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target){
 
 bool Mob::SpellDirectionalTarget(uint16 spell_id, Mob *target)
 {
+	//!NOT USED!
 	//Checks if target is within a spells directioanl cone.
 
 	if (!target)
@@ -11434,7 +11435,7 @@ void Mob::SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row)
 
 	uint32 duration = 5;
 
-	float height = aoerange;
+	float length = aoerange;
 	float width = spells[spell_id].aoerange;
 
 	//float width_mod = 5.0f;
@@ -11445,8 +11446,8 @@ void Mob::SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row)
 	int COLUMN_COUNT = 0;
 	COLUMN_COUNT = width/spacer_length + 1;
 
-	float packet_range = height;
-		if (width > height)
+	float packet_range = length;
+		if (width > length)
 			packet_range = width;
 
 	Shout("START BEAM DEBUG: COLUMN_COUNT  %i", COLUMN_COUNT);
@@ -11456,7 +11457,7 @@ void Mob::SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row)
 	float start_dZ = 0.0f;
 
 	//1: Move center point straight aheada specific amount from caster.
-	CalcDestFromHeading(GetHeading(), height - 4.0f, 0, GetX(), GetY(), start_dX, start_dY, start_dZ);
+	CalcDestFromHeading(GetHeading(), length - 4.0f, 0, GetX(), GetY(), start_dX, start_dY, start_dZ);
 	//2: Move starting point to far left of rectangle width.
 	CalcDestFromHeading(FixHeadingAngle(GetHeading() - 64.0f), (width/2.0f), 0, start_dX, start_dY, start_dX, start_dY, start_dZ);
 	//3: Loop then spawns from far left to right.
@@ -11500,11 +11501,13 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	if (!caster)
 		return;
 
+	caster->SpellGraphicTempPet(spell_id, 2);
+
 	Mob *curmob;
 
 	float ae_width = spells[spell_id].aoerange; //This is the width of the AE that will hit targets.
 	float ae_length = spells[spell_id].range; //This is total area checked for targets.
-	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+	int maxtargets = spells[spell_id].aemaxtargets;
 	
 	float ae_height = ae_length;
 		if (ae_width > ae_length)
@@ -11592,6 +11595,224 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	return;
 }
 
+/*
+void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
+{
+			//C!Kayen - Do polygon area if no directional is set.
+			if (!spells[spell_id].directional_start && !spells[spell_id].directional_end){
+				SpellGraphicTempPet(spell_id, 2);
+				entity_list.AEBeamDirectional(this, spell_id, resist_adjust);
+				//BeamDirectionalCustom(spell_id, resist_adjust);
+				Shout("!!!! No actual damage being applied");
+				//RectangleDirectional(spell_id,resist_adjust);
+				return;
+			}
+
+			SpellGraphicTempPet(spell_id, 1); //Experimental - only cast on if YOUR pet AND not cast on yet.
+
+			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
+			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+			bool target_found = false; //C!Kayen - Determine if message for no targets hit.
+
+			bool taget_exclude_npc = false; //False by default!
+			bool target_client_only = false;
+
+			if (IsBeneficialSpell(spell_id) && IsClient())
+				target_client_only = true;
+
+			if (!IsClient() && taget_exclude_npc)
+				target_client_only = true;
+
+			float angle_start = spells[spell_id].directional_start + (GetHeading() * 360.0f / 256.0f);
+			float angle_end = spells[spell_id].directional_end + (GetHeading() * 360.0f / 256.0f);
+
+			while(angle_start > 360.0f)
+				angle_start -= 360.0f;
+
+			while(angle_end > 360.0f)
+				angle_end -= 360.0f;
+
+			std::list<Mob*> targets_in_range;
+			std::list<Mob*> targets_in_cone; //C!Kayen - Get the targets within the cone
+			std::list<Mob*>::iterator iter;
+
+			float aoerange = spells[spell_id].aoerange;
+			float min_aoerange = spells[spell_id].min_range;
+
+			if (IsClient() && IsRangeSpellEffect(spell_id)){
+				min_aoerange = 0.0f; //Calculated in the archery fire as a miss.
+				if (aoerange == UseRangeFromRangedWpn())//Flags aoe range to use weapon ranage.
+					aoerange = CastToClient()->GetArcheryRange(nullptr);
+			}
+
+			entity_list.GetTargetsForConeArea(this, min_aoerange, aoerange, aoerange / 2, targets_in_range);
+			iter = targets_in_range.begin();
+
+			//C!Kayen - Allow to hit caster
+			if (IsBeneficialSpell(spell_id) && DirectionalAffectCaster(spell_id))
+				SpellOnTarget(spell_id,this, false, true, resist_adjust);
+
+			while(iter != targets_in_range.end())
+			{
+				if (!(*iter) || (!CastToClient()->GetGM() && target_client_only && ((*iter)->IsNPC() && !(*iter)->IsPetOwnerClient()))){
+				    ++iter;
+					continue;
+				}
+
+				if (!target_client_only && ((*iter)->IsNPC() && (*iter)->IsPetOwnerClient())){
+					++iter;
+					continue; //Skip client pets for determinetal spells
+				}
+
+				if ((*iter)->GetUtilityTempPetSpellID()){
+					++iter;
+					continue; //Skip Projectile and SpellGFX temp pets.
+				}
+
+				float heading_to_target = (CalculateHeadingToTarget((*iter)->GetX(), (*iter)->GetY()) * 360.0f / 256.0f);
+				while(heading_to_target < 0.0f)
+					heading_to_target += 360.0f;
+
+				while(heading_to_target > 360.0f)
+					heading_to_target -= 360.0f;
+
+				if(angle_start > angle_end)
+				{
+					if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||
+						(heading_to_target >= 0.0f && heading_to_target <= angle_end))
+					{
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los){
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+							target_found = true; //C!Kayen
+
+							if (maxtargets)
+								targets_in_cone.push_back(*iter);
+							else
+								SpellOnTarget(spell_id,(*iter), false, true, resist_adjust);
+
+						}
+					}
+				}
+				else
+				{
+					if(heading_to_target >= angle_start && heading_to_target <= angle_end)
+					{
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+							target_found = true; //C!Kayen
+							if (maxtargets) 
+								targets_in_cone.push_back(*iter);
+							else
+								SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+						}
+					}
+				}
+				++iter;
+			}
+
+			//C!Kayen - If maxtarget is set it will hit each of the closet targets up to max amount.
+			//Ie. If you set to 1, it will only hit the closest target in the beam.
+			if (maxtargets)
+				CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cone);
+
+			if (!target_found)
+				DirectionalFailMessage(spell_id);
+
+}
+*/
+
+void EntityList::AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust)
+{
+	//Optmized Cone Directional Function.
+	if (!caster)
+		return;
+
+	caster->SpellGraphicTempPet(spell_id, 1);
+
+	Mob *curmob;
+
+	float aoerange = spells[spell_id].aoerange;
+	float min_aoerange = spells[spell_id].min_range;
+
+	float angle_start = spells[spell_id].directional_start + (caster->GetHeading() * 360.0f / 256.0f);
+	float angle_end = spells[spell_id].directional_end + (caster->GetHeading() * 360.0f / 256.0f);
+
+	while (angle_start > 360.0f)
+		angle_start -= 360.0f;
+
+	while (angle_end > 360.0f)
+		angle_end -= 360.0f;
+
+	if (caster->IsClient() && IsRangeSpellEffect(spell_id)){
+		min_aoerange = 0.0f; //Calculated in the archery fire as a miss.
+		if (aoerange == caster->UseRangeFromRangedWpn())//Flags aoe range to use weapon ranage.
+			aoerange = caster->CastToClient()->GetArcheryRange(nullptr);
+	}
+
+	int maxtargets = spells[spell_id].aemaxtargets;
+	
+	bool bad = IsDetrimentalSpell(spell_id);	
+	bool target_client_only = false;
+	bool target_npc_only = false;
+
+	bool target_found = false;
+	std::list<Mob*> targets_in_cone;
+
+	if (caster->IsClient() || caster->IsPetOwnerClient()){ //When client/pet is caster
+		if (!bad)
+			target_client_only = true;
+		else
+			target_npc_only = true;
+	}
+	else //When NPC is caster
+		target_client_only = true;
+
+	if (!bad && DirectionalAffectCaster(spell_id))//Affect caster
+		caster->SpellOnTarget(spell_id,caster, false, true, resist_adjust);
+
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+		if (!curmob)
+			continue;
+
+		if (curmob->IsClient() && !curmob->CastToClient()->ClientFinishedLoading())
+			continue;
+
+		if (curmob->GetUtilityTempPetSpellID())  //Skip Projectile and SpellGFX temp pets.
+			continue;
+
+		if (target_client_only && (curmob->IsNPC() && !curmob->IsPetOwnerClient()))//Exclude NPC that are not pets
+			continue;
+
+		if (target_npc_only && (curmob->IsClient() || curmob->IsPetOwnerClient()))//Exclude Clients and Pets
+			continue;
+
+		if (!curmob->InDirectionalAOEArea(caster,  min_aoerange, aoerange, aoerange / 2))//Is in Broad AE range.
+			continue;
+		
+		float heading_to_target = (caster->CalculateHeadingToTarget(curmob->GetX(), curmob->GetY()) * 360.0f / 256.0f);
+		if (!curmob->InCone(heading_to_target, angle_start, angle_end)) //CONE CHECK
+			continue;
+
+		if(spells[spell_id].npc_no_los || caster->CheckLosFN((curmob))) {
+			curmob->CalcSpellPowerDistanceMod(spell_id, 0, caster);
+			target_found = true;
+			if (maxtargets) 
+				targets_in_cone.push_back(curmob);
+			else
+				caster->SpellOnTarget(spell_id, curmob, false, true, resist_adjust);
+		}
+	}
+
+	if (maxtargets)
+		caster->CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cone);
+
+	if (!target_found)
+		caster->DirectionalFailMessage(spell_id);
+	
+	return;
+}
+
 bool Mob::InDirectionalAOEArea(Mob *start, float min_radius, float radius, float height)
 {
 	float x_diff = GetX() - start->GetX();
@@ -11671,6 +11892,25 @@ bool Mob::InRectangleByCoordinates(float aX, float aY, float bX, float bY, float
 	if ((mx - dX) * dax + (my - dY) * day > 0.0) return false;
 
 	return true;
+
+}
+
+bool Mob::InCone(float heading_to_target, float angle_start, float angle_end)
+{
+	while(heading_to_target < 0.0f)
+		heading_to_target += 360.0f;
+
+	while(heading_to_target > 360.0f)
+		heading_to_target -= 360.0f;
+
+	if(angle_start > angle_end) {
+		if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||	(heading_to_target >= 0.0f && heading_to_target <= angle_end))
+			return true;
+	}
+	else if(heading_to_target >= angle_start && heading_to_target <= angle_end)
+		return true;
+
+	return false;
 
 }
 

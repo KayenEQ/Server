@@ -441,6 +441,7 @@ public:
 	NPC* GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, bool SetVarTargetRing, uint16 spell_id);
 	void AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_id);
 	void AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
+	void AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
 
 protected:
 	friend class Zone;
