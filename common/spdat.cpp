@@ -1322,6 +1322,40 @@ uint32 GetGraphicSpellID(uint16 spell_id)
 	return spell_id;
 }
 
+uint32 GetGraphicNPCTYPEID(uint16 spell_id)
+{
+	return 1001000 + GetGFXSize(spell_id);
+}
+
+int GetGFXSize(uint16 spell_id)
+{
+	//Ie. [5]006
+	if (!spells[spell_id].GFX){
+		if (spells[spell_id].spellanim == 138 && spells[spell_id].SpellAffectIndex > 0)
+			return 0; //Size 0.1 - These graphics are same size regardless.
+		else
+			return 5; //Regular GFX
+	}
+
+	int size = spells[spell_id].GFX / 1000;
+
+	if (size >= 255)
+		size = 255;
+	
+	return size;
+
+}
+
+uint32 GetGFXDuration(uint16 spell_id)
+{
+	//Ie. 500[6]
+	//Note: modolo 10 = max 9 where 100 = 99
+	if (!spells[spell_id].GFX)
+		return 5;
+
+	return static_cast<uint32>(spells[spell_id].GFX % 100);
+}
+
 bool SpellRequiresSpectralBlade(uint16 spell_id)
 {
 	if (spells[spell_id].classes[ENCHANTER])

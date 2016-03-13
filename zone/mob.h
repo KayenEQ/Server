@@ -1321,7 +1321,6 @@ public:
 	void SpellGraphicTempPet(uint16 spell_id, int type);
 	void SpawnSpellGraphicAOETempPet(uint16 spell_id, float aoerange, int row); //Directional/PBAOE
 	void SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row);
-	inline uint32 GetSpellGraphicPetDBID() { return 1000010; } //HARDCODED - npctypesid from database for temp pet
 	float GetSpacerAngle(float aoerange, float total_angle);
 	NPC* TypesTemporaryPetsGFX(uint32 typesid, const char *name_override = nullptr, uint32 duration_override = 0, float dX=0.0f, float dY=0.0f, float dZ=0.0f, uint16 spell_id = 0);
 	void SendSpellAnimGFX(uint16 targetid, uint16 spell_id, float aoerange);

@@ -874,7 +874,7 @@ struct SPDat_Spell_Struct
 /* 179 */	int pvpresistcap;
 /* 180 */	int spell_category;
 /* 181 */	int projectile_speed; //C!Kayen
-/* 182 */   //unknown - likely buff duration related
+/* 182 */   int GFX; //C!Kayen
 /* 183 */
 /* 184 */
 /* 185 */	int8 can_mgb; // 0=no, -1 or 1 = yes
@@ -1057,6 +1057,9 @@ bool IsNoTargetRequiredSpell(uint16 spell_id);
 int AOEMaxHitCount(uint16 spell_id);
 int GetRequiredFaith(uint16 spell_id);
 uint32 GetGraphicSpellID(uint16 spell_id);
+uint32 GetGraphicNPCTYPEID(uint16 spell_id);
+int GetGFXSize(uint16 spell_id);
+uint32 GetGFXDuration(uint16 spell_id);
 
 //LightType - Variable usage
 bool SpellRequiresSpectralBlade(uint16 spell_id);
