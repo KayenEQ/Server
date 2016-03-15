@@ -7601,11 +7601,13 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	spellend_timer.Start(1);
 
 	//Set Standing Apperance from duck/jump
+	/*
 	SendAppearancePacket(AT_Anim, ANIM_STAND);
 	playeraction = 0;
 	SetFeigned(false);
 	BindWound(this, false, true);
 	camp_timer.Disable();
+	*/
 
 	return true;
 }
@@ -9672,7 +9674,7 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 {
 			//C!Kayen - Do polygon area if no directional is set.
 			if (!spells[spell_id].directional_start && !spells[spell_id].directional_end){
-				SpellGraphicTempPet(spell_id, 2);
+				//SpellGraphicTempPet(spell_id, 2);
 				entity_list.AEBeamDirectional(this, spell_id, resist_adjust);
 				//BeamDirectionalCustom(spell_id, resist_adjust);
 				Shout("!!!! No actual damage being applied");
@@ -9680,7 +9682,7 @@ void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
 				return;
 			}
 
-			SpellGraphicTempPet(spell_id, 1); //Experimental - only cast on if YOUR pet AND not cast on yet.
+			SpellGraphicTempPet(1, spell_id, spells[spell_id].aoerange); //Experimental - only cast on if YOUR pet AND not cast on yet.
 
 			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
 			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
@@ -11076,24 +11078,19 @@ bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 
 
 
-void Mob::SpellGraphicTempPet(uint16 spell_id, int type)
+void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* target)
 {
-	if (!IsValidSpell(spell_id))
+	if (!IsValidSpell(spell_id) || !aoerange)
 		return;
 
 	/*Type
 	1 = PBAE/Directional AE
-	2 = Beam AE
+	2 = Beam AE / Targeted Beam AE
+	3 = Target Ring AOE
+	4 = AOE Rain [Target = Beacon]
 	*/
 
-	float aoerange = spells[spell_id].aoerange; //caster->GetAOERange(spell_id);
-	if (type == 2)
-		aoerange = spells[spell_id].range; //BEAM HEIGHT
-
 	int ROW_COUNT = 1;
-
-	if (!aoerange)
-		return;//Fail safe
 
 	if (aoerange > 800)
 		ROW_COUNT = 7;
@@ -11113,6 +11110,8 @@ void Mob::SpellGraphicTempPet(uint16 spell_id, int type)
 	int column_distance = 0;
 	float FIRST_ROW = 0; //Distance for beam first row.
 
+	ROW_COUNT = ROW_COUNT * GetGFXMultiplier(spell_id);
+
 	if (type == 1)
 		column_distance = static_cast<int>(aoerange)/ROW_COUNT;
 	else if (type == 2){
@@ -11120,31 +11119,57 @@ void Mob::SpellGraphicTempPet(uint16 spell_id, int type)
 		column_distance = static_cast<int>(aoerange - FIRST_ROW)/ROW_COUNT;
 	}
 
-	//divider = aoerange/splitter;
-	//OLD int divider = static_cast<int>(aoerange)/splitter;//Was flat 50
-	//OLD int ROW_COUNT = static_cast<int>(aoerange)/divider; //[Ie. IF 150 then spawn row at 150, 100, and 50) [THIS SHOULD JUST BE SPLITTER]
-	
-	Shout("Start GFX: Column Distance %i ROW COUNT %i [AOE RANGE %i]", column_distance, ROW_COUNT, static_cast<int>(aoerange));
+	float origin_heading = GetHeading();
+	if (target && type == 2)
+		origin_heading = CalculateHeadingToTarget(target->GetX(), target->GetY());
 
-	if (type == 1){
+	float origin_x = GetX();
+	float origin_y = GetY();
+	float origin_z = GetZ();
+
+	if (type == 3){
+		origin_x = GetTargetRingX();
+		origin_y = GetTargetRingY();
+		origin_z = GetTargetRingZ();
+	}
+	if (type == 4 && target && target->IsBeacon()){
+		origin_x = target->GetX();
+		origin_y = target->GetY();
+		origin_z = target->GetZ();
+	}
+
+	Shout("DEBUG: Start GFX: Column Distance %i ROW COUNT %i [AOE RANGE %i] [Heading %.2f]", column_distance, ROW_COUNT, static_cast<int>(aoerange), origin_heading);
+
+	if (type == 1){ //PBAE / Directional
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1 && spells[spell_id].targettype == ST_Directional) //On first row, place a single graphic close to caster as apex of cone.
-				SpawnSpellGraphicAOETempPet(spell_id, static_cast<float>(column_distance/2),-1);
+				SpawnSpellGraphicAOETempPet(type, spell_id, static_cast<float>(column_distance/3),-1,origin_heading, origin_x, origin_y); //WAS static_cast<float>(column_distance/2) - Best way to do this?
 
-			SpawnSpellGraphicAOETempPet(spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i);
+			SpawnSpellGraphicAOETempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading, origin_x, origin_y);
 		}
 	}
-	else if (type == 2){
+	else if (type == 2){ //Beam
 		for(int i = 1; i <= ROW_COUNT; i++){
 
-			if (i == 1) //On first row, place a single graphic close to caster as apex of cone.
-				SpawnSpellGraphicBeamTempPet(spell_id, FIRST_ROW,-1);
+			if (i == 1)
+				SpawnSpellGraphicBeamTempPet(type, spell_id, FIRST_ROW,-1,origin_heading,origin_x,origin_y);
 
-			SpawnSpellGraphicBeamTempPet(spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i); 
+			SpawnSpellGraphicBeamTempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading,origin_x,origin_y); 
 		}
 	}
+	else if (type == 3 || type == 4){//Targert RING AOE or Location based attacks
+		for(int i = 1; i <= ROW_COUNT; i++){
 
+			if (i == 1){
+				SpawnSpellGraphicSingleTempPetLocation(type, spell_id, aoerange, origin_x, origin_y, origin_z);
+				if (aoerange < 30)
+					return; //Keep it a simple one spawn for short range target ring AOE
+			}
+			
+			SpawnSpellGraphicAOETempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading, origin_x, origin_y);
+		}
+	}
 	return;
 }
 
@@ -11157,10 +11182,7 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 	if (standard_angle != 0)
 		standard_angle = static_cast<int>(total_angle-1) % 15;//Check if a 15 degree interval which will be 16,46 ect
 	//[16 = 352/8]
-	//Maybe add return multiplier for very large and wide spells to space it out more. Like angle > 90
-	//Point was should always be about 3 rows, the space between the rows is larger for larger range IE if 150 range divide by 50
-	//if 180 divide by 60, if 210 divide by 70, [NEED STANDARD RANGE INTERVALS divisible by 3]
-	//OR HIGHER the AOE range give more intervals but space it more after 150 (like + 1 for every 100 after 150, under 150 its 1 row per 50 ect)
+
 	if (standard_angle == 0){
 		if (aoerange > 150)
 			return 7.5f;
@@ -11182,7 +11204,7 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 	return 0.0f;
 }
 
-void Mob::SpawnSpellGraphicAOETempPet(uint16 spell_id, float aoerange, int row)
+void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y)
 {
 	Shout("START DEBUG: AOE RANGE %.2f [SIZE %i DURATIOn %i]", aoerange, GetGFXSize(spell_id), GetGFXDuration(spell_id));
 
@@ -11191,6 +11213,13 @@ void Mob::SpawnSpellGraphicAOETempPet(uint16 spell_id, float aoerange, int row)
 
 	uint32 duration = GetGFXDuration(spell_id);
 	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
+	uint16 gfx_spell_id = SPELL_UNKNOWN;
+	if (type == 4)
+		gfx_spell_id = GetAERainGFXSpellID(spell_id);
+	else
+		gfx_spell_id = GetGraphicSpellID(spell_id);
+
+	Shout("Spell GFX %i", gfx_spell_id);
 
 	float total_angle = 360.0f;
 
@@ -11204,16 +11233,16 @@ void Mob::SpawnSpellGraphicAOETempPet(uint16 spell_id, float aoerange, int row)
 
 	if (row == -1){ //Override for apex graphic right in front of caster.
 		COLUMN_COUNT = 1;
-		start_angle = GetHeading();
+		start_angle = origin_heading;
 	}
 	else {
 		if (angle_length == 1.0f){//Need to revaluate this one
 			COLUMN_COUNT = 1;
-			start_angle = GetHeading();
+			start_angle = origin_heading;
 		}
 		else {
 			COLUMN_COUNT = total_angle/angle_length + 1;
-			start_angle = GetHeading() - GetHeadingChangeFromAngle(spells[spell_id].directional_end);
+			start_angle = origin_heading - GetHeadingChangeFromAngle(spells[spell_id].directional_end);
 			start_angle = FixHeadingAngle(start_angle);
 			angle_length =  GetHeadingChangeFromAngle(angle_length); //Convert 
 		}
@@ -11225,38 +11254,45 @@ void Mob::SpawnSpellGraphicAOETempPet(uint16 spell_id, float aoerange, int row)
 		float dY = 0.0f;
 		float dZ = 0.0f;
 		
-		CalcDestFromHeading(start_angle, aoerange - 5.0f, 0, GetX(), GetY(), dX, dY, dZ); // -5 distance so graphic is better[Adjust?]
+		CalcDestFromHeading(start_angle, aoerange - 5.0f, 0, origin_x, origin_y, dX, dY, dZ); // -5 distance so graphic is better[Adjust?]
 
 		NPC* temppet = nullptr;
-		temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, dX, dY,dZ, spell_id); //Spawn pet
+		temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
 	
 		if (temppet){
 			start_angle = FixHeadingAngle((start_angle + angle_length));
-			//SpellOnTarget(GetGraphicSpellID(spell_id),temppet, false, true, -10000);
-			SendSpellAnimGFX(temppet->GetID(), GetGraphicSpellID(spell_id), aoerange);
+			SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, aoerange);
 		}
 		else
 			Shout("DEBUG:: Critical error SPELL %i no temppet (NPCTYPE ID %i) Found in database", spell_id, gfx_npctype_id );
 	}
 }
 
-void Mob::SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row)
+void Mob::SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y)
 {
-	Shout("START BEAM DEBUG: Height %.2f Width %.2f", aoerange, spells[spell_id].aoerange);
+	Shout("START BEAM DEBUG: Height %.2f Width %.2f [GFX Size %i NPCID %i]", aoerange, spells[spell_id].aoerange, GetGFXSize(spell_id),GetGraphicNPCTYPEID(spell_id));
 
 	uint32 duration = GetGFXDuration(spell_id);
 	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
+	uint16 gfx_spell_id = GetGraphicSpellID(spell_id);
 
 	float length = aoerange;
 	float width = spells[spell_id].aoerange;
 
-	//float width_mod = 5.0f;
-	//width = width - (width_mod*2);
+	float width_mod = 5.0f; //Fine if using intervals of 10
+	//width = width - (width_mod*2); //If decide not to use 5, will need to modify this.
 	
-
 	float spacer_length = 10.0f; //Will need algorithm
 	int COLUMN_COUNT = 0;
-	COLUMN_COUNT = width/spacer_length + 1;
+	COLUMN_COUNT = width/spacer_length;
+
+	//This will center the graphic line for narrow AOE
+	if (width < 20 || COLUMN_COUNT == 1){
+		COLUMN_COUNT = 1;
+		width = spacer_length;
+		width_mod = 5.0;
+	}
+
 
 	float packet_range = length;
 		if (width > length)
@@ -11269,9 +11305,9 @@ void Mob::SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row)
 	float start_dZ = 0.0f;
 
 	//1: Move center point straight aheada specific amount from caster.
-	CalcDestFromHeading(GetHeading(), length - 4.0f, 0, GetX(), GetY(), start_dX, start_dY, start_dZ);
+	CalcDestFromHeading(origin_heading, length - 4.0f, 0, origin_x, origin_y, start_dX, start_dY, start_dZ);
 	//2: Move starting point to far left of rectangle width.
-	CalcDestFromHeading(FixHeadingAngle(GetHeading() - 64.0f), (width/2.0f), 0, start_dX, start_dY, start_dX, start_dY, start_dZ);
+	CalcDestFromHeading(FixHeadingAngle(origin_heading - 64.0f), (width/2.0f) - width_mod, 0, start_dX, start_dY, start_dX, start_dY, start_dZ);
 	//3: Loop then spawns from far left to right.
 
 	float distance = 0.0f;
@@ -11288,32 +11324,52 @@ void Mob::SpawnSpellGraphicBeamTempPet(uint16 spell_id, float aoerange, int row)
 			dZ = start_dZ;
 		}
 		else
-			CalcDestFromHeading(FixHeadingAngle(GetHeading() + 64.0f), distance, 0, start_dX, start_dY, dX, dY, dZ);
+			CalcDestFromHeading(FixHeadingAngle(origin_heading + 64.0f), distance, 0, start_dX, start_dY, dX, dY, dZ);
 
 		NPC* temppet = nullptr;
-		temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, dX, dY,dZ, spell_id); //Spawn pet
+		temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
 	
 		if (temppet){
-			//SpellOnTarget(GetGraphicSpellID(spell_id),temppet, false, true, -10000); //DO NOT REMOVE
-
 			if (spells[spell_id].npc_no_los || CheckLosFN(temppet))
-				SendSpellAnimGFX(temppet->GetID(), GetGraphicSpellID(spell_id), packet_range);
+				SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, packet_range);
 
 			distance = distance + spacer_length;
-			Shout("START BEAM DEBUG: New DISTANCE  %.2f [C Count %i] [Spellid %i]", distance, i, GetGraphicSpellID(spell_id));
+			Shout("START BEAM DEBUG: New DISTANCE  %.2f [C Count %i] [Spellid %i] [Z %.2f]", distance, i, gfx_spell_id, dZ);
 		}
 		else
 			Shout("DEBUG:: Critical error SPELL %i no temppet (NPCTYPE ID %i) Found in database", spell_id, gfx_npctype_id );
 	}
 }
 
-void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust)
+void Mob::SpawnSpellGraphicSingleTempPetLocation(int type, uint16 spell_id, float aoerange, float locX, float locY, float locZ)
+{
+	uint32 duration = GetGFXDuration(spell_id);
+	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
+	uint16 gfx_spell_id = SPELL_UNKNOWN;
+	if (type == 4)
+		gfx_spell_id = GetAERainGFXSpellID(spell_id);
+	else
+		gfx_spell_id = GetGraphicSpellID(spell_id);
+
+	NPC* temppet = nullptr;
+
+	temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, locX, locY,locZ, spell_id); //Spawn pet
+	
+	if (temppet){
+		SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, spells[spell_id].range + 10);
+	}
+}
+
+void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust, bool FromTarget, Mob* target)
 {
 	//Optmized Beam Directional Function.
-	if (!caster)
+	if (!caster || (FromTarget && !target))
 		return;
 
-	caster->SpellGraphicTempPet(spell_id, 2);
+	if (!FromTarget)
+		caster->SpellGraphicTempPet(2, spell_id, spells[spell_id].range);
+	else
+		caster->SpellGraphicTempPet(2, spell_id, caster->CalculateDistance(target->GetX(), target->GetY(), target->GetZ()), target);
 
 	Mob *curmob;
 
@@ -11343,6 +11399,13 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 
 	//Start - Calculate cooridinates of rectangle
 	float origin_heading = caster->GetHeading();
+	
+	float target_heading = 0.0f;
+	if (FromTarget){
+		origin_heading = caster->CalculateHeadingToTarget(target->GetX(), target->GetY());
+		target_heading = target->CalculateHeadingToTarget(caster->GetX(), caster->GetY());
+	}
+
 	float origin_x = caster->GetX();
 	float origin_y = caster->GetY();
 
@@ -11359,7 +11422,11 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	float dX = 0.0f;
 	float dY = 0.0f;
 	float dZ = 0.0f;
-	caster->CalcDestFromHeading(caster->FixHeadingAngle(origin_heading), (spells[spell_id].range), 0, aX, aY, dX, dY, dZ);
+
+	if (FromTarget)
+		caster->CalcDestFromHeading(caster->FixHeadingAngle(target_heading - 64.0f), (spells[spell_id].aoerange/2.0f), 0, target->GetX(), target->GetY(), dX, dY, dZ);
+	else
+		caster->CalcDestFromHeading(caster->FixHeadingAngle(origin_heading), (spells[spell_id].range), 0, aX, aY, dX, dY, dZ);
 	//End
 
 	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
@@ -11413,7 +11480,7 @@ void EntityList::AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	if (!caster)
 		return;
 
-	caster->SpellGraphicTempPet(spell_id, 1);
+	caster->SpellGraphicTempPet(1, spell_id, spells[spell_id].aoerange);
 
 	Mob *curmob;
 

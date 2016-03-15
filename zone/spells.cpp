@@ -2143,9 +2143,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 						return false;
 				}
 				//C!Kayen - Beam Type spells that hit everything in a straight line to target.
-				else if (spells[spell_id].targettype == ST_Target && spells[spell_id].aoerange){
-					if (!RectangleDirectional(spell_id, resist_adjust, true, spell_target))
-						return false;
+				else if (IsTargetedBeamSpell(spell_id)){
+					entity_list.AEBeamDirectional(this, spell_id, resist_adjust, true, spell_target);
+					//if (!RectangleDirectional(spell_id, resist_adjust, true, spell_target))
+						//return false;
 				}
 
 				//C!Kayen - AE Duration from single / self target
@@ -5770,7 +5771,6 @@ void Client::SendSpellAnim(uint16 targetid, uint16 spell_id)
 
 void Mob::CalcDestFromHeading(float heading, float distance, float MaxZDiff, float StartX, float StartY, float &dX, float &dY, float &dZ)
 {
-	if (!distance) { return; }
 	if (!MaxZDiff) { MaxZDiff = 5; }
 
 	float ReverseHeading = 256 - heading;

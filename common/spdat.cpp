@@ -1307,7 +1307,42 @@ int GetRequiredFaith(uint16 spell_id)
 	return 0;
 }
 
-uint32 GetGraphicSpellID(uint16 spell_id)
+bool IsTargetedBeamSpell(uint16 spell_id){
+
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	if (spells[spell_id].targettype == ST_Target && spells[spell_id].aoerange)
+		return true;
+
+	return false;
+}
+
+bool IsAERainSpell(uint16 spell_id){
+
+	if (!IsValidSpell(spell_id))
+		return false;
+
+	if (spells[spell_id].aoerange && spells[spell_id].AEDuration > 1000)
+		return true;
+
+	return false;
+}
+
+uint16 GetAERainGFXSpellID(uint16 spell_id)
+{
+	//Displays rain graphic at AOE location only. Spell in file is display on targets.
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_UtilityRainGFXLink){
+			if (spells[spell_id].base[i])
+				return spells[spell_id].base[i];
+		}
+	}
+
+	return GetGraphicSpellID(spell_id);
+}
+
+uint16 GetGraphicSpellID(uint16 spell_id)
 {
 	uint16 temp_spell_id = SPELL_UNKNOWN;
 
@@ -1324,23 +1359,31 @@ uint32 GetGraphicSpellID(uint16 spell_id)
 
 uint32 GetGraphicNPCTYPEID(uint16 spell_id)
 {
+	/*NPC with TYPE ID 1001000 - 1001255 used to display spell graphics
+	All NPC are invisible and non targetable, size varies based on ID.
+	Most graphics are larger based on size of NPC. It is more efficient to spawn
+	with desired size then to change it after spawn due to less packets sent.
+	*/
 	return 1001000 + GetGFXSize(spell_id);
 }
 
 int GetGFXSize(uint16 spell_id)
 {
-	//Ie. [5]006
+	//Ie. [5]006 - Determine how large the spell graphic is.
 	if (!spells[spell_id].GFX){
 		if (spells[spell_id].spellanim == 138 && spells[spell_id].SpellAffectIndex > 0)
 			return 0; //Size 0.1 - These graphics are same size regardless.
 		else
-			return 5; //Regular GFX
+			return 3; //Regular GFX
 	}
 
 	int size = spells[spell_id].GFX / 1000;
 
+	//Fail safes bounds
 	if (size >= 255)
-		size = 255;
+		return 255;
+	else if (size < 0)
+		return 3;
 	
 	return size;
 
@@ -1348,12 +1391,32 @@ int GetGFXSize(uint16 spell_id)
 
 uint32 GetGFXDuration(uint16 spell_id)
 {
-	//Ie. 500[6]
-	//Note: modolo 10 = max 9 where 100 = 99
+	//Ie. 500[6] - Alter duration based on spell animation [Will be used on a case by cast basis for certain spells]
 	if (!spells[spell_id].GFX)
 		return 5;
 
-	return static_cast<uint32>(spells[spell_id].GFX % 100);
+	uint32 duration = static_cast<uint32>(spells[spell_id].GFX % 100); //Note: modolo 10 = max 9 where 100 = 99
+
+	//Fail safe bounds
+	if (duration <= 0 || duration > 99)
+		return 5;
+
+	return duration;
+}
+
+int GetGFXMultiplier(uint16 spell_id)
+{
+	//Ie. 5[2]06 - Decreases distance between row spawns by multiplying row count
+	if (!spells[spell_id].GFX)
+		return 1;
+
+	int mod = spells[spell_id].GFX / 100;
+	mod = spells[spell_id].GFX % 10;
+
+	if (mod <= 0)
+		mod = 1;
+
+	return mod;
 }
 
 bool SpellRequiresSpectralBlade(uint16 spell_id)

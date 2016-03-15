@@ -759,6 +759,7 @@ typedef enum {
 #define SE_SpellPowerAEDurationType		1097 // implemented - Base =Type, Limit - Percent increase from AE Duration based on iteration
 #define SE_Faith						1098 // implemented - Base = 
 #define SE_NumHitsAmtFaith				1099 // implemented - Base = Amt numhits (+/-) Limit (-1 if used as resource)
+#define SE_UtilityRainGFXLink			1100 // implemented - Base - Spell ID number of rain graphic display
 
 
 
@@ -1056,10 +1057,16 @@ bool UseEquipedBowRange(uint16 spell_id);
 bool IsNoTargetRequiredSpell(uint16 spell_id);
 int AOEMaxHitCount(uint16 spell_id);
 int GetRequiredFaith(uint16 spell_id);
-uint32 GetGraphicSpellID(uint16 spell_id);
+bool IsTargetedBeamSpell(uint16 spell_id);
+bool IsAERainSpell(uint16 spell_id);
+uint16 GetAERainGFXSpellID(uint16 spell_id);
+
+//GFX
+uint16 GetGraphicSpellID(uint16 spell_id);
 uint32 GetGraphicNPCTYPEID(uint16 spell_id);
 int GetGFXSize(uint16 spell_id);
 uint32 GetGFXDuration(uint16 spell_id);
+int GetGFXMultiplier(uint16 spell_id);
 
 //LightType - Variable usage
 bool SpellRequiresSpectralBlade(uint16 spell_id);

@@ -782,9 +782,6 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	if (!caster) //C!Kayen
 		return;
 
-	if (spells[spell_id].targettype == ST_AECaster) //C!Kayen
-		caster->SpellGraphicTempPet(spell_id,1);
-
 	bool use_min_range = true; //C!Kayen - We don't check min range from projectile target ring AOE. 
 	if (IsTargetRingSpell(spell_id) && IsProjectile(spell_id))
 		use_min_range = false;
@@ -815,6 +812,13 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 	int iCounter = 0;
 
+	if (spells[spell_id].targettype == ST_AECaster) //C!Kayen
+		caster->SpellGraphicTempPet(1, spell_id,dist);
+	else if (IsTargetRingSpell(spell_id) && !IsProjectile(spell_id)) //C!Kayen
+		caster->SpellGraphicTempPet(3, spell_id,dist);
+	else if (center->IsBeacon()) //C!Kayen
+		caster->SpellGraphicTempPet(4, spell_id,dist, center);
+	
 	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
 		curmob = it->second;
 		// test to fix possible cause of random zone crashes..external methods accessing client properties before they're initialized
@@ -823,6 +827,8 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (curmob == center)	//do not affect center
 			continue;
 		if (curmob == caster && !affect_caster)	//watch for caster too
+			continue;
+		if (curmob->GetUtilityTempPetSpellID()) //C!Kayen ignore
 			continue;
 		if (spells[spell_id].targettype == ST_TargetAENoPlayersPets && curmob->IsPetOwnerClient())
 			continue;
@@ -918,8 +924,9 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	//C!Kayen
 	if (!TL_TargetFound && spells[spell_id].targettype == ST_TargetLocation)
 		caster->CustomSpellMessages(caster->GetSpellTargetID(), spell_id, 2);
-	if (!AE_TargetFound)
+	if (!AE_TargetFound){
 		caster->AENoTargetFoundRecastAdjust(spell_id);
+	}
 }
 
 void EntityList::MassGroupBuff(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster)

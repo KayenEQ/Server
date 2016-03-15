@@ -440,7 +440,7 @@ public:
 	void SendAppearanceEffects(Client *c);
 	NPC* GetOwnersTempPetByNPCTypeID(uint32 npctype_id, uint16 ownerid, bool SetVarTargetRing, uint16 spell_id);
 	void AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_id);
-	void AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
+	void AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0, bool FromTarget=false, Mob* target=nullptr);
 	void AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
 
 protected:

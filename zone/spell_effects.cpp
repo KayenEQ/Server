@@ -198,7 +198,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			if (spells[spell_id].viral_range == -1)
 				buffs[buffslot].fastticsremaining = spells[spell_id].buffduration * 6;
 			else
-				buffs[buffslot].fastticsremaining = spells[spell_id].viral_range * -1;
+				buffs[buffslot].fastticsremaining = spells[spell_id].viral_range * -1;//Microbuffs
 		}
 
 		//C!Kayen - always set these for all buffs.
