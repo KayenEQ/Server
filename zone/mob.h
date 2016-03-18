@@ -1046,7 +1046,7 @@ public:
 	inline bool BehindMobCustom(Mob *other = 0, float ourx = 0.0f, float oury = 0.0f) const
 		{ return (!other || other == this) ? true : MobAngle(other, ourx, oury) > 124.0f; }
 
-	bool SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target);
+	bool SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target=nullptr, uint16 target_id=0);
 	bool SpellDirectionalTarget(uint16 spell_id, Mob *target); //Used in popup UI
 	
 	//C!CustomSkillBonus
@@ -1142,8 +1142,12 @@ public:
 
 	//C!SpellEffects :: SE_SpellPowerHeightMod
 	int32 CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
+	void CalcSpellPowerHeightZDiff(uint16 spell_id, Mob* spell_target);
+	void SetGFluxEffectVars(uint16 spell_id, int base);
+	int GetDistanceToCeiling(int max_z, float origin_z);
 	inline int32 GetCastingZDiff() const { return casting_z_diff; }
 	inline void SetCastingZDiff(int32 value) { casting_z_diff = value; }
+	void GravityFlux();
 
 	//C!SpellEffects :: Appearance Effects
 	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //PERL EXPORTED
@@ -1245,6 +1249,7 @@ public:
 	
 	void LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 	int CalcDistributionModifer(int range, int min_range, int max_range, int min_mod, int max_mod);
+	int CalcDistributionByLevel(float ubase, float max, float caster_level, float max_level);
 	
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
@@ -1316,6 +1321,7 @@ public:
 	void AdjustNumHitsFaith(uint16 spell_id, int effectid);
 
 	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);
+	bool TryCustomResourceConsume(uint16 spell_id);
 
 	//Experimental - AOE/Directional - ADVANCED GFX Displays and ADVANCED Directional AOE functions
 	void SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* target=nullptr);
@@ -1336,7 +1342,7 @@ public:
 	float GetHeadingChangeFromAngle(float a) { return (256.0f * a / 360.0f); }
 	float FixHeadingAngle(float a) { if (a >= 256) { return (a - 256.0f); } else if (a < 0) {return (256.0f + a); } else return a;}
 
-
+	
 	//Old calculations
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
 
@@ -1715,6 +1721,8 @@ protected:
 	
 	tLeap leap;
 	tLeapSE leapSE;
+	tgflux gflux;
+
 
 	tProjring ProjectileRing[MAX_SPELL_PROJECTILE];
 

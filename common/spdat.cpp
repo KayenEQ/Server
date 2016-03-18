@@ -1155,6 +1155,30 @@ const char* GetSpellName(int16 spell_id)
 }
 
 //C!Kayen - Custom Spell Functions
+float GetMaxSpellCastingRange(uint16 spell_id)
+{
+	//Used to determine packet range for spell casting
+	float range = 100.0f;
+	if (!spells[spell_id].aoerange)
+		range = spells[spell_id].range;
+	else{
+		if (!spells[spell_id].range){
+			range = spells[spell_id].aoerange;
+		}
+		else{
+			if (spells[spell_id].aoerange >= spells[spell_id].range)
+				range = spells[spell_id].aoerange;
+			else
+				range = spells[spell_id].range;
+		}
+	}
+
+	if (range < 100)
+		return 100.f;
+
+	return range + 10.f; //DO I NEED TO ADD SIZE MOD??
+}
+
 bool IsEffectFieldSpell(uint16 spell_id)
 {
 	if (IsValidSpell(spell_id) && spells[spell_id].pvpresistbase == 998)
@@ -1411,7 +1435,7 @@ int GetGFXMultiplier(uint16 spell_id)
 		return 1;
 
 	int mod = spells[spell_id].GFX / 100;
-	mod = spells[spell_id].GFX % 10;
+	mod = mod % 10;
 
 	if (mod <= 0)
 		mod = 1;

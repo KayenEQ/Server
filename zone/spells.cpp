@@ -2025,8 +2025,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 	}
 
 	//C!Kayen - (Need to check early for projectile use)
-	if (spell_target && IsEffectInSpell(spell_id, SE_SpellPowerHeightMod))
-		SetCastingZDiff((static_cast<int>(GetZ()) - static_cast<int>(spell_target->GetZ()))); 
+	CalcSpellPowerHeightZDiff(spell_id, spell_target);
 
 	//determine the type of spell target we have
 	CastAction_type CastAction;
@@ -2072,7 +2071,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 	}
 
 	//range check our target, if we have one and it is not us
-	float range = spells[spell_id].range;
+	float range = spells[spell_id].range + GetRangeDistTargetSizeMod(spell_target); //C!Kayen - ADD TO MAIN SOURCE
 	if(IsClient() && CastToClient()->TGB() && IsTGBCompatibleSpell(spell_id) && IsGroupSpell(spell_id))
 		range = spells[spell_id].aoerange;
 
@@ -2134,7 +2133,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 			if (isproc) {
 				SpellOnTarget(spell_id, spell_target, false, true, resist_adjust, true, level_override);
 			} else {
-				if (!SingleTargetSpellInAngle(spell_id, spell_target))//C!Kayen
+				if (!SingleTargetSpellInAngle(spell_id, spell_target,0))//C!Kayen - Not sure if this is best place for this- Will keep 3/17/16
 					return false;
 				if (spells[spell_id].targettype == ST_TargetOptional){
 					if (spell_target && spell_target == this)//C!Kayen
@@ -2145,8 +2144,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 				//C!Kayen - Beam Type spells that hit everything in a straight line to target.
 				else if (IsTargetedBeamSpell(spell_id)){
 					entity_list.AEBeamDirectional(this, spell_id, resist_adjust, true, spell_target);
-					//if (!RectangleDirectional(spell_id, resist_adjust, true, spell_target))
-						//return false;
 				}
 
 				//C!Kayen - AE Duration from single / self target
@@ -2370,9 +2367,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 		}
 	}
 
-	TryWizardEnduranceConsume(spell_id); //C!Kayen
-	TryEnchanterManaFocusConsume(spell_id); //C!Kayen
-	AdjustNumHitsFaith(spell_id, -1); //C!Kayen
+
+	TryCustomResourceConsume(spell_id); //C!Kayen
 
 	// one may want to check if this is a disc or not, but we actually don't, there are non disc stuff that have end cost
 	// lets not consume end for custom items that have disc procs.
@@ -4008,7 +4004,8 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 
 	if(!spelltar->IsTargetSpellAnimDisabled() && !IsEffectInSpell(spell_id, SE_BindAffinity)) //C!Kayen - Use to prevents spell animation on target
 	{
-		entity_list.QueueCloseClients(spelltar, message_packet, false, 200, 0, true, spelltar->IsClient() ? FilterPCSpells : FilterNPCSpells);
+		//C!Kayen - Adjust range for spell range
+		entity_list.QueueCloseClients(spelltar, message_packet, false, GetMaxSpellCastingRange(spell_id), 0, true, spelltar->IsClient() ? FilterPCSpells : FilterNPCSpells);
 	}
 	safe_delete(action_packet);
 	safe_delete(message_packet);

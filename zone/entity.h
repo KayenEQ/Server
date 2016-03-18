@@ -442,6 +442,7 @@ public:
 	void AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_id);
 	void AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0, bool FromTarget=false, Mob* target=nullptr);
 	void AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
+	int EntityList::CountCloseClients(Mob *target, Mob *caster, float dist);
 
 protected:
 	friend class Zone;

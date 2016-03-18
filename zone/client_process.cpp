@@ -484,6 +484,7 @@ bool Client::Process() {
 		SpellProjectileEffectTargetRing();
 		LeapProjectileEffect();
 		TryChargeHit();
+		GravityFlux();
 
 		if (leapSE_timer.Check()) //1 MS
 			LeapSpellEffect();

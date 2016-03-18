@@ -1042,6 +1042,7 @@ bool IsSpellUsableThisZoneType(uint16 spell_id, uint8 zone_type);
 const char *GetSpellName(int16 spell_id);
 
 //C!Kayen - Custom Spell functions
+float GetMaxSpellCastingRange(uint16 spell_id);
 bool IsEffectFieldSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
 bool IsFastBuffTicSpell(uint16 spell_id);

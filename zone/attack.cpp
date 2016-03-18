@@ -3365,7 +3365,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 						if (attacker->CastToClient()->GetFilter(FilterDamageShields) != FilterHide)
 							attacker->Message_StringID(MT_DS,OTHER_HIT_NONMELEE, GetCleanName(), ConvertArray(damage, val1));
 					} else {
-						entity_list.MessageClose_StringID(this, true, 100, MT_NonMelee, HIT_NON_MELEE, attacker->GetCleanName(), GetCleanName(), ConvertArray(damage, val1));
+						entity_list.MessageClose_StringID(this, true, GetMaxSpellCastingRange(spell_id), MT_NonMelee, HIT_NON_MELEE, attacker->GetCleanName(), GetCleanName(), ConvertArray(damage, val1));//C!Kayen - Range
 					}
 				} else {
 					if(damage > 0) {

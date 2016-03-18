@@ -463,6 +463,12 @@ Mob::Mob(const char* in_name,
 	leapSE.z_bound_mod = 0.0f;
 	leapSE.mod = 0.0f;
 
+	gflux.increment = 0;
+	gflux.time_to_peak = 0;
+	gflux.time_to_ground = 0;
+	gflux.origin_z = 0;
+	gflux.peak = 0;
+
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++)
 	{
 		ProjectileRing[i].increment = 0;
@@ -6548,23 +6554,32 @@ bool Mob::InAngleMob(Mob *other, float start_angle, float stop_angle) const
 	return false;
 }
 
-bool Mob::SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target){
+bool Mob::SingleTargetSpellInAngle(uint16 spell_id, Mob* spell_target, uint16 target_id){
 
 	if (!spells[spell_id].directional_start && !spells[spell_id].directional_end)
 		return true;
-		
-	if (spell_target){
 
-		if (spell_target == this)
+	if (target_id && !IsTargetableSpell(spell_id))
+		return true;//If used from before casting starts... undecided on this.
+
+	Mob* target = nullptr;
+
+	if (!spell_target)
+		target = entity_list.GetMob(target_id);
+	else
+		target = spell_target;
+
+	if (target ){
+
+		if (target == this)
 			return true;
 
-		if (!spell_target->InAngleMob(this, spells[spell_id].directional_start,spells[spell_id].directional_end)){
+		if (!target->InAngleMob(this, spells[spell_id].directional_start,spells[spell_id].directional_end)){
 			//Message_StringID(13,CANT_SEE_TARGET);
 			Message(MT_SpellFailure, "You must face your target to use this ability!");
 			return false;
 		}
 	}
-
 	return true;
 }
 
@@ -7295,11 +7310,11 @@ void Mob::CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* ca
 
 	mod += caster->GetAEDurationIteration() * 10; //Need to revise this.
 
-	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
+	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
 	if (mod)
 		damage += damage*mod/100;
 
-	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
+	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
 }
 
 //#### C!LastName
@@ -8244,11 +8259,10 @@ int32 Mob::GetSpellPowerAmtHitsEffect(uint16 spell_id)
 //#### C!SpellEffects :: SE_SpellPowerHeightMod
 
 int32 Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
-	//'this' = target base = Max Distance limit = Max Modifer (Min dist = 0, Min Mod = 1)
+
 	if (!IsValidSpell(spell_id) || !caster)
 		return 0;
 
-	int mod = 0;
 	for (int i = 0; i <= EFFECT_COUNT; i++)
 	{
 		if (spells[spell_id].effectid[i] == SE_SpellPowerHeightMod){
@@ -8256,22 +8270,103 @@ int32 Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
 			if (spells[spell_id].base[i]){
 
 				int distance = caster->GetCastingZDiff();
-				int16 max_distance = spells[spell_id].base[i];
-				int16 max_modifier = spells[spell_id].base2[i]*100;
+				int max_distance = spells[spell_id].base[i];
+				int max_modifier = spells[spell_id].base2[i]*100;
 
 				if (distance > max_distance)
 					distance = max_distance;
 
-				mod = 1 + ((distance * (max_modifier/max_distance))/100);
-				//Shout("DEBUG::CalcSpellPowerHeightMod :: MOD %i Distance %i", mod, distance);
+				caster->SetCastingZDiff(0);
+				return ((distance * ((max_modifier*100)/max_distance))/100);
 			}
 		}
 	}
-	SetCastingZDiff(0); //Remove the zdiff variable. - Prob should move this to later in the function or zero casting vero OR when proj lands?
-	if (mod)
-		mod = (mod - 1) * 100;
+	return 0;
+}
+
+void Mob::CalcSpellPowerHeightZDiff(uint16 spell_id, Mob* spell_target)
+{
+	if (spell_target && IsEffectInSpell(spell_id, SE_SpellPowerHeightMod)){
+		float origin_z = GetZ();
+		
+		//Hack to get accurate Z measurements during a controlled gravity flux of power 500
+		if (gflux.increment){
+			//mod = UP Max Height/Interval at Max Height (130/85)
+			//mod = DOWN 130/145
+			int mod_up = (130 * 100)/gflux.time_to_peak;
+			int mod_down = (130 * 100)/gflux.time_to_ground;
+
+			if (!gflux.peak)
+				origin_z = gflux.origin_z + ((gflux.increment * mod_up) / 100);
+			else
+				origin_z = gflux.origin_z + (((145 - (gflux.increment - gflux.peak)) * mod_down) / 100);
+			//Shout("CAST Origin Z %.2f vs GET Z %.2f [INCREMENT %i]", origin_z, GetZ(), gflux.increment);
+		}
+		SetCastingZDiff((static_cast<int>(origin_z) - static_cast<int>(spell_target->GetZ())));
+	}
+}
+
+void Mob::SetGFluxEffectVars(uint16 spell_id, int base)
+{
+
+	//[Note: 250 = 67 units with peak time of 85 and total time of 170] - Conclusion time to hit max is same regardless of force.
+	int z_max = GetDistanceToCeiling(130, GetZ()); //Distance for effect value 500 is 130 units 
+
+	if (z_max > 130)
+		z_max = 130;
 	
-	return mod;
+	gflux.increment = 1;
+	gflux.time_to_peak = (85 * (z_max*100/130))/100;
+	gflux.time_to_ground = (230 * (z_max*100/130))/100; //85 + 145 from peak
+	gflux.origin_z = static_cast<int>(GetZ());
+}
+
+int Mob::GetDistanceToCeiling(int max_z, float origin_z)
+{
+	if (!max_z)
+		max_z = 130;
+
+	int interval = 0;
+	float origin_x = GetX();
+	float origin_y = GetY();
+	float origin_Z = origin_z;
+	while (interval <= max_z)
+	{
+		if (!CheckLosFN(origin_x,origin_y,origin_Z + (static_cast<float>(interval)),GetSize()))
+			return interval;
+
+		interval += 5;
+	}
+
+	return interval;
+}
+
+void Mob::GravityFlux()
+{
+	if (gflux.increment){
+
+		//int time_to_ground = 170; //(170/-250 power Zchange 67) 0.68 mod (240/500 Zchange 130)
+
+		//FOR POWER 500 - NARROWLY CODED
+
+		Shout("gflux_increment %i [%i] [%i]", gflux.increment, gflux.time_to_peak, gflux.time_to_ground);
+		
+		gflux.increment++;
+
+		if (gflux.increment ==  gflux.time_to_peak){
+			//std::string health_update_notification = StringFormat("Health: %u%%", 999); //DEBUG JUNK
+			//this->CastToClient()->SendMarqueeMessage(15, 510, 0, 3000, 3000, health_update_notification); //DEBUG JUNK
+			gflux.peak = gflux.increment;
+		}
+
+		else if (gflux.increment > gflux.time_to_ground){
+			gflux.increment = 0;
+			gflux.origin_z = 0;
+			gflux.peak = 0;
+			gflux.time_to_peak = 0;
+			gflux.time_to_ground = 0;
+		}
+	}
 }
 
 //#### C!SpellEffects :: Appearance Effects
@@ -9561,6 +9656,37 @@ int Mob::CalcDistributionModifer(int range, int min_range, int max_range, int mi
 	
 	int mod = min_mod + (dist_from_min * (dm_mod_interval/dm_range));
 	return mod;
+}
+
+int Mob::CalcDistributionByLevel(float ubase, float max, float caster_level, float max_level)
+{
+	/*TO CALCULATE AS INTS - DevNote: Just leaving as float for now
+	int level_mod = 100 + ((35.0 - (caster_level)) * 4);
+	int interval = ((max * 100) - ubase) / (max_level - 1);
+	int base_mod = (interval*100/level_mod) * (caster_level);
+	return ubase + (base_mod/100);
+	*/
+
+	/*ALPHA - Main Damage/Heal Formula
+	Finds an even distrubution between min and max damage(at 50)
+	A level based gradient modifier is applied to the interval value so that scaling curve more accurately
+	reflects live, with smaller increments of damage gained at lower levels and higher amoounts as you progress.
+	Value 0.041 is dervived from (MAX_GRADIENT - MIN_GRADIENT) / (MAX_LEVEL - 1) :: 0.408 = (3 - 1 / 50-1)
+	Increasing MAX_GRADIENT will cause a more expodiental growth curve. While lowering it flattens the curve ect.
+	[When making new spells, set base value to -1 and max to whatever max. Value at level 1 will be the first interval]
+	*/
+
+	/*
+	float level_distribution = 0.014f;
+	level_distribution = (3 - 1) / (max_level - 1);
+	*/
+
+	float level_mod = 1.0f + (max_level - caster_level) * 0.041f;
+	float interval = (max - ubase) / (max_level - 1.0f);
+	float base_mod = (interval/level_mod) * (caster_level);
+	return ubase + static_cast<int>(base_mod);
+
+
 }
 
 void Mob::AbsorbMelee(int32 &damage, Mob* attacker)
@@ -11055,7 +11181,7 @@ bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 {
 	//Note this method of interrupting casting does not work well for instant spells (cast time 150 is shortest)
 
-	if (!TryEnchanterCastingConditions(spell_id))
+	if (!TryEnchanterCastingConditions(spell_id)) //Why do i have this checked in 2 places.
 		return false;
 
 	if (!TryRangerCastingConditions(spell_id, target_id))
@@ -11071,6 +11197,17 @@ bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 	if (MinCastingRange(spell_id, target_id))
 		return false;
 
+	//if (!SingleTargetSpellInAngle(spell_id, nullptr, target_id))//Undecided if want to check pre casting.
+		//return false;
+
+	return true;
+}
+
+bool Mob::TryCustomResourceConsume(uint16 spell_id)
+{
+	TryWizardEnduranceConsume(spell_id);
+	TryEnchanterManaFocusConsume(spell_id);
+	AdjustNumHitsFaith(spell_id, -1);
 	return true;
 }
 
@@ -11081,6 +11218,9 @@ bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* target)
 {
 	if (!IsValidSpell(spell_id) || !aoerange)
+		return;
+
+	if (spells[spell_id].GFX == -1) //Disable!
 		return;
 
 	/*Type
@@ -11109,7 +11249,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 
 	int column_distance = 0;
 	float FIRST_ROW = 0; //Distance for beam first row.
-
+	Shout("ROW COUNT %i Mult %i", ROW_COUNT, GetGFXMultiplier(spell_id));
 	ROW_COUNT = ROW_COUNT * GetGFXMultiplier(spell_id);
 
 	if (type == 1)
@@ -11260,8 +11400,10 @@ void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange,
 		temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
 	
 		if (temppet){
+			if (spells[spell_id].npc_no_los || CheckLosFN(temppet))
+				SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, aoerange);
+
 			start_angle = FixHeadingAngle((start_angle + angle_length));
-			SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, aoerange);
 		}
 		else
 			Shout("DEBUG:: Critical error SPELL %i no temppet (NPCTYPE ID %i) Found in database", spell_id, gfx_npctype_id );
@@ -11765,6 +11907,28 @@ void Mob::SendSpellAnimGFX(uint16 targetid, uint16 spell_id, float aoerange)
 	app.priority = 1;
 	entity_list.QueueCloseClients(this, &app, false, aoerange);
 }
+
+int EntityList::CountCloseClients(Mob *target, Mob *caster, float dist)
+{
+	float dist2 = dist * dist;
+
+	int count = 0;
+
+	auto it = client_list.begin();
+	while (it != client_list.end()) {
+		Client *ent = it->second;
+
+		if (ent && ent->Connected() && ent->GetID() != caster->GetID()) {
+			if (DistanceSquared(ent->GetPosition(), target->GetPosition()) <= dist2) {
+				count++;
+			}
+		}
+		++it;
+	}
+
+	return count;
+}
+
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
 

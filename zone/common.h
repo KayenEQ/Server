@@ -639,6 +639,16 @@ typedef struct
 
 typedef struct
 {
+	uint16 increment;
+	int time_to_peak;
+	int time_to_ground;
+	int origin_z;
+	uint16 peak;
+
+} tgflux; //Vertical kb
+
+typedef struct
+{
 	uint16 spell_id;
 	uint16 target_id;
 	uint16 increment;

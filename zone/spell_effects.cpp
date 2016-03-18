@@ -2114,6 +2114,15 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				double new_x = spells[spell_id].pushback * sin(double(look_heading * 3.141592 / 180.0));
 				double new_y = spells[spell_id].pushback * cos(double(look_heading * 3.141592 / 180.0));
 
+
+				//C!Kayen - Foward Leap effect with trigger must have max set.
+				if (spells[spell_id].max[i] == 1)
+					SetLeapEffect(spell_id);
+
+				//C!Kayen - GFlux Timer
+				if (spells[spell_id].max[i] == 2)
+					SetGFluxEffectVars( spell_id, (spells[spell_id].base[i] * -1));
+
 				EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_ClientUpdate, sizeof(PlayerPositionUpdateServer_Struct));
 				PlayerPositionUpdateServer_Struct* spu = (PlayerPositionUpdateServer_Struct*)outapp_push->pBuffer;
 
@@ -2135,10 +2144,6 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				entity_list.QueueClients(this, outapp_push, true);
 				if(IsClient())
 					CastToClient()->FastQueuePacket(&outapp_push);
-
-				//C!Kayen - Foward Leap effect with trigger must have max set.
-				if (spells[spell_id].max[i] == 1)
-					SetLeapEffect(spell_id);
 
 				if (IsClient())
 					CastToClient()->SetKnockBackMeleeImmune(true); //C!Kayen - Melee MISS till next client position update.
@@ -3979,6 +3984,14 @@ snare has both of them negative, yet their range should work the same:
 		case 203:
 			result = max;
 			break;
+
+		//C!Kayen - Start Custom Formula
+		case 5000: //Distributation between min and max based on level with a gradient level modifier.
+			result = CalcDistributionByLevel(static_cast<float>(ubase),static_cast<float>(max), static_cast<float>(caster_level), 50.0f);
+			break;
+
+		//End - Custom
+
 		default:
 		{
 			if (formula < 100)
