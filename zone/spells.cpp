@@ -425,6 +425,8 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 	if (mana_cost == -1)
 		mana_cost = spell.mana;
 
+	mana_cost = CalcCustomManaRequired(mana_cost, spell_id); //C!Kayen - Custom Mana ratio costs
+
 	// mana is checked for clients on the frontend. we need to recheck it for NPCs though
 	// If you're at full mana, let it cast even if you dont have enough mana
 
@@ -443,7 +445,8 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 				Log.Out(Logs::Detail, Logs::Spells, "Spell Error not enough mana spell=%d mymana=%d cost=%d\n", GetName(), spell_id, my_curmana, mana_cost);
 				if(IsClient()) {
 					//clients produce messages... npcs should not for this case
-					Message_StringID(13, INSUFFICIENT_MANA);
+					//Message_StringID(13, INSUFFICIENT_MANA);
+					Message(13, "Insufficient Mana to cast this spell! (%i mana)", mana_cost); //C!Kayen NEW MSG to tell mana required
 					InterruptSpell();
 				} else {
 					InterruptSpell(0, 0, 0);	//the 0 args should cause no messages
@@ -453,7 +456,7 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		}
 	}
 
-	if (!TryEnchanterCastingConditions(spell_id)){ //C!Kayen
+	if (!TryEnchanterCastingConditions(spell_id)){ //C!Kayen - DO I NEED TO CHECK THIS TWICE?
 		InterruptSpell();
 		SendSpellBarEnable(spell_id);
 		return false;
@@ -807,6 +810,7 @@ void Mob::ZeroCastingVars()
 	SetCuredCount(0); //C!Kayen
 	ClearNPCLastName(); //C!Kayen
 	SetOriginCasterID(0); //C!Kayen
+	SetCastingFormulaValue(0); //C!Kayen
 }
 
 void Mob::InterruptSpell(uint16 spellid)
@@ -859,7 +863,7 @@ void Mob::InterruptSpell(uint16 message, uint16 color, uint16 spellid)
 		message = IsBardSong(spellid) ? SONG_ENDS_ABRUPTLY : INTERRUPT_SPELL;
 
 	if (spells[spellid].IsDisciplineBuff)
-		message = 1035; //C!Kayen - This sends nothing. [1035] ABILITY_INTERRUPT
+		message = NO_MSG_DISPLAY; //C!Kayen - This sends nothing. CONSIDER: [1035] ABILITY_INTERRUPT
 	
 	// clients need some packets
 	if (IsClient() && message != SONG_ENDS)
@@ -2313,14 +2317,12 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 		case DirectionalAE:
 		{
-			//ConeDirectionalCustom(spell_id, resist_adjust);//C!Kayen
 			entity_list.AEConeDirectional(this, spell_id, resist_adjust);//C!Kayen
 			break;
 		}
 
 		case Beam:
 		{
-			//BeamDirectional(spell_id, resist_adjust);
 			entity_list.AEBeamDirectional(this, spell_id, resist_adjust);//C!Kayen
  			break;
  		}
@@ -2354,6 +2356,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 	if(slot != USE_ITEM_SPELL_SLOT && slot != POTION_BELT_SPELL_SLOT && slot != TARGET_RING_SPELL_SLOT && mana_used > 0)
 	{
 		mana_used = GetActSpellCost(spell_id, mana_used);
+		mana_used = CalcCustomManaUsed(spell_id, mana_used); //C!Kayen
+
 		if (mgb) {
 			mana_used *= 2;
 		}
@@ -3912,6 +3916,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 	}
 
 	TryApplyEffectOrder(spelltar, spell_id); //C!Kayen
+
 	if (IsValidSpell(spells[spell_id].RecourseLink) && spells[spell_id].RecourseLink != spell_id)
 		SpellFinished(spells[spell_id].RecourseLink, this, 10, 0, -1, spells[spells[spell_id].RecourseLink].ResistDiff);
 

@@ -760,6 +760,7 @@ typedef enum {
 #define SE_Faith						1098 // implemented - Base = 
 #define SE_NumHitsAmtFaith				1099 // implemented - Base = Amt numhits (+/-) Limit (-1 if used as resource)
 #define SE_UtilityRainGFXLink			1100 // implemented - Base - Spell ID number of rain graphic display
+#define SE_SpellPowerAmtClients			1101 // implemented - Base - Mod based on clients near target/self Limit 0=Target, 1 = Self
 
 
 
@@ -844,6 +845,7 @@ struct SPDat_Spell_Struct
 /* 149 */	//int deletable;
 /* 150 */	uint16 RecourseLink;
 /* 151 */	bool no_partial_resist;	// 151: -1, 0, or 1
+/* 152 */	int mana_ratio; //C!Kayen
 								// 152 & 153: all set to 0
 /* 154 */	int8 short_buff_box;	// != 0, goes to short buff box.
 /* 155 */	int descnum; // eqstr of description of spell

@@ -516,6 +516,7 @@ Mob::Mob(const char* in_name,
 	for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
 
 	aeduration_iteration = 0;
+	casting_formula_value = 0;
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
@@ -6227,127 +6228,6 @@ void Mob::CastOnClosestTarget(uint16 spell_id, int16 resist_adjust,int maxtarget
 		}
 	}
 }
-//!DEPRECIATED
-bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget, Mob *target)
-{
-	/*
-	float ae_width = spells[spell_id].range; //This is the width of the AE that will hit targets.
-	float radius = spells[spell_id].aoerange; //This is total area checked for targets.
-	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
-	*/
-
-	float ae_width = spells[spell_id].aoerange; //This is the width of the AE that will hit targets.
-	float radius = spells[spell_id].range; //This is total area checked for targets.
-	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
-
-	bool taget_exclude_npc = false; //False by default!
-			
-	bool target_client_only = false;
-
-	bool target_found = false;
-
-	if (IsBeneficialSpell(spell_id) && IsClient())
-		target_client_only = true;
-
-	if (!IsClient() && taget_exclude_npc)
-		target_client_only = true;
-
-	Shout("Start Cube ae_width %.2f AOE range %.2f min range %.2f", ae_width, radius, spells[spell_id].min_range);
-	
-	std::list<Mob*> targets_in_range;
-	std::list<Mob*> targets_in_rectangle;
-	std::list<Mob*>::iterator iter;
-
-	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, radius, radius / 2, targets_in_range);
-	iter = targets_in_range.begin();
-	
-	float dX = 0;
-	float dY = 0;
-	float dZ = 0;
-	
-	if (!FromTarget){
-		CalcDestFromHeading(GetHeading(), radius, 5, GetX(), GetY(), dX, dY,  dZ);
-		dZ = GetZ();
-	}
-	else {
-		if (target){
-			dX = target->GetX();
-			dY = target->GetY();
-			dZ = target->GetZ();
-		}
-		else
-			return false;
-	}
-
-	
-	//Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
-	//'DEFENDER' is the virtual end point of the line being drawn based on range from which slope is derived. 
-
-	float DEFENDER_X = dX;
-	float DEFENDER_Y = dY;
-	float ATTACKER_X = GetX();
-	float ATTACKER_Y = GetY();
-
-	float y_dif = DEFENDER_Y - ATTACKER_Y;
-	float x_dif = DEFENDER_X - ATTACKER_X;
-
-	float x1 = ATTACKER_X;
-	float y1 = ATTACKER_Y;
-	float x2 = DEFENDER_X;
-	float y2 = DEFENDER_Y;
-
-	//FIND SLOPE: Put it into the form y = mx + b
-	float m = (y2 - y1) / (x2 - x1);
-	float b = (y1 * x2 - y2 * x1) / (x2 - x1);
- 
-	while(iter != targets_in_range.end())
-	{
-		if (!(*iter) || (target_client_only && ((*iter)->IsNPC() && !(*iter)->IsPetOwnerClient())) 
-			|| (*iter)->BehindMob(this, (*iter)->GetX(),(*iter)->GetY())){
-		    ++iter;
-			continue;
-		}
-		
-		//(*iter)->Shout("In AOE range");
-
-		float Unit_X =(*iter)->GetX();
-		float Unit_Y =(*iter)->GetY();
-		float y_dif2 = Unit_Y - ATTACKER_Y;
-	
-		//#Only target units in the quadrant of the attacker using y axis
-		if ( ((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0)))
-		{					
-			//# target point is (x0, y0)
-			float x0 = Unit_X;
-			float y0 = Unit_Y;
-			//# shortest distance from line to target point
-			float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
-					
-			if (d <= ae_width)
-			{
-				//(*iter)->Shout("In BEAM range D: [%.2f]" ,d);
-
-				if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
-					(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
-					target_found = true;
-					if (maxtargets) 
-						targets_in_rectangle.push_back(*iter);
-					else
-						SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
-				}
-			}
-		}
-		++iter;
-	}
-
-	if (maxtargets)
-		CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_rectangle);
-
-	if (!target_found)
-		DirectionalFailMessage(spell_id);
-	
-	return true;
-}
 
 void Mob::ClientFaceTarget(Mob* MobToFace)
 {
@@ -7020,8 +6900,6 @@ void Mob::SpellProjectileEffectTargetRing()
 			continue;
 		
 		if (ProjectileRing[i].increment > ProjectileRing[i].hit_increment){
-		//Shout("Inc %i Hit %i", projectile_increment_ring[i], projectile_hit_ring[i]);
-
 			Mob* target = entity_list.GetMobID(ProjectileRing[i].target_id);
 			if (target){
 				uint16 p_spell_id = ProjectileRing[i].spell_id;
@@ -7035,7 +6913,6 @@ void Mob::SpellProjectileEffectTargetRing()
 							//ProjectileTargetRingFailMessage(p_spell_id); //No longer needed since does graphic.
 							//This provides a particle effect even if the projectile MISSES. Casts a graphic only spell.
 							SendSpellAnimGFX(target->GetID(),GetGraphicSpellID(p_spell_id), (spells[p_spell_id].range + 10.0f));
-							//SpellFinished((spells[p_spell_id].spellanim + 10000), target, 10, 0, -1, -1000);
 						}
 						
 						//Reset Projectile Ring Variables
@@ -7306,15 +7183,16 @@ void Mob::CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* ca
 	mod += CalcSpellPowerHeightMod(damage, spell_id, caster);
 	mod += CalcFromCrouchMod(damage, spell_id,caster, effectid);
 	mod += CalcSpellPowerFromBuffSpellGroup(spell_id, caster);
-	mod += CalcSpellPowerFromAEDuration(spell_id, caster, 1);
+	mod += CalcSpellPowerAmtClients(spell_id, effectid, caster);
 
+	mod += CalcSpellPowerFromAEDuration(spell_id, caster, 1);
 	mod += caster->GetAEDurationIteration() * 10; //Need to revise this.
 
-	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
+	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
 	if (mod)
 		damage += damage*mod/100;
 
-	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
+	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
 }
 
 //#### C!LastName
@@ -7354,7 +7232,7 @@ void Mob::SpellCastingTimerDisplay()
 		uint32 remain_time = GetSpellEndTime().GetRemainingTime(); 
 		uint32 flat_time = remain_time / 1000;
 		uint32 flat_time_cmp =  (flat_time * 1000) + 30;
-		//Shout("remain %i < flat_time_cmp %i", remain_time, flat_time_cmp);
+		//Shout("DEBUG: remain %i < flat_time_cmp %i", remain_time, flat_time_cmp);
 		if (remain_time < flat_time_cmp) {
 
 			std::string WT;
@@ -7367,7 +7245,7 @@ void Mob::SpellCastingTimerDisplay()
 				WT += "< ";
 				WT += itoa(flat_time);
 				WT += " >";
-				//Shout("Remain Time %i :: %s", GetSpellEndTime().GetRemainingTime(), WT);
+				//Shout("DEBUG: Remain Time %i :: %s", GetSpellEndTime().GetRemainingTime(), WT);
 			
 				if (strlen(WT.c_str()) >= 64)
 					WT = '\0'; //Prevent buff overflow
@@ -7394,14 +7272,13 @@ void Client::DoAdjustRecastTimer()
 		if(recast_mem_spells[i]) {
 			if (IsValidSpell(m_pp.mem_spells[i])){
 				uint32 RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
-				//Shout("DoAdjustRecastTimer(): RemainTime %i RecastEnd %i   [%s]", RemainTime,recast_mem_spells[i], spells[m_pp.mem_spells[i]].name);
-				//Shout("DoAdjustRecastTimer(): <%s> %i < %i", spells[m_pp.mem_spells[i]].name, RemainTime, recast_mem_spells[i]);
+				//Shout("DEBUG: DoAdjustRecastTimer(): RemainTime %i RecastEnd %i   [%s]", RemainTime,recast_mem_spells[i], spells[m_pp.mem_spells[i]].name);
+				//Shout("DEBUG: DoAdjustRecastTimer(): <%s> %i < %i", spells[m_pp.mem_spells[i]].name, RemainTime, recast_mem_spells[i]);
 				if (RemainTime <= recast_mem_spells[i]){
-					//Shout("DoAdjustRecastTimer::: Trigger (Adjust Time) [%i] NAME: %s", recast_mem_spells[i], spells[CastToClient()->m_pp.mem_spells[i]].name);
+					//Shout("DEBUG: DoAdjustRecastTimer::: Trigger (Adjust Time) [%i] NAME: %s", recast_mem_spells[i], spells[CastToClient()->m_pp.mem_spells[i]].name);
 					
 					//Cast the Refresh Spell specified in the array.
 					if (IsValidSpell(refreshid_mem_spells[i])){
-						//Shout("refreshid_mem_spells[i] = %i", refreshid_mem_spells[i]);
 						SpellFinished(refreshid_mem_spells[i],this);
 					}
 				
@@ -7474,24 +7351,24 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
 			SpellGroupLimited = true;
 	}
 
-	//Shout("EffectAdjustRecastTimer::: Recast Adjust:[ %i] SpellRefresh ID: [%i] SpellGroup: [%i] Spell Group Limit Bool [%i]", recast_adjust, spellid_refresh, spellgroupadjust,SpellGroupLimited);
+	//Shout("DEBUG: EffectAdjustRecastTimer::: Recast Adjust:[ %i] SpellRefresh ID: [%i] SpellGroup: [%i] Spell Group Limit Bool [%i]", recast_adjust, spellid_refresh, spellgroupadjust,SpellGroupLimited);
 	if (recast_adjust){
 		for(unsigned int i =0 ; i < MAX_PP_MEMSPELL; ++i) {
 			memspell_id = m_pp.mem_spells[i];
 			RemainTime = 0;
 			if(IsValidSpell(memspell_id)) {
-			//Shout("[%i]	pp.Group [%i] SpelltoAdjust.Group",i, spells[memspell_id].spellgroup, spellgroupadjust);
+			//Shout("DEBUG: [%i]	pp.Group [%i] SpelltoAdjust.Group",i, spells[memspell_id].spellgroup, spellgroupadjust);
 
 				if (SpellGroupLimited && (spellgroupadjust && (spells[memspell_id].spellgroup == spellgroupadjust)))
 					RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
 				else if (!SpellGroupLimited)
 					RemainTime = GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]);
 
-				//Shout("RemainTime %i  > recast_adjust %i", RemainTime, recast_adjust);
+				//Shout("DEBUG: RemainTime %i  > recast_adjust %i", RemainTime, recast_adjust);
 				if (RemainTime && (RemainTime > recast_adjust)){
 					recast_mem_spells[i] = recast_adjust;
 					refreshid_mem_spells[i] = spellid_refresh;
-					//Shout("EffectAdjustRecastTimer::: <Activiated %s > Recast ADjust %i [ %i ] Remain Time: %i ", spells[memspell_id].name,recast_adjust,recast_mem_spells[i], RemainTime);
+					//Shout("DEBUG: EffectAdjustRecastTimer::: <Activiated %s > Recast ADjust %i [ %i ] Remain Time: %i ", spells[memspell_id].name,recast_adjust,recast_mem_spells[i], RemainTime);
 					SetAdjustRecastTimer(true);
 					adjustrecast_timer.Start(1000);
 				}
@@ -7499,8 +7376,8 @@ void Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
 		}
 	}
 	
-	//Shout("%i SE_FcTimerRefresh:::: Remain %i", i, CastToClient()->GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]));
-	//Shout("%i SE_FcTimerRefresh:::: Expired %i",i,CastToClient()->GetPTimers().Expired(&database, pTimerSpellStart + spell_id, false));
+	//Shout("DEBUG: %i SE_FcTimerRefresh:::: Remain %i", i, CastToClient()->GetPTimers().GetRemainingTime(pTimerSpellStart + CastToClient()->m_pp.mem_spells[i]));
+	//Shout("DEBUG: %i SE_FcTimerRefresh:::: Expired %i",i,CastToClient()->GetPTimers().Expired(&database, pTimerSpellStart + spell_id, false));
 }
 
 uint16 Mob::GetSpellGroupFromLimit(uint16 spell_id)
@@ -8300,7 +8177,6 @@ void Mob::CalcSpellPowerHeightZDiff(uint16 spell_id, Mob* spell_target)
 				origin_z = gflux.origin_z + ((gflux.increment * mod_up) / 100);
 			else
 				origin_z = gflux.origin_z + (((145 - (gflux.increment - gflux.peak)) * mod_down) / 100);
-			//Shout("CAST Origin Z %.2f vs GET Z %.2f [INCREMENT %i]", origin_z, GetZ(), gflux.increment);
 		}
 		SetCastingZDiff((static_cast<int>(origin_z) - static_cast<int>(spell_target->GetZ())));
 	}
@@ -8349,8 +8225,6 @@ void Mob::GravityFlux()
 
 		//FOR POWER 500 - NARROWLY CODED
 
-		Shout("gflux_increment %i [%i] [%i]", gflux.increment, gflux.time_to_peak, gflux.time_to_ground);
-		
 		gflux.increment++;
 
 		if (gflux.increment ==  gflux.time_to_peak){
@@ -9294,7 +9168,7 @@ void Client::TryChargeEffect()
 				charge_effect_increment = 1;
 		}
 
-		//Shout("Distance %i Increment %i",GetChargeEffect(), charge_effect_increment);
+		//Shout("DEBUG: Distance %i Increment %i",GetChargeEffect(), charge_effect_increment);
 	}
 }
 
@@ -9304,7 +9178,7 @@ void Client::TryChargeHit()
 		return;
 
 	charge_effect_increment++;
-	//Shout("[%i] Client: X %.2f Y %.2f Z %.2f",charge_effect_increment, GetX(), GetY(), GetZ());
+	//Shout("DEBUG: [%i] Client: X %.2f Y %.2f Z %.2f",charge_effect_increment, GetX(), GetY(), GetZ());
 	 
 	Mob* target = nullptr;
 	target = GetTarget();
@@ -9338,7 +9212,7 @@ void Client::TryChargeHit()
 
 		damage += damage*mod/100;
 
-		//Shout("Trigger Charge Hit: Incr [%i] Damage [%i / %i] Mod [%i]", charge_effect_increment, 1 + GetAC()/2 ,damage, mod);
+		//Shout("DEBUG: Trigger Charge Hit: Incr [%i] Damage [%i / %i] Mod [%i]", charge_effect_increment, 1 + GetAC()/2 ,damage, mod);
 
 		Message(MT_Spells, "You slams into %s !", target->GetCleanName());
 		entity_list.MessageClose(this, true, 200, MT_Spells, "%s slams into %s !", GetCleanName(), target->GetCleanName());
@@ -9440,7 +9314,7 @@ void Mob::BuffFastProcess()
 			--buffs[buffs_i].fastticsremaining;
 			buffs[buffs_i].ticsremaining = 1 + buffs[buffs_i].fastticsremaining/6;
 			
-			Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
+			//Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
 			if (buffs[buffs_i].fastticsremaining == 0) 
 				BuffFadeBySlot(buffs_i);
 
@@ -9658,7 +9532,23 @@ int Mob::CalcDistributionModifer(int range, int min_range, int max_range, int mi
 	return mod;
 }
 
-int Mob::CalcDistributionByLevel(float ubase, float max, float caster_level, float max_level)
+float Mob::CalcDistributionModiferFloat(float range, float min_range, float max_range, float min_mod, float max_mod)
+{
+	if (range > max_range)
+		range = max_range;
+
+	float dm_range = max_range - min_range;
+	float dm_mod_interval = max_mod - min_mod;
+	float dist_from_min = range - min_range;
+
+	if (!dm_range)
+		return 0;//Saftey
+	
+	float mod = min_mod + (dist_from_min * (dm_mod_interval/dm_range));
+	return mod;
+}
+
+int Mob::CalcDistributionByLevel(float formula, float ubase, float max, float caster_level, float max_level)
 {
 	/*TO CALCULATE AS INTS - DevNote: Just leaving as float for now
 	int level_mod = 100 + ((35.0 - (caster_level)) * 4);
@@ -9675,16 +9565,22 @@ int Mob::CalcDistributionByLevel(float ubase, float max, float caster_level, flo
 	Increasing MAX_GRADIENT will cause a more expodiental growth curve. While lowering it flattens the curve ect.
 	[When making new spells, set base value to -1 and max to whatever max. Value at level 1 will be the first interval]
 	*/
+	//heal (2) for max 500P
+	//damage(3) max 800HP
 
-	/*
-	float level_distribution = 0.014f;
-	level_distribution = (3 - 1) / (max_level - 1);
-	*/
+	if (GetCastingFormulaValue())
+		return GetCastingFormulaValue();
 
-	float level_mod = 1.0f + (max_level - caster_level) * 0.041f;
+	float level_distribution = 0;
+	float level_distribution_max = (formula - 5000.0f) / 100.0f;
+	level_distribution = (level_distribution_max - 1.0f) / (max_level - 1.0f);
+
+	float level_mod = 1.0f + (max_level - caster_level) * level_distribution;
 	float interval = (max - ubase) / (max_level - 1.0f);
 	float base_mod = (interval/level_mod) * (caster_level);
-	return ubase + static_cast<int>(base_mod);
+
+	SetCastingFormulaValue(static_cast<int>(ubase + base_mod));
+	return static_cast<int>(ubase + base_mod);
 
 
 }
@@ -9796,136 +9692,12 @@ void Mob::ApplyEffectResource(uint16 spellid, int slot)
 		SpellFinished(trigger_spell_id, this,10, 0, -1, spells[trigger_spell_id].ResistDiff);
 }
 
-void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
-{
-			//C!Kayen - Do polygon area if no directional is set.
-			if (!spells[spell_id].directional_start && !spells[spell_id].directional_end){
-				//SpellGraphicTempPet(spell_id, 2);
-				entity_list.AEBeamDirectional(this, spell_id, resist_adjust);
-				//BeamDirectionalCustom(spell_id, resist_adjust);
-				Shout("!!!! No actual damage being applied");
-				//RectangleDirectional(spell_id,resist_adjust);
-				return;
-			}
-
-			SpellGraphicTempPet(1, spell_id, spells[spell_id].aoerange); //Experimental - only cast on if YOUR pet AND not cast on yet.
-
-			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
-			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
-			bool target_found = false; //C!Kayen - Determine if message for no targets hit.
-
-			bool taget_exclude_npc = false; //False by default!
-			bool target_client_only = false;
-
-			if (IsBeneficialSpell(spell_id) && IsClient())
-				target_client_only = true;
-
-			if (!IsClient() && taget_exclude_npc)
-				target_client_only = true;
-
-			float angle_start = spells[spell_id].directional_start + (GetHeading() * 360.0f / 256.0f);
-			float angle_end = spells[spell_id].directional_end + (GetHeading() * 360.0f / 256.0f);
-
-			while(angle_start > 360.0f)
-				angle_start -= 360.0f;
-
-			while(angle_end > 360.0f)
-				angle_end -= 360.0f;
-
-			std::list<Mob*> targets_in_range;
-			std::list<Mob*> targets_in_cone; //C!Kayen - Get the targets within the cone
-			std::list<Mob*>::iterator iter;
-
-			float aoerange = spells[spell_id].aoerange;
-			float min_aoerange = spells[spell_id].min_range;
-
-			if (IsClient() && IsRangeSpellEffect(spell_id)){
-				min_aoerange = 0.0f; //Calculated in the archery fire as a miss.
-				if (aoerange == UseRangeFromRangedWpn())//Flags aoe range to use weapon ranage.
-					aoerange = CastToClient()->GetArcheryRange(nullptr);
-			}
-
-			entity_list.GetTargetsForConeArea(this, min_aoerange, aoerange, aoerange / 2, targets_in_range);
-			iter = targets_in_range.begin();
-
-			//C!Kayen - Allow to hit caster
-			if (IsBeneficialSpell(spell_id) && DirectionalAffectCaster(spell_id))
-				SpellOnTarget(spell_id,this, false, true, resist_adjust);
-
-			while(iter != targets_in_range.end())
-			{
-				if (!(*iter) || (!CastToClient()->GetGM() && target_client_only && ((*iter)->IsNPC() && !(*iter)->IsPetOwnerClient()))){
-				    ++iter;
-					continue;
-				}
-
-				if (!target_client_only && ((*iter)->IsNPC() && (*iter)->IsPetOwnerClient())){
-					++iter;
-					continue; //Skip client pets for determinetal spells
-				}
-
-				if ((*iter)->GetUtilityTempPetSpellID()){
-					++iter;
-					continue; //Skip Projectile and SpellGFX temp pets.
-				}
-
-				float heading_to_target = (CalculateHeadingToTarget((*iter)->GetX(), (*iter)->GetY()) * 360.0f / 256.0f);
-				while(heading_to_target < 0.0f)
-					heading_to_target += 360.0f;
-
-				while(heading_to_target > 360.0f)
-					heading_to_target -= 360.0f;
-
-				if(angle_start > angle_end)
-				{
-					if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||
-						(heading_to_target >= 0.0f && heading_to_target <= angle_end))
-					{
-						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los){
-							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
-							target_found = true; //C!Kayen
-
-							if (maxtargets)
-								targets_in_cone.push_back(*iter);
-							else
-								SpellOnTarget(spell_id,(*iter), false, true, resist_adjust);
-
-						}
-					}
-				}
-				else
-				{
-					if(heading_to_target >= angle_start && heading_to_target <= angle_end)
-					{
-						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
-							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
-							target_found = true; //C!Kayen
-							if (maxtargets) 
-								targets_in_cone.push_back(*iter);
-							else
-								SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
-						}
-					}
-				}
-				++iter;
-			}
-
-			//C!Kayen - If maxtarget is set it will hit each of the closet targets up to max amount.
-			//Ie. If you set to 1, it will only hit the closest target in the beam.
-			if (maxtargets)
-				CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cone);
-
-			if (!target_found)
-				DirectionalFailMessage(spell_id);
-
-}
-
 
 void Mob::RangerGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used)
 {
 	if (!spellbonuses.RangerGainNumhitsSP[0])
 		return;
-	//Shout("Type: %i Amt %i Buff %i Max %i",type, spellbonuses.RangerGainNumhitsSP[0],spellbonuses.RangerGainNumhitsSP[1],spellbonuses.RangerGainNumhitsSP[2]);
+	//Shout("DEBUG: Type: %i Amt %i Buff %i Max %i",type, spellbonuses.RangerGainNumhitsSP[0],spellbonuses.RangerGainNumhitsSP[1],spellbonuses.RangerGainNumhitsSP[2]);
 	int amt = 0;
 	int slot = -1;
 
@@ -10381,9 +10153,9 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	if (range == 0)
 		return false;
 	
-	float range_spell = spells[spell_id].range;
+	float range_spell = spells[spell_id].range + GetRangeDistTargetSizeMod(target);
 	
-	if (!range_spell)
+	if (!spells[spell_id].range)
 		range_spell = spells[spell_id].aoerange;
 
 	if (!UseEquipedBowRange(spell_id))//Use Default value [Spell Range set to 351]
@@ -10395,8 +10167,8 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 	if (min_range_sp > min_range)
 		min_range = min_range_sp;
 
-	float dist = DistanceSquared(target->GetPosition(), GetPosition());
-	//Shout("Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
+	float dist = DistanceSquared(target->GetPosition(), GetPosition() );
+	//Shout("DEBUG: Dist %.2f Max %.2f Min %.2f", dist, range, min_range);	
 	if(dist > (range * range)) {
 		Message_StringID(13, TARGET_OUT_OF_RANGE);
 		return false;
@@ -10705,7 +10477,7 @@ void Mob::SetLeapSpellEffect(uint16 spell_id, int velocity, float zmod1, float z
 	leapSE.dest_z = dZ;
 	leapSE.dest_h = dH;
 	float pre_mod = CalculateDistance(dX, dY, dZ);
-	Shout("Leap Debug: Zmod1 %.2f Zmod2 %.2f [Distance %.2f", zmod1,zmod2, pre_mod);
+	//Shout("DEBUG: Leap Debug: Zmod1 %.2f Zmod2 %.2f [Distance %.2f", zmod1,zmod2, pre_mod);
 	leapSE.z_bound_mod = pre_mod / zmod1;
 	leapSE.mod = pre_mod / zmod2;
 	
@@ -10940,7 +10712,7 @@ int Mob::GetRakePositionBonus(Mob* target)
 	else if (InFrontMob(target,GetX(), GetY()))
 		position = 3;
 
-	//Shout("Find POsition %i ID COMP %i %i", position, RakePosition[4], target->GetID());
+	//Shout("DEBUG: Find POsition %i ID COMP %i %i", position, RakePosition[4], target->GetID());
 
 	if (position == -1)
 		return 0; //Error No Position found
@@ -10961,8 +10733,8 @@ int Mob::GetRakePositionBonus(Mob* target)
 			highest++;
     }
 
-	//Shout("Highest %i", highest);
-	//Shout("Array %i %i %i %i ID %i", RakePosition[0],RakePosition[1],RakePosition[2],RakePosition[3],RakePosition[4]);
+	//Shout("DEBUG: Highest %i", highest);
+	//Shout("DEBUG: Array %i %i %i %i ID %i", RakePosition[0],RakePosition[1],RakePosition[2],RakePosition[3],RakePosition[4]);
 
 	if (!RakePosition[position]){
 		RakePosition[position] = 1;
@@ -11040,7 +10812,7 @@ void Mob::BeastGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used)
 {
 	if (!spellbonuses.BeastGainNumhitsSP[0])
 		return;
-	//Shout("Type: %i Amt %i Buff %i Max %i",type, spellbonuses.RangerGainNumhitsSP[0],spellbonuses.RangerGainNumhitsSP[1],spellbonuses.RangerGainNumhitsSP[2]);
+	//Shout("DEBUG: Type: %i Amt %i Buff %i Max %i",type, spellbonuses.RangerGainNumhitsSP[0],spellbonuses.RangerGainNumhitsSP[1],spellbonuses.RangerGainNumhitsSP[2]);
 	int amt = 0;
 	int slot = -1;
 
@@ -11134,7 +10906,7 @@ void Mob::AdjustNumHitsFaith(uint16 spell_id, int effectid)
 
 	if (IsClient() && spellbonuses.Faith[0] && IsValidSpell(spell_id)){
 
-		//Shout("1 SE_NumHitsAmtFaith 1 Faith %i %i %i %i [%i]", spellbonuses.Faith[0],spellbonuses.Faith[1],spellbonuses.Faith[2],spellbonuses.Faith[3], effectid);
+		//Shout("DEBUG: SE_NumHitsAmtFaith 1 Faith %i %i %i %i [%i]", spellbonuses.Faith[0],spellbonuses.Faith[1],spellbonuses.Faith[2],spellbonuses.Faith[3], effectid);
 		
 		int i = effectid;
 		if (i == -1)//Determines if checked as resource drain.
@@ -11249,7 +11021,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 
 	int column_distance = 0;
 	float FIRST_ROW = 0; //Distance for beam first row.
-	Shout("ROW COUNT %i Mult %i", ROW_COUNT, GetGFXMultiplier(spell_id));
+	//Shout("DEBUG: ROW COUNT %i Mult %i", ROW_COUNT, GetGFXMultiplier(spell_id));
 	ROW_COUNT = ROW_COUNT * GetGFXMultiplier(spell_id);
 
 	if (type == 1)
@@ -11278,7 +11050,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 		origin_z = target->GetZ();
 	}
 
-	Shout("DEBUG: Start GFX: Column Distance %i ROW COUNT %i [AOE RANGE %i] [Heading %.2f]", column_distance, ROW_COUNT, static_cast<int>(aoerange), origin_heading);
+	//Shout("DEBUG: Start GFX: Column Distance %i ROW COUNT %i [AOE RANGE %i] [Heading %.2f]", column_distance, ROW_COUNT, static_cast<int>(aoerange), origin_heading);
 
 	if (type == 1){ //PBAE / Directional
 		for(int i = 1; i <= ROW_COUNT; i++){
@@ -11346,7 +11118,7 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 
 void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y)
 {
-	Shout("START DEBUG: AOE RANGE %.2f [SIZE %i DURATIOn %i]", aoerange, GetGFXSize(spell_id), GetGFXDuration(spell_id));
+	//Shout("START DEBUG: AOE RANGE %.2f [SIZE %i DURATIOn %i]", aoerange, GetGFXSize(spell_id), GetGFXDuration(spell_id));
 
 	if (aoerange <= spells[spell_id].min_range)
 		return;
@@ -11358,8 +11130,6 @@ void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange,
 		gfx_spell_id = GetAERainGFXSpellID(spell_id);
 	else
 		gfx_spell_id = GetGraphicSpellID(spell_id);
-
-	Shout("Spell GFX %i", gfx_spell_id);
 
 	float total_angle = 360.0f;
 
@@ -11412,7 +11182,7 @@ void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange,
 
 void Mob::SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y)
 {
-	Shout("START BEAM DEBUG: Height %.2f Width %.2f [GFX Size %i NPCID %i]", aoerange, spells[spell_id].aoerange, GetGFXSize(spell_id),GetGraphicNPCTYPEID(spell_id));
+	//Shout("DEBUG: START BEAM DEBUG: Height %.2f Width %.2f [GFX Size %i NPCID %i]", aoerange, spells[spell_id].aoerange, GetGFXSize(spell_id),GetGraphicNPCTYPEID(spell_id));
 
 	uint32 duration = GetGFXDuration(spell_id);
 	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
@@ -11440,7 +11210,7 @@ void Mob::SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange
 		if (width > length)
 			packet_range = width;
 
-	Shout("START BEAM DEBUG: COLUMN_COUNT  %i", COLUMN_COUNT);
+	//Shout("DEBUG: START BEAM DEBUG: COLUMN_COUNT  %i", COLUMN_COUNT);
 	
 	float start_dX = 0.0f;
 	float start_dY = 0.0f;
@@ -11476,7 +11246,7 @@ void Mob::SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange
 				SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, packet_range);
 
 			distance = distance + spacer_length;
-			Shout("START BEAM DEBUG: New DISTANCE  %.2f [C Count %i] [Spellid %i] [Z %.2f]", distance, i, gfx_spell_id, dZ);
+			//Shout("DEBUG: START BEAM DEBUG: New DISTANCE  %.2f [C Count %i] [Spellid %i] [Z %.2f]", distance, i, gfx_spell_id, dZ);
 		}
 		else
 			Shout("DEBUG:: Critical error SPELL %i no temppet (NPCTYPE ID %i) Found in database", spell_id, gfx_npctype_id );
@@ -11538,6 +11308,9 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	}
 	else //When NPC is caster
 		target_client_only = true;
+
+	if (!bad && DirectionalAffectCaster(spell_id))//Affect caster
+		caster->SpellOnTarget(spell_id,caster, false, true, resist_adjust);
 
 	//Start - Calculate cooridinates of rectangle
 	float origin_heading = caster->GetHeading();
@@ -11908,6 +11681,41 @@ void Mob::SendSpellAnimGFX(uint16 targetid, uint16 spell_id, float aoerange)
 	entity_list.QueueCloseClients(this, &app, false, aoerange);
 }
 
+int32 Mob::CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster)
+{
+	if (!IsValidSpell(spell_id) || !caster)
+		return 0;
+
+	int base = 0;
+	int limit = 0;
+	int max = 0;
+	int count = 0;
+
+	for (int i = 0; i <= EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_SpellPowerAmtClients){
+
+			if (spells[spell_id].base[i]){
+
+				int base = spells[spell_id].base[i];
+				int limit = spells[spell_id].base2[i];
+				int max = spells[spell_id].max[i];
+				break;
+			}
+		}
+	}
+
+	if (base){
+
+		if (!max)
+			count = entity_list.CountCloseClients(this, caster, limit);
+		else
+			count = entity_list.CountCloseClients(caster, caster, limit);
+	
+	}
+	return count * base / 100;
+}
+
 int EntityList::CountCloseClients(Mob *target, Mob *caster, float dist)
 {
 	float dist2 = dist * dist;
@@ -11929,6 +11737,68 @@ int EntityList::CountCloseClients(Mob *target, Mob *caster, float dist)
 	return count;
 }
 
+int32 Mob::CalcCustomManaRequired(int32 mana_cost, uint16 spell_id)
+{
+	if (!spells[spell_id].mana_ratio) //Dmg/Mana = ratio
+		return mana_cost;
+	
+	int value = CalcSpellEffectValue(spell_id, 0, GetLevel());
+
+	if (value < 0)
+		value *= -1;
+
+	int new_mana_cost = (value * 100 / spells[spell_id].mana_ratio);
+
+	//For cast on charge , you must have at least the max mana value. Then when consumed need to divide "mana_used".
+
+	if (spells[spell_id].cast_from_crouch)
+		new_mana_cost *= 5;
+	
+	if (new_mana_cost > 0)
+		return new_mana_cost;
+	else
+		return mana_cost;
+}
+
+int32 Mob::CalcCustomManaUsed(uint16 spell_id, int32 mana_used)
+{
+	//Shout("New Mana used = %i %i [DAMGE %i]", mana_used, GetCastFromCrouchInterval(),GetCastingFormulaValue());
+	//Shout("TEST RATIO MOD %.2f", CalcDistributionModiferFloat(GetCastFromCrouchInterval(), 1, 5, 100, spells[spell_id].mana_ratio));
+	
+	if (!spells[spell_id].mana_ratio)
+		return mana_used;
+
+	int new_mana_used = mana_used;
+
+	if (spells[spell_id].cast_from_crouch){
+
+		int base_mana = mana_used / 5;
+
+		int penalty_ratio = CalcDistributionModiferFloat(GetCastFromCrouchInterval(), 1, 5, 100, spells[spell_id].mana_ratio);
+		int penalty_mod = (((GetCastingFormulaValue())*100/penalty_ratio)*100)/base_mana;
+
+		/*
+		int mana_penalty = 100; //In theory you should do a distrubtion from RATIO to 1 (Ie 300 - 100)
+		if (GetCastFromCrouchInterval() == 1) { mana_penalty = 300; } //Ratio 1.0 x 100 ect
+		if (GetCastFromCrouchInterval() == 2) { mana_penalty = 200; } //Ratio 1.5
+		if (GetCastFromCrouchInterval() == 3) { mana_penalty = 150; } //Ratio 2.0
+		if (GetCastFromCrouchInterval() == 4) { mana_penalty = 120; } //Ratio 2.5 [ ((Damage/Ratio)/mana_used)/interval)]
+		*/
+
+		if (GetCastFromCrouchInterval())
+			new_mana_used = ((base_mana * penalty_mod)/100) * GetCastFromCrouchInterval();
+		else if (GetCastFromCrouchIntervalProj())
+			new_mana_used = base_mana * GetCastFromCrouchIntervalProj();
+	
+	
+		//Shout("New Mana used = OLD %i [NEW %i] %i [PENALTY %i]", mana_used, new_mana_used, GetCastFromCrouchInterval(),penalty_mod);
+	}
+
+	if (new_mana_used > 0)
+		return new_mana_used;
+	else
+		return mana_used;
+}
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
 
@@ -13186,4 +13056,242 @@ bool Mob::ExistsProjectileRing()
 	return false;
 }
 
+*/
+
+/*
+//DEPRECIATED NOW CALLED FROM ENTITYLIST
+void Mob::ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust)
+{
+			//C!Kayen - Do polygon area if no directional is set.
+			if (!spells[spell_id].directional_start && !spells[spell_id].directional_end){
+				//SpellGraphicTempPet(spell_id, 2);
+				entity_list.AEBeamDirectional(this, spell_id, resist_adjust);
+				//BeamDirectionalCustom(spell_id, resist_adjust);
+				//RectangleDirectional(spell_id,resist_adjust);
+				return;
+			}
+
+			SpellGraphicTempPet(1, spell_id, spells[spell_id].aoerange); //Experimental - only cast on if YOUR pet AND not cast on yet.
+
+			//C!Kayen - TODO Need to add custom spell effect to set target_exclude_NPC
+			int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+			bool target_found = false; //C!Kayen - Determine if message for no targets hit.
+
+			bool taget_exclude_npc = false; //False by default!
+			bool target_client_only = false;
+
+			if (IsBeneficialSpell(spell_id) && IsClient())
+				target_client_only = true;
+
+			if (!IsClient() && taget_exclude_npc)
+				target_client_only = true;
+
+			float angle_start = spells[spell_id].directional_start + (GetHeading() * 360.0f / 256.0f);
+			float angle_end = spells[spell_id].directional_end + (GetHeading() * 360.0f / 256.0f);
+
+			while(angle_start > 360.0f)
+				angle_start -= 360.0f;
+
+			while(angle_end > 360.0f)
+				angle_end -= 360.0f;
+
+			std::list<Mob*> targets_in_range;
+			std::list<Mob*> targets_in_cone; //C!Kayen - Get the targets within the cone
+			std::list<Mob*>::iterator iter;
+
+			float aoerange = spells[spell_id].aoerange;
+			float min_aoerange = spells[spell_id].min_range;
+
+			if (IsClient() && IsRangeSpellEffect(spell_id)){
+				min_aoerange = 0.0f; //Calculated in the archery fire as a miss.
+				if (aoerange == UseRangeFromRangedWpn())//Flags aoe range to use weapon ranage.
+					aoerange = CastToClient()->GetArcheryRange(nullptr);
+			}
+
+			entity_list.GetTargetsForConeArea(this, min_aoerange, aoerange, aoerange / 2, targets_in_range);
+			iter = targets_in_range.begin();
+
+			//C!Kayen - Allow to hit caster
+			if (IsBeneficialSpell(spell_id) && DirectionalAffectCaster(spell_id))
+				SpellOnTarget(spell_id,this, false, true, resist_adjust);
+
+			while(iter != targets_in_range.end())
+			{
+				if (!(*iter) || (!CastToClient()->GetGM() && target_client_only && ((*iter)->IsNPC() && !(*iter)->IsPetOwnerClient()))){
+				    ++iter;
+					continue;
+				}
+
+				if (!target_client_only && ((*iter)->IsNPC() && (*iter)->IsPetOwnerClient())){
+					++iter;
+					continue; //Skip client pets for determinetal spells
+				}
+
+				if ((*iter)->GetUtilityTempPetSpellID()){
+					++iter;
+					continue; //Skip Projectile and SpellGFX temp pets.
+				}
+
+				float heading_to_target = (CalculateHeadingToTarget((*iter)->GetX(), (*iter)->GetY()) * 360.0f / 256.0f);
+				while(heading_to_target < 0.0f)
+					heading_to_target += 360.0f;
+
+				while(heading_to_target > 360.0f)
+					heading_to_target -= 360.0f;
+
+				if(angle_start > angle_end)
+				{
+					if((heading_to_target >= angle_start && heading_to_target <= 360.0f) ||
+						(heading_to_target >= 0.0f && heading_to_target <= angle_end))
+					{
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los){
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+							target_found = true; //C!Kayen
+
+							if (maxtargets)
+								targets_in_cone.push_back(*iter);
+							else
+								SpellOnTarget(spell_id,(*iter), false, true, resist_adjust);
+
+						}
+					}
+				}
+				else
+				{
+					if(heading_to_target >= angle_start && heading_to_target <= angle_end)
+					{
+						if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
+							(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+							target_found = true; //C!Kayen
+							if (maxtargets) 
+								targets_in_cone.push_back(*iter);
+							else
+								SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+						}
+					}
+				}
+				++iter;
+			}
+
+			//C!Kayen - If maxtarget is set it will hit each of the closet targets up to max amount.
+			//Ie. If you set to 1, it will only hit the closest target in the beam.
+			if (maxtargets)
+				CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cone);
+
+			if (!target_found)
+				DirectionalFailMessage(spell_id);
+
+}
+*/
+
+/*
+//!DEPRECIATED
+bool Mob::RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget, Mob *target)
+{
+	float ae_width = spells[spell_id].aoerange; //This is the width of the AE that will hit targets.
+	float radius = spells[spell_id].range; //This is total area checked for targets.
+	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
+
+	bool taget_exclude_npc = false; //False by default!
+			
+	bool target_client_only = false;
+
+	bool target_found = false;
+
+	if (IsBeneficialSpell(spell_id) && IsClient())
+		target_client_only = true;
+
+	if (!IsClient() && taget_exclude_npc)
+		target_client_only = true;
+	
+	std::list<Mob*> targets_in_range;
+	std::list<Mob*> targets_in_rectangle;
+	std::list<Mob*>::iterator iter;
+
+	entity_list.GetTargetsForConeArea(this, spells[spell_id].min_range, radius, radius / 2, targets_in_range);
+	iter = targets_in_range.begin();
+	
+	float dX = 0;
+	float dY = 0;
+	float dZ = 0;
+	
+	if (!FromTarget){
+		CalcDestFromHeading(GetHeading(), radius, 5, GetX(), GetY(), dX, dY,  dZ);
+		dZ = GetZ();
+	}
+	else {
+		if (target){
+			dX = target->GetX();
+			dY = target->GetY();
+			dZ = target->GetZ();
+		}
+		else
+			return false;
+	}
+
+	
+	//Shout("X Y Z %.2f %.2f %.2f DIstancehcek %.2f Vector Size = %i", dX, dY, dZ, CalculateDistance(dX, dY, dZ), targets_in_range.size());
+	//'DEFENDER' is the virtual end point of the line being drawn based on range from which slope is derived. 
+
+	float DEFENDER_X = dX;
+	float DEFENDER_Y = dY;
+	float ATTACKER_X = GetX();
+	float ATTACKER_Y = GetY();
+
+	float y_dif = DEFENDER_Y - ATTACKER_Y;
+	float x_dif = DEFENDER_X - ATTACKER_X;
+
+	float x1 = ATTACKER_X;
+	float y1 = ATTACKER_Y;
+	float x2 = DEFENDER_X;
+	float y2 = DEFENDER_Y;
+
+	//FIND SLOPE: Put it into the form y = mx + b
+	float m = (y2 - y1) / (x2 - x1);
+	float b = (y1 * x2 - y2 * x1) / (x2 - x1);
+ 
+	while(iter != targets_in_range.end())
+	{
+		if (!(*iter) || (target_client_only && ((*iter)->IsNPC() && !(*iter)->IsPetOwnerClient())) 
+			|| (*iter)->BehindMob(this, (*iter)->GetX(),(*iter)->GetY())){
+		    ++iter;
+			continue;
+		}
+		
+		float Unit_X =(*iter)->GetX();
+		float Unit_Y =(*iter)->GetY();
+		float y_dif2 = Unit_Y - ATTACKER_Y;
+	
+		//#Only target units in the quadrant of the attacker using y axis
+		if ( ((y_dif2 > 0) && (y_dif > 0)) || ((y_dif2 < 0) && (y_dif < 0)))
+		{					
+			//# target point is (x0, y0)
+			float x0 = Unit_X;
+			float y0 = Unit_Y;
+			//# shortest distance from line to target point
+			float d = abs( y0 - m * x0 - b) / sqrt(m * m + 1);
+					
+			if (d <= ae_width)
+			{
+				if(CheckLosFN((*iter)) || spells[spell_id].npc_no_los) {
+					(*iter)->CalcSpellPowerDistanceMod(spell_id, 0, this);
+					target_found = true;
+					if (maxtargets) 
+						targets_in_rectangle.push_back(*iter);
+					else
+						SpellOnTarget(spell_id, (*iter), false, true, resist_adjust);
+				}
+			}
+		}
+		++iter;
+	}
+
+	if (maxtargets)
+		CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_rectangle);
+
+	if (!target_found)
+		DirectionalFailMessage(spell_id);
+	
+	return true;
+}
 */

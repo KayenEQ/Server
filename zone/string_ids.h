@@ -181,6 +181,7 @@
 #define GENERIC_SAY					1032	//%1 says '%2'
 #define OTHER_REGAIN_CAST			1033	//%1 regains concentration and continues casting.
 #define GENERIC_SHOUT				1034	//%1 shouts '%2'
+#define NO_MSG_DISPLAY				1035	//C!Kayen - Does not display any message
 #define GENERIC_EMOTE				1036	//%1 %2
 #define OTHER_CRIT_HEAL				1039	//%1 performs an exceptional heal! (%2)
 #define OTHER_CRIT_BLAST			1040	//%1 delivers a critical blast! (%2)

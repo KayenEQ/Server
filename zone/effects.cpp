@@ -635,7 +635,7 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 
 	//Check the disc timer
 	pTimerType DiscTimer = pTimerDisciplineReuseStart + spells[spell_id].EndurTimerIndex;
-	//Shout("TIME CHECK %i [%i]",GetPTimers().Enabled((uint32)DiscTimer), spells[spell_id].EndurTimerIndex);
+	//Shout("DEBUG: TIME CHECK %i [%i]",GetPTimers().Enabled((uint32)DiscTimer), spells[spell_id].EndurTimerIndex);
 	if(!p_timers.Expired(&database, DiscTimer)) {
 		/*char val1[20]={0};*/	//unused
 		/*char val2[20]={0};*/	//unused

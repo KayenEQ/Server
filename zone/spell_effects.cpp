@@ -272,7 +272,6 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						dmg = caster->GetActSpellDamage(spell_id, dmg, this);
 						caster->ResourceTap(-dmg, spell_id);
 					}
-					//Shout("KAYEN DEBUG: Direct Damage [%i] from spell [%i]", dmg, spell_id);
 					dmg = -dmg;
 					Damage(caster, dmg, spell_id, spell.skill, false, buffslot, false);
 				}
@@ -2119,7 +2118,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				if (spells[spell_id].max[i] == 1)
 					SetLeapEffect(spell_id);
 
-				//C!Kayen - GFlux Timer
+				//C!Kayen - GFlux Timer power 500
 				if (spells[spell_id].max[i] == 2)
 					SetGFluxEffectVars( spell_id, (spells[spell_id].base[i] * -1));
 
@@ -2963,29 +2962,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					
 					//This is specific for the limits used if obtained from a 'Charge' Effect
 					if (interval){
-						//Shout("SE_CastonChargeCondition Interval %i Condition %i", interval, condition);
+						//Shout("DEBUG: SE_CastonChargeCondition Interval %i Condition %i", interval, condition);
 						if (interval == condition) {
-							//Shout("SE_CastonChargeCondition Found! Effect ID %i", i);
+							//Shout("DEBUG: SE_CastonChargeCondition Found! Effect ID %i", i);
 							CastToClient()->EffectAdjustRecastTimer(spell_id, i);
 							break;
 						}
 					}
-				
-					/*
-					int csttime = CastToClient()->GetChargeTimeCasting();
-					int contime = spells[spell_id].max[i];
-
-					//This is specific for the limits used if obtained from a 'Charge' Effect
-					if (csttime){
-						Shout("Cast Time %i Condition Time %i", csttime, contime);
-						if ((csttime >= contime) && (csttime < (contime + 1000))){
-							Shout("Found! %i", i);
-							CastToClient()->EffectAdjustRecastTimer(spell_id, i);
-							//CastToClient()->SetChargeTimeCasting(0);
-							break;
-						}
-					}
-					*/
 				}
 
 				break;
@@ -3985,11 +3968,6 @@ snare has both of them negative, yet their range should work the same:
 			result = max;
 			break;
 
-		//C!Kayen - Start Custom Formula
-		case 5000: //Distributation between min and max based on level with a gradient level modifier.
-			result = CalcDistributionByLevel(static_cast<float>(ubase),static_cast<float>(max), static_cast<float>(caster_level), 50.0f);
-			break;
-
 		//End - Custom
 
 		default:
@@ -4010,6 +3988,11 @@ snare has both of them negative, yet their range should work the same:
 			{
 				// Source: http://crucible.samanna.net/viewtopic.php?f=38&t=6259
 				result = ubase * (caster_level * (formula - 2000) + 1);
+			}
+			else if((formula >= 5000) && (formula < 6000))
+			{
+				//C!Kayen - Standard distrubtions for spell scaling by level
+				result = CalcDistributionByLevel(static_cast<float>(formula), static_cast<float>(ubase),static_cast<float>(max), static_cast<float>(caster_level), 50.0f);
 			}
 			else {
 				Log.Out(Logs::General, Logs::None, "Unknown spell effect value forumula %d", formula);

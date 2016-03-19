@@ -1019,7 +1019,7 @@ public:
 	
 	//C!Uncategorized
 	void CastOnClosestTarget(uint16 spell_id, int16 resist_adjust, int maxtargets, std::list<Mob*> m_list);
-	bool RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr);
+	//bool RectangleDirectional(uint16 spell_id, int16 resist_adjust, bool FromTarget = false, Mob *target = nullptr); //DEPRECIATED
 	void ClientFaceTarget(Mob* MobToFace = nullptr);
 	virtual bool AACastSpell(uint16 spell_id, uint16 target_id, uint16 slot = USE_ITEM_SPELL_SLOT, int32 casttime = -1,
 		int32 mana_cost = -1, uint32* oSpellWillFinish = 0, uint32 item_slot = 0xFFFFFFFF,
@@ -1249,7 +1249,8 @@ public:
 	
 	void LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 	int CalcDistributionModifer(int range, int min_range, int max_range, int min_mod, int max_mod);
-	int CalcDistributionByLevel(float ubase, float max, float caster_level, float max_level);
+	float CalcDistributionModiferFloat(float range, float min_range, float max_range, float min_mod, float max_mod);
+	int CalcDistributionByLevel(float formula, float ubase, float max, float caster_level, float max_level);
 	
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
@@ -1259,7 +1260,7 @@ public:
 
 	void ApplyEffectResource(uint16 spellid, int slot);
 
-	void ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust);
+	//void ConeDirectionalCustom(uint16 spell_id, int16 resist_adjust); //DEPRECIATED
 
 	void RangerGainNumHitsOutgoing(NumHit type, SkillUseTypes skill_used);
 
@@ -1298,13 +1299,12 @@ public:
 	bool TryLeapSECastingConditions(uint16 spell_id);
 
 	void AENoTargetFoundRecastAdjust(uint16 spell_id);
-
-	inline bool GetAINoChase() const { return AI_no_chase; }
-	inline void SetAINoChase(bool value) { AI_no_chase = value; }
-
 	inline bool GetAENoTargetFound() const { return AE_no_target_found; }
 	inline void SetAENoTargetFound(bool value) { AE_no_target_found = value; }
 
+	inline bool GetAINoChase() const { return AI_no_chase; }
+	inline void SetAINoChase(bool value) { AI_no_chase = value; }
+	
 	void Push(Mob *caster, uint16 spell_id, int i);
 
 	int GetRakePositionBonus(Mob* target);
@@ -1343,6 +1343,15 @@ public:
 	float FixHeadingAngle(float a) { if (a >= 256) { return (a - 256.0f); } else if (a < 0) {return (256.0f + a); } else return a;}
 
 	
+	int32 Mob::CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster);
+
+	int32 CalcCustomManaRequired(int32 mana_cost, uint16 spell_id);
+	int32 CalcCustomManaUsed(uint16 spell_id, int32 mana_used);
+	inline void SetCastingFormulaValue(int16 value) { casting_formula_value = value; }
+	inline int32 GetCastingFormulaValue() const { return  casting_formula_value; }
+
+
+
 	//Old calculations
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
 
@@ -1780,6 +1789,7 @@ protected:
 	uint16 RakePosition[MAX_POSITION_TYPES + 1];
 
 	int aeduration_iteration;
+	int32 casting_formula_value;
 	
 private:
 	void _StopSong(); //this is not what you think it is
