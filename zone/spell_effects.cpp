@@ -3992,7 +3992,8 @@ snare has both of them negative, yet their range should work the same:
 			else if((formula >= 5000) && (formula < 6000))
 			{
 				//C!Kayen - Standard distrubtions for spell scaling by level
-				result = CalcDistributionByLevel(static_cast<float>(formula), static_cast<float>(ubase),static_cast<float>(max), static_cast<float>(caster_level), 50.0f);
+				result = CalcBaseEffectValueByLevel(static_cast<float>(formula), static_cast<float>(ubase),
+					static_cast<float>(max), static_cast<float>(caster_level), 50.0f, spell_id); 
 			}
 			else {
 				Log.Out(Logs::General, Logs::None, "Unknown spell effect value forumula %d", formula);

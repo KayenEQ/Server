@@ -810,7 +810,7 @@ void Mob::ZeroCastingVars()
 	SetCuredCount(0); //C!Kayen
 	ClearNPCLastName(); //C!Kayen
 	SetOriginCasterID(0); //C!Kayen
-	SetCastingFormulaValue(0); //C!Kayen
+	SetScaledBaseEffectValue(0); //C!Kayen
 }
 
 void Mob::InterruptSpell(uint16 spellid)

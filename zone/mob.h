@@ -1250,8 +1250,7 @@ public:
 	void LifeShare(SkillUseTypes skill_used, int32 &damage, Mob* attacker = nullptr);
 	int CalcDistributionModifer(int range, int min_range, int max_range, int min_mod, int max_mod);
 	float CalcDistributionModiferFloat(float range, float min_range, float max_range, float min_mod, float max_mod);
-	int CalcDistributionByLevel(float formula, float ubase, float max, float caster_level, float max_level);
-	
+		
 	void SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target=nullptr); //PERL EXPORTED
 
 	void AbsorbMelee(int32 &damage, Mob* attacker = nullptr);
@@ -1347,8 +1346,10 @@ public:
 
 	int32 CalcCustomManaRequired(int32 mana_cost, uint16 spell_id);
 	int32 CalcCustomManaUsed(uint16 spell_id, int32 mana_used);
-	inline void SetCastingFormulaValue(int16 value) { casting_formula_value = value; }
-	inline int32 GetCastingFormulaValue() const { return  casting_formula_value; }
+
+	int CalcBaseEffectValueByLevel(float formula, float ubase, float max, float caster_level, float max_level, uint16 spell_id);
+	inline void SetScaledBaseEffectValue(int16 value) {  scaled_base_effect_value = value; }
+	inline int32 GetScaledBaseEffectValue() const { return   scaled_base_effect_value; }
 
 
 
@@ -1789,7 +1790,7 @@ protected:
 	uint16 RakePosition[MAX_POSITION_TYPES + 1];
 
 	int aeduration_iteration;
-	int32 casting_formula_value;
+	int32  scaled_base_effect_value;
 	
 private:
 	void _StopSong(); //this is not what you think it is

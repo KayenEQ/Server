@@ -516,7 +516,7 @@ Mob::Mob(const char* in_name,
 	for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
 
 	aeduration_iteration = 0;
-	casting_formula_value = 0;
+	scaled_base_effect_value = 0;
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
@@ -9548,7 +9548,7 @@ float Mob::CalcDistributionModiferFloat(float range, float min_range, float max_
 	return mod;
 }
 
-int Mob::CalcDistributionByLevel(float formula, float ubase, float max, float caster_level, float max_level)
+int Mob::CalcBaseEffectValueByLevel(float formula, float ubase, float max, float caster_level, float max_level, uint16 spell_id)
 {
 	/*TO CALCULATE AS INTS - DevNote: Just leaving as float for now
 	int level_mod = 100 + ((35.0 - (caster_level)) * 4);
@@ -9568,9 +9568,6 @@ int Mob::CalcDistributionByLevel(float formula, float ubase, float max, float ca
 	//heal (2) for max 500P
 	//damage(3) max 800HP
 
-	if (GetCastingFormulaValue())
-		return GetCastingFormulaValue();
-
 	float level_distribution = 0;
 	float level_distribution_max = (formula - 5000.0f) / 100.0f;
 	level_distribution = (level_distribution_max - 1.0f) / (max_level - 1.0f);
@@ -9579,7 +9576,12 @@ int Mob::CalcDistributionByLevel(float formula, float ubase, float max, float ca
 	float interval = (max - ubase) / (max_level - 1.0f);
 	float base_mod = (interval/level_mod) * (caster_level);
 
-	SetCastingFormulaValue(static_cast<int>(ubase + base_mod));
+	//Used when calcing how mana cost at end of casting. This avoid recalcing value in these circumstances.
+	//TODO: Can we optimize this to use in more circumstances, because we are calcing this twice (1: Get mana ratio 2: Actual value)
+	//Problem: Saving a single variable would cause conflicts if a spell applys another spell that also uses formula. Hence, narrowly used for now.
+	if (spells[spell_id].cast_from_crouch)
+		SetScaledBaseEffectValue(static_cast<int>(ubase + base_mod));
+	
 	return static_cast<int>(ubase + base_mod);
 
 
@@ -11749,8 +11751,6 @@ int32 Mob::CalcCustomManaRequired(int32 mana_cost, uint16 spell_id)
 
 	int new_mana_cost = (value * 100 / spells[spell_id].mana_ratio);
 
-	//For cast on charge , you must have at least the max mana value. Then when consumed need to divide "mana_used".
-
 	if (spells[spell_id].cast_from_crouch)
 		new_mana_cost *= 5;
 	
@@ -11775,14 +11775,14 @@ int32 Mob::CalcCustomManaUsed(uint16 spell_id, int32 mana_used)
 		int base_mana = mana_used / 5;
 
 		int penalty_ratio = CalcDistributionModiferFloat(GetCastFromCrouchInterval(), 1, 5, 100, spells[spell_id].mana_ratio);
-		int penalty_mod = (((GetCastingFormulaValue())*100/penalty_ratio)*100)/base_mana;
+		int penalty_mod = (((GetScaledBaseEffectValue())*100/penalty_ratio)*100)/base_mana;
 
 		/*
-		int mana_penalty = 100; //In theory you should do a distrubtion from RATIO to 1 (Ie 300 - 100)
-		if (GetCastFromCrouchInterval() == 1) { mana_penalty = 300; } //Ratio 1.0 x 100 ect
-		if (GetCastFromCrouchInterval() == 2) { mana_penalty = 200; } //Ratio 1.5
-		if (GetCastFromCrouchInterval() == 3) { mana_penalty = 150; } //Ratio 2.0
-		if (GetCastFromCrouchInterval() == 4) { mana_penalty = 120; } //Ratio 2.5 [ ((Damage/Ratio)/mana_used)/interval)]
+		int penalty_mod = 100; //In theory you should do a distrubtion from RATIO to 1 (Ie 300 - 100)
+		if (GetCastFromCrouchInterval() == 1) { penalty_mod = 300; } //Ratio 1.0 x 100 ect penalty_ratio
+		if (GetCastFromCrouchInterval() == 2) { penalty_mod = 200; } //Ratio 1.5
+		if (GetCastFromCrouchInterval() == 3) { penalty_mod = 150; } //Ratio 2.0
+		if (GetCastFromCrouchInterval() == 4) { penalty_mod = 120; } //Ratio 2.5 [ ((Damage/Ratio)/mana_used)/interval)]
 		*/
 
 		if (GetCastFromCrouchInterval())
