@@ -3419,6 +3419,19 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			 }
 
+			case SE_Swap: {
+
+				if (!caster || !IsClient() || !caster->IsClient())
+					break;//Limit to client only for now.
+				else{//Cast restriction for party only set - To get AE to land at new location need to force it via target ring
+					caster->m_TargetRing = glm::vec3(GetX(), GetY(), GetZ());
+					caster->SetUseTargetRingOverride(true);
+					CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), caster->GetX(), caster->GetY(), caster->GetZ(), GetHeading());
+					caster->CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), caster->GetHeading());
+				}
+				break;
+			 }
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:
@@ -4925,6 +4938,11 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 				}
 				break;
 			 }
+
+			case SE_AggroLock:
+			{
+				SetAggroLockID(0);
+			}
 		}
 	}
 

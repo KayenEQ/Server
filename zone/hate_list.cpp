@@ -310,6 +310,11 @@ Mob *HateList::GetEntWithMostHateOnList(Mob *center)
 				continue;
 			}
 
+			if (center->GetAggroLockID() && center->GetAggroLockID() == cur->entity_on_hatelist->GetID()){//C!Kayen
+				top_hate = cur->entity_on_hatelist;
+				return top_hate ? top_hate : nullptr;
+			}
+
             auto hateEntryPosition = glm::vec3(cur->entity_on_hatelist->GetX(), cur->entity_on_hatelist->GetY(), cur->entity_on_hatelist->GetZ());
 			if (center->IsNPC() && center->CastToNPC()->IsUnderwaterOnly() && zone->HasWaterMap()) {
 				if (!zone->watermap->InLiquid(hateEntryPosition)) {

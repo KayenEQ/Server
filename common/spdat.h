@@ -44,8 +44,12 @@
 
 #define RANGE_USE_MELEE_COMBAT 101 
 #define RANGE_USE_BOW 351
-#define CASTER_RESTRICT_NO_CAST_SELF -1
+
 #define SPELL_NUMHIT_DISPLAY_FIX 16
+
+#define CASTER_RESTRICT_NO_CAST_SELF -1
+
+#define CAST_RESTRICT_PARTY -2
 
 //C!Kayen - End
 
@@ -761,6 +765,9 @@ typedef enum {
 #define SE_NumHitsAmtFaith				1099 // implemented - Base = Amt numhits (+/-) Limit (-1 if used as resource)
 #define SE_UtilityRainGFXLink			1100 // implemented - Base - Spell ID number of rain graphic display
 #define SE_SpellPowerAmtClients			1101 // implemented - Base - Mod based on clients near target/self Limit 0=Target, 1 = Self
+#define SE_AggroLock					1102 // implemented - 
+#define SE_Swap							1103 // implemented - 
+
 
 
 

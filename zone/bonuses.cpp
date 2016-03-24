@@ -3437,6 +3437,25 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				new_bonus->Faith[3] = spell_id;
 				break;
 			}
+
+			case SE_AggroLock:{
+				if (!new_bonus->AggroLock[0]) {
+					new_bonus->AggroLock[0] = casterId;
+					new_bonus->AggroLock[1] = buffslot;
+					SetAggroLockID(casterId);
+				}
+				else{
+					if (GetAggroLockID()){
+						caster = entity_list.GetMob(GetAggroLockID());
+						if (!caster){
+							new_bonus->AggroLock[0] = casterId;
+							new_bonus->AggroLock[1] = buffslot;
+							SetAggroLockID(casterId);
+						}
+					}
+				break;
+				}
+			}
 		}
 	}
 }

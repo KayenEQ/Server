@@ -811,6 +811,7 @@ void Mob::ZeroCastingVars()
 	ClearNPCLastName(); //C!Kayen
 	SetOriginCasterID(0); //C!Kayen
 	SetScaledBaseEffectValue(0); //C!Kayen
+	SetUseTargetRingOverride(false); //C!Kayen
 }
 
 void Mob::InterruptSpell(uint16 spellid)
@@ -1440,16 +1441,23 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 		Message_StringID(13,SPELL_NEED_TAR);
 		return false;
 	}
-	//C!Kayen - Restrictions based on conditions placed on the caster. [Note: Is this still something we need?]
-	if (!PassCasterRestriction(true, spell_id, spells[spell_id].CastRestriction)){
-		Message(13,"Your will is not sufficient to cast this spell."); //Temp message
-		return false;
-	}
 
 	//C!Kayen - Restrict spell so that it can not be cast on self. [Note: Is this best place to check this?]
 	if (spell_target && spells[spell_id].CasterRestriction == CASTER_RESTRICT_NO_CAST_SELF && (spell_target == this)){
 		Message_StringID(13,CANNOT_AFFECT_PC);
 		return false;
+	}
+
+	//C!Kayen - Restrict to group or raid
+	if (spell_target && spells[spell_id].CastRestriction == CAST_RESTRICT_PARTY && IsClient() && !CastToClient()->IsPartyMember(spell_target)){
+		Message(MT_SpellFailure, "This spell can only be cast on players in your group or raid."); 
+		return false;
+	}
+
+	//C!Kayen - Restrictions based on conditions placed on the caster. [Note: Is this still something we need?]
+	if (!PassCasterRestriction(true, spell_id, spells[spell_id].CastRestriction)){
+		//Message(13,"Your will is not sufficient to cast this spell."); //Temp message
+		//return false;
 	}
 
 	//Must be out of combat. (If Beneficial checks casters combat state, Deterimental checks targets)

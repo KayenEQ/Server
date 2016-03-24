@@ -765,7 +765,7 @@ void EntityList::AETaunt(Client* taunter, float range)
 				&& taunter->IsAttackAllowed(them)
 				&& DistanceSquaredNoZ(taunter->GetPosition(), them->GetPosition()) <= range) {
 			if (taunter->CheckLosFN(them)) {
-				taunter->Taunt(them, true);
+				taunter->Taunt(them, true,0);
 			}
 		}
 		++it;
@@ -838,7 +838,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			continue;
 
 		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
-		if (IsTargetRingSpell(spell_id) && !IsProjectile(spell_id)){ //C!Kayen pflag = Projectile
+		if ((IsTargetRingSpell(spell_id) || caster->GetUseTargetRingOverride()) && !IsProjectile(spell_id)){ //C!Kayen pflag = Projectile
 			dist_targ = DistanceSquared(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetTargetRingLocation());
 		}
 		else if (center) {

@@ -1060,7 +1060,9 @@ public:
 	bool TryTargetRingEffects(uint16 spell_id); //Handles multiple different effects.
 	void SetTargetLocationLoc(uint16 target_id, uint16 spell_id);
 	void CustomSpellMessages(uint16 target_id, uint16 spell_id, int id);
-
+	inline bool GetUseTargetRingOverride() const { return use_targetring_override; } 
+	inline void SetUseTargetRingOverride(bool value) { use_targetring_override = value; } 
+	
 	//C!ProjectileTargetRing
 	bool ProjectileTargetRing(uint16 spell_id, bool IsMeleeCharge = false);
 	//!// NPC *EntityList::GetTempPetByNPCTypeID(uint32 npc_id, uint16 ownerid, bool SetVarTargetRing)
@@ -1350,6 +1352,12 @@ public:
 	int CalcBaseEffectValueByLevel(float formula, float ubase, float max, float caster_level, float max_level, uint16 spell_id);
 	inline void SetScaledBaseEffectValue(int16 value) {  scaled_base_effect_value = value; }
 	inline int32 GetScaledBaseEffectValue() const { return   scaled_base_effect_value; }
+
+	inline void SetAggroLockID(int16 value) {   AggroLockEffect = value; }
+	inline uint16 GetAggroLockID() const { return   AggroLockEffect; }
+
+	inline void SetDisableSpellEffects(bool value) {   disable_spell_effects = value; }
+	inline bool GetDisableSpellEffects() const { return   disable_spell_effects; }
 
 
 
@@ -1791,6 +1799,11 @@ protected:
 
 	int aeduration_iteration;
 	int32  scaled_base_effect_value;
+
+	uint16 AggroLockEffect;
+
+	bool use_targetring_override;
+	bool disable_spell_effects;
 	
 private:
 	void _StopSong(); //this is not what you think it is

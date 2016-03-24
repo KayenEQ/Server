@@ -513,10 +513,14 @@ Mob::Mob(const char* in_name,
 	AI_no_chase = false;
 	AE_no_target_found = false;
 
+	use_targetring_override = false;
+	disable_spell_effects = false;
+
 	for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
 
 	aeduration_iteration = 0;
 	scaled_base_effect_value = 0;
+	AggroLockEffect = 0;
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
@@ -6296,6 +6300,9 @@ bool Mob::PassCasterRestriction(bool UseCasterRestriction,  uint16 spell_id, int
 	if (value >= 0)
 		return true;
 
+	if (value == CASTER_RESTRICT_NO_CAST_SELF)
+		return true; //Handled else where.
+
 	value = -value; //Convert to positive for calculations
 
 	if (value >= 20000 && value <= 20010) {
@@ -9569,10 +9576,15 @@ int Mob::CalcBaseEffectValueByLevel(float formula, float ubase, float max, float
 	//damage(3) max 800HP
 
 	float level_distribution = 0;
-	float level_distribution_max = (formula - 5000.0f) / 100.0f;
-	level_distribution = (level_distribution_max - 1.0f) / (max_level - 1.0f);
+	float level_distribution_max = 0;
+	float level_mod = 1;
 
-	float level_mod = 1.0f + (max_level - caster_level) * level_distribution;
+	if (formula > 5000){ //If 5000 ignore level modifiers and do even interval split
+		level_distribution_max = (formula - 5000.0f) / 100.0f;
+		level_distribution = (level_distribution_max - 1.0f) / (max_level - 1.0f);
+		level_mod = 1.0f + (max_level - caster_level) * level_distribution;
+	}
+
 	float interval = (max - ubase) / (max_level - 1.0f);
 	float base_mod = (interval/level_mod) * (caster_level);
 
@@ -11798,6 +11810,20 @@ int32 Mob::CalcCustomManaUsed(uint16 spell_id, int32 mana_used)
 		return new_mana_used;
 	else
 		return mana_used;
+}
+
+bool Client::IsPartyMember(Mob* other)
+{
+	if (!other || !other->IsClient())
+		return false;
+
+	if ((HasGroup() && other->CastToClient()->HasGroup()) && (GetGroup() == other->CastToClient()->GetGroup()))
+		return true;
+
+	if ((HasRaid() && other->CastToClient()->HasRaid()) && (GetRaid() == other->CastToClient()->GetRaid()))
+		return true;
+
+	return false;
 }
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
