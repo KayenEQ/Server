@@ -532,7 +532,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 				break;
 			}
-			case SE_GateCastersBindpoint: //Shin: Used on Teleport Bind.
+			case SE_GateCastersBindpoint: // Used on Teleport Bind.
 			case SE_Teleport:	// gates, rings, circles, etc
 			case SE_Teleport2:
 			{
@@ -565,13 +565,16 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				}
 
 				if (effect == SE_GateCastersBindpoint && caster->IsClient())
-				{ //Shin: Teleport Bind uses caster's bind point
-					x = caster->CastToClient()->GetBindX();
-					y = caster->CastToClient()->GetBindY();
-					z = caster->CastToClient()->GetBindZ();
-					heading = caster->CastToClient()->GetBindHeading();
+				{ // Teleport Bind uses caster's bind point
+					int index = spells[spell_id].base[i] - 1;
+					if (index < 0 || index > 4)
+						index = 0;
+					x = caster->CastToClient()->GetBindX(index);
+					y = caster->CastToClient()->GetBindY(index);
+					z = caster->CastToClient()->GetBindZ(index);
+					heading = caster->CastToClient()->GetBindHeading(index);
 					//target_zone = caster->CastToClient()->GetBindZoneId(); target_zone doesn't work due to const char
-					CastToClient()->MovePC(caster->CastToClient()->GetBindZoneID(), 0, x, y, z, heading);
+					CastToClient()->MovePC(caster->CastToClient()->GetBindZoneID(index), 0, x, y, z, heading);
 					break;
 				}
 
@@ -967,7 +970,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						if(caster->IsClient() && caster != this)
 							caster->CastToClient()->QueuePacket(message_packet);
 
-						CastToClient()->SetBindPoint();
+						CastToClient()->SetBindPoint(spells[spell_id].base[i] - 1);
 						Save();
 						safe_delete(action_packet);
 						safe_delete(message_packet);
@@ -1016,7 +1019,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 								if(caster->IsClient() && caster != this)
 									caster->CastToClient()->QueuePacket(message_packet);
 
-								CastToClient()->SetBindPoint();
+								CastToClient()->SetBindPoint(spells[spell_id].base[i] - 1);
 								Save();
 								safe_delete(action_packet);
 								safe_delete(message_packet);
@@ -1052,7 +1055,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 							if(caster->IsClient() && caster != this)
 								caster->CastToClient()->QueuePacket(message_packet);
 
-							CastToClient()->SetBindPoint();
+							CastToClient()->SetBindPoint(spells[spell_id].base[i] - 1);
 							Save();
 							safe_delete(action_packet);
 							safe_delete(message_packet);
@@ -1062,7 +1065,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			}
 
-			case SE_Gate: //TO DO: Add support for secondary and tertiary gate abilities (base2)
+			case SE_Gate:
 			{
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Gate");
@@ -1070,7 +1073,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				if(!spellbonuses.AntiGate){
 
 					if(zone->random.Roll(effect_value))
-						Gate();
+						Gate(spells[spell_id].base2[i] - 1);
 					else
 						caster->Message_StringID(MT_SpellFailure,GATE_FAIL);
 				}
@@ -1335,7 +1338,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_MitigateMeleeDamage:
 			{
-				buffs[buffslot].melee_rune = spells[spell_id].max[i];
+				buffs[buffslot].melee_rune = GetBaseEffectValueByLevel(spells[spell_id].formula[i], 1,	spells[spell_id].max[i], caster, spell_id);//C!Kayen
 				break;
 			}
 
@@ -1353,7 +1356,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_MitigateSpellDamage:
 			{
-				buffs[buffslot].magic_rune = spells[spell_id].max[i];
+				buffs[buffslot].magic_rune = GetBaseEffectValueByLevel(spells[spell_id].formula[i], 1,	spells[spell_id].max[i], caster, spell_id);//C!Kayen
 				break;
 			}
 
@@ -2293,17 +2296,18 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			}
 
-			case SE_AETaunt://Dook- slapped it in the spell effect so client does the animations
-			{			// and incase there are similar spells we havent found yet
+			case SE_AETaunt:
+			{			
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "AE Taunt");
 #endif
 				if(caster && caster->IsClient()){
-					float range = 0.0f;
-					if (spells[spell_id].base2[i])
-						range = (float)spells[spell_id].base[i];
+					//Live AE Taunt range is hardcoded at 40 (Spells for AE taunt all use zero range) Target type should be self only.
+					float range = 40;
+					if (spells[spell_id].max[i])//custom support if you want to alter range of AE Taunt.
+						range = spells[spell_id].max[i];
 
-					entity_list.AETaunt(caster->CastToClient(), range);
+					entity_list.AETaunt(caster->CastToClient(), range, spells[spell_id].base[i]);
 				}
 				break;
 			}
@@ -2713,10 +2717,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_Taunt:
 			{
 				if (IsNPC()){
-					caster->Taunt(this->CastToNPC(), false, static_cast<float>(spell.base[i]));
-
-					if (spell.base2[i] > 0)
-						CastToNPC()->SetHateAmountOnEnt(caster, (CastToNPC()->GetHateAmount(caster) + spell.base2[i]));
+					caster->Taunt(this->CastToNPC(), false, static_cast<float>(spell.base[i]), true, spell.base2[i]);
 				}
 				break;
 			}
@@ -3431,6 +3432,15 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				}
 				break;
 			 }
+
+			case SE_ApplyEffectToTargetsOnTarget: {
+				
+				if (caster && IsValidSpell(spells[spell_id].base2[i])){
+					if(zone->random.Roll(spells[spell_id].base[i]))
+						entity_list.ApplyEffectToTargetsOnTarget(caster, this, spells[spell_id].base2[i], static_cast<float>(spells[spell_id].max[i]));
+				}
+				break;
+			}
 
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:

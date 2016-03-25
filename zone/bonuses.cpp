@@ -1912,11 +1912,14 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				new_bonus->DamageShield += effect_value;
 				new_bonus->DamageShieldSpellID = spell_id;
 				//When using npc_spells_effects MAX value can be set to determine DS Type
-				if (IsAISpellEffect && max)
-					new_bonus->DamageShieldType = GetDamageShieldType(spell_id, max);
-				else
-					new_bonus->DamageShieldType = GetDamageShieldType(spell_id);
-
+				if (base2)//C!Kayen - Just set it as base2 value in spdat.h
+					new_bonus->ReverseDamageShieldType = static_cast<DmgShieldType>(base2);
+				else{
+					if (IsAISpellEffect && max)
+						new_bonus->DamageShieldType = GetDamageShieldType(spell_id, max);
+					else
+						new_bonus->DamageShieldType = GetDamageShieldType(spell_id);
+				}
 				break;
 			}
 

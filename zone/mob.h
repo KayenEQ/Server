@@ -468,7 +468,7 @@ public:
 	inline bool IsMoving() const { return moving; }
 	virtual void SetMoving(bool move) { moving = move; m_Delta = glm::vec4(); }
 	virtual void GoToBind(uint8 bindnum = 0) { }
-	virtual void Gate();
+	virtual void Gate(uint8 bindnum = 0);
 	int GetWalkspeed() const { return(_GetWalkSpeed()); }
 	int GetRunspeed() const { return(_GetRunSpeed()); }
 	void SetCurrentSpeed(int in);
@@ -800,7 +800,7 @@ public:
 	void StartEnrage();
 	void ProcessEnrage();
 	bool IsEnraged();
-	void Taunt(NPC* who, bool always_succeed, float chance_bonus = 0);
+	void Taunt(NPC* who, bool always_succeed, float chance_bonus=0, bool FromSpell=false, int32 bonus_hate=0);
 
 	virtual void AI_Init();
 	virtual void AI_Start(uint32 iMoveDelay = 0);
@@ -1352,6 +1352,7 @@ public:
 	int CalcBaseEffectValueByLevel(float formula, float ubase, float max, float caster_level, float max_level, uint16 spell_id);
 	inline void SetScaledBaseEffectValue(int16 value) {  scaled_base_effect_value = value; }
 	inline int32 GetScaledBaseEffectValue() const { return   scaled_base_effect_value; }
+	int GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id);
 
 	inline void SetAggroLockID(int16 value) {   AggroLockEffect = value; }
 	inline uint16 GetAggroLockID() const { return   AggroLockEffect; }

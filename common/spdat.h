@@ -767,6 +767,7 @@ typedef enum {
 #define SE_SpellPowerAmtClients			1101 // implemented - Base - Mod based on clients near target/self Limit 0=Target, 1 = Self
 #define SE_AggroLock					1102 // implemented - 
 #define SE_Swap							1103 // implemented - 
+#define SE_ApplyEffectToTargetsOnTarget	1104 // implemented - Cast on anything targeting the affect spell target. Chance/SpellID/RangeOpt
 
 
 

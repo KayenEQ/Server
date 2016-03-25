@@ -9595,8 +9595,23 @@ int Mob::CalcBaseEffectValueByLevel(float formula, float ubase, float max, float
 		SetScaledBaseEffectValue(static_cast<int>(ubase + base_mod));
 	
 	return static_cast<int>(ubase + base_mod);
+}
 
+int Mob::GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id)
+{
+	if((formula >= 5000) && (formula < 6000))
+	{
+		if (!caster)
+			return 1;
 
+		int result = 0;
+		result = CalcBaseEffectValueByLevel(static_cast<float>(formula), static_cast<float>(ubase),
+			static_cast<float>(max), static_cast<float>(caster->GetLevel()), 50.0f, spell_id); 
+
+		return result;
+	}
+
+	return max;
 }
 
 void Mob::AbsorbMelee(int32 &damage, Mob* attacker)
@@ -11824,6 +11839,45 @@ bool Client::IsPartyMember(Mob* other)
 		return true;
 
 	return false;
+}
+
+void EntityList::ApplyEffectToTargetsOnTarget(Mob *caster, Mob *center, uint16 spell_id, float range)
+{ 
+	if (!IsValidSpell(spell_id) || !center || !caster)
+		return;
+
+	Mob *curmob;
+	float dist = range;
+	float dist2 = dist * dist;
+	float dist_targ = 0;
+
+	bool exclude_clients = false;
+	if (caster->IsClient())
+		exclude_clients = true;
+
+	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
+		curmob = it->second;
+		if (!curmob)
+			continue;
+		if (curmob->IsClient() && !curmob->CastToClient()->ClientFinishedLoading())
+			continue;
+		if (exclude_clients && (curmob->IsClient() || curmob->IsPetOwnerClient()))
+			continue;
+		if ((curmob == center) || (curmob == caster) || curmob->GetUtilityTempPetSpellID())
+			continue;
+		
+		if (range){//If no range, check all in zone.
+			dist_targ = DistanceSquared(curmob->GetPosition(), center->GetPosition());
+			
+			if (dist_targ > dist2)
+				continue;
+		}
+		
+		Mob* target = curmob->GetTarget();
+
+		if (target && (target->GetID() == center->GetID()))
+			caster->SpellOnTarget(spell_id, curmob, false, true, spells[spell_id].ResistDiff);
+	}
 }
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
