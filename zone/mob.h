@@ -1,5 +1,5 @@
 /*	EQEMu: Everquest Server Emulator
-	Copyright (C) 2001-2002 EQEMu Development Team (http://eqemu.org)
+	Copyright (C) 2001-2016 EQEMu Development Team (http://eqemu.org)
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -28,6 +28,10 @@
 #include <set>
 #include <vector>
 #include <memory>
+
+#ifdef BOTS
+#include "heal_rotation.h"
+#endif
 
 char* strn0cpy(char* dest, const char* source, uint32 size);
 
@@ -148,7 +152,6 @@ public:
 		bool IsFromSpell = false, ExtraAttackOptions *opts = nullptr, int special = 0) = 0;
 	int MonkSpecialAttack(Mob* other, uint8 skill_used);
 	virtual void TryBackstab(Mob *other,int ReuseTime = 10);
-	void TriggerDefensiveProcs(const ItemInst* weapon, Mob *on, uint16 hand = MainPrimary, int damage = 0);
 	bool AvoidDamage(Mob* attacker, int32 &damage, int hand);
 	virtual bool CheckHitChance(Mob* attacker, SkillUseTypes skillinuse, int Hand, int16 chance_mod = 0);
 	virtual void TryCriticalHit(Mob *defender, uint16 skill, int32 &damage, ExtraAttackOptions *opts = nullptr);
@@ -560,6 +563,7 @@ public:
 		bool lookForAftArc = true);
 
 	//Procs
+	void TriggerDefensiveProcs(Mob *on, uint16 hand = MainPrimary, bool SkillProc=false, int damage = 0);
 	bool AddRangedProc(uint16 spell_id, uint16 iChance = 3, uint16 base_spell_id = SPELL_UNKNOWN);
 	bool RemoveRangedProc(uint16 spell_id, bool bAll = false);
 	bool HasRangedProcs() const;
@@ -1005,6 +1009,21 @@ public:
 	void AddAssistCap() { ++npc_assist_cap; }
 	void DelAssistCap() { --npc_assist_cap; }
 	void ResetAssistCap() { npc_assist_cap = 0; }
+
+	// Bots HealRotation methods
+#ifdef BOTS
+	bool IsHealRotationTarget() { return (m_target_of_heal_rotation.use_count() && m_target_of_heal_rotation.get()); }
+	bool JoinHealRotationTargetPool(std::shared_ptr<HealRotation>* heal_rotation);
+	bool LeaveHealRotationTargetPool();
+
+	uint32 HealRotationHealCount();
+	uint32 HealRotationExtendedHealCount();
+	float HealRotationHealFrequency();
+	float HealRotationExtendedHealFrequency();
+
+	const std::shared_ptr<HealRotation>* TargetOfHealRotation() const { return &m_target_of_heal_rotation; }
+#endif
+
 
 	//C!Kayen - Custom Mob Functions [Also see client.h, entity_list.h, npc.h for additional functions that are handled in mob.cpp] Order as in mob.cpp
 
@@ -1486,7 +1505,7 @@ protected:
 	void TrySkillProc(Mob *on, uint16 skill, uint16 ReuseTime, bool Success = false, uint16 hand = 0, bool IsDefensive = false); // hand = MainCharm?
 	bool PassLimitToSkill(uint16 spell_id, uint16 skill);
 	bool PassLimitClass(uint32 Classes_, uint16 Class_);
-	void TryDefensiveProc(const ItemInst* weapon, Mob *on, uint16 hand = MainPrimary);
+	void TryDefensiveProc(Mob *on, uint16 hand = MainPrimary);
 	void TryWeaponProc(const ItemInst* inst, const Item_Struct* weapon, Mob *on, uint16 hand = MainPrimary);
 	void TrySpellProc(const ItemInst* inst, const Item_Struct* weapon, Mob *on, uint16 hand = MainPrimary);
 	void TryWeaponProc(const ItemInst* weapon, Mob *on, uint16 hand = MainPrimary);
@@ -1809,6 +1828,11 @@ protected:
 private:
 	void _StopSong(); //this is not what you think it is
 	Mob* target;
+
+#ifdef BOTS
+	std::shared_ptr<HealRotation> m_target_of_heal_rotation;
+#endif
+
 };
 
 #endif
