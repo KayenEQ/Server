@@ -9622,7 +9622,7 @@ float Mob::CalcDistributionModiferFloat(float range, float min_range, float max_
 	return mod;
 }
 
-int Mob::CalcBaseEffectValueByLevel(float formula, float ubase, float max, float caster_level, float max_level, uint16 spell_id)
+int Mob::CalcBaseEffectValueByLevel(float formula_mod, float ubase, float max, float caster_level, float max_level, uint16 spell_id)
 {
 	/*TO CALCULATE AS INTS - DevNote: Just leaving as float for now
 	int level_mod = 100 + ((35.0 - (caster_level)) * 4);
@@ -9646,8 +9646,8 @@ int Mob::CalcBaseEffectValueByLevel(float formula, float ubase, float max, float
 	float level_distribution_max = 0;
 	float level_mod = 1;
 
-	if (formula > 5000){ //If 5000 ignore level modifiers and do even interval split
-		level_distribution_max = (formula - 5000.0f) / 100.0f;
+	if (formula_mod){ //If 5000 ignore level modifiers and do even interval split
+		level_distribution_max = formula_mod / 100.0f;
 		level_distribution = (level_distribution_max - 1.0f) / (max_level - 1.0f);
 		level_mod = 1.0f + (max_level - caster_level) * level_distribution;
 	}
@@ -9661,21 +9661,32 @@ int Mob::CalcBaseEffectValueByLevel(float formula, float ubase, float max, float
 	if (spells[spell_id].cast_from_crouch)
 		SetScaledBaseEffectValue(static_cast<int>(ubase + base_mod));
 	
+	Shout("DEBUG: Scaled By Level: %i [spellid %i]",static_cast<int>(ubase + base_mod), spell_id);
 	return static_cast<int>(ubase + base_mod);
 }
 
 int Mob::GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id)
 {
-	if((formula >= 5000) && (formula < 6000))
-	{
+	if((formula >= 5000) && (formula < 7000)){
+		
 		if (!caster)
 			return 1;
+		
+		int use_level = caster->GetLevel();
+		int formula_mod = 0;
+		
+		if((formula >= 5000) && (formula < 6000)){
+			formula_mod = formula - 5000;
+		}
 
-		int result = 0;
-		result = CalcBaseEffectValueByLevel(static_cast<float>(formula), static_cast<float>(ubase),
-			static_cast<float>(max), static_cast<float>(caster->GetLevel()), 50.0f, spell_id); 
-
-		return result;
+		else if((formula >= 6000) && (formula < 7000)){
+			formula_mod = formula - 6000;
+			if (GetLevel() < use_level)
+				use_level = GetLevel();
+		}
+		
+		return CalcBaseEffectValueByLevel(static_cast<float>(formula), static_cast<float>(ubase),
+				static_cast<float>(max), static_cast<float>(use_level), CLIENT_MAX_LEVEL, spell_id);
 	}
 
 	return max;
@@ -11837,21 +11848,39 @@ int32 Mob::CalcCustomManaRequired(int32 mana_cost, uint16 spell_id)
 {
 	if (!spells[spell_id].mana_ratio) //Dmg/Mana = ratio
 		return mana_cost;
+
+	/*Type
+	1= True Nuke/Heals determined by HP/Mana ratio
+	2= All other effects determined by level * ratio/100
+	*/
 	
-	int value = CalcSpellEffectValue(spell_id, 0, GetLevel());
+	int type = GetManaRatioType(spell_id);
+	int value = 0;
+	int new_mana_cost = mana_cost;
 
-	if (value < 0)
-		value *= -1;
+	if (type == 1){
+		value = CalcSpellEffectValue(spell_id, 0, GetLevel());
 
-	int new_mana_cost = (value * 100 / spells[spell_id].mana_ratio);
+		if (value < 0)
+			value *= -1;
 
-	if (spells[spell_id].cast_from_crouch)
-		new_mana_cost *= 5;
-	
-	if (new_mana_cost > 0)
-		return new_mana_cost;
-	else
-		return mana_cost;
+		new_mana_cost = (value * 100 / spells[spell_id].mana_ratio);
+
+		if (spells[spell_id].cast_from_crouch)
+			new_mana_cost *= 5;
+		else if (spells[spell_id].min_dist_mod > 1)
+			new_mana_cost *= spells[spell_id].min_dist_mod;
+		else if (spells[spell_id].max_dist_mod > 1)
+			new_mana_cost *= spells[spell_id].max_dist_mod;
+	}
+	else{
+		new_mana_cost = GetLevel() * spells[spell_id].mana_ratio/100;
+	}
+		
+	if (new_mana_cost < 0)
+		new_mana_cost = mana_cost;
+		
+	return new_mana_cost;
 }
 
 int32 Mob::CalcCustomManaUsed(uint16 spell_id, int32 mana_used)

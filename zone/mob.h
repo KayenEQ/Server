@@ -1363,12 +1363,12 @@ public:
 	float FixHeadingAngle(float a) { if (a >= 256) { return (a - 256.0f); } else if (a < 0) {return (256.0f + a); } else return a;}
 
 	
-	int32 Mob::CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster);
+	int32 CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster);
 
 	int32 CalcCustomManaRequired(int32 mana_cost, uint16 spell_id);
 	int32 CalcCustomManaUsed(uint16 spell_id, int32 mana_used);
 
-	int CalcBaseEffectValueByLevel(float formula, float ubase, float max, float caster_level, float max_level, uint16 spell_id);
+	int CalcBaseEffectValueByLevel(float formula_mod, float ubase, float max, float caster_level, float max_level, uint16 spell_id);
 	inline void SetScaledBaseEffectValue(int16 value) {  scaled_base_effect_value = value; }
 	inline int32 GetScaledBaseEffectValue() const { return   scaled_base_effect_value; }
 	int GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id);

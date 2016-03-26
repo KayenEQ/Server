@@ -51,6 +51,10 @@
 
 #define CAST_RESTRICT_PARTY -2
 
+#define CLIENT_MAX_LEVEL 50
+
+#define NPC_DISC_FLAG -100
+
 //C!Kayen - End
 
 
@@ -1070,7 +1074,8 @@ int AOEMaxHitCount(uint16 spell_id);
 int GetRequiredFaith(uint16 spell_id);
 bool IsTargetedBeamSpell(uint16 spell_id);
 bool IsAERainSpell(uint16 spell_id);
-uint16 GetAERainGFXSpellID(uint16 spell_id);
+int GetManaRatioType(uint16 spell_id);
+
 
 //GFX
 uint16 GetGraphicSpellID(uint16 spell_id);
@@ -1078,6 +1083,7 @@ uint32 GetGraphicNPCTYPEID(uint16 spell_id);
 int GetGFXSize(uint16 spell_id);
 uint32 GetGFXDuration(uint16 spell_id);
 int GetGFXMultiplier(uint16 spell_id);
+uint16 GetAERainGFXSpellID(uint16 spell_id);
 
 //LightType - Variable usage
 bool SpellRequiresSpectralBlade(uint16 spell_id);

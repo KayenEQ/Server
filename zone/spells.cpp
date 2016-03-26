@@ -497,7 +497,7 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		*oSpellWillFinish = Timer::GetCurrentTime() + cast_time + 100;
 
 
-	if (spells[spell_id].descnum == -100 && IsNPC()){ //C!Kayen - Custom message for NPC combat abilities
+	if (spells[spell_id].descnum == NPC_DISC_FLAG && IsNPC()){ //C!Kayen - Custom message for NPC combat abilities
 		entity_list.MessageClose(this, true, 200, MT_Spells, "%s prepares to do combat ability. (%s)", GetCleanName(), spells[spell_id].name);
 	}
 	// now tell the people in the area
@@ -2095,7 +2095,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 	}
 
 	//range check our target, if we have one and it is not us
-	float range = spells[spell_id].range + GetRangeDistTargetSizeMod(spell_target); //C!Kayen - ADD TO MAIN SOURCE
+	float range = spells[spell_id].range + GetRangeDistTargetSizeMod(spell_target);
 	if(IsClient() && CastToClient()->TGB() && IsTGBCompatibleSpell(spell_id) && IsGroupSpell(spell_id))
 		range = spells[spell_id].aoerange;
 

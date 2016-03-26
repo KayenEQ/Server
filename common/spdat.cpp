@@ -1353,6 +1353,20 @@ bool IsAERainSpell(uint16 spell_id){
 	return false;
 }
 
+int GetManaRatioType(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return 0;
+
+	for (int i = 0; i < EFFECT_COUNT; i++){
+		if (i == 0 && spells[spell_id].effectid[0] == SE_CurrentHP){
+			return 1;
+		}
+	}
+
+	return 2;
+}
+
 uint16 GetAERainGFXSpellID(uint16 spell_id)
 {
 	//Displays rain graphic at AOE location only. Spell in file is display on targets.

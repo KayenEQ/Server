@@ -3732,7 +3732,7 @@ int Mob::CalcSpellEffectValue(uint16 spell_id, int effect_id, int caster_level, 
 		return 0;
 
 	effect_value = CalcSpellEffectValue_formula(formula, base, max, caster_level, spell_id, ticsremaining);
-	effect_value = CalcSpellEffectValue_formula_custom(caster, formula, effect_value, max, caster_level, spell_id, ticsremaining); //C!Kayen Try Custom formula
+	//effect_value = CalcSpellEffectValue_formula_custom(caster, formula, effect_value, max, caster_level, spell_id, ticsremaining); //C!Kayen Try Custom formula
 
 	// this doesn't actually need to be a song to get mods, just the right skill
 	if (EQEmu::IsBardInstrumentSkill(spells[spell_id].skill) &&
@@ -4012,12 +4012,25 @@ snare has both of them negative, yet their range should work the same:
 				// Source: http://crucible.samanna.net/viewtopic.php?f=38&t=6259
 				result = ubase * (caster_level * (formula - 2000) + 1);
 			}
+
 			else if((formula >= 5000) && (formula < 6000))
 			{
 				//C!Kayen - Standard distrubtions for spell scaling by level
-				result = CalcBaseEffectValueByLevel(static_cast<float>(formula), static_cast<float>(ubase),
-					static_cast<float>(max), static_cast<float>(caster_level), 50.0f, spell_id); 
+				result = CalcBaseEffectValueByLevel(static_cast<float>(formula-5000), static_cast<float>(ubase),
+					static_cast<float>(max), static_cast<float>(caster_level), CLIENT_MAX_LEVEL, spell_id); 
 			}
+
+			else if((formula >= 6000) && (formula < 7000))
+			{
+				//C!Kayen - Usage, when you want it to scale to targets level. Ie. Defensive procs.
+				int use_level = caster_level;
+				if (GetLevel() < caster_level)
+					use_level = GetLevel();
+
+				result = CalcBaseEffectValueByLevel(static_cast<float>(formula-6000), static_cast<float>(ubase),
+					static_cast<float>(max), static_cast<float>(use_level), CLIENT_MAX_LEVEL, spell_id); 
+			}
+			
 			else {
 				Log.Out(Logs::General, Logs::None, "Unknown spell effect value forumula %d", formula);
 				result = ubase; //C!Kayen
