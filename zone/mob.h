@@ -1107,10 +1107,37 @@ public:
 	inline void SetMeleeChargeActive(bool value) { MeleeChargeActive = value; }
 	inline uint16 GetMeleeChargeTargetID() const { return MeleeCharge_target_id; }
 	inline void SetMeleeChargeTargetID(uint16 value) { MeleeCharge_target_id = value; }
-		
+	
+	//START [SPELL POWER]
 	//C!BaseSpellPower
 	int32 GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage = false, bool IsHeal = false, int16 buff_focus = -1);
-	void CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
+	int32 CalcTotalBaseModifierCurrentHP(int32 damage, uint16 spell_id, Mob* caster, int effectid);
+	int32 CalcSpellPowerTargetPctHP(uint16 spell_id, Mob* caster);
+	int32 CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster);
+	int32 CalcSpellPowerFromBuffSpellGroup(uint16 spell_id, Mob* caster);
+	int32 GetSpellPowerAmtHitsEffect(uint16 spell_id);
+	inline int32 GetSpellPowerAmtHits() const { return SpellPowerAmtHits; }
+	inline void SetSpellPowerAmtHits(int32 value) { SpellPowerAmtHits = value; }
+
+	//C!CastFromCrouch - Spell Field CastFromCrouch
+	//!// Client::CastFromCrouch(uint16 spell_id)
+	int32 CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid);
+	int32 CalcCrouchModFromType(uint16 spell_id, int type);
+	inline void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
+	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
+	inline void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
+	inline int8 GetCastFromCrouchIntervalProj() const { return CastFromCrouchIntervalProj; }
+
+	//C!SpellEffects :: SE_SpellPowerHeightMod
+	int32 CalcSpellPowerHeightMod(uint16 spell_id, Mob* caster = nullptr);
+	void CalcSpellPowerHeightZDiff(uint16 spell_id, Mob* spell_target);
+	void SetGFluxEffectVars(uint16 spell_id, int base);
+	int GetDistanceToCeiling(int max_z, float origin_z);
+	inline int32 GetCastingZDiff() const { return casting_z_diff; }
+	inline void SetCastingZDiff(int32 value) { casting_z_diff = value; }
+	void GravityFlux();
+	//END [SPELL POWER]
+
 
 	//C!LastName
 	void ChangeNPCLastName(const char* in_lastname); //PERL EXPORT
@@ -1121,15 +1148,6 @@ public:
 	uint16 GetSpellGroupFromLimit(uint16 spell_id);
 	//!// Client::DoAdjustRecastTimer()
 	//!// Client::EffectAdjustRecastTimer(uint16 spell_id, int effectid)
-
-	//C!CastFromCrouch - Spell Field CastFromCrouch
-	//!// Client::CastFromCrouch(uint16 spell_id)
-	int32 CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int effectid);
-	int32 CalcCrouchModFromType(uint16 spell_id, int type);
-	inline void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
-	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
-	inline void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
-	inline int8 GetCastFromCrouchIntervalProj() const { return CastFromCrouchIntervalProj; }
 
 	//C!Wizard :: Functions related to spell power from endurance
 	inline bool IsWizardInnateActive() const { return WizardInnateActive; }
@@ -1152,23 +1170,6 @@ public:
 
 	//C!SpellEffects :: SE_TryCastonSpellFinished	
 	void TryCastonSpellFinished(Mob *target, uint16 spell_id);
-
-	//C!SpellEffects :: SE_SpellPowerFromBuffSpellGroup
-	int32 CalcSpellPowerFromBuffSpellGroup(uint16 spell_id, Mob* caster);
-	
-	//C!SpellEffects :: SE_SpellPowerAmtHits
-	int32 GetSpellPowerAmtHitsEffect(uint16 spell_id);
-	inline int32 GetSpellPowerAmtHits() const { return SpellPowerAmtHits; }
-	inline void SetSpellPowerAmtHits(int32 value) { SpellPowerAmtHits = value; }
-
-	//C!SpellEffects :: SE_SpellPowerHeightMod
-	int32 CalcSpellPowerHeightMod(int32 &damage,uint16 spell_id, Mob* caster = nullptr);
-	void CalcSpellPowerHeightZDiff(uint16 spell_id, Mob* spell_target);
-	void SetGFluxEffectVars(uint16 spell_id, int base);
-	int GetDistanceToCeiling(int max_z, float origin_z);
-	inline int32 GetCastingZDiff() const { return casting_z_diff; }
-	inline void SetCastingZDiff(int32 value) { casting_z_diff = value; }
-	void GravityFlux();
 
 	//C!SpellEffects :: Appearance Effects
 	void SendAppearanceEffect2(uint32 parm1, uint32 parm2, uint32 parm3, uint32 parm4, uint32 parm5, Client *specific_target=nullptr); //PERL EXPORTED
@@ -1363,8 +1364,6 @@ public:
 	float FixHeadingAngle(float a) { if (a >= 256) { return (a - 256.0f); } else if (a < 0) {return (256.0f + a); } else return a;}
 
 	
-	int32 CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster);
-
 	int32 CalcCustomManaRequired(int32 mana_cost, uint16 spell_id);
 	int32 CalcCustomManaUsed(uint16 spell_id, int32 mana_used);
 
@@ -1378,6 +1377,8 @@ public:
 
 	inline void SetDisableSpellEffects(bool value) {   disable_spell_effects = value; }
 	inline bool GetDisableSpellEffects() const { return   disable_spell_effects; }
+
+	
 
 
 

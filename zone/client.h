@@ -1355,6 +1355,8 @@ public:
 	bool IsPartyMember(Mob* other); //Check other is in your group OR raid
 
 	
+	void Fling(Mob* target);
+
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);
 	//C!Kayen - END

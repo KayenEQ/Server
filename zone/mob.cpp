@@ -7250,23 +7250,25 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 	return value; //This is final damage/heal or whatever returned.
 }
 
-void Mob::CalcTotalBaseModifierCurrentHP(int32 &damage, uint16 spell_id, Mob* caster, int effectid)
+int32 Mob::CalcTotalBaseModifierCurrentHP(int32 damage, uint16 spell_id, Mob* caster, int effectid)
 {
 	int mod = 0;
 	mod += GetSpellPowerAmtHits(); //Scale based on how many targets were hit by spell prior to this target.
-	mod += CalcSpellPowerHeightMod(damage, spell_id, caster);
-	mod += CalcFromCrouchMod(damage, spell_id,caster, effectid);
+	mod += CalcSpellPowerHeightMod(spell_id, caster);
+	mod += CalcFromCrouchMod(spell_id,caster, effectid);
 	mod += CalcSpellPowerFromBuffSpellGroup(spell_id, caster);
 	mod += CalcSpellPowerAmtClients(spell_id, effectid, caster);
+	mod += CalcSpellPowerTargetPctHP(spell_id, caster);
 
-	mod += CalcSpellPowerFromAEDuration(spell_id, caster, 1);
-	mod += caster->GetAEDurationIteration() * 10; //Need to revise this.
+	//mod += CalcSpellPowerFromAEDuration(spell_id, caster, 1);
+	//mod += caster->GetAEDurationIteration() * 10; //Need to revise this.
 
-	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
+	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
 	if (mod)
 		damage += damage*mod/100;
 
-	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
+	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
+	return damage;
 }
 
 //#### C!LastName
@@ -7578,7 +7580,7 @@ bool Client::CastFromCrouch(uint16 spell_id)
 	return true;
 }
 
-int32 Mob::CalcFromCrouchMod(int32 &damage, uint16 spell_id, Mob* caster, int effectid){
+int32 Mob::CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid){
 
 	if (!caster || (IsValidSpell(spell_id) && !spells[spell_id].cast_from_crouch))
 		return 0;
@@ -8209,7 +8211,7 @@ int32 Mob::GetSpellPowerAmtHitsEffect(uint16 spell_id)
 
 //#### C!SpellEffects :: SE_SpellPowerHeightMod
 
-int32 Mob::CalcSpellPowerHeightMod(int32 &damage, uint16 spell_id, Mob* caster){
+int32 Mob::CalcSpellPowerHeightMod(uint16 spell_id, Mob* caster){
 
 	if (!IsValidSpell(spell_id) || !caster)
 		return 0;
@@ -11793,10 +11795,12 @@ int32 Mob::CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster)
 	if (!IsValidSpell(spell_id) || !caster)
 		return 0;
 
-	int base = 0;
-	int limit = 0;
-	int max = 0;
+	int base = 0;//Percent Modifier
+	int limit = 0; //Distance to check
+	int max = 0; //Max amount of clients to draw from [+ FromTarget, - FromCaster]
 	int count = 0;
+
+	bool FromTargetLoc = true;
 
 	for (int i = 0; i <= EFFECT_COUNT; i++)
 	{
@@ -11804,26 +11808,37 @@ int32 Mob::CalcSpellPowerAmtClients(uint16 spell_id, int effectid,Mob* caster)
 
 			if (spells[spell_id].base[i]){
 
-				int base = spells[spell_id].base[i];
-				int limit = spells[spell_id].base2[i];
-				int max = spells[spell_id].max[i];
-				break;
+				base = spells[spell_id].base[i];
+				limit = spells[spell_id].base2[i];
+				max = spells[spell_id].max[i];
 			}
 		}
 	}
 
+	//Shout("DEBUG: CalcSpellPowerAmtClients %i %i %i", base, limit,max);
+
+	if (max < 0){
+		FromTargetLoc = false;
+		max *= -1;
+	}
+
 	if (base){
 
-		if (!max)
-			count = entity_list.CountCloseClients(this, caster, limit);
+		if (FromTargetLoc)
+			count = entity_list.CountCloseClients(this, caster, limit, max);
 		else
-			count = entity_list.CountCloseClients(caster, caster, limit);
+			count = entity_list.CountCloseClients(caster, caster, limit, max);
 	
 	}
-	return count * base / 100;
+
+	if (count > max)
+		count = max;
+
+	//Shout("DEBUG: CalcSpellPowerAmtClients COUNT %i [BOOL %i]", count, FromTargetLoc);
+	return count * base;
 }
 
-int EntityList::CountCloseClients(Mob *target, Mob *caster, float dist)
+int EntityList::CountCloseClients(Mob *target, Mob *caster, float dist, int max_count)
 {
 	float dist2 = dist * dist;
 
@@ -11833,9 +11848,12 @@ int EntityList::CountCloseClients(Mob *target, Mob *caster, float dist)
 	while (it != client_list.end()) {
 		Client *ent = it->second;
 
-		if (ent && ent->Connected() && ent->GetID() != caster->GetID()) {
+		if (ent && ent->Connected() && (ent->GetID() != caster->GetID())) {
 			if (DistanceSquared(ent->GetPosition(), target->GetPosition()) <= dist2) {
 				count++;
+
+				if (max_count && (count > max_count))
+					return max_count;
 			}
 		}
 		++it;
@@ -11974,6 +11992,64 @@ void EntityList::ApplyEffectToTargetsOnTarget(Mob *caster, Mob *center, uint16 s
 		if (target && (target->GetID() == center->GetID()))
 			caster->SpellOnTarget(spell_id, curmob, false, true, spells[spell_id].ResistDiff);
 	}
+}
+
+int32 Mob::CalcSpellPowerTargetPctHP(uint16 spell_id, Mob* caster){
+
+	if (!IsValidSpell(spell_id) || !caster)
+		return 0;
+
+	float ratio_modifier = 0;
+	float dmod = 0;
+	
+	for (int i = 0; i <= EFFECT_COUNT; i++)
+	{
+		if (spells[spell_id].effectid[i] == SE_SpellPowerTargetPctHP){
+
+			if (spells[spell_id].base[i]){
+
+				int ratio = GetHPRatio();
+				float min_mod = static_cast<float>(spells[spell_id].base[i]);
+				float max_mod = static_cast<float>(spells[spell_id].base2[i]);
+				float ratio_below = static_cast<float>(spells[spell_id].max[i]); //HP Pct that you must be below for modifier to take effect
+				ratio_modifier = ratio_below - static_cast<float>(ratio);
+
+				if (ratio_modifier > 0){
+					dmod = CalcDistributionModiferFloat(ratio_modifier, 1.0f, ratio_below, min_mod, max_mod);
+					Shout("dmod %.2f", dmod);
+					
+				}
+		
+				return static_cast<int32>(dmod);
+			}
+		}
+	}
+
+	return 0;
+}
+
+void Client::Fling(Mob* target)
+{
+
+		EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_Fling, sizeof(fling_struct));
+		fling_struct* spu = (fling_struct*)outapp_push->pBuffer;
+
+		spu->unk1						= 0;
+		spu->travel_time				= 600;
+		spu->unk3						= 0;
+		spu->disable_fall_damage		= 1;
+		spu->speed_z					= 10.0f;
+		spu->new_y						= target->GetY();
+		spu->new_x						= target->GetX();
+		spu->new_z						= target->GetZ();
+		outapp_push->priority = 5;
+		
+		entity_list.QueueClients(this, outapp_push, true);
+		if(IsClient())
+			CastToClient()->FastQueuePacket(&outapp_push);
+
+		Shout("Test Fling OFF");
+
 }
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){

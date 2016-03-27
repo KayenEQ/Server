@@ -253,11 +253,11 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				// for offensive spells check if we have a spell rune on
 				int32 dmg = effect_value;
 				
-				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
 				if (caster && !caster->PassCasterRestriction(false,  spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
 					break;
 
-				CalcTotalBaseModifierCurrentHP(dmg, spell_id, caster, i);
+				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
+				dmg = CalcTotalBaseModifierCurrentHP(dmg, spell_id, caster, i);
 				
 				if(dmg < 0)
 				{
@@ -3439,6 +3439,15 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					if(zone->random.Roll(spells[spell_id].base[i]))
 						entity_list.ApplyEffectToTargetsOnTarget(caster, this, spells[spell_id].base2[i], static_cast<float>(spells[spell_id].max[i]));
 				}
+				break;
+			}
+
+			case SE_Fling:
+			{
+				Shout("Test Fling");
+
+				caster->CastToClient()->Fling(this);
+
 				break;
 			}
 

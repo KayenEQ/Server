@@ -442,7 +442,7 @@ public:
 	void AddClientHateToTempPet(Mob *caster, Mob* temppet, uint16 spell_id);
 	void AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0, bool FromTarget=false, Mob* target=nullptr);
 	void AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust = 0);
-	int CountCloseClients(Mob *target, Mob *caster, float dist);
+	int CountCloseClients(Mob *target, Mob *caster, float dist, int max_count);
 	void ApplyEffectToTargetsOnTarget(Mob *caster, Mob *center, uint16 spell_id, float range=0);
 
 protected:

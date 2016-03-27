@@ -569,7 +569,7 @@ typedef enum {
 #define SE_CastOnFadeEffectAlways		373 // implemented - Triggers if fades after natural duration OR from rune/numhits fades.
 #define SE_ApplyEffect					374 // implemented
 #define SE_DotCritDmgIncrease			375	// implemented - Increase damage of DoT critical amount
-//#define SE_Fling						376	// *not implemented - used in 2 test spells  (12945 | Movement Test Spell 1)
+#define SE_Fling						376	// *not implemented - used in 2 test spells  (12945 | Movement Test Spell 1)
 #define SE_CastOnFadeEffectNPC			377	// implemented - Triggers only if fades after natural duration (On live these are usually players spells that effect an NPC).
 #define SE_SpellEffectResistChance		378	// implemented - Increase chance to resist specific spell effect (base1=value, base2=spell effect id)
 #define SE_ShadowStepDirectional		379 // implemented - handled by client
@@ -768,11 +768,11 @@ typedef enum {
 #define SE_Faith						1098 // implemented - Base = 
 #define SE_NumHitsAmtFaith				1099 // implemented - Base = Amt numhits (+/-) Limit (-1 if used as resource)
 #define SE_UtilityRainGFXLink			1100 // implemented - Base - Spell ID number of rain graphic display
-#define SE_SpellPowerAmtClients			1101 // implemented - Base - Mod based on clients near target/self Limit 0=Target, 1 = Self
+#define SE_SpellPowerAmtClients			1101 // implemented - Base - Mod based on clients near target/self Base % Limit Dist, Max Amt[(+)FromTarget,(-)FromCaster]
 #define SE_AggroLock					1102 // implemented - 
 #define SE_Swap							1103 // implemented - 
 #define SE_ApplyEffectToTargetsOnTarget	1104 // implemented - Cast on anything targeting the affect spell target. Chance/SpellID/RangeOpt
-
+#define SE_SpellPowerTargetPctHP		1105 // implemented -
 
 
 
