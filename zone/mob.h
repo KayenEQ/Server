@@ -1313,7 +1313,7 @@ public:
 	void LeapSpellEffect(); //Triggered by interval timer
 	void GlideWithBounceTimer(float StartX, float StartY, float StartZ, float DestX, float DestY, float DestZ, float DestH, float z_bounce, float mod, int i);
 	//glm::vec3 GetFurthestLocationLOS(float heading, int d_interval, int d_max);
-	bool GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z);
+	bool GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z, bool FromLocs=false, float origin_x=0.0f, float origin_y=0.0f, float origin_z=0.0f);
 	bool GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, float &loc_Z);
 	float GetReverseHeading(float Heading);
 	void CastOnLeapSELand(uint16 spell_id);
@@ -1349,6 +1349,7 @@ public:
 	void SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange, int row,float origin_heading,float origin_x, float origin_y); //Directional/PBAOE
 	void SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y);
 	void SpawnSpellGraphicSingleTempPetLocation(int type, uint16 spell_id, float aoerange, float locX=0.0f, float locY=0.0f, float locZ=0.0f);
+	void SpawnProjectileGraphicArcheryTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y,float origin_z);
 	float GetSpacerAngle(float aoerange, float total_angle);
 	NPC* TypesTemporaryPetsGFX(uint32 typesid, const char *name_override = nullptr, uint32 duration_override = 0, float dX=0.0f, float dY=0.0f, float dZ=0.0f, uint16 spell_id = 0);
 	void SendSpellAnimGFX(uint16 targetid, uint16 spell_id, float aoerange);

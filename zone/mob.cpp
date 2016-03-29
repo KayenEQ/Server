@@ -10682,7 +10682,8 @@ void Mob::GlideWithBounceTimer(float StartX, float StartY, float StartZ, float D
 		GMMove(cur_x, cur_y, cur_z, DestH);
 }
 
-bool Mob::GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z)
+bool Mob::GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z,
+								 bool FromLocs, float origin_x, float origin_y, float origin_z)
 {
 	
 	float dX = 0;
@@ -10691,9 +10692,21 @@ bool Mob::GetFurthestLocationLOS(float heading, int d_interval, int d_max, float
 		
 	int current_distance = d_interval;
 	
-	float last_dX = GetX();
-	float last_dY = GetY();
-	float last_dZ = GetZ();
+	float last_dX = 0;
+	float last_dY = 0;
+	float last_dZ = 0;
+
+	if (!FromLocs){
+		last_dX = GetX();
+		last_dY = GetY();
+		last_dZ = GetZ();
+	}
+	else{
+		last_dX = origin_x;
+		last_dY = origin_y;
+		last_dZ = origin_z;
+
+	}
 	
 	while (current_distance <= d_max)
 	{
@@ -11219,7 +11232,7 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 		}
 	}
 	else{
-		Shout("DEBUG: Critical Development Error: INVALID SPELL ANGLE %.2f", total_angle);
+		Shout("DEBUG: Critical Development Error: INVALID SPELL ANGLE %.2f [AOE RANGE %.2f]", total_angle, aoerange);
 	}
 	
 	return 0.0f;
@@ -11381,6 +11394,89 @@ void Mob::SpawnSpellGraphicSingleTempPetLocation(int type, uint16 spell_id, floa
 	}
 }
 
+void Mob::SpawnProjectileGraphicArcheryTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y, float origin_z)
+{
+	if (!IsEffectInSpell(spell_id,SE_AttackArchery))
+		return;
+
+	uint16 gfx_spell_id = 1001001;
+
+	int ammo_slot = MainAmmo;
+	const ItemInst* Ammo = CastToClient()->m_inv[MainAmmo];
+	if (!Ammo || !Ammo->IsType(ItemClassCommon)) 
+		return;
+	const Item_Struct* AmmoItem = Ammo->GetItem();
+	if (!AmmoItem)
+		return;
+
+	float dX = 0.0f;
+	float dY = 0.0f;
+	float dZ = 0.0f;
+	uint32 duration = 5000;
+
+	if (type == 2) {//Beam
+		GetFurthestLocationLOS(origin_heading, 5, aoerange, dX, dY, dZ, true,origin_x, origin_y, origin_z);
+		NPC* temppet = nullptr;
+		temppet = TypesTemporaryPetsGFX(gfx_spell_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
+		if (temppet)
+			SendItemAnimation(temppet, AmmoItem, SkillArchery);
+	}
+
+	if (type == 1){//AOE/Directional
+
+		float total_angle = 360.0f;
+
+		if (spells[spell_id].targettype == ST_Directional){
+			if (spells[spell_id].directional_start > spells[spell_id].directional_end)//Centered
+				total_angle = (spells[spell_id].directional_end + 360) - (spells[spell_id].directional_start);
+			else if (spells[spell_id].directional_start < spells[spell_id].directional_end)//Off center
+				total_angle = spells[spell_id].directional_end - spells[spell_id].directional_start;
+		}
+		
+		float angle_length = 7.5f;
+		float start_angle = 0;
+
+		int COLUMN_COUNT = 0;
+
+		if (spells[spell_id].aemaxtargets > 1){
+			COLUMN_COUNT = spells[spell_id].aemaxtargets;
+			angle_length = (total_angle/static_cast<float>(spells[spell_id].aemaxtargets - 1));
+		}
+		else
+			COLUMN_COUNT = total_angle/angle_length + 1;
+		
+		start_angle = origin_heading - GetHeadingChangeFromAngle(spells[spell_id].directional_end);
+		start_angle = FixHeadingAngle(start_angle);
+		angle_length =  GetHeadingChangeFromAngle(angle_length); //Convert 
+
+		float single_shot_mod = 0; //Centers the arrow.
+
+		if (total_angle == 7.5){
+			COLUMN_COUNT = 1;
+			single_shot_mod = total_angle/2;
+		}
+
+		//Shout("DEBUG: total %.2f COUNT %i [MAX %i] Angle Lenth %.2f", total_angle, COLUMN_COUNT, spells[spell_id].aemaxtargets, angle_length);
+
+		for(int i = 0; i < COLUMN_COUNT; i++){
+
+			float dX = 0.0f;
+			float dY = 0.0f;
+			float dZ = 0.0f;
+		
+			GetFurthestLocationLOS(start_angle + (single_shot_mod), 5, aoerange, dX, dY, dZ, true,origin_x, origin_y, origin_z);
+			NPC* temppet = nullptr;
+			temppet = TypesTemporaryPetsGFX(gfx_spell_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
+			if (temppet){
+				SendItemAnimation(temppet, AmmoItem, SkillArchery);
+				start_angle = FixHeadingAngle((start_angle + angle_length));
+			}
+			else
+				Shout("DEBUG:: Critical error SPELL %i no temppet (NPCTYPE ID %i) Found in database", spell_id, 1001000 );
+		}
+	}
+}
+
 void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_adjust, bool FromTarget, Mob* target)
 {
 	//Optmized Beam Directional Function.
@@ -11432,6 +11528,7 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 
 	float origin_x = caster->GetX();
 	float origin_y = caster->GetY();
+	float origin_z = caster->GetZ();
 
 	float aX = 0.0f;
 	float aY = 0.0f;
@@ -11492,8 +11589,10 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	if (maxtargets)
 		caster->CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_rectangle);
 
-	if (!target_found)
-		caster->DirectionalFailMessage(spell_id);
+	if (!target_found){
+		caster->DirectionalFailMessage(spell_id);//Planning on disabling this 
+		caster->SpawnProjectileGraphicArcheryTempPet(2, spell_id, ae_length, 0, origin_heading, origin_x, origin_y, origin_z);
+	}
 	
 	return;
 }
@@ -11519,6 +11618,11 @@ void EntityList::AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 
 	while (angle_end > 360.0f)
 		angle_end -= 360.0f;
+
+	float origin_x = caster->GetX();
+	float origin_y = caster->GetY();
+	float origin_z = caster->GetZ();
+	float origin_heading = caster->GetHeading();
 
 	if (caster->IsClient() && IsRangeSpellEffect(spell_id)){
 		min_aoerange = 0.0f; //Calculated in the archery fire as a miss.
@@ -11584,8 +11688,10 @@ void EntityList::AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	if (maxtargets)
 		caster->CastOnClosestTarget(spell_id, resist_adjust, maxtargets, targets_in_cone);
 
-	if (!target_found)
+	if (!target_found){
 		caster->DirectionalFailMessage(spell_id);
+		caster->SpawnProjectileGraphicArcheryTempPet(1, spell_id, aoerange, 0, origin_heading, origin_x, origin_y, origin_z);
+	}
 	
 	return;
 }

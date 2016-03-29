@@ -1704,8 +1704,8 @@ void SharedDatabase::LoadSpells(void *data, int max_spells) {
 		sp[tempid].viral_targets = atoi(row[191]);
 		sp[tempid].viral_timer = atoi(row[192]);
 		sp[tempid].NimbusEffect = atoi(row[193]);
-		sp[tempid].directional_start = static_cast<float>(atoi(row[194]));
-		sp[tempid].directional_end = static_cast<float>(atoi(row[195]));
+		sp[tempid].directional_start = static_cast<float>(atof(row[194]));//C!Kayen
+		sp[tempid].directional_end = static_cast<float>(atof(row[195]));//C!Kayen
 		sp[tempid].sneak = atoi(row[196]) != 0;
 		sp[tempid].not_focusable = atoi(row[197]) != 0;
 		sp[tempid].no_detrimental_spell_aggro = atoi(row[198]) != 0;
