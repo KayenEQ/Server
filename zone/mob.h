@@ -1123,6 +1123,7 @@ public:
 	//!// Client::CastFromCrouch(uint16 spell_id)
 	int32 CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid);
 	int32 CalcCrouchModFromType(uint16 spell_id, int type);
+	bool ApplyCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit);
 	inline void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
 	inline void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }

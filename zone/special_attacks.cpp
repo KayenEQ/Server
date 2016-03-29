@@ -794,6 +794,10 @@ void Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 		return;
 	}
 
+	//C!Kayen - Endurance Drain on Archery
+	if (IsClient() && !CastToClient()->EnduranceResourceCheck(10,true))
+		return;
+
 	//Shoots projectile and/or applies the archery damage
 	DoArcheryAttackDmg(GetTarget(), RangeWeapon, Ammo,0,0,0,0,0,0, AmmoItem, ammo_slot, 4.0f, SPELL_UNKNOWN, -1);
 

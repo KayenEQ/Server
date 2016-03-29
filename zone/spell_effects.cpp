@@ -253,7 +253,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				// for offensive spells check if we have a spell rune on
 				int32 dmg = effect_value;
 				
-				if (caster && !caster->PassCasterRestriction(false,  spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
+				//if (caster && !caster->PassCasterRestriction(false,  spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
+					//break;
+
+				if (caster && !caster->ApplyCastFromCrouchProjectileDamage(spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
 					break;
 
 				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.

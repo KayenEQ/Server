@@ -7587,8 +7587,9 @@ int32 Mob::CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid){
 
 	int32 interval = 0;
 	if (IsProjectile(spell_id)){
-		//See CasterRestriction - If these is true we fire MORE projectiles instead of scaling.
-		if (spells[spell_id].base2[effectid] <= -20000 && spells[spell_id].base2[effectid] >= -20010)
+		/*Fire MORE projectiles instead of scaling. - Limited case [base2 = -1 through -3 to determine how many hits]
+		SEE Mob::ApplyCastFromCrouchProjectileDamage*/
+		if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY)
 			return 0;
 
 		interval = caster->GetCastFromCrouchIntervalProj();
@@ -7637,6 +7638,26 @@ int32 Mob::CalcCrouchModFromType(uint16 spell_id, int type)
 	}
 	return 0;
 }
+
+bool Mob::ApplyCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit)
+{
+	if (limit > 0)
+		return false;
+	/*
+	Determines how many direct damage spells will be applied based on Charge Interval 
+	[Set to Negative to avoid conflict with CasterRestriction Check]
+	*/
+	if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY)
+	{
+		limit = -limit;
+
+		if (limit <= GetCastFromCrouchIntervalProj())
+			return true;
+	}
+	return false;
+}
+
+
 //#### C!Wizard :: Functions related to spell power from endurance
 
 int16 Mob::GetBaseSpellPowerWizard()
@@ -12134,25 +12155,43 @@ int32 Mob::CalcSpellPowerTargetPctHP(uint16 spell_id, Mob* caster){
 	return 0;
 }
 
+bool Client::EnduranceResourceCheck(int32 cost, bool FromArchery)
+{
+	if(GetEndurance() < cost) {
+		Message(11, "You are too fatigued to use this skill right now.");
+		
+		if (FromArchery)
+			SetEndurance(0);
+		else
+			SetEndurance(GetEndurance() + 1);
+
+		return false;
+	}
+	
+	SetEndurance(GetEndurance() - cost);
+	return true;
+}
+
 void Client::Fling(Mob* target)
 {
 
 		EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_Fling, sizeof(fling_struct));
 		fling_struct* spu = (fling_struct*)outapp_push->pBuffer;
 
-		spu->unk1						= 0;
+		spu->unk1						= 1;//Collision
 		spu->travel_time				= 600;
-		spu->unk3						= 0;
+		spu->unk3						= 1;
 		spu->disable_fall_damage		= 1;
 		spu->speed_z					= 10.0f;
 		spu->new_y						= target->GetY();
 		spu->new_x						= target->GetX();
 		spu->new_z						= target->GetZ();
 		outapp_push->priority = 5;
+		CastToClient()->QueuePacket(outapp_push, false);
 		
-		entity_list.QueueClients(this, outapp_push, true);
-		if(IsClient())
-			CastToClient()->FastQueuePacket(&outapp_push);
+		//entity_list.QueueClients(this, outapp_push, true);
+		//if(IsClient())
+			//CastToClient()->FastQueuePacket(&outapp_push);
 
 		Shout("Test Fling OFF");
 
