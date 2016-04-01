@@ -3476,26 +3476,37 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_FlingToTarget:
 			{
-				if (caster && caster->IsClient() && this != caster)
-					caster->CastToClient()->FlingEffect(spell_id, GetX(), GetY(), GetZ(), spell.base2[i], spell.base[i]);
+				if (caster && caster->IsClient() && this != caster){
+					float dist = caster->CalculateDistance(GetX(), GetY(), GetZ());
+					float origin_heading = CalculateHeadingToTarget(GetX(), GetY());
+					CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), origin_heading * 2);
+					caster->CastToClient()->FlingEffect(spell_id, GetID(), GetX(), GetY(), GetZ(), spell.base2[i], spell.base[i], spell.max[i],origin_heading,dist);
 				
 				break;
+				}
 			}
 
 			case SE_FlingToLocation:
 			{
-				if (caster && caster->IsClient())
-					caster->CastToClient()->FlingEffect(spell_id, caster->GetTargetRingX(),caster->GetTargetRingY(),caster->GetTargetRingZ(),spell.base2[i], spell.base[i]);
+				//if (caster && caster->IsClient())
+					//caster->CastToClient()->FlingEffect(spell_id, caster->GetTargetRingX(),caster->GetTargetRingY(),caster->GetTargetRingZ(),spell.base2[i], spell.base[i]);
 				
 				break;
 			}
 
 			case SE_FlingLeap:
 			{
+				if (!IsClient())
+					break;
+
 				float dX=0; float dY=0; float dZ=0;
 				int dist = caster->GetFurthestLocationLOS(caster->GetHeading(), 5, 55, dX, dY, dZ);
 				Shout("Test FingLeap DIST %i", dist);
-				caster->CastToClient()->FlingEffect(spell_id, dX,dY,dZ,spell.base2[i], spell.base[i]);
+
+				caster->CastToClient()->SetKnockBackMeleeImmune(true);
+				caster->CastToClient()->FlingEffect(spell_id, 0,dX,dY,dZ,spell.base2[i], spell.base[i],spell.max[i], caster->GetHeading(),dist);
+				break;
+
 			}
 
 			// Handled Elsewhere

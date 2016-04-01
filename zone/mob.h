@@ -1381,7 +1381,7 @@ public:
 	inline void SetDisableSpellEffects(bool value) {   disable_spell_effects = value; }
 	inline bool GetDisableSpellEffects() const { return   disable_spell_effects; }
 
-	void CastOnFlingLand(uint16 spell_id);
+	void CastOnFlingLand(uint16 spell_id, uint16 target_id);
 	inline const glm::vec3& GetFlingLocation() const { return m_FlingLocation; }
 	inline float GetFlingLocationX() const { return m_FlingLocation.x; }
 	inline float GetFlingLocationY() const { return m_FlingLocation.y; }

@@ -470,11 +470,10 @@ Mob::Mob(const char* in_name,
 	gflux.peak = 0;
 
 	fling.spell_id = SPELL_UNKNOWN;
+	fling.target_id = 0;
 	fling.increment = 0;
 	fling.hit_increment = 0;
-	fling.dest_x = 0;
-	fling.dest_y = 0;
-	fling.dest_z = 0;
+	m_FlingLocation = glm::vec3();
 
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++)
 	{
@@ -528,9 +527,7 @@ Mob::Mob(const char* in_name,
 	aeduration_iteration = 0;
 	scaled_base_effect_value = 0;
 	AggroLockEffect = 0;
-
-	m_FlingLocation = glm::vec3();
-
+	
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
 	pet_buff_owner_timer.Disable();
@@ -6795,6 +6792,20 @@ bool Mob::TryTargetRingEffects(uint16 spell_id)
 					GMMove(GetTargetRingX(), GetTargetRingY(), GetTargetRingZ(), GetHeading());
 			}
 
+			if (spells[spell_id].effectid[i] == SE_FlingToLocation){
+				if(IsClient()){
+					
+					float dist = CalculateDistance(GetTargetRingX(),GetTargetRingY(),GetTargetRingZ());
+					
+					float origin_heading =  CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY());
+					CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(),origin_heading*2);
+					Shout("Debug: Check Distance %i [Heading %.2f]",static_cast<int>(dist), CalculateHeadingToTarget(GetTargetRingX(), GetTargetRingY()));
+					//Not updating fast enough for the fling? still using old heading.
+				
+					CastToClient()->FlingEffect(spell_id,0, GetTargetRingX(),GetTargetRingY(),GetTargetRingZ(),spells[spell_id].base2[i], spells[spell_id].base[i], spells[spell_id].max[i],origin_heading,dist);
+				}
+			}
+
 			else if (spells[spell_id].effectid[i] == SE_LeapSpellEffect){
 
 				int velocity = spells[spell_id].base[i];
@@ -11225,6 +11236,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 	2 = Beam AE / Targeted Beam AE
 	3 = Target Ring AOE
 	4 = AOE Rain [Target = Beacon]
+	5 = Cast From Fling Leap Location
 	*/
 
 	int ROW_COUNT = 1;
@@ -11264,15 +11276,21 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 	float origin_y = GetY();
 	float origin_z = GetZ();
 
+	//Fix location
 	if (type == 3){
 		origin_x = GetTargetRingX();
 		origin_y = GetTargetRingY();
 		origin_z = GetTargetRingZ();
 	}
-	if (type == 4 && target && target->IsBeacon()){
+	else if (type == 4 && target && target->IsBeacon()){
 		origin_x = target->GetX();
 		origin_y = target->GetY();
 		origin_z = target->GetZ();
+	}
+	else if (type == 5){
+		origin_x = GetFlingLocationX();
+		origin_y = GetFlingLocationY();
+		origin_z = GetFlingLocationZ();
 	}
 
 	//Shout("DEBUG: Start GFX: Column Distance %i ROW COUNT %i [AOE RANGE %i] [Heading %.2f]", column_distance, ROW_COUNT, static_cast<int>(aoerange), origin_heading);
@@ -11295,7 +11313,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 			SpawnSpellGraphicBeamTempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading,origin_x,origin_y); 
 		}
 	}
-	else if (type == 3 || type == 4){//Targert RING AOE or Location based attacks
+	else if (type >= 3 && type <= 5){//Targert RING AOE or Location based attacks
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1){
@@ -12276,9 +12294,7 @@ void Client::FlingToTarget(Mob* target,uint32 collision, float speed, int32 time
 		if (EffectOnLand){
 			fling.increment = 1;
 			fling.hit_increment = 10 * speed * 2.4;
-			fling.dest_x = target->GetX();
-			fling.dest_y = target->GetY();
-			fling.dest_z = target->GetZ();
+			m_FlingLocation = glm::vec3(target->GetX(), target->GetY(), target->GetZ());
 		}
 
 		//time = speed * 2.4;
@@ -12296,55 +12312,9 @@ void Client::FlingToTarget(Mob* target,uint32 collision, float speed, int32 time
 		spu->new_z						= target->GetZ();
 		outapp_push->priority = 5;
 		CastToClient()->QueuePacket(outapp_push, false);
-		
-		//entity_list.QueueClients(this, outapp_push, true);
-		//if(IsClient())
-			//CastToClient()->FastQueuePacket(&outapp_push);
 }
 
-void Client::FlingToLocation(float dX, float dY, float dZ, uint32 collision, float speed, int32 time, bool EffectOnLand)
-{
-		if (!speed)
-			speed = 10.0f;
-		if (!time)
-			time = -1;
-
-		float z_dif = dZ - GetZ();
-
-		if (z_dif >= 62){
-			Message(11, "Your desired location is too high.");
-			return;
-		}
-		Shout("FlingToTarget: %i %.2f %i", collision, speed,time);
-
-		if (EffectOnLand){
-			fling.increment = 1;
-			fling.hit_increment = 10 * speed * 2.4;
-			fling.dest_x = dX;
-			fling.dest_y = dY;
-			fling.dest_z = dZ;
-		}
-
-		EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_Fling, sizeof(fling_struct));
-		fling_struct* spu = (fling_struct*)outapp_push->pBuffer;
-
-		spu->collision					= collision;
-		spu->travel_time				= time;
-		spu->unk3						= 1;
-		spu->disable_fall_damage		= 1;
-		spu->speed_z					= speed;
-		spu->new_y						= dY;
-		spu->new_x						= dX;
-		spu->new_z						= dZ;
-		outapp_push->priority = 5;
-		CastToClient()->QueuePacket(outapp_push, false);
-		
-		//entity_list.QueueClients(this, outapp_push, true);
-		//if(IsClient())
-			//CastToClient()->FastQueuePacket(&outapp_push);
-}
-
-void Client::FlingEffect(uint16 spell_id, float dX, float dY, float dZ, uint32 collision, float speed)
+void Client::FlingEffect(uint16 spell_id, uint16 target_id, float dX, float dY, float dZ, uint32 collision, float speed, int max, float origin_heading, float dist)
 {
 		if (speed)
 			speed = speed/100;
@@ -12355,19 +12325,37 @@ void Client::FlingEffect(uint16 spell_id, float dX, float dY, float dZ, uint32 c
 		
 		float z_dif = dZ - GetZ();
 
-		if (z_dif >= 62){
+		if (z_dif >= 62){//This is going to change based on speed....
 			Message(11, "Your desired location is too high.");
 			return;
 		}
 
-		Shout("FlingToTarget: %i %.2f %i", collision, speed,time);
+		Shout("FlingToTarget: %i %.2f %i [Max %i]", collision, speed,time, max);
 
 		fling.spell_id = spell_id;
+		fling.target_id = target_id;
 		fling.increment = 1;
 		fling.hit_increment = 10 * speed * 2.4;
-		fling.dest_x = dX;
-		fling.dest_y = dY;
-		fling.dest_z = dZ;
+
+
+		Shout("FlingToTarget: HIT INCREMENT %i", fling.hit_increment);
+
+		//Centers AOE curently - Speed 2 - Distance 50 - Adjust = 6 (Move center back 6 distance) TODO: Define formula
+		//For far distances you OVER SHOOT, for close distance you UNDER SHOOT the location
+		if (max){
+
+			float center_adjust = 4.166; //Constant derived from in game testing.
+			if (speed >= 2 && speed <= 10)
+				max = dist/(center_adjust * speed);//Adjust landing location by this distance!
+		
+			Shout("New Max Adjust %i", max);
+
+			float ndX = 0; float ndY = 0; float ndZ = 0;
+			CalcDestFromHeading(GetReverseHeading(origin_heading), max, 0, dX, dY, ndX, ndY, ndZ);
+			m_FlingLocation = glm::vec3(ndX, ndY, ndZ);
+		}
+		else
+			m_FlingLocation = glm::vec3(dX, dY, dZ);
 
 		EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_Fling, sizeof(fling_struct));
 		fling_struct* spu = (fling_struct*)outapp_push->pBuffer;
@@ -12389,28 +12377,26 @@ void Client::FlingLand()
 	if (!fling.increment)
 		return;
 	//Need to flag spell as something to know its fling prob jus check the effect, and then pull the vector in the AE check!
-	Shout("Fling %i %i", fling.increment, fling.hit_increment);
+	//Shout("Fling %i %i", fling.increment, fling.hit_increment);
 	if (fling.increment >= fling.hit_increment){
 
 		Shout("LAND SOURCE");
 		if (fling.spell_id){
-			m_FlingLocation = glm::vec3(fling.dest_x, fling.dest_y, fling.dest_z);
-			CastOnFlingLand(fling.spell_id);
+			CastOnFlingLand(fling.spell_id, fling.target_id);
 		}
 
 		fling.spell_id = SPELL_UNKNOWN;
+		fling.target_id = 0;
 		fling.increment = 0;
 		fling.hit_increment = 0;
-		fling.dest_x = 0;
-		fling.dest_y = 0;
-		fling.dest_z = 0;
+		m_FlingLocation = glm::vec3(0, 0, 0);
 	}
 	else
 		fling.increment++;
 	
 }
 
-void Mob::CastOnFlingLand(uint16 spell_id)
+void Mob::CastOnFlingLand(uint16 spell_id,uint16 target_id)
 {
 	if (!IsValidSpell(spell_id))
 		return;
@@ -12418,7 +12404,14 @@ void Mob::CastOnFlingLand(uint16 spell_id)
 	for (int i=0; i < EFFECT_COUNT; i++){
 		if(spells[spell_id].effectid[i] == SE_CastOnFlingLand){
 			if (IsValidSpell(spells[spell_id].base[i]) && spell_id != spells[spell_id].base[i]){
-				SpellFinished(spells[spell_id].base[i], this, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+
+				Mob* target = this;
+
+				if (target_id && IsTargetableSpell(spell_id))
+					target = entity_list.GetMobID(target_id);
+
+				if (target)
+					SpellFinished(spells[spell_id].base[i], target, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
 			}
 		}
 	}
