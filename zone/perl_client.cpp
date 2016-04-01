@@ -6405,7 +6405,6 @@ XS(XS_Client_SendActionPacket)
 	}
 	XSRETURN_EMPTY;
 }
-
 XS(XS_Client_GetMoney);
 XS(XS_Client_GetMoney)
 {
@@ -6458,6 +6457,26 @@ XS(XS_Client_GetAccountAge) {
 		XSprePUSH; PUSHn((int)RETVAL);		
 	}
 	XSRETURN(1);
+}
+
+XS(XS_Client_FlingToTarget); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Client_FlingToTarget)
+{
+	dXSARGS;
+	if (items != 10)
+		Perl_croak(aTHX_ "Usage: FlingToTarget(Mob* target, uint32 collision=0, float speed=10.0f)");
+	{
+		Client *		THIS;
+		Mob *		target = nullptr;
+		uint32 collision =	(uint32)SvUV(ST(2));
+		float speed		 = (float)SvNV(ST(3));
+
+			if(THIS == NULL)
+			Perl_croak(aTHX_ "THIS is NULL, avoiding crash.");
+
+		THIS->FlingToTarget(target, collision, speed);
+	}
+	XSRETURN_EMPTY;
 }
 
 
@@ -6710,6 +6729,7 @@ XS(boot_Client)
 
 		newXSproto(strcpy(buf, "RefundAAType"), XS_Client_RefundAAType, file, "$$"); //C!Kayen
 		newXSproto(strcpy(buf, "SendActionPacket"), XS_Client_SendActionPacket, file, "$$$$$$$$$$"); //C!Kayen
+		newXSproto(strcpy(buf, "FlingToTarget"), XS_Client_FlingToTarget, file, "$$$"); //C!Kayen
 
 
 		newXSproto(strcpy(buf, "GetTargetRingX"), XS_Client_GetTargetRingX, file, "$$");

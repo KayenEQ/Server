@@ -469,6 +469,13 @@ Mob::Mob(const char* in_name,
 	gflux.origin_z = 0;
 	gflux.peak = 0;
 
+	fling.spell_id = SPELL_UNKNOWN;
+	fling.increment = 0;
+	fling.hit_increment = 0;
+	fling.dest_x = 0;
+	fling.dest_y = 0;
+	fling.dest_z = 0;
+
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++)
 	{
 		ProjectileRing[i].increment = 0;
@@ -521,6 +528,8 @@ Mob::Mob(const char* in_name,
 	aeduration_iteration = 0;
 	scaled_base_effect_value = 0;
 	AggroLockEffect = 0;
+
+	m_FlingLocation = glm::vec3();
 
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
@@ -6351,33 +6360,103 @@ bool Mob::AACastSpellResourceCheck(uint16 spell_id, uint16 target_id)
 
 	return true;
 }
-bool Mob::PassCasterRestriction(bool UseCasterRestriction,  uint16 spell_id, int16 value)
+bool Mob::PassCasterRestriction(int type, Mob* target, uint16 spell_id, int16 value)
 {
-	//IS THIS IS EVEN USED ANYMORE?????? Kayen 10-16-15
-
-	//This value is always defined as a NEGATIVE in the database when doing CasterRestrictions.
-	//*NOTE IMPLMENTED YET FOR FROM CastRestriction Field - Will write as needed.
-	/*If return TRUE spell met all restrictions and can continue (this = CASTER).
-	This check is used when the spell_new field CastRestriction is defined OR spell effect '0'(DD/Heal) has a defined limit
-
-	Range 20000 - 200010	: Limit to CastFromCrouch Interval Projectile
+	/*
 	THIS IS A WORK IN PROGRESS
+	Type 1 = FROM CastSpell (These don't require a target)
+	Type 2 = FROM Determine Spell Targets
 	*/ 
 
-	if (value >= 0)
-		return true;
-
-	if (value == CASTER_RESTRICT_NO_CAST_SELF)
-		return true; //Handled else where.
-
-	value = -value; //Convert to positive for calculations
-
-	if (value >= 20000 && value <= 20010) {
-		if ((value - 20000) <= GetCastFromCrouchIntervalProj())
-			return true;
+	if (type == 1)
+	{
+		switch(value)
+		{
+			case CASTER_RESTRICT_FULL_HP_MANA:{
+				if (GetHPRatio() == 100 && GetManaRatio() == 100)
+					return true;
+				else{
+					Message(MT_SpellFailure, "To channel this spell you must have full heath and mana."); 
+					return false;
+				}
+			}
+		}
 	}
 
-	return false;
+	else if (type == 2)
+	{
+		if (!target)
+			return false;
+
+		switch(value)
+		{
+			case CASTER_RESTRICT_NO_CAST_SELF:{
+				if (target->GetID() == GetID()){
+					//Message_StringID(13,CANNOT_AFFECT_PC);
+					Message(MT_SpellFailure, "This spell can not be cast on yourself."); 
+					return false;
+				}
+			}
+
+			case CASTER_RESTRICT_PARTY:{
+				if (IsClient() && !CastToClient()->IsPartyMember(target)){
+					Message(MT_SpellFailure, "This spell can only be cast on players in your group or raid."); 
+					return false;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+bool Mob::PassCastRestrictionCustom(int type, Mob* caster,  uint16 spell_id, int16 value)
+{
+	/*NEGATIVE VALUS ONLY
+	THIS IS A WORK IN PROGRESS
+	Type 1 = 
+	Type 2 = FROM Determine Spell Targets
+	*/ 
+	if (value >= -10)//(-1 - -10 used for Projectile Crouch Mod, better to avoid any conflict)
+		return true;
+
+	if (!caster)
+		return false;
+
+	if (type == 2)
+	{
+		switch(value)
+		{
+			case CASTER_RESTRICT_FULL_HP_MANA:{
+				if (GetHPRatio() == 100 && GetManaRatio() == 100)
+					return true;
+				else{
+					Message(MT_SpellFailure, "To channel this spell you must have full heath and mana."); 
+					return false;
+				}
+			}
+		}
+
+		value = -value;//Convert negative to positive for calculations.
+
+		//Must be BELOW HP Ratio
+		if (value > 100 && value < 200){
+			value = value - 100;
+			if (static_cast<int>(GetHPRatio()) > value){
+				caster->Message(MT_SpellFailure, "Your target must be below %i percent heath to be affected by this spell.", value); 
+				return false;
+			}
+		}
+		//Must be ABOVE HP Ratio
+		else if (value > 200 && value < 300){
+			value = value - 200;
+			if (static_cast<int>(GetHPRatio()) < value){
+				caster->Message(MT_SpellFailure, "Your target must be above %i percent heath to be affected by this spell.", value); 
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 void EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id)
@@ -7588,8 +7667,9 @@ int32 Mob::CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid){
 	int32 interval = 0;
 	if (IsProjectile(spell_id)){
 		/*Fire MORE projectiles instead of scaling. - Limited case [base2 = -1 through -3 to determine how many hits]
-		SEE Mob::ApplyCastFromCrouchProjectileDamage*/
-		if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY)
+		SEE Mob::BlockCastFromCrouchProjectileDamage*/
+		if (spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY
+			&& (spells[spell_id].base2[effectid] <= -1 && spells[spell_id].base2[effectid] >= -10))
 			return 0;
 
 		interval = caster->GetCastFromCrouchIntervalProj();
@@ -7639,7 +7719,7 @@ int32 Mob::CalcCrouchModFromType(uint16 spell_id, int type)
 	return 0;
 }
 
-bool Mob::ApplyCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit)
+bool Mob::BlockCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit)
 {
 	if (limit > 0)
 		return false;
@@ -7651,7 +7731,7 @@ bool Mob::ApplyCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit)
 	{
 		limit = -limit;
 
-		if (limit <= GetCastFromCrouchIntervalProj())
+		if (limit > GetCastFromCrouchIntervalProj())
 			return true;
 	}
 	return false;
@@ -10259,7 +10339,6 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 			return false;
 	}
 
-
 	if (spells[spell_id].range != UseRangeFromRangedWpn())
 		return true;
 
@@ -10703,7 +10782,7 @@ void Mob::GlideWithBounceTimer(float StartX, float StartY, float StartZ, float D
 		GMMove(cur_x, cur_y, cur_z, DestH);
 }
 
-bool Mob::GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z,
+int Mob::GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z,
 								 bool FromLocs, float origin_x, float origin_y, float origin_z)
 {
 	
@@ -10738,17 +10817,17 @@ bool Mob::GetFurthestLocationLOS(float heading, int d_interval, int d_max, float
 			loc_X = last_dX;
 			loc_Y = last_dY;
 			loc_Z = last_dZ;
-			return 1;
+			return current_distance;
 		}
 		
 		current_distance = current_distance + d_interval;
-		
+
 		if (current_distance > d_max)
 		{
 			loc_X = dX;
 			loc_Y = dY;
 			loc_Z = dZ;	
-			return 1;
+			return d_max;
 		}
 		
 		last_dX = dX;
@@ -11106,6 +11185,9 @@ bool Mob::TryCustomCastingConditions(uint16 spell_id, uint16 target_id)
 		return false;
 
 	if (!TryLeapSECastingConditions(spell_id))
+		return false;
+
+	if (!PassCasterRestriction(1, nullptr, spell_id, spells[spell_id].CasterRestriction))
 		return false;
 
 	//Check Min RANGE since client does not auto stop it.
@@ -12172,17 +12254,43 @@ bool Client::EnduranceResourceCheck(int32 cost, bool FromArchery)
 	return true;
 }
 
-void Client::Fling(Mob* target)
+void Client::FlingToTarget(Mob* target,uint32 collision, float speed, int32 time, bool EffectOnLand)
 {
+		if (!target)
+			return;
+
+		if (!speed)
+			speed = 10.0f;
+		if (!time)
+			time = -1;
+
+		float z_dif = target->GetZ() - GetZ();
+
+		if (z_dif >= 62){
+			Message(11, "Your desired location is too high.");
+			return;
+		}
+
+		Shout("FlingToTarget: %i %.2f %i", collision, speed,time);
+
+		if (EffectOnLand){
+			fling.increment = 1;
+			fling.hit_increment = 10 * speed * 2.4;
+			fling.dest_x = target->GetX();
+			fling.dest_y = target->GetY();
+			fling.dest_z = target->GetZ();
+		}
+
+		//time = speed * 2.4;
 
 		EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_Fling, sizeof(fling_struct));
 		fling_struct* spu = (fling_struct*)outapp_push->pBuffer;
 
-		spu->unk1						= 1;//Collision
-		spu->travel_time				= 600;
+		spu->collision					= collision;
+		spu->travel_time				= time;
 		spu->unk3						= 1;
 		spu->disable_fall_damage		= 1;
-		spu->speed_z					= 10.0f;
+		spu->speed_z					= speed;
 		spu->new_y						= target->GetY();
 		spu->new_x						= target->GetX();
 		spu->new_z						= target->GetZ();
@@ -12192,9 +12300,128 @@ void Client::Fling(Mob* target)
 		//entity_list.QueueClients(this, outapp_push, true);
 		//if(IsClient())
 			//CastToClient()->FastQueuePacket(&outapp_push);
+}
 
-		Shout("Test Fling OFF");
+void Client::FlingToLocation(float dX, float dY, float dZ, uint32 collision, float speed, int32 time, bool EffectOnLand)
+{
+		if (!speed)
+			speed = 10.0f;
+		if (!time)
+			time = -1;
 
+		float z_dif = dZ - GetZ();
+
+		if (z_dif >= 62){
+			Message(11, "Your desired location is too high.");
+			return;
+		}
+		Shout("FlingToTarget: %i %.2f %i", collision, speed,time);
+
+		if (EffectOnLand){
+			fling.increment = 1;
+			fling.hit_increment = 10 * speed * 2.4;
+			fling.dest_x = dX;
+			fling.dest_y = dY;
+			fling.dest_z = dZ;
+		}
+
+		EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_Fling, sizeof(fling_struct));
+		fling_struct* spu = (fling_struct*)outapp_push->pBuffer;
+
+		spu->collision					= collision;
+		spu->travel_time				= time;
+		spu->unk3						= 1;
+		spu->disable_fall_damage		= 1;
+		spu->speed_z					= speed;
+		spu->new_y						= dY;
+		spu->new_x						= dX;
+		spu->new_z						= dZ;
+		outapp_push->priority = 5;
+		CastToClient()->QueuePacket(outapp_push, false);
+		
+		//entity_list.QueueClients(this, outapp_push, true);
+		//if(IsClient())
+			//CastToClient()->FastQueuePacket(&outapp_push);
+}
+
+void Client::FlingEffect(uint16 spell_id, float dX, float dY, float dZ, uint32 collision, float speed)
+{
+		if (speed)
+			speed = speed/100;
+		else
+			speed = 10.0f;
+
+		int32 time = -1;
+		
+		float z_dif = dZ - GetZ();
+
+		if (z_dif >= 62){
+			Message(11, "Your desired location is too high.");
+			return;
+		}
+
+		Shout("FlingToTarget: %i %.2f %i", collision, speed,time);
+
+		fling.spell_id = spell_id;
+		fling.increment = 1;
+		fling.hit_increment = 10 * speed * 2.4;
+		fling.dest_x = dX;
+		fling.dest_y = dY;
+		fling.dest_z = dZ;
+
+		EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_Fling, sizeof(fling_struct));
+		fling_struct* spu = (fling_struct*)outapp_push->pBuffer;
+
+		spu->collision					= collision;
+		spu->travel_time				= time;
+		spu->unk3						= 1;
+		spu->disable_fall_damage		= 1;
+		spu->speed_z					= speed;
+		spu->new_y						= dY;
+		spu->new_x						= dX;
+		spu->new_z						= dZ;
+		outapp_push->priority = 5;
+		CastToClient()->QueuePacket(outapp_push, false);
+}
+
+void Client::FlingLand()
+{
+	if (!fling.increment)
+		return;
+	//Need to flag spell as something to know its fling prob jus check the effect, and then pull the vector in the AE check!
+	Shout("Fling %i %i", fling.increment, fling.hit_increment);
+	if (fling.increment >= fling.hit_increment){
+
+		Shout("LAND SOURCE");
+		if (fling.spell_id){
+			m_FlingLocation = glm::vec3(fling.dest_x, fling.dest_y, fling.dest_z);
+			CastOnFlingLand(fling.spell_id);
+		}
+
+		fling.spell_id = SPELL_UNKNOWN;
+		fling.increment = 0;
+		fling.hit_increment = 0;
+		fling.dest_x = 0;
+		fling.dest_y = 0;
+		fling.dest_z = 0;
+	}
+	else
+		fling.increment++;
+	
+}
+
+void Mob::CastOnFlingLand(uint16 spell_id)
+{
+	if (!IsValidSpell(spell_id))
+		return;
+
+	for (int i=0; i < EFFECT_COUNT; i++){
+		if(spells[spell_id].effectid[i] == SE_CastOnFlingLand){
+			if (IsValidSpell(spells[spell_id].base[i]) && spell_id != spells[spell_id].base[i]){
+				SpellFinished(spells[spell_id].base[i], this, 10, 0, -1, spells[spells[spell_id].base[i]].ResistDiff);
+			}
+		}
+	}
 }
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){

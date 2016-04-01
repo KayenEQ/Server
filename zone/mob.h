@@ -1045,7 +1045,6 @@ public:
 		uint32 timer = 0xFFFFFFFF, uint32 timer_duration = 0, int16 *resist_adjust = nullptr,
 		uint32 aa_id = 0);
 	bool AACastSpellResourceCheck(uint16 spell_id, uint16 target_id);
-	bool PassCasterRestriction(bool UseCastRestrictioner,  uint16 spell_id, int16 value); //DO WE NEED THIS?
 	//!// EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id)
 	//!// EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id)
 	
@@ -1123,7 +1122,7 @@ public:
 	//!// Client::CastFromCrouch(uint16 spell_id)
 	int32 CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid);
 	int32 CalcCrouchModFromType(uint16 spell_id, int type);
-	bool ApplyCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit);
+	bool BlockCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit);
 	inline void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
 	inline void SetCastFromCrouchIntervalProj(int8 value) { CastFromCrouchIntervalProj = value; }
@@ -1314,7 +1313,7 @@ public:
 	void LeapSpellEffect(); //Triggered by interval timer
 	void GlideWithBounceTimer(float StartX, float StartY, float StartZ, float DestX, float DestY, float DestZ, float DestH, float z_bounce, float mod, int i);
 	//glm::vec3 GetFurthestLocationLOS(float heading, int d_interval, int d_max);
-	bool GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z, bool FromLocs=false, float origin_x=0.0f, float origin_y=0.0f, float origin_z=0.0f);
+	int GetFurthestLocationLOS(float heading, int d_interval, int d_max, float &loc_X, float &loc_Y, float &loc_Z, bool FromLocs=false, float origin_x=0.0f, float origin_y=0.0f, float origin_z=0.0f);
 	bool GetRandLocFromDistance(float distance, float &loc_X, float &loc_Y, float &loc_Z);
 	float GetReverseHeading(float Heading);
 	void CastOnLeapSELand(uint16 spell_id);
@@ -1342,7 +1341,9 @@ public:
 	bool TryClericCastingConditions(uint16 spell_id);
 	void AdjustNumHitsFaith(uint16 spell_id, int effectid);
 
-	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);
+	bool TryCustomCastingConditions(uint16 spell_id, uint16 target_id);//Checked CastSpell
+	bool PassCasterRestriction(int type, Mob* target,  uint16 spell_id, int16 value);//Checked CastSpell AND DetermineSpellTargets
+	bool PassCastRestrictionCustom(int type, Mob* caster, uint16 spell_id, int16 value);//Checked DetermineSpellTargets
 	bool TryCustomResourceConsume(uint16 spell_id);
 
 	//Experimental - AOE/Directional - ADVANCED GFX Displays and ADVANCED Directional AOE functions
@@ -1380,9 +1381,11 @@ public:
 	inline void SetDisableSpellEffects(bool value) {   disable_spell_effects = value; }
 	inline bool GetDisableSpellEffects() const { return   disable_spell_effects; }
 
-	
-
-
+	void CastOnFlingLand(uint16 spell_id);
+	inline const glm::vec3& GetFlingLocation() const { return m_FlingLocation; }
+	inline float GetFlingLocationX() const { return m_FlingLocation.x; }
+	inline float GetFlingLocationY() const { return m_FlingLocation.y; }
+	inline float GetFlingLocationZ() const { return m_FlingLocation.z; }
 
 	//Old calculations
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
@@ -1763,6 +1766,9 @@ protected:
 	tLeap leap;
 	tLeapSE leapSE;
 	tgflux gflux;
+	tfling fling;
+
+	glm::vec3 m_FlingLocation;
 
 
 	tProjring ProjectileRing[MAX_SPELL_PROJECTILE];

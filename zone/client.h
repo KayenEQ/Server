@@ -1356,7 +1356,10 @@ public:
 
 	bool EnduranceResourceCheck(int32 cost, bool FromArchery=false);
 
-	void Fling(Mob* target);
+	void FlingToTarget(Mob* target, uint32 collision=0, float speed=10.0f, int32 time=-1,bool EffectOnLand=true);
+	void FlingToLocation(float dX, float dY, float dZ, uint32 collision=0, float speed=10.0f,int32 time=-1, bool EffectOnLand=true);
+	void FlingEffect(uint16 spell_id, float dX, float dY, float dZ, uint32 collision, float speed);
+	void FlingLand();
 
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);

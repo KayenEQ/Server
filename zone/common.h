@@ -651,6 +651,17 @@ typedef struct
 typedef struct
 {
 	uint16 spell_id;
+	uint16 increment;
+	uint16 hit_increment;
+	float dest_x;
+	float dest_y;
+	float dest_z;
+
+} tfling; //Fling
+
+typedef struct
+{
+	uint16 spell_id;
 	uint16 target_id;
 	uint16 increment;
 	uint16 hit_increment;

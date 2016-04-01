@@ -786,6 +786,8 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	if (IsTargetRingSpell(spell_id) && IsProjectile(spell_id))
 		use_min_range = false;
 
+	bool IsFlingLeap = IsEffectInSpell(spell_id, SE_CastOnFlingLand); //This should also be on the triggered spell [SET -1]
+
 	bool TL_TargetFound = false; //C!Kayen - From ST_TargetLocation
 	bool AE_TargetFound = false; //C!Kayen - Check if AE found any targets.
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
@@ -837,8 +839,11 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 		if (spells[spell_id].targettype == ST_AreaNPCOnly && !curmob->IsNPC())
 			continue;
 
-		//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
-		if ((IsTargetRingSpell(spell_id) || caster->GetUseTargetRingOverride()) && !IsProjectile(spell_id)){ //C!Kayen pflag = Projectile
+		
+		if (IsFlingLeap){//C!Kayen - To accurate cast at fling land location.
+			dist_targ = DistanceSquared(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetFlingLocation());
+		}//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
+		else if ((IsTargetRingSpell(spell_id) || caster->GetUseTargetRingOverride()) && !IsProjectile(spell_id)){ //C!Kayen pflag = Projectile
 			dist_targ = DistanceSquared(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetTargetRingLocation());
 		}
 		else if (center) {

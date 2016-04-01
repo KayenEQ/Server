@@ -253,10 +253,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				// for offensive spells check if we have a spell rune on
 				int32 dmg = effect_value;
 				
-				//if (caster && !caster->PassCasterRestriction(false,  spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
-					//break;
-
-				if (caster && !caster->ApplyCastFromCrouchProjectileDamage(spell_id, spells[spell_id].base2[i]))//C!Kayen Restriction on caster
+				if (caster && caster->BlockCastFromCrouchProjectileDamage(spell_id, spells[spell_id].base2[i]))//C!Kayen
 					break;
 
 				//C!Kayen - Set True Base DMG/Heal Value after non-focus casting mods applied.
@@ -266,7 +263,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				{
 					if (!PassCastRestriction(false, spells[spell_id].base2[i], true))
 						break;
-
+					
 					// take partial damage into account
 					dmg = (int32) (dmg * partial / 100);
 
@@ -315,6 +312,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						caster->CastToClient()->SetFeigned(true);
 						caster->SendAppearancePacket(AT_Anim, 115);
 					}
+				}
+
+				if (spells[spell_id].spellgroup == SPELL_GROUP_DEATH){//C!Kayen
+					dmg = GetHP() * -15/10;
 				}
 
 				//do any AAs apply to these spells?
@@ -3245,12 +3246,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_TeleportLocation:
 			{
 				if (!IsTargetRingSpell(spell_id)){
+
 					if(caster->IsClient())
 						caster->CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), caster->GetHeading());
 					else
 						caster->GMMove(GetX(), GetY(), GetZ(), caster->GetHeading());
 
-					//Grappling Hook Effect
+					//Grappling Hook Effect v 1.0
 					if (spells[spell_id].base[i] == 2){
 						
 						if (caster->IsClient())
@@ -3431,7 +3433,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					break;//Limit to client only for now.
 				else{//Cast restriction for party only set - To get AE to land at new location need to force it via target ring
 					caster->m_TargetRing = glm::vec3(GetX(), GetY(), GetZ());
-					caster->SetUseTargetRingOverride(true);
+					caster->SetUseTargetRingOverride(true);//Big Hack to get it to cast at the right location - Limited scope
 					CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), caster->GetX(), caster->GetY(), caster->GetZ(), GetHeading());
 					caster->CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), caster->GetHeading());
 				}
@@ -3447,13 +3449,53 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			}
 
-			case SE_Fling:
+			case SE_SetResourcesPct:
 			{
-				Shout("Test Fling");
+				Mob* target = nullptr;
+				if (spell.max[i] == 1) { target = caster; }	else { target = this;}
+				if (!target)
+					break;
 
-				caster->CastToClient()->Fling(this);
+				if (spell.base2[i] == 1)
+					target->SetHP((target->GetMaxHP() * spell.base[i]/100));
+				else if (spell.base2[i] == 2)
+					target->SetMana((target->GetMaxMana() * spell.base[i]/100));
+				else if (target->IsClient() && spell.base2[i] == 3)
+					target->CastToClient()->SetEndurance((target->CastToClient()->GetMaxEndurance() * spell.base[i]/100));
 
 				break;
+			}
+
+			case SE_Fling:
+			{
+				if (caster && caster->IsClient())
+					caster->CastToClient()->FlingToTarget(this, spell.base2[i], spell.base[i],spell.max[i]);
+				
+				break;
+			}
+
+			case SE_FlingToTarget:
+			{
+				if (caster && caster->IsClient() && this != caster)
+					caster->CastToClient()->FlingEffect(spell_id, GetX(), GetY(), GetZ(), spell.base2[i], spell.base[i]);
+				
+				break;
+			}
+
+			case SE_FlingToLocation:
+			{
+				if (caster && caster->IsClient())
+					caster->CastToClient()->FlingEffect(spell_id, caster->GetTargetRingX(),caster->GetTargetRingY(),caster->GetTargetRingZ(),spell.base2[i], spell.base[i]);
+				
+				break;
+			}
+
+			case SE_FlingLeap:
+			{
+				float dX=0; float dY=0; float dZ=0;
+				int dist = caster->GetFurthestLocationLOS(caster->GetHeading(), 5, 55, dX, dY, dZ);
+				Shout("Test FingLeap DIST %i", dist);
+				caster->CastToClient()->FlingEffect(spell_id, dX,dY,dZ,spell.base2[i], spell.base[i]);
 			}
 
 			// Handled Elsewhere

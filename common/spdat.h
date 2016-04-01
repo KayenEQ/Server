@@ -41,6 +41,7 @@
 #define SPELL_GROUP_SPECTRAL_BLADE 2000
 #define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2046
 #define SPELL_GROUP_RAKE 5000
+#define SPELL_GROUP_DEATH 4074
 
 #define RANGE_USE_MELEE_COMBAT 101 
 #define RANGE_USE_BOW 351
@@ -48,8 +49,8 @@
 #define SPELL_NUMHIT_DISPLAY_FIX 16
 
 #define CASTER_RESTRICT_NO_CAST_SELF -1
-
-#define CAST_RESTRICT_PARTY -2
+#define CASTER_RESTRICT_PARTY -2
+#define CASTER_RESTRICT_FULL_HP_MANA -3
 
 #define CLIENT_MAX_LEVEL 50
 
@@ -773,6 +774,13 @@ typedef enum {
 #define SE_Swap							1103 // implemented - 
 #define SE_ApplyEffectToTargetsOnTarget	1104 // implemented - Cast on anything targeting the affect spell target. Chance/SpellID/RangeOpt
 #define SE_SpellPowerTargetPctHP		1105 // implemented -
+#define SE_SetResourcesPct				1106 // implemented - Flat out sets to this percent Base 1=HP 2=Mana 3=Endurance Limit Percent
+#define SE_FlingLeap					1107 // implemented - 
+#define SE_FlingToTarget				1108 // implemented -
+#define SE_FlingToLocation				1109 // implemented -
+#define SE_CastOnFlingLand				1110 // implemented -
+
+
 
 
 

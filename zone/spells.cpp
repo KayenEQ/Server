@@ -456,12 +456,6 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		}
 	}
 
-	if (!TryEnchanterCastingConditions(spell_id)){ //C!Kayen - DO I NEED TO CHECK THIS TWICE?
-		InterruptSpell();
-		SendSpellBarEnable(spell_id);
-		return false;
-	}
-
 	if(mana_cost > GetMana())
 		mana_cost = GetMana();
 
@@ -811,7 +805,7 @@ void Mob::ZeroCastingVars()
 	ClearNPCLastName(); //C!Kayen
 	SetOriginCasterID(0); //C!Kayen
 	SetScaledBaseEffectValue(0); //C!Kayen
-	SetUseTargetRingOverride(false); //C!Kayen
+	
 }
 
 void Mob::InterruptSpell(uint16 spellid)
@@ -1442,22 +1436,16 @@ bool Mob::DetermineSpellTargets(uint16 spell_id, Mob *&spell_target, Mob *&ae_ce
 		return false;
 	}
 
-	//C!Kayen - Restrict spell so that it can not be cast on self. [Note: Is this best place to check this?]
-	if (spell_target && spells[spell_id].CasterRestriction == CASTER_RESTRICT_NO_CAST_SELF && (spell_target == this)){
-		Message_StringID(13,CANNOT_AFFECT_PC);
+	//C!Kayen - Restrictions based on conditions placed on the target. [Negative values only to avoid conflict]
+	if (spell_target && !spell_target->PassCastRestrictionCustom(2, this, spell_id, spells[spell_id].CastRestriction)){
+		//Messages done within function
 		return false;
 	}
 
-	//C!Kayen - Restrict to group or raid
-	if (spell_target && spells[spell_id].CastRestriction == CAST_RESTRICT_PARTY && IsClient() && !CastToClient()->IsPartyMember(spell_target)){
-		Message(MT_SpellFailure, "This spell can only be cast on players in your group or raid."); 
+	//C!Kayen - Restrictions based on conditions placed on the caster.
+	if (spell_target && !PassCasterRestriction(2,spell_target, spell_id, spells[spell_id].CasterRestriction)){
+		//Messages done within function
 		return false;
-	}
-
-	//C!Kayen - Restrictions based on conditions placed on the caster. [Note: Is this still something we need?]
-	if (!PassCasterRestriction(true, spell_id, spells[spell_id].CastRestriction)){
-		//Message(13,"Your will is not sufficient to cast this spell."); //Temp message
-		//return false;
 	}
 
 	//Must be out of combat. (If Beneficial checks casters combat state, Deterimental checks targets)
@@ -2462,6 +2450,8 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 
 	if(IsNPC())
 		CastToNPC()->AI_Event_SpellCastFinished(true, slot);
+
+	SetUseTargetRingOverride(false); //C!Kayen
 
 	//C!Kayen - Hack to fix numhits display issue.
 	if (IsClient() && spells[spell_id].numhits){
