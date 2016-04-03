@@ -664,6 +664,15 @@ typedef struct
 	uint16 increment;
 	uint16 hit_increment;
 } tProjring; //Target ring projectiles
+
+
+enum class GFX {		  // GFX spell types
+	PBAE_DirAE = 1,
+	Beam = 2,
+	TargetRing = 3,
+	Rain = 4,
+	FlingLeap = 5
+};
 //C!Kayen - STRUCTS END
 
 class ItemInst;

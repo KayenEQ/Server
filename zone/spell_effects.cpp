@@ -3509,6 +3509,19 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			}
 
+			case SE_UtilityExtraGFX:
+			{
+				float range = spells[spell_id].aoerange;
+				if (spells[spell_id].range > range)
+					range = spells[spell_id].range;
+
+				if (caster && caster->IsClient()){
+					caster->SendSpellAnimGFX(GetID(), spell.base[i], range);
+				}
+
+				break;
+			}
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:

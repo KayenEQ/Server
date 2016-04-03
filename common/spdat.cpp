@@ -1367,11 +1367,11 @@ int GetManaRatioType(uint16 spell_id)
 	return 2;
 }
 
-uint16 GetAERainGFXSpellID(uint16 spell_id)
+uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id)
 {
 	//Displays rain graphic at AOE location only. Spell in file is display on targets.
 	for(int i = 0; i < EFFECT_COUNT; i++){
-		if (spells[spell_id].effectid[i] == SE_UtilityRainGFXLink){
+		if (spells[spell_id].effectid[i] == SE_UtilityDisplayGFX){
 			if (spells[spell_id].base[i])
 				return spells[spell_id].base[i];
 		}

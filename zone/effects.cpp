@@ -816,15 +816,13 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 
 	//C!Kayen Set - SpellGFX Type - ORDER MATTERS
 	if (IsFlingLeap)
-		caster->SpellGraphicTempPet(5, spell_id,dist);
-	else if (center->IsBeacon())
-		caster->SpellGraphicTempPet(4, spell_id,dist, center);
+		caster->SpellGraphicTempPet(GFX::FlingLeap, spell_id,dist);
+	else if (center && center->IsBeacon())
+		caster->SpellGraphicTempPet(GFX::Rain, spell_id,dist, center);
 	else if (IsTargetRingSpell(spell_id) && !IsProjectile(spell_id))
-		caster->SpellGraphicTempPet(3, spell_id,dist);
+		caster->SpellGraphicTempPet(GFX::TargetRing, spell_id,dist);
 	else if (spells[spell_id].targettype == ST_AECaster) 
-		caster->SpellGraphicTempPet(1, spell_id,dist);
-
-
+		caster->SpellGraphicTempPet(GFX::PBAE_DirAE, spell_id,dist);
 	
 	for (auto it = mob_list.begin(); it != mob_list.end(); ++it) {
 		curmob = it->second;

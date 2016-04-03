@@ -1347,11 +1347,11 @@ public:
 	bool TryCustomResourceConsume(uint16 spell_id);
 
 	//Experimental - AOE/Directional - ADVANCED GFX Displays and ADVANCED Directional AOE functions
-	void SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* target=nullptr);
-	void SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange, int row,float origin_heading,float origin_x, float origin_y); //Directional/PBAOE
-	void SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y);
-	void SpawnSpellGraphicSingleTempPetLocation(int type, uint16 spell_id, float aoerange, float locX=0.0f, float locY=0.0f, float locZ=0.0f);
-	void SpawnProjectileGraphicArcheryTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y,float origin_z);
+	void SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* target=nullptr);
+	void SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange, int row,float origin_heading,float origin_x, float origin_y); //Directional/PBAOE
+	void SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y);
+	void SpawnSpellGraphicSingleTempPetLocation(GFX type, uint16 spell_id, float aoerange, float locX=0.0f, float locY=0.0f, float locZ=0.0f);
+	void SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y,float origin_z);
 	float GetSpacerAngle(float aoerange, float total_angle);
 	NPC* TypesTemporaryPetsGFX(uint32 typesid, const char *name_override = nullptr, uint32 duration_override = 0, float dX=0.0f, float dY=0.0f, float dZ=0.0f, uint16 spell_id = 0);
 	void SendSpellAnimGFX(uint16 targetid, uint16 spell_id, float aoerange);

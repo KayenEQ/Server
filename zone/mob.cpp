@@ -11223,7 +11223,7 @@ bool Mob::TryCustomResourceConsume(uint16 spell_id)
 
 
 
-void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* target)
+void Mob::SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* target)
 {
 	if (!IsValidSpell(spell_id) || !aoerange)
 		return;
@@ -11261,15 +11261,15 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 	//Shout("DEBUG: ROW COUNT %i Mult %i", ROW_COUNT, GetGFXMultiplier(spell_id));
 	ROW_COUNT = ROW_COUNT * GetGFXMultiplier(spell_id);
 
-	if (type == 1)
+	if (type == GFX::PBAE_DirAE)
 		column_distance = static_cast<int>(aoerange)/ROW_COUNT;
-	else if (type == 2){
+	else if (type == GFX::Beam){
 		FIRST_ROW = 10.0f; //This may need to be modified based on size
 		column_distance = static_cast<int>(aoerange - FIRST_ROW)/ROW_COUNT;
 	}
 
 	float origin_heading = GetHeading();
-	if (target && type == 2)
+	if (target && type == GFX::Beam)
 		origin_heading = CalculateHeadingToTarget(target->GetX(), target->GetY());
 
 	float origin_x = GetX();
@@ -11277,17 +11277,17 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 	float origin_z = GetZ();
 
 	//Fix location
-	if (type == 3){
+	if (type == GFX::TargetRing){
 		origin_x = GetTargetRingX();
 		origin_y = GetTargetRingY();
 		origin_z = GetTargetRingZ();
 	}
-	else if (type == 4 && target && target->IsBeacon()){
+	else if (type == GFX::Rain && target && target->IsBeacon()){
 		origin_x = target->GetX();
 		origin_y = target->GetY();
 		origin_z = target->GetZ();
 	}
-	else if (type == 5){
+	else if (type == GFX::FlingLeap){
 		origin_x = GetFlingLocationX();
 		origin_y = GetFlingLocationY();
 		origin_z = GetFlingLocationZ();
@@ -11295,7 +11295,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 
 	//Shout("DEBUG: Start GFX: Column Distance %i ROW COUNT %i [AOE RANGE %i] [Heading %.2f]", column_distance, ROW_COUNT, static_cast<int>(aoerange), origin_heading);
 
-	if (type == 1){ //PBAE / Directional
+	if (type == GFX::PBAE_DirAE){ //PBAE / Directional
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1 && spells[spell_id].targettype == ST_Directional) //On first row, place a single graphic close to caster as apex of cone.
@@ -11304,7 +11304,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 			SpawnSpellGraphicAOETempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading, origin_x, origin_y);
 		}
 	}
-	else if (type == 2){ //Beam
+	else if (type == GFX::Beam){ //Beam
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1)
@@ -11313,7 +11313,7 @@ void Mob::SpellGraphicTempPet(int type, uint16 spell_id, float aoerange, Mob* ta
 			SpawnSpellGraphicBeamTempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading,origin_x,origin_y); 
 		}
 	}
-	else if (type >= 3 && type <= 5){//Targert RING AOE or Location based attacks
+	else if (type == GFX::Rain || type == GFX::TargetRing || type == GFX::FlingLeap){//Targert RING AOE or Location based attacks
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1){
@@ -11359,7 +11359,7 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 	return 0.0f;
 }
 
-void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y)
+void Mob::SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y)
 {
 	//Shout("START DEBUG: AOE RANGE %.2f [SIZE %i DURATIOn %i]", aoerange, GetGFXSize(spell_id), GetGFXDuration(spell_id));
 
@@ -11369,8 +11369,9 @@ void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange,
 	uint32 duration = GetGFXDuration(spell_id);
 	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
 	uint16 gfx_spell_id = SPELL_UNKNOWN;
-	if (type == 4)
-		gfx_spell_id = GetAERainGFXSpellID(spell_id);
+
+	if (type == GFX::TargetRing || type == GFX::TargetRing)
+		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id);
 	else
 		gfx_spell_id = GetGraphicSpellID(spell_id);
 
@@ -11423,7 +11424,7 @@ void Mob::SpawnSpellGraphicAOETempPet(int type, uint16 spell_id, float aoerange,
 	}
 }
 
-void Mob::SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y)
+void Mob::SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y)
 {
 	//Shout("DEBUG: START BEAM DEBUG: Height %.2f Width %.2f [GFX Size %i NPCID %i]", aoerange, spells[spell_id].aoerange, GetGFXSize(spell_id),GetGraphicNPCTYPEID(spell_id));
 
@@ -11496,13 +11497,13 @@ void Mob::SpawnSpellGraphicBeamTempPet(int type, uint16 spell_id, float aoerange
 	}
 }
 
-void Mob::SpawnSpellGraphicSingleTempPetLocation(int type, uint16 spell_id, float aoerange, float locX, float locY, float locZ)
+void Mob::SpawnSpellGraphicSingleTempPetLocation(GFX type, uint16 spell_id, float aoerange, float locX, float locY, float locZ)
 {
 	uint32 duration = GetGFXDuration(spell_id);
 	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
 	uint16 gfx_spell_id = SPELL_UNKNOWN;
-	if (type == 4)
-		gfx_spell_id = GetAERainGFXSpellID(spell_id);
+	if (type == GFX::Rain)
+		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id);
 	else
 		gfx_spell_id = GetGraphicSpellID(spell_id);
 
@@ -11515,7 +11516,7 @@ void Mob::SpawnSpellGraphicSingleTempPetLocation(int type, uint16 spell_id, floa
 	}
 }
 
-void Mob::SpawnProjectileGraphicArcheryTempPet(int type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y, float origin_z)
+void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y, float origin_z)
 {
 	if (!IsEffectInSpell(spell_id,SE_AttackArchery))
 		return;
@@ -11535,7 +11536,7 @@ void Mob::SpawnProjectileGraphicArcheryTempPet(int type, uint16 spell_id, float 
 	float dZ = 0.0f;
 	uint32 duration = 5000;
 
-	if (type == 2) {//Beam
+	if (type == GFX::Beam) {//Beam
 		GetFurthestLocationLOS(origin_heading, 5, aoerange, dX, dY, dZ, true,origin_x, origin_y, origin_z);
 		NPC* temppet = nullptr;
 		temppet = TypesTemporaryPetsGFX(gfx_spell_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
@@ -11543,7 +11544,7 @@ void Mob::SpawnProjectileGraphicArcheryTempPet(int type, uint16 spell_id, float 
 			SendItemAnimation(temppet, AmmoItem, SkillArchery);
 	}
 
-	if (type == 1){//AOE/Directional
+	if (type == GFX::PBAE_DirAE){//AOE/Directional
 
 		float total_angle = 360.0f;
 
@@ -11605,9 +11606,9 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 		return;
 
 	if (!FromTarget)
-		caster->SpellGraphicTempPet(2, spell_id, spells[spell_id].range);
+		caster->SpellGraphicTempPet(GFX::Beam, spell_id, spells[spell_id].range);
 	else
-		caster->SpellGraphicTempPet(2, spell_id, caster->CalculateDistance(target->GetX(), target->GetY(), target->GetZ()), target);
+		caster->SpellGraphicTempPet(GFX::Beam, spell_id, caster->CalculateDistance(target->GetX(), target->GetY(), target->GetZ()), target);
 
 	Mob *curmob;
 
@@ -11712,7 +11713,7 @@ void EntityList::AEBeamDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 
 	if (!target_found){
 		caster->DirectionalFailMessage(spell_id);//Planning on disabling this 
-		caster->SpawnProjectileGraphicArcheryTempPet(2, spell_id, ae_length, 0, origin_heading, origin_x, origin_y, origin_z);
+		caster->SpawnProjectileGraphicArcheryTempPet(GFX::Beam, spell_id, ae_length, 0, origin_heading, origin_x, origin_y, origin_z);
 	}
 	
 	return;
@@ -11724,7 +11725,7 @@ void EntityList::AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 	if (!caster)
 		return;
 
-	caster->SpellGraphicTempPet(1, spell_id, spells[spell_id].aoerange);
+	caster->SpellGraphicTempPet(GFX::PBAE_DirAE, spell_id, spells[spell_id].aoerange);
 
 	Mob *curmob;
 
@@ -11811,7 +11812,7 @@ void EntityList::AEConeDirectional(Mob *caster, uint16 spell_id, int16 resist_ad
 
 	if (!target_found){
 		caster->DirectionalFailMessage(spell_id);
-		caster->SpawnProjectileGraphicArcheryTempPet(1, spell_id, aoerange, 0, origin_heading, origin_x, origin_y, origin_z);
+		caster->SpawnProjectileGraphicArcheryTempPet(GFX::PBAE_DirAE, spell_id, aoerange, 0, origin_heading, origin_x, origin_y, origin_z);
 	}
 	
 	return;
