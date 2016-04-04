@@ -779,7 +779,8 @@ typedef enum {
 #define SE_FlingToTarget				1108 // implemented -
 #define SE_FlingToLocation				1109 // implemented -
 #define SE_CastOnFlingLand				1110 // implemented -
-#define SE_UtilityExtraGFX				1111 // implemented - Base - Spell ID number graphic display
+#define SE_UtilityExtraGFX				1111 // implemented - Base - Spell ID number graphic display = Limit [1] ON CASTER
+
 
 
 

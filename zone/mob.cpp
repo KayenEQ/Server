@@ -9075,7 +9075,7 @@ bool Mob::CustomResistSpell(uint16 spell_id, Mob *caster)
 	Valid spell checked before running in ResistSpell
 	This function will be used for custom resist checks as needed
 	*/
-	if (IsEffectInSpell(spell_id, SE_SpellPowerFromBuffSpellGroup) && caster){
+	if (IsEffectInSpell(spell_id, SE_SpellPowerFromBuffSpellGroup) && caster){ //ENC IMPLODE
 		if (!CalcSpellPowerFromBuffSpellGroup(spell_id, caster))//Resist if all effects are not present
 			return true;
 	}
@@ -10580,6 +10580,7 @@ bool Mob::MinCastingRange(uint16 spell_id, uint16 target_id)
 
 int Mob::CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration)
 {
+
 	
 	//res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
 	duration += GetSpellPowerDistanceMod()/100; //C!Kayen - Add buff ticks based on distance modifer
@@ -11370,7 +11371,7 @@ void Mob::SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange,
 	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
 	uint16 gfx_spell_id = SPELL_UNKNOWN;
 
-	if (type == GFX::TargetRing || type == GFX::TargetRing)
+	if (type == GFX::Rain || type == GFX::TargetRing)
 		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id);
 	else
 		gfx_spell_id = GetGraphicSpellID(spell_id);
@@ -11502,7 +11503,7 @@ void Mob::SpawnSpellGraphicSingleTempPetLocation(GFX type, uint16 spell_id, floa
 	uint32 duration = GetGFXDuration(spell_id);
 	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
 	uint16 gfx_spell_id = SPELL_UNKNOWN;
-	if (type == GFX::Rain)
+	if (type == GFX::Rain || type == GFX::TargetRing)
 		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id);
 	else
 		gfx_spell_id = GetGraphicSpellID(spell_id);

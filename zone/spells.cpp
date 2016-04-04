@@ -2772,6 +2772,7 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 		castlevel = caster_level_override;
 
 	int res = CalcBuffDuration_formula(castlevel, formula, duration);
+
 	if (caster == target && (target->aabonuses.IllusionPersistence || target->spellbonuses.IllusionPersistence ||
 				 target->itembonuses.IllusionPersistence) &&
 	    IsEffectInSpell(spell_id, SE_Illusion))
@@ -2780,6 +2781,7 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 	res = mod_buff_duration(res, caster, target, spell_id);
 
 	Log.Out(Logs::Detail, Logs::Spells, "Spell %d: Casting level %d, formula %d, base_duration %d: result %d",spell_id, castlevel, formula, duration, res);
+	caster->Shout("Spell %d: Casting level %d, formula %d, base_duration %d: result %d",spell_id, castlevel, formula, duration, res);
 
 	return res;
 }
@@ -2841,11 +2843,13 @@ int CalcBuffDuration_formula(int level, int formula, int duration)
 	case 51: // Permanent. Cancelled when out of range of aura.
 		return -4;
 
+	//Start C!Kayen - Custom Buff Durations
 	case 100:
-		return duration; //C!Kayen
+		return duration;
 
 	case 3600:
-		return duration ? duration : 3600; //C!Kayen
+		return duration ? duration : 3600;
+	//End
 
 	default:
 		// the client function has another bool parameter that if true returns -2 -- unsure
@@ -2854,6 +2858,13 @@ int CalcBuffDuration_formula(int level, int formula, int duration)
 		temp = formula;
 		break;
 	}
+
+	//C!Kayen - Custom Cases *Note default formulas scale up to the duration which is MAX
+	if (formula >= 301 && formula <= 350){
+		temp = duration + (level / (formula - 300));
+		return temp;
+	}
+
 	if (duration && duration < temp)
 		temp = duration;
 	return temp;

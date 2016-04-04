@@ -3476,13 +3476,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_FlingToTarget:
 			{
-				if (caster && caster->IsClient() && this != caster){
+				if (caster && caster->IsClient() && (GetID() != caster->GetID())){
 					float dist = caster->CalculateDistance(GetX(), GetY(), GetZ());
 					float origin_heading = CalculateHeadingToTarget(GetX(), GetY());
-					CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), GetX(), GetY(), GetZ(), origin_heading * 2);
+					caster->CastToClient()->MovePC(zone->GetZoneID(), zone->GetInstanceID(), caster->GetX(), caster->GetY(), caster->GetZ(), origin_heading * 2);
 					caster->CastToClient()->FlingEffect(spell_id, GetID(), GetX(), GetY(), GetZ(), spell.base2[i], spell.base[i], spell.max[i],origin_heading,dist);
 				
-				break;
+					break;
 				}
 			}
 
@@ -3516,7 +3516,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					range = spells[spell_id].range;
 
 				if (caster && caster->IsClient()){
-					caster->SendSpellAnimGFX(GetID(), spell.base[i], range);
+					if (!spell.base2[i])
+						caster->SendSpellAnimGFX(GetID(), spell.base[i], range);
+					else if (spell.base2[i] == 1)//Cast on Caster
+						caster->SendSpellAnimGFX(caster->GetID(), spell.base[i], range);
 				}
 
 				break;

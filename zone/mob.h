@@ -1389,7 +1389,7 @@ public:
 
 	//Old calculations
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
-
+	//worldserver.SendEmoteMessage(0,0,0,13, "Variable %i",temp);
 	//C!Kayen END
 
 protected:
