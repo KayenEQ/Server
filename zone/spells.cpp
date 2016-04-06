@@ -805,6 +805,7 @@ void Mob::ZeroCastingVars()
 	ClearNPCLastName(); //C!Kayen
 	SetOriginCasterID(0); //C!Kayen
 	SetScaledBaseEffectValue(0); //C!Kayen
+	SetLimitToPrimarySpellTarget(false); //C!Kayen
 	
 }
 
@@ -2223,8 +2224,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, uint16 slot, uint16 
 					if (cast_on_target)
 						SpellOnTarget(spell_id, spell_target, false, true, resist_adjust);
 				}
-				if(ae_center && ae_center == this && IsBeneficialSpell(spell_id))
+				if(ae_center && ae_center == this && IsBeneficialSpell(spell_id)){
+					CalcSpellPowerDistanceMod(spell_id, 0);//C!Kayen - Cheap fix no sure if best
 					SpellOnTarget(spell_id, this);
+				}
 
 				bool affect_caster = !IsNPC();	//NPC AE spells do not affect the NPC caster
 

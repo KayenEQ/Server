@@ -1381,6 +1381,13 @@ public:
 	inline void SetDisableSpellEffects(bool value) {   disable_spell_effects = value; }
 	inline bool GetDisableSpellEffects() const { return   disable_spell_effects; }
 
+	inline void SetLimitToPrimarySpellTarget(bool value) {   casting_limit_to_primary_target = value; }
+	inline bool GetLimitToPrimarySpellTarget() const { return   casting_limit_to_primary_target; }
+
+	int CalcSpellPowerTotalEffectHits(uint16 spell_id);
+	inline void SetTotalEffectHitsCount(int value) {   count_total_effect_hits = value; }
+	inline int GetTotalEffectHitsCount() const { return   count_total_effect_hits; }
+	
 	void CastOnFlingLand(uint16 spell_id, uint16 target_id);
 	inline const glm::vec3& GetFlingLocation() const { return m_FlingLocation; }
 	inline float GetFlingLocationX() const { return m_FlingLocation.x; }
@@ -1833,6 +1840,9 @@ protected:
 
 	bool use_targetring_override;
 	bool disable_spell_effects;
+	bool casting_limit_to_primary_target;
+
+	int count_total_effect_hits;
 	
 private:
 	void _StopSong(); //this is not what you think it is

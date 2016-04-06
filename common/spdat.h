@@ -780,7 +780,10 @@ typedef enum {
 #define SE_FlingToLocation				1109 // implemented -
 #define SE_CastOnFlingLand				1110 // implemented -
 #define SE_UtilityExtraGFX				1111 // implemented - Base - Spell ID number graphic display = Limit [1] ON CASTER
-
+#define SE_ManaTap						1112 // implemented - Simple mana tap
+#define SE_CountTotalEffectHits			1113 // implemented - Used to count total number of ticks from an AE
+#define SE_FastEffectPulse				1114 // implemented - base spell_id, limit pulse rate.
+#define SE_CurrentManaCustom			1115 // implemented - Duplicate function to load with custom utilities
 
 
 

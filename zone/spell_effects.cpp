@@ -214,7 +214,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		}
 		buffs[buffslot].focus = focus_amt;
 	}
-
+	Shout("TEST distance mod %i %i",IsPowerDistModSpell(spell_id),spell_id);
 	if (!IsPowerDistModSpell(spell_id))
 		SetSpellPowerDistanceMod(0);
 
@@ -232,6 +232,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		if(spell_id == SPELL_LAY_ON_HANDS && caster && caster->GetAA(aaImprovedLayOnHands))
 			effect_value = GetMaxHP();
 
+		Shout("TEST GET distance mod %i",GetSpellPowerDistanceMod());
 		if (GetSpellPowerDistanceMod())
 			effect_value = effect_value*GetSpellPowerDistanceMod()/100;
 
@@ -3515,13 +3516,63 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				if (spells[spell_id].range > range)
 					range = spells[spell_id].range;
 
-				if (caster && caster->IsClient()){
+				if (caster && caster->IsClient() && !GetLimitToPrimarySpellTarget()){
 					if (!spell.base2[i])
 						caster->SendSpellAnimGFX(GetID(), spell.base[i], range);
 					else if (spell.base2[i] == 1)//Cast on Caster
 						caster->SendSpellAnimGFX(caster->GetID(), spell.base[i], range);
+
+					if (spell.max[i] == 1)
+						SetLimitToPrimarySpellTarget(true);
 				}
 
+				break;
+			}
+
+			case SE_ManaTap:
+			{
+
+				SetMana(GetMana() + effect_value);
+				if (caster);
+					caster->SetMana(caster->GetMana() + std::abs(effect_value));
+
+				break;
+			}
+
+			case SE_CurrentManaCustom:
+			{
+				Shout("1 Get mana value %i", effect_value);
+				effect_value += effect_value * CalcSpellPowerTotalEffectHits(spell_id)/100;
+				Shout("2 Get mana value %i", effect_value);
+				SetMana(GetMana() + effect_value);
+				break;
+			}
+
+				
+			case SE_CountTotalEffectHits:
+			{
+
+				if (caster && spell.base[i] == 1){
+
+					int amt = 100;
+					int level_penalty = 0;
+					int level_diff = GetLevel() - caster->GetLevel();
+					if (level_diff > 6)//10% penalty per level if > 6 levels over target.
+						level_penalty = (level_diff - 6) * 10;
+
+					amt -= amt*level_penalty/100;
+					if (amt < 0)
+						amt = 0;
+
+					caster->SetTotalEffectHitsCount(caster->GetTotalEffectHitsCount() + amt);
+				}
+
+				break;
+
+
+				if (spell.base[i] == 2){
+					caster->SetTotalEffectHitsCount(0);//Reset on initial cast
+				}
 				break;
 			}
 
@@ -4248,6 +4299,7 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 				break;
 			effect_value = CalcSpellEffectValue(buff.spellid, i, buff.casterlevel, buff.instrument_mod,
 							    caster, buff.ticsremaining);
+
 			// Handle client cast DOTs here.
 			if (caster && effect_value < 0) {
 
@@ -4269,6 +4321,7 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 				// Regen spell...
 				// handled with bonuses
 			}
+			break;
 		}
 
 		case SE_HealOverTime: {
@@ -4507,8 +4560,21 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 		//C!Kayen - Custom Buff Ticks
 			case SE_CastOnFadeEffectSF:
 			{
-				if (buff.ticsremaining == 1)
+				if (!buff.fastticsremaining){
+					if (buff.ticsremaining == 1)
+						SpellFinished(spells[buff.spellid].base[i], this, 10, 0, -1, spells[spells[buff.spellid].base[i]].ResistDiff);
+				}
+				else if (buff.fastticsremaining == 1){
+				
+					if (!caster->GetTotalEffectHitsCount() && IsEffectInSpell(buff.spellid, SE_CountTotalEffectHits)){
+						if (caster)
+							caster->Message(MT_SpellFailure, "Your %s failed to gather enough energy.", spells[buff.spellid].name);
+						
+						break;
+					}
+					
 					SpellFinished(spells[buff.spellid].base[i], this, 10, 0, -1, spells[spells[buff.spellid].base[i]].ResistDiff);
+				}
 
 				break;
 			}
@@ -4603,6 +4669,18 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 				break;
 			}
 
+			case SE_FastEffectPulse: {
+
+				//Use with PBAE effects
+				if (!buff.fastticsremaining)
+					break;
+
+				int rate = 1;
+				rate = buff.fastticsremaining % spells[buff.spellid].base2[i];
+	
+				if (rate == 0)
+					SpellFinished(spells[buff.spellid].base[i], this, 10, 0, -1, spells[spells[buff.spellid].base[i]].ResistDiff);
+			}
 
 		default: {
 			// do we need to do anyting here?
@@ -7717,7 +7795,7 @@ void Mob::CalcSpellPowerDistanceMod(uint16 spell_id, float range, Mob* caster)
 			distance = caster->CalculateDistance(GetX(), GetY(), GetZ());
 		else
 			distance = sqrt(range);
-
+		Shout("DISTANCE MOD CALC %.2f [min mod %.2f", distance,spells[spell_id].min_dist_mod);
 		float dm_range = spells[spell_id].max_dist - spells[spell_id].min_dist;
 		float dm_mod_interval = spells[spell_id].max_dist_mod - spells[spell_id].min_dist_mod;
 		float dist_from_min = distance -  spells[spell_id].min_dist;

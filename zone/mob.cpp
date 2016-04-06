@@ -521,12 +521,14 @@ Mob::Mob(const char* in_name,
 
 	use_targetring_override = false;
 	disable_spell_effects = false;
+	casting_limit_to_primary_target = false;
 
 	for (int i = 0; i < MAX_POSITION_TYPES + 1; i++) { RakePosition[i] = 0; }
 
 	aeduration_iteration = 0;
 	scaled_base_effect_value = 0;
 	AggroLockEffect = 0;
+	count_total_effect_hits = 0;
 	
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
@@ -8252,7 +8254,7 @@ void Mob::TryCastonSpellFinished(Mob *target, uint16 spell_id)
 {
 	if(!IsClient() || target == nullptr || !IsValidSpell(spell_id))
 		return;
-	
+
 	for(int i = 0; i < EFFECT_COUNT; i++)
 	{
 		if (spells[spell_id].effectid[i] == SE_TryCastonSpellFinished)
@@ -12418,6 +12420,29 @@ void Mob::CastOnFlingLand(uint16 spell_id,uint16 target_id)
 		}
 	}
 }
+
+int Mob::CalcSpellPowerTotalEffectHits(uint16 spell_id)
+{
+	//!Used in SE_CurrentManaCustom
+	if (!GetTotalEffectHitsCount() || !IsValidSpell(spell_id))
+		return 0;
+
+	int val = 0;
+
+	for (int i=0; i < EFFECT_COUNT; i++){
+		if(spells[spell_id].effectid[i] == SE_CountTotalEffectHits){
+
+			if (spells[spell_id].base[i] == 3){
+				val = ((GetTotalEffectHitsCount()/100) * spells[spell_id].base2[i])/100;
+				SetTotalEffectHitsCount(0);
+				return val;
+			}
+		}
+	}
+	return 0;
+}
+
+
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
 
