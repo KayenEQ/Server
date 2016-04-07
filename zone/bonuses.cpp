@@ -1446,6 +1446,42 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 			newbon->MeleeEndurTap += base1;
 			break;
 
+		case SE_AvoidMeleeChanceStack:
+			newbon->AvoidMeleeChanceStack += base1;
+			break;
+
+		case SE_HitChanceStack:
+			newbon->HitChanceStack += base1;
+			break;
+
+		case SE_DamageModifierStack:
+			newbon->DamageModifierStack += base1;
+			break;
+			
+		case SE_CriticalHitChanceStack:		
+			newbon->CriticalHitChanceStack += base1;
+			break;
+
+		case SE_CrippBlowChanceStack:			
+			newbon->CrippBlowChanceStack += base1;
+			break;
+			
+		case SE_RiposteChanceStack:
+			newbon->RiposteChanceStack += base1;
+			break;
+			
+		case SE_DodgeChanceStack:				
+			newbon->DodgeChanceStack += base1;
+			break;
+
+		case SE_ParryChanceStack:				
+			newbon->ParryChanceStack += base1;
+			break;
+			
+		case SE_BlockChanceStack:			
+			newbon->BlockChanceStack += base1;
+			break;
+
 		//C!Kayen - END
 
 		// to do
@@ -3456,6 +3492,42 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				break;
 				}
 			}
+
+			case SE_AvoidMeleeChanceStack:
+				new_bonus->AvoidMeleeChanceStack += effect_value;
+				break;
+
+			case SE_HitChanceStack:
+				new_bonus->HitChanceStack += effect_value;
+				break;
+
+			case SE_DamageModifierStack:
+				new_bonus->DamageModifierStack += effect_value;
+				break;
+			
+			case SE_CriticalHitChanceStack:		
+				new_bonus->CriticalHitChanceStack += effect_value;
+				break;
+
+			case SE_CrippBlowChanceStack:			
+				new_bonus->CrippBlowChanceStack += effect_value;
+				break;
+			
+			case SE_RiposteChanceStack:
+				new_bonus->RiposteChanceStack += effect_value;
+				break;
+			
+			case SE_DodgeChanceStack:				
+				new_bonus->DodgeChanceStack += effect_value;
+				break;
+
+			case SE_ParryChanceStack:				
+				new_bonus->ParryChanceStack += effect_value;
+				break;
+			
+			case SE_BlockChanceStack:			
+				new_bonus->BlockChanceStack += effect_value;
+				break;
 		}
 	}
 }

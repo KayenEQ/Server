@@ -195,10 +195,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		if (IsFastBuffTicSpell(spell_id)){
 			SetFastBuff(true);
 
-			if (spells[spell_id].viral_range == -1)
+			if (spells[spell_id].buffduration == DF_FastBuff)
 				buffs[buffslot].fastticsremaining = spells[spell_id].buffduration * 6;
 			else
-				buffs[buffslot].fastticsremaining = spells[spell_id].viral_range * -1;//Microbuffs
+				buffs[buffslot].fastticsremaining = GetFastBuffTicMicroDuration(spell_id);
+				
+				//buffs[buffslot].fastticsremaining = spells[spell_id].viral_range * -1;//Microbuffs
 		}
 
 		//C!Kayen - always set these for all buffs.
@@ -214,7 +216,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		}
 		buffs[buffslot].focus = focus_amt;
 	}
-	Shout("TEST distance mod %i %i",IsPowerDistModSpell(spell_id),spell_id);
+
 	if (!IsPowerDistModSpell(spell_id))
 		SetSpellPowerDistanceMod(0);
 
@@ -232,7 +234,6 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		if(spell_id == SPELL_LAY_ON_HANDS && caster && caster->GetAA(aaImprovedLayOnHands))
 			effect_value = GetMaxHP();
 
-		Shout("TEST GET distance mod %i",GetSpellPowerDistanceMod());
 		if (GetSpellPowerDistanceMod())
 			effect_value = effect_value*GetSpellPowerDistanceMod()/100;
 
@@ -1325,6 +1326,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Melee Absorb Rune: %+i", effect_value);
 #endif
+				effect_value = GetBaseEffectValueByLevel(spells[spell_id].formula[i], 1,spells[spell_id].max[i], caster, spell_id);//C!Kayen
 				if (caster)
 					effect_value = caster->ApplySpellEffectiveness(spell_id, effect_value);
 				
@@ -3541,9 +3543,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_CurrentManaCustom:
 			{
-				Shout("1 Get mana value %i", effect_value);
 				effect_value += effect_value * CalcSpellPowerTotalEffectHits(spell_id)/100;
-				Shout("2 Get mana value %i", effect_value);
 				SetMana(GetMana() + effect_value);
 				break;
 			}
@@ -4125,8 +4125,6 @@ snare has both of them negative, yet their range should work the same:
 			result = max;
 			break;
 
-		//End - Custom
-
 		default:
 		{
 			if (formula < 100)
@@ -4147,6 +4145,7 @@ snare has both of them negative, yet their range should work the same:
 				result = ubase * (caster_level * (formula - 2000) + 1);
 			}
 
+			//C!Kayen custom - Start
 			else if((formula >= 5000) && (formula < 6000))
 			{
 				//C!Kayen - Standard distrubtions for spell scaling by level
@@ -4164,6 +4163,30 @@ snare has both of them negative, yet their range should work the same:
 				result = CalcBaseEffectValueByLevel(static_cast<float>(formula-6000), static_cast<float>(ubase),
 					static_cast<float>(max), static_cast<float>(use_level), CLIENT_MAX_LEVEL, spell_id); 
 			}
+			
+			else if (formula >= 7000 && formula < 7400)
+			{
+				//Flat increase or decrease in effect value recalculated per tick.
+				int ticdif = spells[spell_id].buffduration - (ticsremaining);
+				if(ticdif < 0)
+					ticdif = 0;
+
+				if (formula >= 7300 && formula < 7400){
+					int interval = ((max - ubase)*100) / (spells[spell_id].buffduration);
+					
+					if (formula == 7300)
+						result = max - ((interval * (ticdif))/100);
+					else if (formula == 7301)
+						result = base + ((interval * (ticdif))/100);
+				}
+
+				else if (formula >= 7000 && formula < 7100)
+					result = base - ((formula - 7000) * ticdif);//Downgrade effect by value
+
+				else if (formula >= 7100 && formula < 7200)//Upgrade effect by value (Use this if you want slows to get weaker)
+					result = base + ((formula - 7100) * ticdif);
+			}
+			//Custom End
 			
 			else {
 				Log.Out(Logs::General, Logs::None, "Unknown spell effect value forumula %d", formula);
@@ -4291,6 +4314,9 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 		effect = spell.effectid[i];
 		// I copied the calculation into each case which needed it instead of
 		// doing it every time up here, since most buff effects dont need it
+
+		if (ReCalculateEffectValue(buff.spellid, spells[buff.spellid].formula[i]))//C!Kayen - Recalc if effect scales from ticks
+			CalcSpellBonuses(&spellbonuses);
 
 		switch (effect) {
 
@@ -4664,11 +4690,11 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 				break;
 			}
 
-			case SE_AttackSpeed5: {
-				CalcSpellBonuses(&spellbonuses); //Adjust value of the slow / haste
-				break;
-			}
-
+			//case SE_AttackSpeed5: {
+				//CalcSpellBonuses(&spellbonuses); //Adjust value of the slow / haste
+				//break;
+			//}
+			
 			case SE_FastEffectPulse: {
 
 				//Use with PBAE effects
@@ -4682,11 +4708,24 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 					SpellFinished(spells[buff.spellid].base[i], this, 10, 0, -1, spells[spells[buff.spellid].base[i]].ResistDiff);
 			}
 
+			case SE_CurrentManaOnBuffCaster:
+			{
+				effect_value = CalcSpellEffectValue(buff.spellid, i, buff.casterlevel, buff.instrument_mod,caster, buff.ticsremaining);
+				
+				if (spells[buff.spellid].base2[i] == 1 && (caster->GetID() == GetID()))
+					break;
+
+				if (caster)
+					caster->SetMana(GetMana() + effect_value);
+				
+				break;
+			}
+
 		default: {
 			// do we need to do anyting here?
 		}
 		}
-
+		
 		if (!IsValidSpell(buff.spellid)) // if we faded we're no longer valid!
 			break;
 	}
@@ -7795,7 +7834,7 @@ void Mob::CalcSpellPowerDistanceMod(uint16 spell_id, float range, Mob* caster)
 			distance = caster->CalculateDistance(GetX(), GetY(), GetZ());
 		else
 			distance = sqrt(range);
-		Shout("DISTANCE MOD CALC %.2f [min mod %.2f", distance,spells[spell_id].min_dist_mod);
+
 		float dm_range = spells[spell_id].max_dist - spells[spell_id].min_dist;
 		float dm_mod_interval = spells[spell_id].max_dist_mod - spells[spell_id].min_dist_mod;
 		float dist_from_min = distance -  spells[spell_id].min_dist;

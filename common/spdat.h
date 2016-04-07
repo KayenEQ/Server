@@ -784,6 +784,17 @@ typedef enum {
 #define SE_CountTotalEffectHits			1113 // implemented - Used to count total number of ticks from an AE
 #define SE_FastEffectPulse				1114 // implemented - base spell_id, limit pulse rate.
 #define SE_CurrentManaCustom			1115 // implemented - Duplicate function to load with custom utilities
+#define SE_CurrentManaOnBuffCaster		1116 // implemented - Restores mana to the caster of the buff.
+
+#define SE_AvoidMeleeChanceStack		1200 // implemented
+#define SE_HitChanceStack				1201 // implemented
+#define SE_DamageModifierStack			1202 // implemented
+#define SE_CriticalHitChanceStack		1203 // implemented
+#define SE_CrippBlowChanceStack			1204 // implemented
+#define SE_RiposteChanceStack			1205 // implemented
+#define SE_DodgeChanceStack				1206 // implemented
+#define SE_ParryChanceStack				1207 // implemented
+#define SE_BlockChanceStack				1208 // implemented
 
 
 
@@ -798,6 +809,10 @@ typedef enum {
 #define DF_Permanent			50
 #define DF_Aura					51
 #define DF_INVIS				100
+
+#define DF_FastBuff				400 //C!Kayen
+#define DF_FastBuffNoDuration	406 //C!Kayen
+
 
 // note this struct is historical, we don't actually need it to be
 // aligned to anything, but for maintaining it it is kept in the order that
@@ -1072,7 +1087,6 @@ const char *GetSpellName(int16 spell_id);
 float GetMaxSpellCastingRange(uint16 spell_id);
 bool IsEffectFieldSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
-bool IsFastBuffTicSpell(uint16 spell_id);
 bool DirectionalAffectCaster(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);
 bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
@@ -1088,7 +1102,13 @@ int GetRequiredFaith(uint16 spell_id);
 bool IsTargetedBeamSpell(uint16 spell_id);
 bool IsAERainSpell(uint16 spell_id);
 int GetManaRatioType(uint16 spell_id);
+bool ReCalculateEffectValue(uint16 spell_id, int formula);
 
+
+//Fast Buff Tic
+bool IsFastBuffTicSpell(uint16 spell_id);
+int GetFastBuffTicMicroDuration(uint16 spell_id);
+bool HideBuffDuration(uint16 spell_id);
 
 //GFX
 uint16 GetGraphicSpellID(uint16 spell_id);

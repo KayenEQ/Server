@@ -4785,6 +4785,8 @@ int16 Mob::GetCriticalChanceBonus(uint16 skill)
 	critical_chance +=	itembonuses.CriticalHitChance[HIGHEST_SKILL+1] + spellbonuses.CriticalHitChance[HIGHEST_SKILL+1] + aabonuses.CriticalHitChance[HIGHEST_SKILL+1] +
 						itembonuses.CriticalHitChance[skill] + spellbonuses.CriticalHitChance[skill] + aabonuses.CriticalHitChance[skill];
 
+	critical_chance += GetCriticalHitChanceStack();//C!Kayen
+
 	if(critical_chance < -100)
 		critical_chance = -100;
 
@@ -4806,6 +4808,7 @@ int16 Mob::GetMeleeDamageMod_SE(uint16 skill)
 		dmg_mod += itembonuses.ShieldEquipDmgMod[0] + spellbonuses.ShieldEquipDmgMod[0] + aabonuses.ShieldEquipDmgMod[0];
 
 	dmg_mod += GetScaleDamageNumhits(skill); //C!Kayen
+	dmg_mod += GetDamageModifierStack();//C!Kayen
 
 	if(dmg_mod < -100)
 		dmg_mod = -100;
@@ -4831,6 +4834,8 @@ int16 Mob::GetCrippBlowChance()
 	int16 crip_chance = 0;
 
 	crip_chance += itembonuses.CrippBlowChance + spellbonuses.CrippBlowChance + aabonuses.CrippBlowChance;
+	
+	crip_chance += GetCrippBlowChanceStack();
 
 	if(crip_chance < 0)
 		crip_chance = 0;
@@ -9504,7 +9509,7 @@ void Mob::BuffFastProcess()
 			--buffs[buffs_i].fastticsremaining;
 			buffs[buffs_i].ticsremaining = 1 + buffs[buffs_i].fastticsremaining/6;
 			
-			//Shout("DEBUG :: BuffFastProcess %i / %i [%i] [R: %i]", buffs[buffs_i].ticsremaining,0, buffs[buffs_i].fastticsremaining, 0);
+			Shout("DEBUG :: BuffFastProcess REGULAR %i  [FAST %i] ", buffs[buffs_i].ticsremaining, buffs[buffs_i].fastticsremaining);
 			if (buffs[buffs_i].fastticsremaining == 0) 
 				BuffFadeBySlot(buffs_i);
 

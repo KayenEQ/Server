@@ -273,6 +273,8 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 				defender->aabonuses.AvoidMeleeChanceEffect +
 				(defender->itembonuses.AvoidMeleeChance / 10.0f); //Item Mod 'Avoidence'
 
+	avoidanceBonus += GetAvoidMeleeChanceStack();//C!Kayen
+
 	Mob *owner = nullptr;
 	if (defender->IsPet())
 		owner = defender->GetOwner();
@@ -302,6 +304,7 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 				attacker->itembonuses.HitChance) / 15.0f; //Item Mod 'Accuracy'
 
 	hitBonus += attacker->GetScaleHitChanceNumhits(skillinuse); //C!Kayen
+	hitBonus += GetHitChanceStack();//C!Kayen
 
 	hitBonus += chance_mod; //Modifier applied from casted/disc skill attacks.
 
@@ -426,7 +429,7 @@ bool Mob::AvoidDamage(Mob *other, int32 &damage, int hand)
 			return true;
 		}
 		int chance = GetSkill(SkillRiposte) + 100;
-		chance += (chance * (aabonuses.RiposteChance + spellbonuses.RiposteChance + itembonuses.RiposteChance)) / 100;
+		chance += (chance * (aabonuses.RiposteChance + spellbonuses.RiposteChance + itembonuses.RiposteChance + GetRiposteChanceStack())) / 100;//C!Kayen
 		chance /= 50;
 		chance += itembonuses.HeroicDEX / 25; // live has "heroic strickthrough" here to counter
 		if (counter_riposte || counter_all) {
@@ -465,7 +468,7 @@ bool Mob::AvoidDamage(Mob *other, int32 &damage, int hand)
 			return true;
 		}
 		int chance = GetSkill(SkillBlock) + 100;
-		chance += (chance * (aabonuses.IncreaseBlockChance + spellbonuses.IncreaseBlockChance + itembonuses.IncreaseBlockChance)) / 100;
+		chance += (chance * (aabonuses.IncreaseBlockChance + spellbonuses.IncreaseBlockChance + itembonuses.IncreaseBlockChance + GetBlockChanceStack())) / 100;//C!Kayen
 		chance /= 25;
 		chance += itembonuses.HeroicDEX / 25; // live has "heroic strickthrough" here to counter
 		if (counter_block || counter_all) {
@@ -488,7 +491,7 @@ bool Mob::AvoidDamage(Mob *other, int32 &damage, int hand)
 			return true;
 		}
 		int chance = GetSkill(SkillParry) + 100;
-		chance += (chance * (aabonuses.ParryChance + spellbonuses.ParryChance + itembonuses.ParryChance)) / 100;
+		chance += (chance * (aabonuses.ParryChance + spellbonuses.ParryChance + itembonuses.ParryChance + GetParryChanceStack())) / 100;//C!Kayen
 		chance /= 45;
 		chance += itembonuses.HeroicDEX / 25; // live has "heroic strickthrough" here to counter
 		if (counter_parry || counter_all) {
@@ -511,7 +514,7 @@ bool Mob::AvoidDamage(Mob *other, int32 &damage, int hand)
 			return true;
 		}
 		int chance = GetSkill(SkillDodge) + 100;
-		chance += (chance * (aabonuses.DodgeChance + spellbonuses.DodgeChance + itembonuses.DodgeChance)) / 100;
+		chance += (chance * (aabonuses.DodgeChance + spellbonuses.DodgeChance + itembonuses.DodgeChance + GetDodgeChanceStack())) / 100;//C!Kayen
 		chance /= 45;
 		chance += itembonuses.HeroicAGI / 25; // live has "heroic strickthrough" here to counter
 		if (counter_dodge || counter_all) {

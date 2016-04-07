@@ -1394,6 +1394,16 @@ public:
 	inline float GetFlingLocationY() const { return m_FlingLocation.y; }
 	inline float GetFlingLocationZ() const { return m_FlingLocation.z; }
 
+
+	inline int32 GetAvoidMeleeChanceStack() const { return spellbonuses.AvoidMeleeChanceStack + itembonuses.AvoidMeleeChanceStack + aabonuses.AvoidMeleeChanceStack; }
+	inline int32 GetHitChanceStack() const { return spellbonuses.HitChanceStack + itembonuses.HitChanceStack + aabonuses.HitChanceStack; }
+	inline int32 GetDamageModifierStack() const { return spellbonuses.DamageModifierStack + itembonuses.DamageModifierStack + aabonuses.DamageModifierStack; }
+	inline int32 GetCriticalHitChanceStack() const { return spellbonuses.CriticalHitChanceStack + itembonuses.CriticalHitChanceStack + aabonuses.CriticalHitChanceStack; }
+	inline int32 GetCrippBlowChanceStack() const { return spellbonuses.CrippBlowChanceStack + itembonuses.CrippBlowChanceStack + aabonuses.CrippBlowChanceStack; }
+	inline int32 GetRiposteChanceStack() const { return spellbonuses.RiposteChanceStack + itembonuses.RiposteChanceStack + aabonuses.RiposteChanceStack; }
+	inline int32 GetDodgeChanceStack() const { return spellbonuses.DodgeChanceStack + itembonuses.DodgeChanceStack + aabonuses.DodgeChanceStack; }
+	inline int32 GetParryChanceStack() const { return spellbonuses.ParryChanceStack + itembonuses.ParryChanceStack + aabonuses.ParryChanceStack; }
+	inline int32 GetBlockChanceStack() const { return spellbonuses.BlockChanceStack + itembonuses.BlockChanceStack + aabonuses.BlockChanceStack; }
 	//Old calculations
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
 	//worldserver.SendEmoteMessage(0,0,0,13, "Variable %i",temp);

@@ -520,6 +520,16 @@ struct StatBonuses {
 	int16 Faith[4];								//0 = Base  1 = Buffslot 2 = Max Numhits Gained. 3= Spell ID
 	int16 AggroLock[2];							//0 = Casterid, 1 = BuffId
 
+	int32 AvoidMeleeChanceStack;				// implemented
+	int32 HitChanceStack;						// implemented
+	int32 DamageModifierStack;					// implemented
+	int32 CriticalHitChanceStack;				// implemented
+	int32 CrippBlowChanceStack;				    // implemented
+	int32 RiposteChanceStack;					// implemented
+	int32 DodgeChanceStack;						// implemented
+	int32 ParryChanceStack;						// implemented
+	int32 BlockChanceStack;						// implemented
+
 };
 
 

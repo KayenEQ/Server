@@ -2867,6 +2867,10 @@ int CalcBuffDuration_formula(int level, int formula, int duration)
 		temp = duration + (level / (formula - 300));
 		return temp;
 	}
+	//Short Buff Duration
+	if (formula >= 400 && formula <= 406){
+		return duration;
+	}
 
 	if (duration && duration < temp)
 		temp = duration;
@@ -5600,7 +5604,7 @@ void Client::SendBuffNumHitPacket(Buffs_Struct &buff, int slot)
 	bi->entries[0].buff_slot = slot;
 	bi->entries[0].spell_id = buff.spellid;
 
-	if (spells[buffs[slot].spellid].buffdurationformula == DF_Permanent || spells[buffs[slot].spellid].buffdurationformula == DF_INVIS)//C!Kayen - DO NOT SHOW DURATION
+	if (HideBuffDuration(buffs[slot].spellid))//C!Kayen - DO NOT SHOW DURATION
 		bi->entries[0].tics_remaining = 0xFFFFFFFF;
 	else
 		bi->entries[0].tics_remaining = buff.ticsremaining;
@@ -5700,7 +5704,7 @@ EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target)
 			buff->entries[index].buff_slot = i;
 			buff->entries[index].spell_id = buffs[i].spellid;
 
-			if (spells[buffs[i].spellid].buffdurationformula == DF_Permanent || spells[buffs[i].spellid].buffdurationformula == DF_INVIS)//C!Kayen - DO NOT SHOW DURATION
+			if (HideBuffDuration(buffs[i].spellid))//C!Kayen - DO NOT SHOW DURATIO
 				buff->entries[index].tics_remaining = 0xFFFFFFFF;
 			else
 				buff->entries[index].tics_remaining = buffs[i].ticsremaining;
