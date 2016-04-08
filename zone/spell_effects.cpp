@@ -195,12 +195,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		if (IsFastBuffTicSpell(spell_id)){
 			SetFastBuff(true);
 
-			if (spells[spell_id].buffduration == DF_FastBuff)
+			if (IsFastBuffTicSpellStandard(spell_id))
 				buffs[buffslot].fastticsremaining = spells[spell_id].buffduration * 6;
 			else
 				buffs[buffslot].fastticsremaining = GetFastBuffTicMicroDuration(spell_id);
-				
-				//buffs[buffslot].fastticsremaining = spells[spell_id].viral_range * -1;//Microbuffs
 		}
 
 		//C!Kayen - always set these for all buffs.
@@ -2893,7 +2891,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 					for(int x = 0; x < numattacks; x++){
 						if (!HasDied())
-							caster->Attack(this, MainPrimary, false,false,true,&opts);
+							caster->Attack(this, SlotPrimary, false,false,true,&opts);
 					}
 				}
 				break;
@@ -2902,7 +2900,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_AttackThrow:{
 				if (caster && caster->IsClient()){
 					
-					const ItemInst* RangeWeapon = caster->CastToClient()->m_inv[MainRange];
+					const ItemInst* RangeWeapon = caster->CastToClient()->m_inv[SlotRange];
 					if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)){ 
 						caster->Message(13, "You have nothing to throw!"); 
 						break;
@@ -3573,6 +3571,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				if (spell.base[i] == 2){
 					caster->SetTotalEffectHitsCount(0);//Reset on initial cast
 				}
+				break;
+			}
+
+			case SE_CastAOEBenficialAtLocation:
+			{
+				if (caster && spell.base2[i] == 1)
+					entity_list.TriggeredBeneficialAESpell(caster, this, spell.base[i]);
+
 				break;
 			}
 
@@ -4605,9 +4611,9 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 				break;
 			}
 
-			case SE_CastBenficialAEFadeEffect:
+			case SE_CastAOEBenficialAtLocation:
 			{
-				if (buff.ticsremaining == 1)
+				if (buff.ticsremaining == 1 && !spells[buff.spellid].base2[i])
 					entity_list.TriggeredBeneficialAESpell(caster, this, spells[buff.spellid].base[i]);
 
 				break;

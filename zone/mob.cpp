@@ -6384,6 +6384,13 @@ bool Mob::PassCasterRestriction(int type, Mob* target, uint16 spell_id, int16 va
 					return false;
 				}
 			}
+
+			case CASTER_RESTRICT_FULL_HP:{
+				if (GetHPRatio() != 100){
+					Message(MT_SpellFailure, "To channel this spell you must have full heath."); 
+					return false;
+				}
+			}
 		}
 	}
 
@@ -7193,7 +7200,7 @@ bool Mob::TrySpellProjectileCustom(Mob* spell_target,  uint16 spell_id){
 	//Coded narrowly for Enchanter effect.
 	if ((strcmp(item_IDFile, "PROJECTILE_WPN")) == 0){
 		if (IsClient()) {
-			ItemInst* inst = CastToClient()->m_inv.GetItem(MainPrimary);
+			ItemInst* inst = CastToClient()->m_inv.GetItem(SlotPrimary);
 			if (inst && CastToClient()->IsSpectralBladeEquiped()) 
 				 item_IDFile = inst->GetItem()->IDFile;
 			else 
@@ -8042,7 +8049,7 @@ bool Client::IsSpectralBladeEquiped()
 	if (GetClass() != ENCHANTER)
 		return false;
 
-	ItemInst* inst = m_inv.GetItem(MainPrimary);
+	ItemInst* inst = m_inv.GetItem(SlotPrimary);
 	
 	if (inst && inst->GetItem()->Light == 1 && inst->GetItem()->ItemType ==  ItemType1HPiercing)
 		return true;
@@ -9170,7 +9177,7 @@ void Client::RelequishFlesh(uint16 spell_id, Mob *target, const char *name_overr
 	made_npc->drakkin_details = GetDrakkinDetails();
 	made_npc->d_melee_texture1 = 0;
 	made_npc->d_melee_texture2 = 0;
-	for (int i = EmuConstants::MATERIAL_BEGIN; i <= EmuConstants::MATERIAL_END; i++)	{
+	for (int i = EQEmu::Constants::MATERIAL_BEGIN; i <= EQEmu::Constants::MATERIAL_END; i++)	{
 		made_npc->armor_tint[i] = GetEquipmentColor(i);
 	}
 	made_npc->loottable_id = 0;
@@ -10027,7 +10034,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 
 	//make sure we have a proper weapon if we are a client.
 	if(IsClient()) {
-		const ItemInst *wpn = CastToClient()->GetInv().GetItem(MainPrimary);
+		const ItemInst *wpn = CastToClient()->GetInv().GetItem(SlotPrimary);
 		if(!wpn || (wpn->GetItem()->ItemType != ItemType1HPiercing)){
 			Message_StringID(13, BACKSTAB_WEAPON);
 			return;
@@ -10077,7 +10084,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 		}
 	}
 	else { //We do a single regular attack if we attack from the front without chaotic stab
-		Attack(other, MainPrimary, false,false,true);
+		Attack(other, SlotPrimary, false,false,true);
 	}
 }
 
@@ -10096,11 +10103,11 @@ void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
 
 	if(IsClient()){
 		const ItemInst *wpn = nullptr;
-		wpn = CastToClient()->GetInv().GetItem(MainPrimary);
+		wpn = CastToClient()->GetInv().GetItem(SlotPrimary);
 		if(wpn) {
 			primaryweapondamage = GetWeaponDamage(other, wpn);
 			backstab_dmg = wpn->GetItem()->BackstabDmg;
-			for (int i = 0; i < EmuConstants::ITEM_COMMON_SIZE; ++i)
+			for (int i = 0; i < EQEmu::Constants::ITEM_COMMON_SIZE; ++i)
 			{
 				ItemInst *aug = wpn->GetAugment(i);
 				if(aug)
@@ -10173,7 +10180,7 @@ void Mob::TryBackstabHeal(Mob* other, uint16 spell_id)
 		return;
 
 	if(IsClient()) {
-		const ItemInst *wpn = CastToClient()->GetInv().GetItem(MainPrimary);
+		const ItemInst *wpn = CastToClient()->GetInv().GetItem(SlotPrimary);
 		if(!wpn || (wpn->GetItem()->ItemType != ItemType1HPiercing)){
 			Message_StringID(13, BACKSTAB_WEAPON);
 			return;
@@ -10265,8 +10272,8 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	if (!numattacks)
 		return;
 
-	const ItemInst* RangeWeapon = m_inv[MainRange];
-	const ItemInst* Ammo = m_inv[MainAmmo];
+	const ItemInst* RangeWeapon = m_inv[SlotRange];
+	const ItemInst* Ammo = m_inv[SlotAmmo];
 
 	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)) 
 		return;
@@ -10339,7 +10346,7 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 		speed = zone->random.Real(3.5, 4.5);//So they don't all clump
 	for(int x = 0; x < numattacks; x++){
 		if (!HasDied()){
-			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, MainAmmo, speed, _spell_id, dmod, dmgpct);
+			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, SlotAmmo, speed, _spell_id, dmod, dmgpct);
 		}
 	}
 }
@@ -10427,8 +10434,8 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 
 float Client::GetArcheryRange(Mob* other, bool ItemCheck)
 {
-	const ItemInst* RangeWeapon = m_inv[MainRange];
-	const ItemInst* Ammo = m_inv[MainAmmo];
+	const ItemInst* RangeWeapon = m_inv[SlotRange];
+	const ItemInst* Ammo = m_inv[SlotAmmo];
 
 	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)){ 
 		Message(13, "You must have a ranged weapon equiped!");
@@ -11531,8 +11538,8 @@ void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float 
 
 	uint16 gfx_spell_id = 1001001;
 
-	int ammo_slot = MainAmmo;
-	const ItemInst* Ammo = CastToClient()->m_inv[MainAmmo];
+	int ammo_slot = SlotAmmo;
+	const ItemInst* Ammo = CastToClient()->m_inv[SlotAmmo];
 	if (!Ammo || !Ammo->IsType(ItemClassCommon)) 
 		return;
 	const Item_Struct* AmmoItem = Ammo->GetItem();

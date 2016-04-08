@@ -51,6 +51,7 @@
 #define CASTER_RESTRICT_NO_CAST_SELF -1
 #define CASTER_RESTRICT_PARTY -2
 #define CASTER_RESTRICT_FULL_HP_MANA -3
+#define CASTER_RESTRICT_FULL_HP -4
 
 #define CLIENT_MAX_LEVEL 50
 
@@ -682,7 +683,7 @@ typedef enum {
 #define SE_SpellAwareness				1011 // implemented - Enable / Disable spell awareness popup window.
 #define SE_SpellPowerAmtHits			1012 // implemented - Increase spell damage on next target for each target hit in AOE, base = modifier 
 #define	SE_CastOnFadeEffectSF			1013 // implemented - Fade effect using spell finished to cast the spell.
-#define	SE_CastBenficialAEFadeEffect	1014 // implemented - Do a beneficial AE at an NPC location using the casters modifiers.
+#define	SE_CastAOEBenficialAtLocation	1014 // implemented - Do a beneficial AE at an NPC location using the casters modifiers. [Limit 0=OnFade/1, Do as instant]
 #define	SE_TeleportLocation				1015 // implemented - Teleport using ring target.
 #define	SE_AuraCustom					1016 // implemented - Aura effect
 #define	SE_BaseSpellPower				1017 // implemented - Non focused stackable spell modifier 
@@ -785,6 +786,7 @@ typedef enum {
 #define SE_FastEffectPulse				1114 // implemented - base spell_id, limit pulse rate.
 #define SE_CurrentManaCustom			1115 // implemented - Duplicate function to load with custom utilities
 #define SE_CurrentManaOnBuffCaster		1116 // implemented - Restores mana to the caster of the buff.
+
 
 #define SE_AvoidMeleeChanceStack		1200 // implemented
 #define SE_HitChanceStack				1201 // implemented
@@ -1107,6 +1109,7 @@ bool ReCalculateEffectValue(uint16 spell_id, int formula);
 
 //Fast Buff Tic
 bool IsFastBuffTicSpell(uint16 spell_id);
+bool IsFastBuffTicSpellStandard(uint16 spell_id);
 int GetFastBuffTicMicroDuration(uint16 spell_id);
 bool HideBuffDuration(uint16 spell_id);
 
