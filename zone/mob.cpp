@@ -444,7 +444,6 @@ Mob::Mob(const char* in_name,
 	npc_assist_cap = 0;
 	
 	//C!Kayen
-	momentum = 0.0f; 
 	for (int i = 0; i < HIGHEST_SKILL+2; i++) { WpnSkillDmgBonus[i] = 0; }
 	for (int i = 0; i < HIGHEST_RESIST+2; i++) { SpellResistTypeDmgBonus[i] = 0; }
 
@@ -6541,30 +6540,6 @@ void EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id,
 	}
 }
 
-//#### C!Momentum
-
-void Mob::MomentumDamage(Mob* defender, int32 &damage){
-	//Momentum = mass * velocity
-	//NPC special attack that lets you set Momentum Damage Mod , Size Modifier, Momentum value(rate), max momentum)
-	//float size_mod = defender->GetSize()/100.0f + 1.0f;
-	float momentum_mod = GetMomentum()*10;
-	float size_mod = defender->GetSize();
-
-	//Shout("Sod [%.2f] Mmod [%.2f] Tmod [%.2f]", size_mod, momentum_mod, size_mod * momentum_mod);
-	//Shout("Damage PRE %i ", damage);
-
-	
-	damage += static_cast<int>(damage*(momentum_mod)*(size_mod)/100);
-	
-	if (GetMomentum() > GetMomentumSpeed() * (100/2)) {
-		entity_list.MessageClose(this, true, 200, MT_NPCFlurry, "%s slams into %s !", GetCleanName(), defender->GetCleanName());
-		defender->Stun(1000);
-	}
-	SetMomentum(0);
-	//Shout("Damage POST %i ", damage);
-
-}
-
 //#### C!DirectionalCalcs
 
 bool Mob::InAngleMob(Mob *other, float start_angle, float stop_angle) const
@@ -8031,7 +8006,33 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	//4: Scale pet based on any focus modifiers.
 	//Shout("DEBUG: ApplyCustomPetBonuses :: PRE Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
 	
-	base_hp  += base_hp * mod / 100;
+	int new_level = owner->GetLevel();
+
+	//SET BASE PET STATS BY CASTER LEVEL - Certain parts of this are hard coded MAY CHANGE THIS LATER
+	if ((strcmp(pettype, "spectral_animation")) == 0){
+		level = new_level;
+		max_hp =	CalcBaseEffectValueByLevel(200,	1,	max_hp,		new_level,CLIENT_MAX_LEVEL,spell_id);
+		max_dmg =	CalcBaseEffectValueByLevel(0,	9,	max_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
+		min_dmg =	CalcBaseEffectValueByLevel(0,	1,	min_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
+		AC =		CalcBaseEffectValueByLevel(0,	10,	AC,			new_level,CLIENT_MAX_LEVEL,spell_id);
+	}
+	else if ((strcmp(pettype, "reaper")) == 0){
+		level = new_level;
+		max_hp =	CalcBaseEffectValueByLevel(350,	1,	max_hp,		new_level,CLIENT_MAX_LEVEL,spell_id);
+		max_dmg =	CalcBaseEffectValueByLevel(200,	14,	max_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
+		min_dmg =	CalcBaseEffectValueByLevel(0,	5,	min_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
+		AC =		CalcBaseEffectValueByLevel(0,	10,	AC,			new_level,CLIENT_MAX_LEVEL,spell_id);
+	}
+	else if ((strcmp(pettype, "rng_mistwalker")) == 0){
+		level = new_level;
+		max_hp =	CalcBaseEffectValueByLevel(350,	1,	max_hp,		new_level,CLIENT_MAX_LEVEL,spell_id);
+		max_dmg =	CalcBaseEffectValueByLevel(0,	7,	max_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
+		min_dmg =	CalcBaseEffectValueByLevel(0,	1,	min_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
+		AC =		CalcBaseEffectValueByLevel(0,	10,	AC,			new_level,CLIENT_MAX_LEVEL,spell_id);
+	}
+
+
+	base_hp += base_hp * mod / 100;
 	max_dmg += max_dmg * mod / 100;
 	min_dmg += min_dmg * mod / 100;
 	AC += AC * mod / 100;
@@ -8043,6 +8044,19 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	SetSpellFocusHeal(GetSpellFocusHeal() + mod);
     //Shout("DEBUG: ApplyCustomPetBonuses :: POST Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
 	SetHP(1000000);
+}
+
+void NPC::ApplyOnSpawn()
+{
+	/*Consider this sub event spawn*/
+	return; //This is pending full implementation
+
+	//1: Autoscale Hit Points
+	if (GetLevel() <= 50){
+		base_hp = (GetLevel() * GetLevel()) + (10*GetLevel());
+		max_hp = base_hp;
+		SetHP(max_hp);
+	}
 }
 
 bool Client::IsSpectralBladeEquiped()
@@ -9086,7 +9100,7 @@ void Mob::Debug(const char *str)
 
 bool Mob::CustomResistSpell(uint16 spell_id, Mob *caster)
 {
-	/*
+	/*IF TRUE RESIST THE SPELL
 	Valid spell checked before running in ResistSpell
 	This function will be used for custom resist checks as needed
 	*/
@@ -9094,6 +9108,9 @@ bool Mob::CustomResistSpell(uint16 spell_id, Mob *caster)
 		if (!CalcSpellPowerFromBuffSpellGroup(spell_id, caster))//Resist if all effects are not present
 			return true;
 	}
+
+	//if (IsNPC() && IsCasting() && IsEffectInSpell(spell_id, SE_Mez))
+		//return 0; //Mez will not work on NPC with stun resilence.
 	
 	return false;
 
@@ -9517,7 +9534,7 @@ void Mob::BuffFastProcess()
 			--buffs[buffs_i].fastticsremaining;
 			buffs[buffs_i].ticsremaining = 1 + buffs[buffs_i].fastticsremaining/6;
 			
-			Shout("DEBUG :: BuffFastProcess REGULAR %i  [FAST %i] ", buffs[buffs_i].ticsremaining, buffs[buffs_i].fastticsremaining);
+			//Shout("DEBUG :: BuffFastProcess REGULAR %i  [FAST %i] ", buffs[buffs_i].ticsremaining, buffs[buffs_i].fastticsremaining);
 			if (buffs[buffs_i].fastticsremaining == 0) 
 				BuffFadeBySlot(buffs_i);
 
@@ -9536,40 +9553,6 @@ void Mob::BuffFastProcess()
 				}
 			}
 		}
-	}
-}
-
-void Mob::DoFastBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caster_level, Mob* caster) {
-	//No effects defined for use yet in this function.
-	return;
-	
-	int effect, effect_value;
-
-	if(!IsValidSpell(spell_id))
-		return;
-
-	const SPDat_Spell_Struct &spell = spells[spell_id];
-	
-	if (spell_id == SPELL_UNKNOWN)
-		return;
-
-	for (int i = 0; i < EFFECT_COUNT; i++)
-	{
-		if(IsBlankSpellEffect(spell_id, i))
-			continue;
-
-		effect = spell.effectid[i];
-		effect_value = spell.base[i];
-
-		/*
-		switch(effect)
-		{
-			default:
-			{
-				// do we need to do anyting here?
-			}
-		}
-		*/
 	}
 }
 
@@ -9794,7 +9777,7 @@ int Mob::CalcBaseEffectValueByLevel(float formula_mod, float ubase, float max, f
 	return static_cast<int>(ubase + base_mod);
 }
 
-int Mob::GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id)
+int Mob::GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id, int max_level)
 {
 	if((formula >= 5000) && (formula < 7000)){
 		
@@ -9814,8 +9797,8 @@ int Mob::GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster,
 				use_level = GetLevel();
 		}
 		
-		return CalcBaseEffectValueByLevel(static_cast<float>(formula), static_cast<float>(ubase),
-				static_cast<float>(max), static_cast<float>(use_level), CLIENT_MAX_LEVEL, spell_id);
+		return CalcBaseEffectValueByLevel(static_cast<float>(formula_mod), static_cast<float>(ubase),
+				static_cast<float>(max), static_cast<float>(use_level), max_level, spell_id);
 	}
 
 	return max;
@@ -12454,6 +12437,7 @@ int Mob::CalcSpellPowerTotalEffectHits(uint16 spell_id)
 	}
 	return 0;
 }
+
 
 
 

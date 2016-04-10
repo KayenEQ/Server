@@ -1050,12 +1050,6 @@ public:
 	//!// EntityList::TriggeredBeneficialAESpell(Mob *caster, Mob *center, uint16 spell_id)
 	//!// EntityList::ApplyAuraCustom(Mob *caster, Mob *center, uint16 aura_spell_id, uint16 spell_id)
 	
-	//C!Momentum
-	void MomentumDamage(Mob *defender, int32 &damage);
-	inline float GetMomentum() const { return(momentum); }
-	inline void SetMomentum(float momentum_value) { momentum = momentum_value; }
-	inline float GetMomentumSpeed() const { return(0.005f); }
-
 	//C!DirectionalCalcs
 	bool InAngleMob(Mob *other = nullptr, float start_angle = 0.0f, float stop_angle = 0.0f) const;
 	inline bool LeftMob(Mob *other = nullptr) const	{ return (!other || other == this) ? true : InAngleMob(other, 56.0f, 124.0f); }
@@ -1261,7 +1255,6 @@ public:
 	inline uint32 GetChargeEffect() const { return charge_effect; }
 	
 	void BuffFastProcess();
-	virtual void DoFastBuffTic(uint16 spell_id, int slot, uint32 ticsremaining, uint8 caster_level, Mob* caster = 0);
 	inline bool HasFastBuff() const { return has_fast_buff; } 
 	inline void SetFastBuff(bool value) { has_fast_buff = value; }
 	void ClearHasFastBuff(int exclude_slot);
@@ -1375,7 +1368,7 @@ public:
 	int CalcBaseEffectValueByLevel(float formula_mod, float ubase, float max, float caster_level, float max_level, uint16 spell_id);
 	inline void SetScaledBaseEffectValue(int16 value) {  scaled_base_effect_value = value; }
 	inline int32 GetScaledBaseEffectValue() const { return   scaled_base_effect_value; }
-	int GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id);
+	int GetBaseEffectValueByLevel(int formula, int ubase, int max, Mob* caster, uint16 spell_id, int max_level=CLIENT_MAX_LEVEL);
 
 	inline void SetAggroLockID(int16 value) {   AggroLockEffect = value; }
 	inline uint16 GetAggroLockID() const { return   AggroLockEffect; }
@@ -1779,7 +1772,6 @@ protected:
 	Timer aa_timers[aaTimerMax];
 	
 	//C!Kayen
-	float momentum;
 	int32 WpnSkillDmgBonus[HIGHEST_SKILL+2];
 	int32 SpellResistTypeDmgBonus[HIGHEST_RESIST+2];
 	

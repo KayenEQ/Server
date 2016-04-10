@@ -8962,6 +8962,38 @@ XS(XS_Mob_Leap)
 	XSRETURN_EMPTY;
 }
 
+XS(XS_Mob_CalcBaseEffectValueByLevel); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Mob_CalcBaseEffectValueByLevel)
+{
+	dXSARGS;
+	if (items != 6)
+		Perl_croak(aTHX_ "Usage: CalcBaseEffectValueByLevel(float formula_mod, float ubase, float max, float caster_level, float max_level, uint16 spell_id))");
+	{
+		Mob *		THIS;
+		float		RETVAL;
+		dXSTARG;
+		float	formula_mod = (float)SvIV(ST(1));
+		float	ubase = (float)SvIV(ST(2));
+		float	max = (float)SvIV(ST(3));
+		float	caster_level = (float)SvIV(ST(4));
+		float	max_level = (float)SvIV(ST(5));
+
+		if (sv_derived_from(ST(0), "Mob")) {
+			IV tmp = SvIV((SV*)SvRV(ST(0)));
+			THIS = INT2PTR(Mob *,tmp);
+		}
+		else
+			Perl_croak(aTHX_ "THIS is not of type Mob");
+		if(THIS == nullptr)
+			Perl_croak(aTHX_ "THIS is nullptr, avoiding crash.");
+
+
+		RETVAL = THIS->CalcBaseEffectValueByLevel(formula_mod,ubase, max, caster_level, max_level, SPELL_UNKNOWN);
+		XSprePUSH; PUSHn((double)RETVAL);
+	}
+	XSRETURN(1);
+}
+
 XS(XS_Mob_HasShieldEquiped);
 XS(XS_Mob_HasShieldEquiped) {
 	dXSARGS;
@@ -9618,7 +9650,7 @@ XS(boot_Mob)
 		newXSproto(strcpy(buf, "SendAppearanceEffect2"), XS_Mob_SendAppearanceEffect2, file, "$$;$$$$");
 		newXSproto(strcpy(buf, "SendAppearanceEffectTest"), XS_Mob_SendAppearanceEffectTest, file, "$$$$$");
 		newXSproto(strcpy(buf, "Leap"), XS_Mob_Leap, file, "$$$$$$$$$$$$$");
-		
+		newXSproto(strcpy(buf, "CalcBaseEffectValueByLevel"), XS_Mob_CalcBaseEffectValueByLevel, file, "$$$$$$");
 
 	XSRETURN_YES;
 }

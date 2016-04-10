@@ -2784,8 +2784,6 @@ int Mob::CalcBuffDuration(Mob *caster, Mob *target, uint16 spell_id, int32 caste
 	res = mod_buff_duration(res, caster, target, spell_id);
 
 	Log.Out(Logs::Detail, Logs::Spells, "Spell %d: Casting level %d, formula %d, base_duration %d: result %d",spell_id, castlevel, formula, duration, res);
-	caster->Shout("Spell %d: Casting level %d, formula %d, base_duration %d: result %d",spell_id, castlevel, formula, duration, res);
-
 	return res;
 }
 
@@ -4272,7 +4270,8 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 		effect_index = GetSpellEffectIndex(spell_id, SE_Mez);
 		assert(effect_index >= 0);
 		// NPCs get to ignore the max level
-		if((GetLevel() > spells[spell_id].max[effect_index]) &&
+		int max_lv = GetBaseEffectValueByLevel(spells[spell_id].formula[effect_index], 1,spells[spell_id].max[effect_index], caster, spell_id);//C!Kayen
+		if((GetLevel() > max_lv) &&
 			(!caster->IsNPC() || (caster->IsNPC() && !RuleB(Spells, NPCIgnoreBaseImmunity))))
 		{
 			Log.Out(Logs::Detail, Logs::Spells, "Our level (%d) is higher than the limit of this Mez spell (%d)", GetLevel(), spells[spell_id].max[effect_index]);
@@ -4364,7 +4363,8 @@ bool Mob::IsImmuneToSpell(uint16 spell_id, Mob *caster)
 			// check level limit of charm spell
 			effect_index = GetSpellEffectIndex(spell_id, SE_Charm);
 			assert(effect_index >= 0);
-			if(GetLevel() > spells[spell_id].max[effect_index] && spells[spell_id].max[effect_index] != 0)
+			int max_lv = GetBaseEffectValueByLevel(spells[spell_id].formula[effect_index], 1,spells[spell_id].max[effect_index], caster, spell_id);//C!Kayen
+			if(GetLevel() > max_lv && spells[spell_id].max[effect_index] != 0)//C!Kayen
 			{
 				Log.Out(Logs::Detail, Logs::Spells, "Our level (%d) is higher than the limit of this Charm spell (%d)", GetLevel(), spells[spell_id].max[effect_index]);
 				caster->Message_StringID(MT_Shout, CANNOT_CHARM_YET);
@@ -4989,7 +4989,6 @@ void NPC::Stun(int duration) {
 
 	SetRunAnimSpeed(0);
 	SendPosition();
-	SetMomentum(0); //C!Kayen
 
 	SetCurrentSpeed(0);
 
@@ -5008,7 +5007,6 @@ void Mob::Mesmerize()
 		InterruptSpell();
 
 	SendPosition();
-	SetMomentum(0); //C!Kayen
 /* this stuns the client for max time, with no way to break it
 	if (this->IsClient()){
 		EQApplicationPacket* outapp = new EQApplicationPacket(OP_Stun, sizeof(Stun_Struct));

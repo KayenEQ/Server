@@ -1300,11 +1300,7 @@ void Mob::AI_Process() {
 				{
 					if(!IsRooted()) {
 						
-						//Shout("rs %.2f M %.4f MS %.4f", runspeed, GetMomentum(), GetMomentumSpeed());
 						bool m_on = false;
-						if (m_on && GetMomentum() < runspeed*1.0f) //C!Kayen (Momentum can not be more than 2x run speed. (change by adjusting multiplier)
-							SetMomentum(GetMomentum() + GetMomentumSpeed());
-						
 
 						Log.Out(Logs::Detail, Logs::AI, "Pursuing %s while engaged.", target->GetName());
 

@@ -643,6 +643,7 @@ void EntityList::AddNPC(NPC *npc, bool SendSpawnPacket, bool dontqueue)
 	npc->SetMerchantProbability((uint8) zone->random.Int(0, 99));
 
 	parse->EventNPC(EVENT_SPAWN, npc, nullptr, "", 0);
+	npc->ApplyOnSpawn();//C!Kayen
 
 	uint16 emoteid = npc->GetEmoteID();
 	if (emoteid != 0)
