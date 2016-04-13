@@ -1389,6 +1389,8 @@ public:
 	inline float GetFlingLocationY() const { return m_FlingLocation.y; }
 	inline float GetFlingLocationZ() const { return m_FlingLocation.z; }
 
+	void IncommingMeleeCovert(int32 damage);
+
 
 	inline int32 GetAvoidMeleeChanceStack() const { return spellbonuses.AvoidMeleeChanceStack + itembonuses.AvoidMeleeChanceStack + aabonuses.AvoidMeleeChanceStack; }
 	inline int32 GetHitChanceStack() const { return spellbonuses.HitChanceStack + itembonuses.HitChanceStack + aabonuses.HitChanceStack; }

@@ -786,6 +786,12 @@ typedef enum {
 #define SE_FastEffectPulse				1114 // implemented - base spell_id, limit pulse rate.
 #define SE_CurrentManaCustom			1115 // implemented - Duplicate function to load with custom utilities
 #define SE_CurrentManaOnBuffCaster		1116 // implemented - Restores mana to the caster of the buff.
+#define SE_IncommingMeleeDmgToHP		1117 // implemented - Increases resource based on melee dmg taken
+#define SE_IncommingMeleeDmgToMana		1118 // implemented - Increases resource based on melee dmg taken
+#define SE_IncommingMeleeDmgToEndur		1119 // implemented - Increases resource based on melee dmg taken
+#define SE_IncommingMeleeDmgToHPRune	1120 // implemented - Increases resource based on melee dmg taken
+#define SE_IncommingMeleeDmgToManaRune	1121 // implemented - Increases resource based on melee dmg taken
+#define SE_IncommingMeleeDmgToEndurRune	1122 // implemented - Increases resource based on melee dmg taken
 
 
 #define SE_AvoidMeleeChanceStack		1200 // implemented

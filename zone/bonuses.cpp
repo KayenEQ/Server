@@ -3493,6 +3493,55 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				}
 			}
 
+			case SE_IncommingMeleeDmgToHP:{
+				new_bonus->IncommingMeleeDmgToHP += effect_value;
+				break;
+			}
+
+			case SE_IncommingMeleeDmgToMana:{
+				new_bonus->IncommingMeleeDmgToMana += effect_value;
+				break;
+			}
+
+			case SE_IncommingMeleeDmgToEndur:{
+				new_bonus->IncommingMeleeDmgToMana += effect_value;
+				break;
+			}
+
+			case SE_IncommingMeleeDmgToHPRune:
+			{
+				if (new_bonus->IncommingMeleeDmgToHPRune[0] < effect_value){
+					new_bonus->IncommingMeleeDmgToHPRune[0] = effect_value;
+					new_bonus->IncommingMeleeDmgToHPRune[1] = buffslot;
+					new_bonus->IncommingMeleeDmgToHPRune[2] = base2;
+					new_bonus->IncommingMeleeDmgToHPRune[3] = max;
+				}
+				break;
+			}
+
+			case SE_IncommingMeleeDmgToManaRune:
+			{
+				if (new_bonus->IncommingMeleeDmgToManaRune[0] < effect_value){
+					new_bonus->IncommingMeleeDmgToManaRune[0] = effect_value;
+					new_bonus->IncommingMeleeDmgToManaRune[1] = buffslot;
+					new_bonus->IncommingMeleeDmgToManaRune[2] = base2;
+					new_bonus->IncommingMeleeDmgToManaRune[3] = max;
+				}
+				break;
+			}
+
+			case SE_IncommingMeleeDmgToEndurRune:
+			{
+				if (new_bonus->IncommingMeleeDmgToEndurRune[0] < effect_value){
+					new_bonus->IncommingMeleeDmgToEndurRune[0] = effect_value;
+					new_bonus->IncommingMeleeDmgToEndurRune[1] = buffslot;
+					new_bonus->IncommingMeleeDmgToEndurRune[2] = base2;
+					new_bonus->IncommingMeleeDmgToEndurRune[3] = max;
+				}
+				break;
+			}
+
+			//Special Bonus stacks
 			case SE_AvoidMeleeChanceStack:
 				new_bonus->AvoidMeleeChanceStack += effect_value;
 				break;

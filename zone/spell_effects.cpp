@@ -3582,6 +3582,14 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			}
 
+			case SE_IncommingMeleeDmgToHPRune:
+			case SE_IncommingMeleeDmgToManaRune:
+			case SE_IncommingMeleeDmgToEndurRune:
+			{
+				buffs[buffslot].melee_rune = GetBaseEffectValueByLevel(spells[spell_id].formula[i], 1,	spells[spell_id].max[i], caster, spell_id);
+				break;
+			}
+
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
 			case SE_NegateSpellEffect:

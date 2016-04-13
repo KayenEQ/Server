@@ -3149,6 +3149,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 			TryTriggerThreshHold(damage, SE_TriggerMeleeThreshold, attacker);
 
 			SetWpnSkillDmgBonus(skill_used, damage); //C!Kayen
+			IncommingMeleeCovert(damage);//CKayen
 			PetLifeShare(skill_used, damage, attacker); //C!Kayen
 			LifeShare(skill_used, damage, attacker); //C!Kayen
 			AbsorbMelee(damage, attacker); //C!Kayen

@@ -519,6 +519,13 @@ struct StatBonuses {
 	int32 HateOnPetOwnerAll;					//Pct Hate Transferred
 	int16 Faith[4];								//0 = Base  1 = Buffslot 2 = Max Numhits Gained. 3= Spell ID
 	int16 AggroLock[2];							//0 = Casterid, 1 = BuffId
+	int16 IncommingMeleeDmgToHP;				// Pct
+	int16 IncommingMeleeDmgToMana;				// Pct
+	int16 IncommingMeleeDmgToEndur;				// Pct
+	int16 IncommingMeleeDmgToHPRune[4];			// Pct
+	int16 IncommingMeleeDmgToManaRune[4];		// Pct
+	int16 IncommingMeleeDmgToEndurRune[4];		// Pct
+
 
 	int32 AvoidMeleeChanceStack;				// implemented
 	int32 HitChanceStack;						// implemented

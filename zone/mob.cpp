@@ -12438,7 +12438,97 @@ int Mob::CalcSpellPowerTotalEffectHits(uint16 spell_id)
 	return 0;
 }
 
+void Mob::IncommingMeleeCovert(int32 damage)
+{
+	if (!damage)
+		return;
 
+	int32 val_hp_stack = 0;
+	int32 val_mana_stack = 0;
+	int32 val_endur_stack = 0;
+	int16 toHP = spellbonuses.IncommingMeleeDmgToHP + itembonuses.IncommingMeleeDmgToHP + aabonuses.IncommingMeleeDmgToHP;
+	int16 toMana = spellbonuses.IncommingMeleeDmgToMana + itembonuses.IncommingMeleeDmgToMana + aabonuses.IncommingMeleeDmgToMana;
+	int16 toEndur = spellbonuses.IncommingMeleeDmgToEndur + itembonuses.IncommingMeleeDmgToEndur + aabonuses.IncommingMeleeDmgToEndur;
+
+	if (toHP)
+		val_hp_stack = damage*toHP/100;
+	
+	if (toMana)
+		val_mana_stack = damage*toMana/100;
+
+	if (toEndur && IsClient())
+		val_endur_stack = damage*toEndur/100;
+
+	int slot = -1;
+	slot = spellbonuses.IncommingMeleeDmgToHPRune[1];
+	if(spellbonuses.IncommingMeleeDmgToHPRune[0] && slot >= 0)
+	{
+		int damage_to_convert = damage * spellbonuses.IncommingMeleeDmgToHPRune[0] / 100;
+
+		if (spellbonuses.IncommingMeleeDmgToHPRune[2] && (damage_to_convert > spellbonuses.IncommingMeleeDmgToHPRune[2]))
+				damage_to_convert = spellbonuses.IncommingMeleeDmgToHPRune[2];
+
+		if(spellbonuses.IncommingMeleeDmgToHPRune[3] && (damage_to_convert >= buffs[slot].melee_rune)){
+				val_hp_stack -= buffs[slot].melee_rune;
+				if(!TryFadeEffect(slot))
+					BuffFadeBySlot(slot);
+		}else{
+			if (spellbonuses.IncommingMeleeDmgToHPRune[3])
+					buffs[slot].melee_rune = (buffs[slot].melee_rune - damage_to_convert);
+
+			val_hp_stack += damage_to_convert;
+		}
+	}
+
+	slot = spellbonuses.IncommingMeleeDmgToManaRune[1];
+	if(spellbonuses.IncommingMeleeDmgToManaRune[0] && slot >= 0)
+	{
+		int damage_to_convert = damage * spellbonuses.IncommingMeleeDmgToManaRune[0] / 100;
+
+		if (spellbonuses.IncommingMeleeDmgToManaRune[2] && (damage_to_convert > spellbonuses.IncommingMeleeDmgToManaRune[2]))
+				damage_to_convert = spellbonuses.IncommingMeleeDmgToManaRune[2];
+
+		if(spellbonuses.IncommingMeleeDmgToManaRune[3] && (damage_to_convert >= buffs[slot].melee_rune)){
+				val_hp_stack -= buffs[slot].melee_rune;
+				if(!TryFadeEffect(slot))
+					BuffFadeBySlot(slot);
+		}else{
+			if (spellbonuses.IncommingMeleeDmgToManaRune[3])
+					buffs[slot].melee_rune = (buffs[slot].melee_rune - damage_to_convert);
+
+			val_mana_stack += damage_to_convert;
+		}
+	}
+
+	slot = spellbonuses.IncommingMeleeDmgToEndurRune[1];
+	if(spellbonuses.IncommingMeleeDmgToEndurRune[0] && slot >= 0)
+	{
+		int damage_to_convert = damage * spellbonuses.IncommingMeleeDmgToEndurRune[0] / 100;
+
+		if (spellbonuses.IncommingMeleeDmgToEndurRune[2] && (damage_to_convert > spellbonuses.IncommingMeleeDmgToEndurRune[2]))
+				damage_to_convert = spellbonuses.IncommingMeleeDmgToEndurRune[2];
+
+		if(spellbonuses.IncommingMeleeDmgToEndurRune[3] && (damage_to_convert >= buffs[slot].melee_rune)){
+				val_hp_stack -= buffs[slot].melee_rune;
+				if(!TryFadeEffect(slot))
+					BuffFadeBySlot(slot);
+		}else{
+			if (spellbonuses.IncommingMeleeDmgToEndurRune[3])
+					buffs[slot].melee_rune = (buffs[slot].melee_rune - damage_to_convert);
+
+			val_endur_stack += damage_to_convert;
+		}
+	}
+
+	if (val_hp_stack)
+		HealDamage(val_hp_stack,nullptr,SPELL_UNKNOWN);
+
+	if (val_mana_stack)
+		SetMana(GetMana() +val_mana_stack);
+
+	if (val_endur_stack && IsClient())
+		CastToClient()->SetEndurance(GetEndurance() +val_endur_stack);
+}
 
 
 void Mob::SendAppearanceEffectTest(uint32 parm1, uint32 avalue, uint32 bvalue, Client *specific_target){
