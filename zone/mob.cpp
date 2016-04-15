@@ -12539,7 +12539,7 @@ void Mob::IncommingMeleeCovert(Mob* attacker, int32 &damage)
 
 	int slot = -1;
 	slot = spellbonuses.IncommingMeleeDmgToHPRune[1];
-	Shout("Test %i %i %i %i",spellbonuses.IncommingMeleeDmgToHPRune[0],spellbonuses.IncommingMeleeDmgToHPRune[1],spellbonuses.IncommingMeleeDmgToHPRune[2],spellbonuses.IncommingMeleeDmgToHPRune[3]);
+
 	if(spellbonuses.IncommingMeleeDmgToHPRune[0] && slot >= 0 && GetHPRatio() < 100)
 	{
 		int damage_to_convert = damage * spellbonuses.IncommingMeleeDmgToHPRune[0] / 100;

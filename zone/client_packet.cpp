@@ -1009,20 +1009,21 @@ void Client::Handle_Connect_OP_ClientError(const EQApplicationPacket *app)
 	return;
 }
 
+void Client::Handle_Connect_OP_ClientReady(const EQApplicationPacket *app)
+{
+	conn_state = ClientReadyReceived;
+	if (!Spawned())
+		SendZoneInPackets();
+	CompleteConnect();
+	SendHPUpdate();
+}
+
 void Client::Handle_Connect_OP_ClientUpdate(const EQApplicationPacket *app)
 {
 	//Once we get this, the client thinks it is connected
 	//So give it the benefit of the doubt and move to connected
 
 	Handle_Connect_OP_ClientReady(app);
-}
-
-void Client::Handle_Connect_OP_ClientReady(const EQApplicationPacket *app)
-{
-	conn_state = ClientReadyReceived;
-
-	CompleteConnect();
-	SendHPUpdate();
 }
 
 void Client::Handle_Connect_OP_ReqClientSpawn(const EQApplicationPacket *app)
@@ -12766,7 +12767,7 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 		}
 
 		else {
-			std::cerr << "Client " << name << " unknown apperance " << (int)sa->parameter << std::endl;
+			Log.Out(Logs::Detail, Logs::Error, "Client %s :: unknown appearance %i", name, (int)sa->parameter);
 			return;
 		}
 
@@ -12788,7 +12789,7 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 			m_pp.anon = 0;
 		}
 		else {
-			std::cerr << "Client " << name << " unknown Anon/Roleplay Switch " << (int)sa->parameter << std::endl;
+			Log.Out(Logs::Detail, Logs::Error, "Client %s :: unknown Anon/Roleplay Switch %i", name, (int)sa->parameter);
 			return;
 		}
 		entity_list.QueueClients(this, app, true);
