@@ -700,7 +700,9 @@ bool NPC::Process()
 	//C!Kayen - Start Custom Timers
 	MeleeCharge();
 	SpellProjectileEffectTargetRing();
-	SpellCastingTimerDisplay();
+	
+	if (displaycastingtimer_timer.Check())
+		SpellCastingTimerDisplay();
 
 	if (leapSE_timer.Check()) //1 MS
 		LeapSpellEffect();

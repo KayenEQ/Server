@@ -666,6 +666,10 @@ RULE_CATEGORY(Client)
 RULE_BOOL(Client, UseLiveFactionMessage, false) // Allows players to see faction adjustments like Live
 RULE_CATEGORY_END()
 
+RULE_CATEGORY(Custom)
+RULE_BOOL(Custom, UseTelegraphs, true) // Allows players to see faction adjustments like Live
+RULE_CATEGORY_END()
+
 #undef RULE_CATEGORY
 #undef RULE_INT
 #undef RULE_REAL

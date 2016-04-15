@@ -2809,7 +2809,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_ApplyEffect: {
 
-				if (caster && IsValidSpell(spells[spell_id].base2[i])){
+				if (caster && IsValidSpell(spells[spell_id].base2[i]) && spells[spell_id].base2[i] != spell_id){//C!Kayen - ADD TO SOURCE
 
 					if(zone->random.Roll(spells[spell_id].base[i]))
 						caster->SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);

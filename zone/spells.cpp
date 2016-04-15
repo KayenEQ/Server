@@ -477,7 +477,10 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 
 	// ok we know it has a cast time so we can start the timer now
 	spellend_timer.Start(cast_time);
-
+	SetTargetLocationLoc(casting_spell_targetid, spell_id); //C!Kayen
+	if (IsNPC())
+		displaycastingtimer_timer.Start(1000); 	//C!Kayen - Start 1 second timer here
+	
 	if (IsAIControlled())
 	{
 		SetRunAnimSpeed(0);
@@ -485,6 +488,9 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 		if (pMob && this != pMob)
 			FaceTarget(pMob);
 	}
+	
+	if (IsNPC())
+		SpellCastingTimerDisplay(true); 	//C!Kayen - Start 1 second timer here
 
 	// if we got here we didn't fizzle, and are starting our cast
 	if (oSpellWillFinish)
@@ -520,7 +526,6 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, uint16 slot,
 	}
 
 	//C!Kayen
-	SetTargetLocationLoc(casting_spell_targetid, spell_id);
 	CustomSpellMessages(casting_spell_targetid, spell_id, 1);
 	return(true);
 }
@@ -806,6 +811,7 @@ void Mob::ZeroCastingVars()
 	SetOriginCasterID(0); //C!Kayen
 	SetScaledBaseEffectValue(0); //C!Kayen
 	SetLimitToPrimarySpellTarget(false); //C!Kayen
+	displaycastingtimer_timer.Disable();
 	
 }
 

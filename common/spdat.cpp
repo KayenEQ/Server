@@ -1402,8 +1402,37 @@ bool ReCalculateEffectValue(uint16 spell_id, int formula)
 	return false;
 }
 
-uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id)
+bool IsUtilityDisplayGFXSpell(uint16 spell_id)
 {
+	if (spells[spell_id].id >= 10000 && spells[spell_id].id <= 10752)
+		return true;
+
+	return false;
+}
+
+uint8 GetUtilityDisplayGFXType(uint16 spell_id)
+{
+	if (spells[spell_id].id >= 10000 && spells[spell_id].id <= 10611)
+		return 1;
+	else if (spells[spell_id].id >= 10700 && spells[spell_id].id <= 10752)
+		return 2;
+
+	return 0;
+}
+
+bool IsGFXTypeOld(uint16 spell_id)
+{
+	if (spells[spell_id].spellanim == 138 && spells[spell_id].SpellAffectIndex >= 0)
+		return true;
+
+	return false;
+}
+
+uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id, bool telegraph)
+{
+	if (telegraph)
+		return GetGraphicSpellID(spell_id,telegraph);
+
 	//Displays rain graphic at AOE location only. Spell in file is display on targets.
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_UtilityDisplayGFX){
@@ -1415,8 +1444,11 @@ uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id)
 	return GetGraphicSpellID(spell_id);
 }
 
-uint16 GetGraphicSpellID(uint16 spell_id)
+uint16 GetGraphicSpellID(uint16 spell_id, bool telegraph)
 {
+	if (telegraph)
+		return TELEGRAPH_RED;
+
 	uint16 temp_spell_id = SPELL_UNKNOWN;
 
 	if (spells[spell_id].spellanim == 138)
@@ -1430,25 +1462,24 @@ uint16 GetGraphicSpellID(uint16 spell_id)
 	return spell_id;
 }
 
-uint32 GetGraphicNPCTYPEID(uint16 spell_id)
+uint32 GetGraphicNPCTYPEID(uint16 spell_id,bool telegraph)
 {
 	/*NPC with TYPE ID 1001000 - 1001255 used to display spell graphics
 	All NPC are invisible and non targetable, size varies based on ID.
 	Most graphics are larger based on size of NPC. It is more efficient to spawn
 	with desired size then to change it after spawn due to less packets sent.
 	*/
-	return 1001000 + GetGFXSize(spell_id);
+	return 1001000 + GetGFXSize(spell_id,telegraph);
 }
 
-int GetGFXSize(uint16 spell_id)
+int GetGFXSize(uint16 spell_id,bool telegraph)
 {
 	//Ie. [5]006 - Determine how large the spell graphic is.
-	if (!spells[spell_id].GFX){
-		if (spells[spell_id].spellanim == 138 && spells[spell_id].SpellAffectIndex > 0)
-			return 0; //Size 0.1 - These graphics are same size regardless.
-		else
-			return 3; //Regular GFX
-	}
+	if (telegraph || IsGFXTypeOld(spell_id))
+		return 0; //Size 0.1 - These graphics are same size regardless.
+
+	if (!spells[spell_id].GFX)
+		return 3; //Regular GFX
 
 	int size = spells[spell_id].GFX / 1000;
 
@@ -1462,9 +1493,12 @@ int GetGFXSize(uint16 spell_id)
 
 }
 
-uint32 GetGFXDuration(uint16 spell_id)
+uint32 GetGFXDuration(uint16 spell_id, bool telegraph)
 {
 	//Ie. 500[6] - Alter duration based on spell animation [Will be used on a case by cast basis for certain spells]
+	if (telegraph || IsGFXTypeOld(spell_id))
+		return 1;
+	
 	if (!spells[spell_id].GFX)
 		return 5;
 
@@ -1477,9 +1511,12 @@ uint32 GetGFXDuration(uint16 spell_id)
 	return duration;
 }
 
-int GetGFXMultiplier(uint16 spell_id)
+int GetGFXMultiplier(uint16 spell_id,bool telegraph)
 {
 	//Ie. 5[2]06 - Decreases distance between row spawns by multiplying row count
+	if (telegraph)
+		return 3;
+	
 	if (!spells[spell_id].GFX)
 		return 1;
 

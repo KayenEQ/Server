@@ -3149,10 +3149,10 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 			TryTriggerThreshHold(damage, SE_TriggerMeleeThreshold, attacker);
 
 			SetWpnSkillDmgBonus(skill_used, damage); //C!Kayen
-			IncommingMeleeCovert(damage);//CKayen
 			PetLifeShare(skill_used, damage, attacker); //C!Kayen
 			LifeShare(skill_used, damage, attacker); //C!Kayen
 			AbsorbMelee(damage, attacker); //C!Kayen
+			IncommingMeleeCovert(attacker, damage);//CKayen
 
 			if (IsClient() && CastToClient()->GetKnockBackMeleeImmune())
 				damage = 0; //C!Kayen - Dodge attack if you just hit knockback effect till next player position update
@@ -3438,7 +3438,7 @@ void Mob::CommonDamage(Mob* attacker, int32 &damage, const uint16 spell_id, cons
 
 }
 
-void Mob::HealDamage(uint32 amount, Mob *caster, uint16 spell_id)
+void Mob::HealDamage(uint32 amount, Mob *caster, uint16 spell_id, bool msg)
 {
 	int32 maxhp = GetMaxHP();
 	int32 curhp = GetHP();
@@ -3449,7 +3449,7 @@ void Mob::HealDamage(uint32 amount, Mob *caster, uint16 spell_id)
 	else
 		acthealed = amount;
 
-	if (acthealed > 100) {
+	if (acthealed > 100 || msg) {//C!Kayen
 		if (caster) {
 			if (IsBuffSpell(spell_id)) { // hots
 				// message to caster

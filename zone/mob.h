@@ -359,7 +359,7 @@ public:
 	bool ChangeHP(Mob* other, int32 amount, uint16 spell_id = 0, int8 buffslot = -1, bool iBuffTic = false);
 	inline void SetOOCRegen(int32 newoocregen) {oocregen = newoocregen;}
 	virtual void Heal();
-	virtual void HealDamage(uint32 ammount, Mob* caster = nullptr, uint16 spell_id = SPELL_UNKNOWN);
+	virtual void HealDamage(uint32 ammount, Mob* caster = nullptr, uint16 spell_id = SPELL_UNKNOWN, bool msg = false);//C!Kayen
 	virtual void SetMaxHP() { cur_hp = max_hp; }
 	virtual inline uint16 GetBaseRace() const { return base_race; }
 	virtual inline uint8 GetBaseGender() const { return base_gender; }
@@ -1134,12 +1134,6 @@ public:
 	void GravityFlux();
 	//END [SPELL POWER]
 
-
-	//C!LastName
-	void ChangeNPCLastName(const char* in_lastname); //PERL EXPORT
-	void ClearNPCLastName();
-	void SpellCastingTimerDisplay(); //Displayed as Last Name
-
 	//C!AdjustRecast - Rest of functions are in client.h
 	uint16 GetSpellGroupFromLimit(uint16 spell_id);
 	//!// Client::DoAdjustRecastTimer()
@@ -1341,12 +1335,19 @@ public:
 	bool PassCastRestrictionCustom(int type, Mob* caster, uint16 spell_id, int16 value);//Checked DetermineSpellTargets
 	bool TryCustomResourceConsume(uint16 spell_id);
 
+
+	//C!LastName
+	void ChangeNPCLastName(const char* in_lastname); //PERL EXPORT
+	void ClearNPCLastName();
+	void SpellCastingTimerDisplay(bool start=false); //Displayed as Last Name
+	void TelegraphSpell(uint16 spell_id);
+
 	//Experimental - AOE/Directional - ADVANCED GFX Displays and ADVANCED Directional AOE functions
-	void SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* target=nullptr);
-	void SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange, int row,float origin_heading,float origin_x, float origin_y); //Directional/PBAOE
-	void SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y);
-	void SpawnSpellGraphicSingleTempPetLocation(GFX type, uint16 spell_id, float aoerange, float locX=0.0f, float locY=0.0f, float locZ=0.0f);
-	void SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y,float origin_z);
+	void SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* target=nullptr,bool telegraph=false);
+	void SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange, int row,float origin_heading,float origin_x, float origin_y,bool telegraph=false); //Directional/PBAOE
+	void SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y,bool telegraph=false);
+	void SpawnSpellGraphicSingleTempPetLocation(GFX type, uint16 spell_id, float aoerange, float locX=0.0f, float locY=0.0f, float locZ=0.0f,bool telegraph=false);
+	void SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y,float origin_z,bool telegraph=false);
 	float GetSpacerAngle(float aoerange, float total_angle);
 	NPC* TypesTemporaryPetsGFX(uint32 typesid, const char *name_override = nullptr, uint32 duration_override = 0, float dX=0.0f, float dY=0.0f, float dZ=0.0f, uint16 spell_id = 0);
 	void SendSpellAnimGFX(uint16 targetid, uint16 spell_id, float aoerange);
@@ -1389,7 +1390,8 @@ public:
 	inline float GetFlingLocationY() const { return m_FlingLocation.y; }
 	inline float GetFlingLocationZ() const { return m_FlingLocation.z; }
 
-	void IncommingMeleeCovert(int32 damage);
+	void IncommingMeleeCovert(Mob* attacker, int32 &damage);
+	int32 GetActHealAmt(int32 amt);
 
 
 	inline int32 GetAvoidMeleeChanceStack() const { return spellbonuses.AvoidMeleeChanceStack + itembonuses.AvoidMeleeChanceStack + aabonuses.AvoidMeleeChanceStack; }
@@ -1821,6 +1823,7 @@ protected:
 	Timer aura_field_timer;
 	Timer pet_buff_owner_timer;
 	Timer pet_resume_autofollow;
+	Timer displaycastingtimer_timer;
 
 	Timer fast_tic_special_timer; //used for special case
 	int fast_tic_special_count; //used for special case

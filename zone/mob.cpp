@@ -538,6 +538,7 @@ Mob::Mob(const char* in_name,
 	stun_resilience_timer.Disable();
 	charge_effect_timer.Disable();
 	leapSE_timer.Disable();
+	displaycastingtimer_timer.Disable();
 
 }
 
@@ -7376,13 +7377,75 @@ void Mob::ClearNPCLastName()
 	ChangeNPCLastName( WT.c_str());
 }
 
+void Mob::SpellCastingTimerDisplay(bool start)
+{
+	if (IsCasting() && IsValidSpell(CastingSpellID())){ //Removed IsEngaged() Check 4/14/16
+
+		if (start)
+			TelegraphSpell(CastingSpellID());
+		
+		uint32 remain_time = GetSpellEndTime().GetRemainingTime(); 
+		uint32 flat_time = 0;
+		uint32 cast_time = GetSpellEndTime().GetDuration();
+
+		if (start)
+			flat_time = (remain_time / 1000);
+		else
+			flat_time = (remain_time / 1000) + 1;
+
+		if (cast_time > 6){//5 or 6 is best for graphic time
+			int refresh_telegraph = flat_time % 6;
+			if (refresh_telegraph == 0)
+				TelegraphSpell(CastingSpellID());
+		}
+
+		//Shout("DEBUG: remain %i :: flat_time_cmp %i, [%i]", remain_time, flat_time,cast_time);
+		std::string WT;
+
+		//Build string to send if cast is not completed.
+		if (remain_time > 1){
+
+			WT = spells[CastingSpellID()].name;
+			WT += " ";
+			WT += "< ";
+			WT += itoa(flat_time);
+			WT += " >";
+			
+			if (strlen(WT.c_str()) >= 64)
+				WT = '\0'; //Prevent buff overflow
+		}
+
+		else
+			WT = '\0'; //Clear Last Name
+
+		ChangeNPCLastName( WT.c_str());
+	}
+}
+
+void Mob::TelegraphSpell(uint16 spell_id)
+{
+	//Likely will be better to use this in narrow cases of special attacks, and a set specific graphic for those
+	//Then will just check that graphic, can use a spell field to set the telegraph spell ID or use a spell effect
+	//Check here, then get the spell id downstream
+	if (!RuleB(Custom, UseTelegraphs))
+		return;
+
+	if (spells[spell_id].targettype == ST_Directional || spells[spell_id].targettype == ST_AECaster)
+		SpellGraphicTempPet(GFX::PBAE_DirAE, spell_id, spells[spell_id].aoerange, nullptr,true);
+	else if (spells[spell_id].targettype == ST_Beam)
+		SpellGraphicTempPet(GFX::Beam, spell_id, spells[spell_id].range, nullptr,true);
+	else if (IsTargetRingSpell(spell_id))
+		SpellGraphicTempPet(GFX::TargetRing, spell_id, spells[spell_id].aoerange, nullptr,true);
+}
+
+/*
 void Mob::SpellCastingTimerDisplay()
 {
 
 	/*Will display a cast time count down in 1 second interval which accurate to actual cast time.
 	Packet is only sent once per second max
 	To do potentially start a 1 second timer to sync with the count down start time, unsure if neccessary.
-	*/
+
 	if (IsCasting() && IsEngaged()){
 		
 		uint32 remain_time = GetSpellEndTime().GetRemainingTime(); 
@@ -7414,6 +7477,7 @@ void Mob::SpellCastingTimerDisplay()
 		}
 	}
 }
+*/
 
 //#### C!AdjustRecast
 
@@ -11222,7 +11286,7 @@ bool Mob::TryCustomResourceConsume(uint16 spell_id)
 
 
 
-void Mob::SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* target)
+void Mob::SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* target,bool telegraph)
 {
 	if (!IsValidSpell(spell_id) || !aoerange)
 		return;
@@ -11257,10 +11321,10 @@ void Mob::SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* ta
 
 	int column_distance = 0;
 	float FIRST_ROW = 0; //Distance for beam first row.
-	//Shout("DEBUG: ROW COUNT %i Mult %i", ROW_COUNT, GetGFXMultiplier(spell_id));
-	ROW_COUNT = ROW_COUNT * GetGFXMultiplier(spell_id);
 
-	if (type == GFX::PBAE_DirAE)
+	ROW_COUNT = ROW_COUNT * GetGFXMultiplier(spell_id,telegraph);
+
+	if (type == GFX::PBAE_DirAE || type == GFX::TargetRing || type == GFX::FlingLeap)
 		column_distance = static_cast<int>(aoerange)/ROW_COUNT;
 	else if (type == GFX::Beam){
 		FIRST_ROW = 10.0f; //This may need to be modified based on size
@@ -11298,30 +11362,30 @@ void Mob::SpellGraphicTempPet(GFX type, uint16 spell_id, float aoerange, Mob* ta
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1 && spells[spell_id].targettype == ST_Directional) //On first row, place a single graphic close to caster as apex of cone.
-				SpawnSpellGraphicAOETempPet(type, spell_id, static_cast<float>(column_distance/3),-1,origin_heading, origin_x, origin_y); //WAS static_cast<float>(column_distance/2) - Best way to do this?
+				SpawnSpellGraphicAOETempPet(type, spell_id, static_cast<float>(column_distance/3),-1,origin_heading, origin_x, origin_y,telegraph); //WAS static_cast<float>(column_distance/2) - Best way to do this?
 
-			SpawnSpellGraphicAOETempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading, origin_x, origin_y);
+			SpawnSpellGraphicAOETempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading, origin_x, origin_y,telegraph);
 		}
 	}
 	else if (type == GFX::Beam){ //Beam
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1)
-				SpawnSpellGraphicBeamTempPet(type, spell_id, FIRST_ROW,-1,origin_heading,origin_x,origin_y);
+				SpawnSpellGraphicBeamTempPet(type, spell_id, FIRST_ROW,-1,origin_heading,origin_x,origin_y,telegraph);
 
-			SpawnSpellGraphicBeamTempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading,origin_x,origin_y); 
+			SpawnSpellGraphicBeamTempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading,origin_x,origin_y,telegraph); 
 		}
 	}
 	else if (type == GFX::Rain || type == GFX::TargetRing || type == GFX::FlingLeap){//Targert RING AOE or Location based attacks
 		for(int i = 1; i <= ROW_COUNT; i++){
 
 			if (i == 1){
-				SpawnSpellGraphicSingleTempPetLocation(type, spell_id, aoerange, origin_x, origin_y, origin_z);
+				SpawnSpellGraphicSingleTempPetLocation(type, spell_id, aoerange, origin_x, origin_y, origin_z,telegraph);
 				if (aoerange < 30)
 					return; //Keep it a simple one spawn for short range target ring AOE
 			}
 			
-			SpawnSpellGraphicAOETempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading, origin_x, origin_y);
+			SpawnSpellGraphicAOETempPet(type, spell_id, aoerange - (((ROW_COUNT) - i)*column_distance),i,origin_heading, origin_x, origin_y,telegraph);
 		}
 	}
 	return;
@@ -11344,9 +11408,15 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 			return 7.5f;
 		if (aoerange <= 100 && aoerange > 50)
 			return 15.0f;
-		if (aoerange <= 50 && aoerange > 0){
+		if (aoerange <= 50 && aoerange > 25){
 			if (total_angle >= 16)
 				return 30.0f;
+			else
+				return 1.0f;
+		}
+		if (aoerange <= 25 && aoerange > 0){
+			if (total_angle >= 16)
+				return 60.0f;
 			else
 				return 1.0f;
 		}
@@ -11358,21 +11428,25 @@ float Mob::GetSpacerAngle(float aoerange, float total_angle)
 	return 0.0f;
 }
 
-void Mob::SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y)
+void Mob::SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y,bool telegraph)
 {
 	//Shout("START DEBUG: AOE RANGE %.2f [SIZE %i DURATIOn %i]", aoerange, GetGFXSize(spell_id), GetGFXDuration(spell_id));
+	//Shout("Mob::SpawnSpellGraphicAOETempPet %i %i %i", spell_id, int(aoerange), row);
 
 	if (aoerange <= spells[spell_id].min_range)
 		return;
 
-	uint32 duration = GetGFXDuration(spell_id);
-	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
+	uint32 duration = GetGFXDuration(spell_id, telegraph);
+	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id, telegraph);
 	uint16 gfx_spell_id = SPELL_UNKNOWN;
 
 	if (type == GFX::Rain || type == GFX::TargetRing)
-		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id);
+		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id,telegraph);
 	else
-		gfx_spell_id = GetGraphicSpellID(spell_id);
+		gfx_spell_id = GetGraphicSpellID(spell_id,telegraph);
+
+	//Shout("GEt NPC ID %i [Telegraph %i] Duration %i Spell %i",gfx_npctype_id, telegraph,duration, gfx_spell_id);
+
 
 	float total_angle = 360.0f;
 
@@ -11401,6 +11475,8 @@ void Mob::SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange,
 		}
 	}
 
+	float packet_range = aoerange * 1.5;
+
 	for(int i = 0; i < COLUMN_COUNT; i++){
 
 		float dX = 0.0f;
@@ -11414,7 +11490,7 @@ void Mob::SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange,
 	
 		if (temppet){
 			if (spells[spell_id].npc_no_los || CheckLosFN(temppet))
-				SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, aoerange);
+				SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, packet_range);
 
 			start_angle = FixHeadingAngle((start_angle + angle_length));
 		}
@@ -11423,13 +11499,13 @@ void Mob::SpawnSpellGraphicAOETempPet(GFX type, uint16 spell_id, float aoerange,
 	}
 }
 
-void Mob::SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y)
+void Mob::SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading,float origin_x, float origin_y,bool telegraph)
 {
 	//Shout("DEBUG: START BEAM DEBUG: Height %.2f Width %.2f [GFX Size %i NPCID %i]", aoerange, spells[spell_id].aoerange, GetGFXSize(spell_id),GetGraphicNPCTYPEID(spell_id));
 
-	uint32 duration = GetGFXDuration(spell_id);
-	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
-	uint16 gfx_spell_id = GetGraphicSpellID(spell_id);
+	uint32 duration = GetGFXDuration(spell_id,telegraph);
+	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id,telegraph);
+	uint16 gfx_spell_id = GetGraphicSpellID(spell_id,telegraph);
 
 	float length = aoerange;
 	float width = spells[spell_id].aoerange;
@@ -11452,6 +11528,8 @@ void Mob::SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange
 	float packet_range = length;
 		if (width > length)
 			packet_range = width;
+
+	packet_range = packet_range * 1.5;
 
 	//Shout("DEBUG: START BEAM DEBUG: COLUMN_COUNT  %i", COLUMN_COUNT);
 	
@@ -11496,26 +11574,26 @@ void Mob::SpawnSpellGraphicBeamTempPet(GFX type, uint16 spell_id, float aoerange
 	}
 }
 
-void Mob::SpawnSpellGraphicSingleTempPetLocation(GFX type, uint16 spell_id, float aoerange, float locX, float locY, float locZ)
+void Mob::SpawnSpellGraphicSingleTempPetLocation(GFX type, uint16 spell_id, float aoerange, float locX, float locY, float locZ,bool telegraph)
 {
-	uint32 duration = GetGFXDuration(spell_id);
-	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id);
+	uint32 duration = GetGFXDuration(spell_id,telegraph);
+	uint32 gfx_npctype_id = GetGraphicNPCTYPEID(spell_id,telegraph);
 	uint16 gfx_spell_id = SPELL_UNKNOWN;
 	if (type == GFX::Rain || type == GFX::TargetRing)
-		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id);
+		gfx_spell_id = GetUtilityDisplayGFXSpellID(spell_id,telegraph);
 	else
-		gfx_spell_id = GetGraphicSpellID(spell_id);
+		gfx_spell_id = GetGraphicSpellID(spell_id,telegraph);
 
 	NPC* temppet = nullptr;
 
 	temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, locX, locY,locZ, spell_id); //Spawn pet
 	
 	if (temppet){
-		SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, spells[spell_id].range + 10);
+		SendSpellAnimGFX(temppet->GetID(), gfx_spell_id, spells[spell_id].range * 1.5);
 	}
 }
 
-void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y, float origin_z)
+void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float aoerange, int row, float origin_heading, float origin_x, float origin_y, float origin_z,bool telegraph)
 {
 	if (!IsEffectInSpell(spell_id,SE_AttackArchery))
 		return;
@@ -12438,7 +12516,7 @@ int Mob::CalcSpellPowerTotalEffectHits(uint16 spell_id)
 	return 0;
 }
 
-void Mob::IncommingMeleeCovert(int32 damage)
+void Mob::IncommingMeleeCovert(Mob* attacker, int32 &damage)
 {
 	if (!damage)
 		return;
@@ -12461,7 +12539,8 @@ void Mob::IncommingMeleeCovert(int32 damage)
 
 	int slot = -1;
 	slot = spellbonuses.IncommingMeleeDmgToHPRune[1];
-	if(spellbonuses.IncommingMeleeDmgToHPRune[0] && slot >= 0)
+	Shout("Test %i %i %i %i",spellbonuses.IncommingMeleeDmgToHPRune[0],spellbonuses.IncommingMeleeDmgToHPRune[1],spellbonuses.IncommingMeleeDmgToHPRune[2],spellbonuses.IncommingMeleeDmgToHPRune[3]);
+	if(spellbonuses.IncommingMeleeDmgToHPRune[0] && slot >= 0 && GetHPRatio() < 100)
 	{
 		int damage_to_convert = damage * spellbonuses.IncommingMeleeDmgToHPRune[0] / 100;
 
@@ -12469,7 +12548,7 @@ void Mob::IncommingMeleeCovert(int32 damage)
 				damage_to_convert = spellbonuses.IncommingMeleeDmgToHPRune[2];
 
 		if(spellbonuses.IncommingMeleeDmgToHPRune[3] && (damage_to_convert >= buffs[slot].melee_rune)){
-				val_hp_stack -= buffs[slot].melee_rune;
+				damage_to_convert -= buffs[slot].melee_rune;
 				if(!TryFadeEffect(slot))
 					BuffFadeBySlot(slot);
 		}else{
@@ -12489,7 +12568,7 @@ void Mob::IncommingMeleeCovert(int32 damage)
 				damage_to_convert = spellbonuses.IncommingMeleeDmgToManaRune[2];
 
 		if(spellbonuses.IncommingMeleeDmgToManaRune[3] && (damage_to_convert >= buffs[slot].melee_rune)){
-				val_hp_stack -= buffs[slot].melee_rune;
+				damage_to_convert -= buffs[slot].melee_rune;
 				if(!TryFadeEffect(slot))
 					BuffFadeBySlot(slot);
 		}else{
@@ -12509,7 +12588,7 @@ void Mob::IncommingMeleeCovert(int32 damage)
 				damage_to_convert = spellbonuses.IncommingMeleeDmgToEndurRune[2];
 
 		if(spellbonuses.IncommingMeleeDmgToEndurRune[3] && (damage_to_convert >= buffs[slot].melee_rune)){
-				val_hp_stack -= buffs[slot].melee_rune;
+				damage_to_convert -= buffs[slot].melee_rune;
 				if(!TryFadeEffect(slot))
 					BuffFadeBySlot(slot);
 		}else{
@@ -12520,14 +12599,30 @@ void Mob::IncommingMeleeCovert(int32 damage)
 		}
 	}
 
-	if (val_hp_stack)
-		HealDamage(val_hp_stack,nullptr,SPELL_UNKNOWN);
+	if (val_hp_stack && GetHPRatio() < 100){
+		HealDamage(val_hp_stack,attacker,SPELL_UNKNOWN, true);
+		damage = -6;//Minium is 100% of damage healed, no real point otherwise.
+	}
 
 	if (val_mana_stack)
 		SetMana(GetMana() +val_mana_stack);
 
 	if (val_endur_stack && IsClient())
 		CastToClient()->SetEndurance(GetEndurance() +val_endur_stack);
+}
+
+int32 Mob::GetActHealAmt(int32 amt)
+{
+	int32 maxhp = GetMaxHP();
+	int32 curhp = GetHP();
+	uint32 acthealed = 0;
+
+	if (amt > (maxhp - curhp))
+		acthealed = (maxhp - curhp);
+	else
+		acthealed = amt;
+
+	return acthealed;
 }
 
 

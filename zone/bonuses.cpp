@@ -2629,8 +2629,8 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 
 			case SE_MitigateMeleeDamage:
 			{
-				if (new_bonus->MitigateMeleeRune[0] < effect_value){
-					new_bonus->MitigateMeleeRune[0] = effect_value;
+				if (new_bonus->MitigateMeleeRune[0] < spells[spell_id].base[i]){//C!Kayen
+					new_bonus->MitigateMeleeRune[0] = spells[spell_id].base[i];
 					new_bonus->MitigateMeleeRune[1] = buffslot;
 					new_bonus->MitigateMeleeRune[2] = base2;
 					new_bonus->MitigateMeleeRune[3] = max;
@@ -2661,8 +2661,8 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 
 			case SE_MitigateSpellDamage:
 			{
-				if (new_bonus->MitigateSpellRune[0] < effect_value){
-					new_bonus->MitigateSpellRune[0] = effect_value;
+				if (new_bonus->MitigateSpellRune[0] < spells[spell_id].base[i]){//C!Kayen
+					new_bonus->MitigateSpellRune[0] = spells[spell_id].base[i];
 					new_bonus->MitigateSpellRune[1] = buffslot;
 					new_bonus->MitigateSpellRune[2] = base2;
 					new_bonus->MitigateSpellRune[3] = max;
@@ -3510,8 +3510,8 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 
 			case SE_IncommingMeleeDmgToHPRune:
 			{
-				if (new_bonus->IncommingMeleeDmgToHPRune[0] < effect_value){
-					new_bonus->IncommingMeleeDmgToHPRune[0] = effect_value;
+				if (new_bonus->IncommingMeleeDmgToHPRune[0] < spells[spell_id].base[i]){
+					new_bonus->IncommingMeleeDmgToHPRune[0] = spells[spell_id].base[i];
 					new_bonus->IncommingMeleeDmgToHPRune[1] = buffslot;
 					new_bonus->IncommingMeleeDmgToHPRune[2] = base2;
 					new_bonus->IncommingMeleeDmgToHPRune[3] = max;
@@ -3521,8 +3521,8 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 
 			case SE_IncommingMeleeDmgToManaRune:
 			{
-				if (new_bonus->IncommingMeleeDmgToManaRune[0] < effect_value){
-					new_bonus->IncommingMeleeDmgToManaRune[0] = effect_value;
+				if (new_bonus->IncommingMeleeDmgToManaRune[0] < spells[spell_id].base[i]){
+					new_bonus->IncommingMeleeDmgToManaRune[0] = spells[spell_id].base[i];
 					new_bonus->IncommingMeleeDmgToManaRune[1] = buffslot;
 					new_bonus->IncommingMeleeDmgToManaRune[2] = base2;
 					new_bonus->IncommingMeleeDmgToManaRune[3] = max;
@@ -3532,8 +3532,8 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 
 			case SE_IncommingMeleeDmgToEndurRune:
 			{
-				if (new_bonus->IncommingMeleeDmgToEndurRune[0] < effect_value){
-					new_bonus->IncommingMeleeDmgToEndurRune[0] = effect_value;
+				if (new_bonus->IncommingMeleeDmgToEndurRune[0] < spells[spell_id].base[i]){
+					new_bonus->IncommingMeleeDmgToEndurRune[0] = spells[spell_id].base[i];
 					new_bonus->IncommingMeleeDmgToEndurRune[1] = buffslot;
 					new_bonus->IncommingMeleeDmgToEndurRune[2] = base2;
 					new_bonus->IncommingMeleeDmgToEndurRune[3] = max;

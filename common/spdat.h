@@ -57,6 +57,8 @@
 
 #define NPC_DISC_FLAG -100
 
+#define TELEGRAPH_RED 10748
+
 //C!Kayen - End
 
 
@@ -1120,12 +1122,15 @@ int GetFastBuffTicMicroDuration(uint16 spell_id);
 bool HideBuffDuration(uint16 spell_id);
 
 //GFX
-uint16 GetGraphicSpellID(uint16 spell_id);
-uint32 GetGraphicNPCTYPEID(uint16 spell_id);
-int GetGFXSize(uint16 spell_id);
-uint32 GetGFXDuration(uint16 spell_id);
-int GetGFXMultiplier(uint16 spell_id);
-uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id);
+uint16 GetGraphicSpellID(uint16 spell_id,bool telegraph=false);
+uint32 GetGraphicNPCTYPEID(uint16 spell_id,bool telegraph=false);
+int GetGFXSize(uint16 spell_id,bool telegraph=false);
+uint32 GetGFXDuration(uint16 spell_id,bool telegraph=false);
+int GetGFXMultiplier(uint16 spell_id,bool telegraph=false);
+uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id,bool telegraph=false);
+bool IsUtilityDisplayGFXSpell(uint16 spell_id);
+uint8 GetUtilityDisplayGFXType(uint16 spell_id);
+bool IsGFXTypeOld(uint16 spell_id);
 
 //LightType - Variable usage
 bool SpellRequiresSpectralBlade(uint16 spell_id);
