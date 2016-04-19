@@ -1444,17 +1444,31 @@ uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id, bool telegraph)
 	return GetGraphicSpellID(spell_id);
 }
 
+uint16 GetUtilityTelegraphGFXSpellID(uint16 spell_id, bool telegraph)
+{
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_UtilityTelegraphGFX){
+			if (spells[spell_id].base[i])
+				return spells[spell_id].base[i];
+		}
+	}
+
+	return TELEGRAPH_RED;
+}
+
 uint16 GetGraphicSpellID(uint16 spell_id, bool telegraph)
 {
-	if (telegraph)
-		return TELEGRAPH_RED;
-
 	uint16 temp_spell_id = SPELL_UNKNOWN;
 
-	if (spells[spell_id].spellanim == 138)
-		temp_spell_id = spells[spell_id].SpellAffectIndex + 10700; //Old school graphics
-	else if (spells[spell_id].spellanim)
-		temp_spell_id = spells[spell_id].spellanim + 10000;//New graphics
+	if (telegraph){
+		temp_spell_id = GetUtilityTelegraphGFXSpellID(spell_id,telegraph);	
+	}
+	else{
+		if (spells[spell_id].spellanim == 138)
+			temp_spell_id = spells[spell_id].SpellAffectIndex + 10700; //Old school graphics
+		else if (spells[spell_id].spellanim)
+			temp_spell_id = spells[spell_id].spellanim + 10000;//New graphics
+	}
 
 	if (IsValidSpell(temp_spell_id))
 		return temp_spell_id;

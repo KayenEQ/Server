@@ -794,6 +794,7 @@ typedef enum {
 #define SE_IncommingMeleeDmgToHPRune	1120 // implemented - Increases resource based on melee dmg taken
 #define SE_IncommingMeleeDmgToManaRune	1121 // implemented - Increases resource based on melee dmg taken
 #define SE_IncommingMeleeDmgToEndurRune	1122 // implemented - Increases resource based on melee dmg taken
+#define SE_UtilityTelegraphGFX			1123 // implemented - Base - Spell ID number graphic display = Limit [1] ON CASTER
 
 
 #define SE_AvoidMeleeChanceStack		1200 // implemented
@@ -1128,6 +1129,7 @@ int GetGFXSize(uint16 spell_id,bool telegraph=false);
 uint32 GetGFXDuration(uint16 spell_id,bool telegraph=false);
 int GetGFXMultiplier(uint16 spell_id,bool telegraph=false);
 uint16 GetUtilityDisplayGFXSpellID(uint16 spell_id,bool telegraph=false);
+uint16 GetUtilityTelegraphGFXSpellID(uint16 spell_id,bool telegraph=false);
 bool IsUtilityDisplayGFXSpell(uint16 spell_id);
 uint8 GetUtilityDisplayGFXType(uint16 spell_id);
 bool IsGFXTypeOld(uint16 spell_id);

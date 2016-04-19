@@ -7344,11 +7344,11 @@ int32 Mob::CalcTotalBaseModifierCurrentHP(int32 damage, uint16 spell_id, Mob* ca
 	//mod += CalcSpellPowerFromAEDuration(spell_id, caster, 1);
 	//mod += caster->GetAEDurationIteration() * 10; //Need to revise this.
 
-	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
+	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: PRE DMG %i Mod %i", damage,mod);
 	if (mod)
 		damage += damage*mod/100;
 
-	Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
+	//Shout("DEBUG::CalcTotalBaseModifierCurrentHP :: POST DMG %i Mod %i", damage,mod);
 	return damage;
 }
 
@@ -11598,7 +11598,7 @@ void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float 
 	if (!IsEffectInSpell(spell_id,SE_AttackArchery))
 		return;
 
-	uint16 gfx_spell_id = 1001001;
+	uint32 gfx_npctype_id = 1001001;
 
 	int ammo_slot = SlotAmmo;
 	const ItemInst* Ammo = CastToClient()->m_inv[SlotAmmo];
@@ -11616,7 +11616,7 @@ void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float 
 	if (type == GFX::Beam) {//Beam
 		GetFurthestLocationLOS(origin_heading, 5, aoerange, dX, dY, dZ, true,origin_x, origin_y, origin_z);
 		NPC* temppet = nullptr;
-		temppet = TypesTemporaryPetsGFX(gfx_spell_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
+		temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
 		if (temppet)
 			SendItemAnimation(temppet, AmmoItem, SkillArchery);
 	}
@@ -11665,13 +11665,13 @@ void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float 
 		
 			GetFurthestLocationLOS(start_angle + (single_shot_mod), 5, aoerange, dX, dY, dZ, true,origin_x, origin_y, origin_z);
 			NPC* temppet = nullptr;
-			temppet = TypesTemporaryPetsGFX(gfx_spell_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
+			temppet = TypesTemporaryPetsGFX(gfx_npctype_id, "#",duration, dX, dY,dZ + 5.0f, spell_id); //Spawn pet
 			if (temppet){
 				SendItemAnimation(temppet, AmmoItem, SkillArchery);
 				start_angle = FixHeadingAngle((start_angle + angle_length));
 			}
 			else
-				Shout("DEBUG:: Critical error SPELL %i no temppet (NPCTYPE ID %i) Found in database", spell_id, 1001000 );
+				Shout("DEBUG:: Critical error SPELL %i no temppet (NPCTYPE ID %i) Found in database", spell_id, gfx_npctype_id );
 		}
 	}
 }
