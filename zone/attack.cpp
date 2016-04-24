@@ -2943,20 +2943,56 @@ int32 Mob::AffectMagicalDamage(int32 damage, uint16 spell_id, const bool iBuffTi
 
 int32 Mob::ReduceAllDamage(int32 damage)
 {
+	//C!Kayen entire function is custom
 	if(damage <= 0)
 		return damage;
 
-	if(spellbonuses.ManaAbsorbPercentDamage[0]) {
-		int32 mana_reduced =  damage * spellbonuses.ManaAbsorbPercentDamage[0] / 100;
-		if (GetMana() >= mana_reduced){
-			damage -= mana_reduced;
+	int32 mana_mitigation_buff = spellbonuses.ManaAbsorbPercentDamage[0];
+	int32 mana_mitigation_stack = GetManaAbsorbPercentDamageStack();
+	int32 mana_reduced_buff = 0;
+	int32 mana_reduced_stack = 0;
+	int32 total_mana_reduced = 0;
+	int32 base_damage = damage;
+	
+	if(mana_mitigation_buff){
 
-			if (spellbonuses.ManaAbsorbPercentDamage[2]) //C!Kayen - Penalty increases mana drain.
-				mana_reduced += mana_reduced * spellbonuses.ManaAbsorbPercentDamage[2] / 100;
+		int slot = spellbonuses.ManaAbsorbPercentDamage[1];
+		if(slot >= 0){
+			mana_reduced_buff =  base_damage * mana_mitigation_buff / 100;
 
-			SetMana(GetMana() - mana_reduced);
-			TryTriggerOnValueAmount(false, true);
+			if (spellbonuses.ManaAbsorbPercentDamage[3]){
+				if(mana_reduced_buff >= buffs[slot].melee_rune){
+					if(!TryFadeEffect(slot))
+						BuffFadeBySlot(slot);
+				}
+				else{
+					buffs[slot].melee_rune = (buffs[slot].melee_rune - mana_reduced_buff);
+				}
+			}
 		}
+	}
+	
+	if (mana_mitigation_stack)
+		mana_reduced_stack = base_damage * mana_mitigation_stack / 100;
+	
+	total_mana_reduced = mana_reduced_buff + mana_reduced_stack;
+
+	if (total_mana_reduced){
+
+		if (GetMana() >= total_mana_reduced){
+			damage -= total_mana_reduced;
+
+			int32 penalty = spellbonuses.ManaAbsorbPercentDamage[2];
+			if (penalty) //C!Kayen - Penalty increases mana drain.
+				mana_reduced_buff += mana_reduced_buff * penalty / 100;
+		}
+		else{
+			damage -= GetMana();
+			total_mana_reduced = GetMana();
+		}
+
+		SetMana(GetMana() - total_mana_reduced);
+		TryTriggerOnValueAmount(false, true);
 	}
 
 	damage += (damage*(GetOpportunityMitigation() + spellbonuses.MitigateAllDamage + itembonuses.MitigateAllDamage))/100; //C!Kayen - Use to mitigate final damage.
@@ -3790,6 +3826,9 @@ void Mob::TrySpellProc(const ItemInst *inst, const Item_Struct *weapon, Mob *on,
 			}
 		}
 	}
+
+	if (!rangedattk)
+		WeaponProcCustom(on,ProcChance);//C!Kayen
 
 	if (HasSkillProcs() && hand != SlotRange){ //We check ranged skill procs within the attack functions.
 		uint16 skillinuse = 28;

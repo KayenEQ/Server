@@ -1402,6 +1402,18 @@ bool ReCalculateEffectValue(uint16 spell_id, int formula)
 	return false;
 }
 
+int GetSpellPowerManaModPctMax(uint16 spell_id)
+{
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_SpellPowerManaModPct){
+			if (spells[spell_id].base[i])
+				return spells[spell_id].base[i];
+		}
+	}
+
+	return 0;
+}
+
 bool IsUtilityDisplayGFXSpell(uint16 spell_id)
 {
 	if (spells[spell_id].id >= 10000 && spells[spell_id].id <= 10752)
@@ -1553,9 +1565,6 @@ bool SpellRequiresSpectralBlade(uint16 spell_id)
 
 int GetMinAtks(uint16 spell_id) { return spells[spell_id].LightType;}
 int ApplyLeapToPet(uint16 spell_id) { return spells[spell_id].LightType;}
-
-bool CanAOEHitNPC(uint16 spell_id) { return spells[spell_id].deities[0]; } //Allows NPC casting spell to hit other NPC's without aggro.
-bool CastFromPetOwner(uint16 spell_id) { return spells[spell_id].deities[1]; } //Set caster of AOE to be pets owner in AESpell function.
 
 //Checked when disc is cast
 bool GetDiscLimitToBehind(uint16 spell_id) { if (spells[spell_id].viral_range == 1) { return true; } return false;}

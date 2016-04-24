@@ -387,7 +387,7 @@ struct StatBonuses {
 	uint32	MitigateDotRune[4];					// 0 = Mitigation value 1 = Buff Slot 2 = Max mitigation per tick 3 = Rune Amt
 	bool	TriggerMeleeThreshold;				// Has Melee Threshhold
 	bool	TriggerSpellThreshold;				// Has Spell Threshhold
-	uint32	ManaAbsorbPercentDamage[2];			// 0 = Mitigation value 1 = Buff Slot
+	int32	ManaAbsorbPercentDamage[3];			// 0 = Mitigation value 1 = Buff Slot[Unused?] 2= Penalty 3=RuneAmt //C!Kayen
 	int32	ShieldBlock;						// Chance to Shield Block
 	int32	BlockBehind;						// Chance to Block Behind (with our without shield)
 	bool	CriticalRegenDecay;					// increase critical regen chance, decays based on spell level cast
@@ -525,6 +525,10 @@ struct StatBonuses {
 	int16 IncommingMeleeDmgToHPRune[4];			// Pct
 	int16 IncommingMeleeDmgToManaRune[4];		// Pct
 	int16 IncommingMeleeDmgToEndurRune[4];		// Pct
+	int16 WeaponProcCustom1[2];					// 0=spell_id, 1=ChanceMod
+	int16 WeaponProcCustom2[2];					// 0=spell_id, 1=ChanceMod
+	int16 WeaponProcCustom3[2];					// 0=spell_id, 1=ChanceMod
+	int16 WeaponProcCustom4[2];					// 0=spell_id, 1=ChanceMod
 
 
 	int32 AvoidMeleeChanceStack;				// implemented
@@ -536,6 +540,10 @@ struct StatBonuses {
 	int32 DodgeChanceStack;						// implemented
 	int32 ParryChanceStack;						// implemented
 	int32 BlockChanceStack;						// implemented
+	int32 ManaAbsorbPercentDamageStack;			// implemented
+
+	bool CascadeIncomingSpellDmgPct;			// Redundant failsafe to ensure cascade variable only applied if buff present.
+	bool CascadeSkillDmgTaken;					// Redundant failsafe to ensure cascade variable only applied if buff present.
 
 };
 
@@ -690,6 +698,12 @@ enum class GFX {		  // GFX spell types
 	Rain = 4,
 	FlingLeap = 5
 };
+
+typedef struct
+{
+	int16 IncomingSpellDmgPct;
+	int16 SkillDmgTaken;
+} tCascade; //Leap spell effect (using modified knockback)
 //C!Kayen - STRUCTS END
 
 class ItemInst;

@@ -38,10 +38,12 @@
 #define SPELL_FAITH 610
 #define SPELL_LOSE_FAITH_1 605
 
+
 #define SPELL_GROUP_SPECTRAL_BLADE 2000
 #define SPELL_GROUP_SPECTRAL_BLADE_FLURRY 2046
 #define SPELL_GROUP_RAKE 5000
 #define SPELL_GROUP_DEATH 4074
+#define SPELL_GROUP_ENDLESS_BLADES 611
 
 #define RANGE_USE_MELEE_COMBAT 101 
 #define RANGE_USE_BOW 351
@@ -58,6 +60,8 @@
 #define NPC_DISC_FLAG -100
 
 #define TELEGRAPH_RED 10748
+
+
 
 //C!Kayen - End
 
@@ -795,6 +799,15 @@ typedef enum {
 #define SE_IncommingMeleeDmgToManaRune	1121 // implemented - Increases resource based on melee dmg taken
 #define SE_IncommingMeleeDmgToEndurRune	1122 // implemented - Increases resource based on melee dmg taken
 #define SE_UtilityTelegraphGFX			1123 // implemented - Base - Spell ID number graphic display = Limit [1] ON CASTER
+#define SE_SpellPowerManaModPct			1124 // implemented - Enchanter effect that focuses spells from % mana base: Mod% Limit % divider mana amt mod
+#define SE_WeaponProcCustom1			1125 // implemented - base spell id limit rate
+#define SE_WeaponProcCustom2			1126 // implemented - base spell id limit rate
+#define SE_WeaponProcCustom3			1127 // implemented - base spell id limit rate
+#define SE_WeaponProcCustom4			1128 // implemented - base spell id limit rate
+#define SE_PH							1129 // implemented - 
+#define SE_ReverseResourceTap			1130 // implemented - Flags spell to drain HP instead of mana cost at custom drain
+#define SE_ApplyEffectTempPetSpawn		1131 // implemented - Applies to spell to temp pet upon spawning.
+#define SE_CastFromPetOwner				1132 // implemented - Flag to have spell cast from pet be channeled through owner.
 
 
 #define SE_AvoidMeleeChanceStack		1200 // implemented
@@ -806,7 +819,11 @@ typedef enum {
 #define SE_DodgeChanceStack				1206 // implemented
 #define SE_ParryChanceStack				1207 // implemented
 #define SE_BlockChanceStack				1208 // implemented
+#define SE_ManaAbsorbPercentDamageStack	1209 // implemented
 
+
+#define SE_CascadeIncomingSpellDmgPct	1300 // implemented
+#define SE_CascadeSkillDmgTaken			1301 // implemented
 
 
 
@@ -1100,8 +1117,6 @@ bool IsEffectFieldSpell(uint16 spell_id);
 bool IsAAToggleSpell(uint16 spell_id);
 bool DirectionalAffectCaster(uint16 spell_id);
 int32 GetSpellPowerManaModValue(uint16 spell_id);
-bool CanAOEHitNPC(uint16 spell_id); //NPC use only.
-bool CastFromPetOwner(uint16 spell_id); //NPC use only.
 bool IsTargetRingSpell(uint16 spell_id);
 bool IsTargetableSpell(uint16 spell_id);
 bool IsMeleeRangeSpellEffect(uint16 spell_id);
@@ -1114,6 +1129,7 @@ bool IsTargetedBeamSpell(uint16 spell_id);
 bool IsAERainSpell(uint16 spell_id);
 int GetManaRatioType(uint16 spell_id);
 bool ReCalculateEffectValue(uint16 spell_id, int formula);
+int GetSpellPowerManaModPctMax(uint16 spell_id);
 
 
 //Fast Buff Tic

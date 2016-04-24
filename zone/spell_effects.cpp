@@ -271,6 +271,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					if(caster) {
 						dmg = caster->GetActSpellDamage(spell_id, dmg, this);
 						caster->ResourceTap(-dmg, spell_id);
+						caster->ReverseResourceTap(-dmg, spell_id);//C!Kayen
 					}
 					dmg = -dmg;
 					Damage(caster, dmg, spell_id, spell.skill, false, buffslot, false);
@@ -3518,9 +3519,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 				if (caster && caster->IsClient() && !GetLimitToPrimarySpellTarget()){
 					if (!spell.base2[i])
-						caster->SendSpellAnimGFX(GetID(), spell.base[i], range);
+						caster->SendSpellAnimGFX(GetID(), spell.base[i], range*2);
 					else if (spell.base2[i] == 1)//Cast on Caster
-						caster->SendSpellAnimGFX(caster->GetID(), spell.base[i], range);
+						caster->SendSpellAnimGFX(caster->GetID(), spell.base[i], range*2);
 
 					if (spell.max[i] == 1)
 						SetLimitToPrimarySpellTarget(true);
@@ -3585,10 +3586,23 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_IncommingMeleeDmgToHPRune:
 			case SE_IncommingMeleeDmgToManaRune:
 			case SE_IncommingMeleeDmgToEndurRune:
+			case SE_ManaAbsorbPercentDamage:
 			{
 				buffs[buffslot].melee_rune = GetBaseEffectValueByLevel(spells[spell_id].formula[i], 1,	spells[spell_id].max[i], caster, spell_id);
 				break;
 			}
+
+			case SE_CascadeIncomingSpellDmgPct:
+				Shout("A C: %i %i %i",cascade.IncomingSpellDmgPct, spell.base[i], spell.max[i]);
+				cascade.IncomingSpellDmgPct = GetCascadeValue(cascade.IncomingSpellDmgPct, spell.base[i], spell.max[i]);
+				
+				Shout("B C: %i %i %i",cascade.IncomingSpellDmgPct, spell.base[i], spell.max[i]);
+				break;
+
+			case SE_CascadeSkillDmgTaken:
+				cascade.SkillDmgTaken = GetCascadeValue(cascade.SkillDmgTaken, spell.base[i], spell.max[i]);
+				break;
+			
 
 			// Handled Elsewhere
 			case SE_ImmuneFleeing:
@@ -3724,7 +3738,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_ResistCorruption:
 			case SE_ReduceSkillTimer:
 			case SE_HPToMana:
-			case SE_ManaAbsorbPercentDamage:
+			//case SE_ManaAbsorbPercentDamage://C!Kayen
 			case SE_SkillDamageAmount:
 			case SE_SkillDamageAmount2:
 			case SE_GravityEffect:
@@ -4329,8 +4343,10 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 		// I copied the calculation into each case which needed it instead of
 		// doing it every time up here, since most buff effects dont need it
 
-		if (ReCalculateEffectValue(buff.spellid, spells[buff.spellid].formula[i]))//C!Kayen - Recalc if effect scales from ticks
-			CalcSpellBonuses(&spellbonuses);
+		if (ReCalculateEffectValue(buff.spellid, spells[buff.spellid].formula[i])){//C!Kayen - Recalc if effect scales from ticks
+			CalcSpellBonusesByBuff(&spellbonuses, slot);
+			//CalcSpellBonuses(&spellbonuses);
+		}
 
 		switch (effect) {
 
@@ -4703,11 +4719,6 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 
 				break;
 			}
-
-			//case SE_AttackSpeed5: {
-				//CalcSpellBonuses(&spellbonuses); //Adjust value of the slow / haste
-				//break;
-			//}
 			
 			case SE_FastEffectPulse: {
 
@@ -4734,6 +4745,25 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 				
 				break;
 			}
+
+			case SE_CascadeIncomingSpellDmgPct: {
+				//Reset Cascade Count
+				if (caster){
+					
+					if (spells[buff.spellid].base[i] > 0)
+						caster->Message(MT_Spells, "%s is more vulnerability to incoming spell damage. [ %i pct ] (%s)", GetCleanName(), cascade.IncomingSpellDmgPct,spells[buff.spellid].name);
+					else
+						caster->Message(MT_Spells, "%s is less vulnerability to incoming spell damage. [ %i pct ] (%s)", GetCleanName(), cascade.IncomingSpellDmgPct,spells[buff.spellid].name);
+
+					if (buff.ticsremaining == 1) {
+						cascade.IncomingSpellDmgPct = 0;
+						caster->Message_StringID(MT_WornOff, SPELL_WORN_OFF_OF,spells[buffs[slot].spellid].name, GetCleanName());
+						BuffFadeBySlot(slot);
+					}
+				}
+				break;
+			}
+		
 
 		default: {
 			// do we need to do anyting here?

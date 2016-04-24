@@ -1394,6 +1394,17 @@ public:
 	void IncommingMeleeCovert(Mob* attacker, int32 &damage);
 	int32 GetActHealAmt(int32 amt);
 
+	void CalcSpellBonusesByBuff(StatBonuses* newbon, int buffslot);
+
+	int32 CalcSpellPowerManaModPct(uint16 spell_id);
+
+	bool PassZdiff(float target_z,float max_zdiff, float target_size=0);
+
+	void WeaponProcCustom(Mob* on, float ProcChance);
+
+	void ReverseResourceTap(int32 damage, uint16 spellid);
+
+	int16 GetCascadeValue(int16 current_value, int16 base, int16 max);
 
 	inline int32 GetAvoidMeleeChanceStack() const { return spellbonuses.AvoidMeleeChanceStack + itembonuses.AvoidMeleeChanceStack + aabonuses.AvoidMeleeChanceStack; }
 	inline int32 GetHitChanceStack() const { return spellbonuses.HitChanceStack + itembonuses.HitChanceStack + aabonuses.HitChanceStack; }
@@ -1404,6 +1415,7 @@ public:
 	inline int32 GetDodgeChanceStack() const { return spellbonuses.DodgeChanceStack + itembonuses.DodgeChanceStack + aabonuses.DodgeChanceStack; }
 	inline int32 GetParryChanceStack() const { return spellbonuses.ParryChanceStack + itembonuses.ParryChanceStack + aabonuses.ParryChanceStack; }
 	inline int32 GetBlockChanceStack() const { return spellbonuses.BlockChanceStack + itembonuses.BlockChanceStack + aabonuses.BlockChanceStack; }
+	inline int32 GetManaAbsorbPercentDamageStack() const { return spellbonuses.ManaAbsorbPercentDamageStack + itembonuses.ManaAbsorbPercentDamageStack + aabonuses.ManaAbsorbPercentDamageStack; }
 	//Old calculations
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
 	//worldserver.SendEmoteMessage(0,0,0,13, "Variable %i",temp);
@@ -1854,6 +1866,8 @@ protected:
 	bool casting_limit_to_primary_target;
 
 	int count_total_effect_hits;
+
+	tCascade cascade;
 	
 private:
 	void _StopSong(); //this is not what you think it is

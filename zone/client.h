@@ -1245,7 +1245,9 @@ public:
 	inline void SetSpellAwareness(bool value) { spell_awareness_enabled = value; }
 	inline bool HasDiscReuseAwareness() const { return disc_reuse_awareness_enabled; }
 	inline void SetDiscReuseAwareness(bool value) { disc_reuse_awareness_enabled = value; }
-	bool IsSpectralBladeEquiped();
+	
+	bool IsEnchantedBladeEquiped();
+	uint16 GetRangedWeaponGraphic();
 
 	uint16 GetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN);
 	void SetSpellCastCount(int slot, uint16 spell_id = SPELL_UNKNOWN, int value = 0);
@@ -1284,6 +1286,8 @@ public:
 	void FlingToTarget(Mob* target, uint32 collision=0, float speed=10.0f, int32 time=-1,bool EffectOnLand=true);//PerlTemp
 	void FlingEffect(uint16 spell_id, uint16 target_id, float dX, float dY, float dZ, uint32 collision, float speed, int max=0, float origin_heading=0, float distance=0);
 	void FlingLand();
+
+	
 
 	void SendActionPacket(uint16 targetid, uint8 type, uint16 spell_id, uint32 seq, uint16 unknown16 = 0, uint32 unknown18 = 0, uint32 unknown23 = 0,uint8 unknown29 = 0, uint8 buff_unknown = 0);
 	//void ActionPacket(uint8 type, uint16 spell_id, uint32 seq);

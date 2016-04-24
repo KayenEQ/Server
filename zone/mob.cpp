@@ -529,6 +529,8 @@ Mob::Mob(const char* in_name,
 	scaled_base_effect_value = 0;
 	AggroLockEffect = 0;
 	count_total_effect_hits = 0;
+
+	cascade.IncomingSpellDmgPct = 0;
 	
 	effect_field_timer.Disable();
 	aura_field_timer.Disable();
@@ -3913,6 +3915,10 @@ int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
 
 	value += GetSpellResistTypeDmgBonus(); //C!Kayen
 	value += spellbonuses.IncomingSpellDmgPct[GetSpellResistType(spell_id)] + spellbonuses.IncomingSpellDmgPct[HIGHEST_RESIST]; //C!Kayen
+	
+	if (spellbonuses.CascadeIncomingSpellDmgPct)
+		value += cascade.IncomingSpellDmgPct; //C!Kayen
+
 	return value;
 }
 
@@ -3928,6 +3934,8 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 
 	skilldmg_mod += GetWpnSkillDmgBonusAmt(); //C!Kayen
 	skilldmg_mod += GetScaleMitigationNumhits(); //C!Kayen
+	if (spellbonuses.CascadeSkillDmgTaken)
+		skilldmg_mod += cascade.SkillDmgTaken; //C!Kayen
 
 	if(skilldmg_mod < -100)
 		skilldmg_mod = -100;
@@ -6384,6 +6392,7 @@ bool Mob::PassCasterRestriction(int type, Mob* target, uint16 spell_id, int16 va
 					Message(MT_SpellFailure, "To channel this spell you must have full heath and mana."); 
 					return false;
 				}
+				break;
 			}
 
 			case CASTER_RESTRICT_FULL_HP:{
@@ -6391,6 +6400,7 @@ bool Mob::PassCasterRestriction(int type, Mob* target, uint16 spell_id, int16 va
 					Message(MT_SpellFailure, "To channel this spell you must have full heath."); 
 					return false;
 				}
+				break;
 			}
 		}
 	}
@@ -6408,6 +6418,7 @@ bool Mob::PassCasterRestriction(int type, Mob* target, uint16 spell_id, int16 va
 					Message(MT_SpellFailure, "This spell can not be cast on yourself."); 
 					return false;
 				}
+				break;
 			}
 
 			case CASTER_RESTRICT_PARTY:{
@@ -6415,6 +6426,7 @@ bool Mob::PassCasterRestriction(int type, Mob* target, uint16 spell_id, int16 va
 					Message(MT_SpellFailure, "This spell can only be cast on players in your group or raid."); 
 					return false;
 				}
+				break;
 			}
 		}
 	}
@@ -7111,6 +7123,17 @@ void Mob::TryApplyEffectProjectileHit(uint16 spell_id, Mob* target)
 	if (!target)
 		return;
 
+	int cast_count = GetCastFromCrouchIntervalProj();
+
+	if (cast_count && spells[spell_id].spellgroup == SPELL_GROUP_SPECTRAL_BLADE_FLURRY){
+		if (GetCastFromCrouchIntervalProj() == 1)
+			cast_count = 3;
+		else if (GetCastFromCrouchIntervalProj() == 2)
+			cast_count = 5;
+		else if (GetCastFromCrouchIntervalProj() == 3)
+			cast_count = 7;
+	}
+
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_ApplyEffectProjectileHit){
 			if(zone->random.Int(0, 100) <= spells[spell_id].base[i]){
@@ -7118,11 +7141,11 @@ void Mob::TryApplyEffectProjectileHit(uint16 spell_id, Mob* target)
 				if (!IsValidSpell(spells[spell_id].base2[i]))
 					continue;
 
-				if (!GetCastFromCrouchIntervalProj())
+				if (!cast_count){
 					SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
-
+				}
 				else {
-					for(int j = 0; j < GetCastFromCrouchIntervalProj(); j++){
+					for(int j = 0; j < cast_count; j++){
 						SpellFinished(spells[spell_id].base2[i], target, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
 					}
 				}
@@ -7176,9 +7199,9 @@ bool Mob::TrySpellProjectileCustom(Mob* spell_target,  uint16 spell_id){
 
 	//Coded narrowly for Enchanter effect.
 	if ((strcmp(item_IDFile, "PROJECTILE_WPN")) == 0){
-		if (IsClient()) {
-			ItemInst* inst = CastToClient()->m_inv.GetItem(SlotPrimary);
-			if (inst && CastToClient()->IsSpectralBladeEquiped()) 
+		if (IsClient() && CastToClient()->IsEnchantedBladeEquiped()) {
+			ItemInst* inst = CastToClient()->m_inv.GetItem(SlotRange);
+			if (inst && inst->GetItem()) 
 				 item_IDFile = inst->GetItem()->IDFile;
 			else 
 				return false;
@@ -7191,6 +7214,10 @@ bool Mob::TrySpellProjectileCustom(Mob* spell_target,  uint16 spell_id){
 	float angle = static_cast<float>(GetProjAngle(spell_id));
 	float tilt = static_cast<float>(GetProjTilt(spell_id));
 	float arc = static_cast<float>(GetProjArc(spell_id));
+
+	uint16 _spell_id = SPELL_UNKNOWN;
+	if (IsEffectInSpell(spell_id, SE_ApplyEffectProjectileHit))
+		_spell_id = spell_id;
 
 	if (tilt == 525){ //Straightens out most melee weapons. [May need to re evaluate this]
 		//angle = 1000.0f;
@@ -7213,6 +7240,8 @@ bool Mob::TrySpellProjectileCustom(Mob* spell_target,  uint16 spell_id){
 		ProjectileAtk[slot].origin_z = GetZ();
 		ProjectileAtk[slot].skill = SkillConjuration;
 		ProjectileAtk[slot].speed_mod = speed_mod;
+
+		ProjectileAtk[slot].spell_id = _spell_id;
 
 		SetProjectileAttack(true);
 	}
@@ -7308,10 +7337,14 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 	else {
 		value += value*GetBaseSpellPowerWizard()/100; //Wizard Special
 		
-		if (CastFromPetOwner(spell_id))
+		if (IsEffectInSpell(spell_id, SE_CastFromPetOwner))
 			value += value*GetSpellPowerModFromPet(spell_id)/100;
 		else
 			value += value*CalcSpellPowerManaMod(spell_id)/100;//Enchanter Special
+
+		Shout("1 ENC F Value %i [%i]", value,CalcSpellPowerManaModPct(spell_id)/100);
+		value += value*CalcSpellPowerManaModPct(spell_id)/100;//Enchanter Special
+		Shout("2 ENC F Value %i", value);
 	}
 
 	mod = spellbonuses.BaseSpellPower + itembonuses.BaseSpellPower + aabonuses.BaseSpellPower; //All effects
@@ -7326,8 +7359,10 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 				aabonuses.BaseSpellPowerDmg[spells[spell_id].resisttype];
 	}
 
+	Shout("3 Value %i mod %i", value, mod);
+
 	value += value*mod/100;
-	//Shout("Mob::GetBaseSpellPower Final Base Focus value %i mod %i", value, mod);
+	Shout("Mob::GetBaseSpellPower Final Base Focus value %i mod %i", value, mod);
 	return value; //This is final damage/heal or whatever returned.
 }
 
@@ -7858,91 +7893,41 @@ int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
 	return ((GetMana() * effect_mod)/1000);
 }
 
-/*
-int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
+int32 Mob::CalcSpellPowerManaModPct(uint16 spell_id)
 {
 	if (GetClass() != ENCHANTER || !IsValidSpell(spell_id))
 		return 0;
 
-	//int32 effect_mod = GetSpellPowerManaModValue(spell_id); //Percent increase of base damage.
+	//Returns spell modifer based on amount of mana coverted to focus
+	//Base1: AMOUNT of mana required for 1 percent focus increase
+	//Base2: UNUSED
+	
 	int effect_mod = 0;
 	int limit_mod = 0;
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
-		if (spells[spell_id].effectid[i] == SE_SpellPowerManaMod){
-			effect_mod = spells[spell_id].base[i]; //Modifies bonus from mana ratio interval
-			limit_mod = spells[spell_id].base2[i]; //Modifies bonus from max mana amount
+		if (spells[spell_id].effectid[i] == SE_SpellPowerManaModPct){
+			effect_mod = spells[spell_id].base[i]; //Multiple mana ratio by this amount = Base 100
+			limit_mod = spells[spell_id].base2[i]; //UNUSED
 			break;
 		}
 	}
-	
-	//If set to (-1) then do not focus effect, but will still require/drain mana.
-	if (!effect_mod || effect_mod < 0)
+
+	if (!effect_mod)
 		return 0;
 
-	uint8 pct_mana = GetManaPercent();
-
-	int mana_amt_mod = 0;
-	int mana_divider = 1000; //Default value, overwritten by Limit value.
-	
-	if (limit_mod > 0)
-		mana_divider = limit_mod;
-
-	if (limit_mod != -1 && (mana_divider >= 5))
-		mana_amt_mod = ((GetMaxMana()*100)/5)/(mana_divider/5); //For every 1000 mana gain 1% bonus (This will need to be tuned).
-	
-	int focus_mod = 0;
-
-	if (pct_mana >= 20 && pct_mana  < 40)
-		focus_mod = 0;
-	else if (pct_mana >= 40 && pct_mana < 60)
-		focus_mod = 1;
-	else if (pct_mana >= 60 && pct_mana < 80)
-		focus_mod = 2;
-	else if (pct_mana > 80 && pct_mana < 100)
-		focus_mod = 3;
-	else if (pct_mana == 100)
-		focus_mod = 4;
-
-	int total_mod = (effect_mod*focus_mod) + ((mana_amt_mod * focus_mod) / 100);
-	//Shout("DEBUG::CalcSpellPowerManaMod :: Effect Mod %i Mana_Mod %i Total Mod %i", (effect_mod*focus_mod), ((mana_amt_mod * focus_mod) / 100), total_mod);
-	return total_mod;
+	return ((GetManaRatio() * effect_mod)/100);
 }
-*/
 
 bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 {
 	if (IsClient() && GetClass() == ENCHANTER) {
-		
-		/*
-		if (GetSpellPowerManaModValue(spell_id)) {
-			if (GetManaPercent() >= 20){
-				return true;
-			}
-			else { 
-				//Message_StringID(13, INSUFFICIENT_MANA);
-				Message(13, "Insufficient Mana to cast this spell! This ability requires at least 20 percent Mana.");
-				return false;
-			}
-		}
-		*/
 
-		//For ENC class abilities that require Spectral Blade equiped - Item LightType = 1 and Spell LightType = 1
-		if((SpellRequiresSpectralBlade(spell_id)) && !CastToClient()->IsSpectralBladeEquiped()){
-			Message(MT_SpellFailure, "You must have a spectral blade equiped to use this ability.");
+		//For ENC class abilities that require Spectral Blade equiped - Item WORN = ENDLESS_BLADES 611 and Spell LightType = 1
+		if((SpellRequiresSpectralBlade(spell_id)) && !CastToClient()->IsEnchantedBladeEquiped()){
+			Message(MT_SpellFailure, "You must have an enchanted blade equiped to use this ability.");
 			return false;
 		}		
-
-		/*
-		//Check if 'Mind Over Matter' Mana drain from tanking effect - Can not cast spectral blades while active.
-		if (spells[spell_id].spellgroup == 2000 || spells[spell_id].spellgroup == 2006){ //Spectral Blade spells
-			if (spellbonuses.ManaAbsorbPercentDamage[0]){
-				Message(13, "You lack the concentratation to project spectral blades while using using Mind Over Matter.");
-				Debug("DEBUG: Mob::TryEnchanterCastingConditions :: This may need to be altered.");
-				return false;
-			}
-		}
-		*/
 	}
 	return true;
 }
@@ -7969,9 +7954,9 @@ int32 Mob::GetSpellPowerModFromPet(uint16 spell_id)
 		return 0;
 
 	int focus = 0;
-	Mob* pet = nullptr;
-	
+		
 	if (GetOriginCasterID()){
+		Mob* pet = nullptr;
 		pet = entity_list.GetMob(GetOriginCasterID());
 
 		if (pet)
@@ -7989,20 +7974,18 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	std::string WT;
 	int size_divider = 0;
 
-	int mod = 0;
-	int enc_mod = owner->CalcSpellPowerManaMod(spell_id);
+	int mod = owner->CalcSpellPowerManaModPct(spell_id);
+	int mod_max = GetSpellPowerManaModPctMax(spell_id);
 	//Need to set a stat on NPC that is equal to the spell ID to be cast.
-	mod = enc_mod;
 
 	//1: Check for any special pet 'type' behaviors
 	const char *pettype = spells[spell_id].player_1; //Constant for each type of pet
 
 	//Enchater Pets
 	if ((strcmp(pettype, "spectral_animation")) == 0){
-		WearChange(7,owner->GetEquipmentMaterial(MaterialPrimary),0); //ENC Animation spell to set graphic same as sword.
+		WearChange(7,owner->CastToClient()->GetRangedWeaponGraphic(),0); //ENC Animation spell to set graphic same as sword.
 		WearChange(8,0,0);
 		SetOnlyAggroLast(true);
-		SpellFinished(2013, this, 10, 0, -1, spells[spell_id].ResistDiff);
 		WT = owner->GetCleanName();	
 		WT += "'s_animation";
 		if (strlen(WT.c_str()) <= 64)
@@ -8010,7 +7993,6 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	}
 
 	else if ((strcmp(pettype, "reaper")) == 0){
-		SpellFinished(2050, this, 10, 0, -1, spells[spell_id].ResistDiff);
 		size_divider = 2;
 		WT = owner->GetCleanName();	
 		WT += "'s_reaper";
@@ -8025,7 +8007,6 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		if (strlen(WT.c_str()) <= 64)
 			TempName(WT.c_str());
 		SetOnlyAggroLast(true);
-		//SendSpellEffect(567, 500, 0, 1, 3000, true);
 	}
 
 	//Ranger Pets
@@ -8080,7 +8061,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		min_dmg =	CalcBaseEffectValueByLevel(0,	1,	min_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
 		AC =		CalcBaseEffectValueByLevel(0,	10,	AC,			new_level,CLIENT_MAX_LEVEL,spell_id);
 	}
-	else if ((strcmp(pettype, "reaper")) == 0){
+	else if ((strcmp(pettype, "reaper")) == 0){//Divide each result by some factor for scaling.
 		level = new_level;
 		max_hp =	CalcBaseEffectValueByLevel(350,	1,	max_hp,		new_level,CLIENT_MAX_LEVEL,spell_id);
 		max_dmg =	CalcBaseEffectValueByLevel(200,	14,	max_dmg,	new_level,CLIENT_MAX_LEVEL,spell_id);
@@ -8095,22 +8076,50 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 		AC =		CalcBaseEffectValueByLevel(0,	10,	AC,			new_level,CLIENT_MAX_LEVEL,spell_id);
 	}
 
+	if (mod_max){
+		//Scale down base stats by focus amount, so max focus will result in max stats
+		float scale_mod_max = (static_cast<float>(mod_max) + 100) / 100;
+		max_hp =	static_cast<float>(max_hp) / scale_mod_max;
+		max_dmg =	static_cast<float>(max_dmg) / scale_mod_max;
+		min_dmg =	static_cast<float>(min_dmg) / scale_mod_max;
+		AC =		static_cast<float>(AC)		/ scale_mod_max;
+		
+		SetSpellFocusDMG(GetSpellFocusDMG() - mod_max);
+		SetSpellFocusHeal(GetSpellFocusHeal() - mod_max);
+	}
 
-	base_hp += base_hp * mod / 100;
+	max_hp += max_hp * mod / 100;
+	base_hp = max_hp;
 	max_dmg += max_dmg * mod / 100;
 	min_dmg += min_dmg * mod / 100;
 	AC += AC * mod / 100;
 	
-	if (size_divider)
-		ChangeSize(GetSize() + (GetSize() * static_cast<float>(mod/size_divider) / 100));
-
 	SetSpellFocusDMG(GetSpellFocusDMG() + mod);
 	SetSpellFocusHeal(GetSpellFocusHeal() + mod);
+	
+	//if (size_divider)
+		//ChangeSize(GetSize() + (GetSize() * static_cast<float>(mod/size_divider) / 100));
+
     //Shout("DEBUG: ApplyCustomPetBonuses :: POST Mod %i :: MaxHP %i MaxDmg %i MinDmg %i AC %i Size %.2f ", mod, base_hp, max_dmg, min_dmg, AC, GetSize());
-	SetHP(1000000);
+	SetHP(10000);
+
+	//5: Apply Spell Buffs
+	ApplyEffectTempPetSpawn(owner,spell_id);
 }
 
-void NPC::ApplyOnSpawn()
+void NPC::ApplyEffectTempPetSpawn(Mob* owner, uint16 spell_id)
+{
+	for(int i = 0; i < EFFECT_COUNT; i++){
+		if (spells[spell_id].effectid[i] == SE_ApplyEffectTempPetSpawn){
+			if (IsValidSpell(spells[spell_id].base2[i])){
+				if(zone->random.Roll(spells[spell_id].base[i]))
+					SpellFinished(spells[spell_id].base2[i], this, 10, 0, -1, spells[spells[spell_id].base2[i]].ResistDiff);
+			}
+		}
+	}
+}
+
+void NPC::ApplyOnNPCSpawn()
 {
 	/*Consider this sub event spawn*/
 	return; //This is pending full implementation
@@ -8123,18 +8132,23 @@ void NPC::ApplyOnSpawn()
 	}
 }
 
-bool Client::IsSpectralBladeEquiped()
+bool Client::IsEnchantedBladeEquiped()
 {
 	if (GetClass() != ENCHANTER)
 		return false;
 
-	ItemInst* inst = m_inv.GetItem(SlotPrimary);
+	ItemInst* inst = m_inv.GetItem(SlotRange);
 	
-	if (inst && inst->GetItem()->Light == 1 && inst->GetItem()->ItemType ==  ItemType1HPiercing)
-		return true;
+	if (inst && inst->GetItem()){
+		uint16 spell_id = inst->GetItem()->Worn.Effect;
 
-	else 
-		return false;
+		if (IsValidSpell(spell_id)){
+			if (spells[spell_id].spellgroup == SPELL_GROUP_ENDLESS_BLADES)
+				return true;
+		}
+	}
+
+	return false;
 }
 
 //C!SpellEffects :: SE_CastOnSpellCastCountAmt
@@ -9259,7 +9273,7 @@ void Client::RelequishFlesh(uint16 spell_id, Mob *target, const char *name_overr
 	made_npc->drakkin_details = GetDrakkinDetails();
 	made_npc->d_melee_texture1 = 0;
 	made_npc->d_melee_texture2 = 0;
-	for (int i = EQEmu::Constants::MATERIAL_BEGIN; i <= EQEmu::Constants::MATERIAL_END; i++)	{
+	for (int i = EQEmu::constants::MATERIAL_BEGIN; i <= EQEmu::constants::MATERIAL_END; i++)	{
 		made_npc->armor_tint[i] = GetEquipmentColor(i);
 	}
 	made_npc->loottable_id = 0;
@@ -10155,7 +10169,7 @@ void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
 		if(wpn) {
 			primaryweapondamage = GetWeaponDamage(other, wpn);
 			backstab_dmg = wpn->GetItem()->BackstabDmg;
-			for (int i = 0; i < EQEmu::Constants::ITEM_COMMON_SIZE; ++i)
+			for (int i = 0; i < EQEmu::constants::ITEM_COMMON_SIZE; ++i)
 			{
 				ItemInst *aug = wpn->GetAugment(i);
 				if(aug)
@@ -12623,6 +12637,187 @@ int32 Mob::GetActHealAmt(int32 amt)
 		acthealed = amt;
 
 	return acthealed;
+}
+
+void Mob::CalcSpellBonusesByBuff(StatBonuses* newbon, int buffslot)
+{
+	int i = buffslot;
+
+	if(buffs[i].spellid != SPELL_UNKNOWN){
+		ApplySpellsBonuses(buffs[i].spellid, buffs[i].casterlevel, newbon, buffs[i].casterid, 0, buffs[i].ticsremaining, i, buffs[i].instrument_mod);
+
+		if (buffs[i].numhits > 0)
+			Numhits(true);
+	}
+
+	if (spellbonuses.NegateEffects){
+		for(i = 0; i < GetMaxTotalSlots(); i++) {
+			if( (buffs[i].spellid != SPELL_UNKNOWN) && (IsEffectInSpell(buffs[i].spellid, SE_NegateSpellEffect)) )
+				NegateSpellsBonuses(buffs[i].spellid);
+		}
+	}
+}
+
+bool Mob::PassZdiff(float target_z, float max_zdiff, float target_size)
+{
+	if (target_size){
+		if (max_zdiff < target_size)
+			max_zdiff = target_size * 2;
+	}
+
+	float zdiff = GetZ() - target_z;
+	if (zdiff < 0)
+		zdiff *= -1;
+	
+	if (zdiff <= max_zdiff)
+		return true;
+
+	return false;
+}
+
+void Mob::WeaponProcCustom(Mob* on, float ProcChance)
+{
+	if (!on)
+		return;
+	//Straight forward bonus based proc system AA/Spell/Item, MAX 4 of EACH
+	float chance = 0;
+
+	if (aabonuses.WeaponProcCustom1[0]){
+		chance = ProcChance * (static_cast<float>(aabonuses.WeaponProcCustom1[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,aabonuses.WeaponProcCustom1[0], on);
+	}
+
+	if (aabonuses.WeaponProcCustom2[0]){
+		chance = ProcChance * (static_cast<float>(aabonuses.WeaponProcCustom2[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,aabonuses.WeaponProcCustom2[0], on);
+	}
+
+	if (aabonuses.WeaponProcCustom3[0]){
+		chance = ProcChance * (static_cast<float>(aabonuses.WeaponProcCustom3[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,aabonuses.WeaponProcCustom3[0], on);
+	}
+
+	if (aabonuses.WeaponProcCustom4[0]){
+		chance = ProcChance * (static_cast<float>(aabonuses.WeaponProcCustom4[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,aabonuses.WeaponProcCustom4[0], on);
+	}
+
+	if (spellbonuses.WeaponProcCustom1[0]){
+		chance = ProcChance * (static_cast<float>(spellbonuses.WeaponProcCustom1[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,spellbonuses.WeaponProcCustom1[0], on);
+	}
+
+	if (spellbonuses.WeaponProcCustom2[0]){
+		chance = ProcChance * (static_cast<float>(spellbonuses.WeaponProcCustom2[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,spellbonuses.WeaponProcCustom2[0], on);
+	}
+
+	if (spellbonuses.WeaponProcCustom3[0]){
+		chance = ProcChance * (static_cast<float>(spellbonuses.WeaponProcCustom3[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,spellbonuses.WeaponProcCustom3[0], on);
+	}
+
+	if (spellbonuses.WeaponProcCustom4[0]){
+		chance = ProcChance * (static_cast<float>(spellbonuses.WeaponProcCustom4[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,spellbonuses.WeaponProcCustom4[0], on);
+	}
+
+	if (itembonuses.WeaponProcCustom1[0]){
+		chance = ProcChance * (static_cast<float>(itembonuses.WeaponProcCustom1[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,itembonuses.WeaponProcCustom1[0], on);
+	}
+
+	if (itembonuses.WeaponProcCustom2[0]){
+		chance = ProcChance * (static_cast<float>(itembonuses.WeaponProcCustom2[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,itembonuses.WeaponProcCustom2[0], on);
+	}
+
+	if (itembonuses.WeaponProcCustom3[0]){
+		chance = ProcChance * (static_cast<float>(itembonuses.WeaponProcCustom3[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,itembonuses.WeaponProcCustom3[0], on);
+	}
+
+	if (itembonuses.WeaponProcCustom4[0]){
+		chance = ProcChance * (static_cast<float>(itembonuses.WeaponProcCustom4[1]) / 100.0f);
+		if (zone->random.Roll(chance)) 
+			ExecWeaponProc(nullptr,itembonuses.WeaponProcCustom4[0], on);
+	}
+}
+
+void Mob::ReverseResourceTap(int32 damage, uint16 spellid)
+{
+	//'this' = caster
+	if (!IsValidSpell(spellid))
+		return;
+
+	for (int i = 0; i < EFFECT_COUNT; i++) {
+		if (spells[spellid].effectid[i] == SE_ReverseResourceTap) {
+			damage += (damage * spells[spellid].base[i]) / 100;
+
+			if (spells[spellid].max[i] && (damage > spells[spellid].max[i]))
+				damage = spells[spellid].max[i];
+
+			if (spells[spellid].base2[i] == 0) { // HP Tap
+				if (damage > GetHP())
+					Kill();
+				else{		
+					SetHP(GetHP()-damage);
+					SendHPUpdate(false);
+				}
+			}
+
+			if (spells[spellid].base2[i] == 1) // Mana Tap
+				SetMana(GetMana() - damage);
+
+			if (spells[spellid].base2[i] == 2 && IsClient()) // Endurance Tap
+				CastToClient()->SetEndurance(CastToClient()->GetEndurance() - damage);
+		}
+	}
+}
+
+uint16 Client::GetRangedWeaponGraphic()
+{
+	const ItemInst* RangeWeapon = m_inv[SlotRange];
+	if (!RangeWeapon)
+		return 0;
+
+	const Item_Struct* RangeItem = RangeWeapon->GetItem();
+	if (!RangeItem)
+		return 0;
+
+	if (strlen(RangeItem->IDFile) > 2)
+		return atoi(&RangeItem->IDFile[2]);
+
+	return 0;
+}
+
+int16 Mob::GetCascadeValue(int16 current_value, int16 base, int16 max)
+{
+
+	if (base >= 0){
+		if (current_value < max)
+			current_value += base;
+		else
+			current_value = max;
+	}
+	else{
+		if (current_value > max)
+			current_value += base;
+		else
+			current_value = max;
+	}
+	return current_value;
 }
 
 

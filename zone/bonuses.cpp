@@ -1438,6 +1438,28 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 			break;
 
 		//C!Kayen - Custom AA Bonus
+
+		case SE_WeaponProcCustom1:
+			newbon->WeaponProcCustom1[0] = base1;
+			newbon->WeaponProcCustom1[1] = base2;
+			break;
+
+		case SE_WeaponProcCustom2:
+			newbon->WeaponProcCustom2[0] = base1;
+			newbon->WeaponProcCustom2[1] = base2;
+			break;
+
+		case SE_WeaponProcCustom3:
+			newbon->WeaponProcCustom3[0] = base1;
+			newbon->WeaponProcCustom3[1] = base2;
+			break;
+
+		case SE_WeaponProcCustom4:
+			newbon->WeaponProcCustom4[0] = base1;
+			newbon->WeaponProcCustom4[1] = base2;
+			break;
+
+
 		case SE_MeleeManaTap:
 			newbon->MeleeManaTap += base1;
 			break;
@@ -1480,6 +1502,10 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 			
 		case SE_BlockChanceStack:			
 			newbon->BlockChanceStack += base1;
+			break;
+
+		case SE_ManaAbsorbPercentDamageStack:			
+			newbon->ManaAbsorbPercentDamageStack += base1;
 			break;
 
 		//C!Kayen - END
@@ -2683,10 +2709,11 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 
 			case SE_ManaAbsorbPercentDamage:
 			{
-				if (new_bonus->ManaAbsorbPercentDamage[0] < effect_value){
-					new_bonus->ManaAbsorbPercentDamage[0] = effect_value;
+				if (new_bonus->ManaAbsorbPercentDamage[0] < spells[spell_id].base[i]){//C!Kayen
+					new_bonus->ManaAbsorbPercentDamage[0] = spells[spell_id].base[i];
 					new_bonus->ManaAbsorbPercentDamage[1] = buffslot;
 					new_bonus->ManaAbsorbPercentDamage[2] = base2; //C!Kayen -Penalty
+					new_bonus->ManaAbsorbPercentDamage[3] = max; //C!Kayen -Penalty
 				}
 				break;
 			}
@@ -3541,6 +3568,26 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				break;
 			}
 
+			case SE_WeaponProcCustom1:
+				new_bonus->WeaponProcCustom1[0] = spells[spell_id].base[i];
+				new_bonus->WeaponProcCustom1[1] = spells[spell_id].base2[i];
+				break;
+
+			case SE_WeaponProcCustom2:
+				new_bonus->WeaponProcCustom2[0] = spells[spell_id].base[i];
+				new_bonus->WeaponProcCustom2[1] = spells[spell_id].base2[i];
+				break;
+
+			case SE_WeaponProcCustom3:
+				new_bonus->WeaponProcCustom3[0] = spells[spell_id].base[i];
+				new_bonus->WeaponProcCustom3[1] = spells[spell_id].base2[i];
+				break;
+
+			case SE_WeaponProcCustom4:
+				new_bonus->WeaponProcCustom4[0] = spells[spell_id].base[i];
+				new_bonus->WeaponProcCustom4[1] = spells[spell_id].base2[i];
+				break;
+
 			//Special Bonus stacks
 			case SE_AvoidMeleeChanceStack:
 				new_bonus->AvoidMeleeChanceStack += effect_value;
@@ -3577,6 +3624,22 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 			case SE_BlockChanceStack:			
 				new_bonus->BlockChanceStack += effect_value;
 				break;
+
+			case SE_ManaAbsorbPercentDamageStack:			
+				new_bonus->ManaAbsorbPercentDamageStack += effect_value;
+				break;
+
+
+			//Special Cascade
+			case SE_CascadeIncomingSpellDmgPct:
+				new_bonus->CascadeIncomingSpellDmgPct = true;
+				break;
+			
+			case SE_CascadeSkillDmgTaken:
+				new_bonus->CascadeSkillDmgTaken = true;
+				break;
+
+		//END OF SPELL BONUSES
 		}
 	}
 }

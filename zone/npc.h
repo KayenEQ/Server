@@ -413,7 +413,8 @@ public:
 
 	//C!Kayen - START
 	void ApplyCustomPetBonuses(Mob* owner, uint16 spell_id);
-	void ApplyOnSpawn();
+	void ApplyEffectTempPetSpawn(Mob* owner, uint16 spell_id);
+	void ApplyOnNPCSpawn();
 
 
 protected:

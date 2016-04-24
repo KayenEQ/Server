@@ -793,11 +793,13 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 	int maxtargets = spells[spell_id].aemaxtargets; //C!Kayen
 	std::list<Mob*> targets_in_ae; //C!Kayen - Get the targets within the ae
 
-	if (CastFromPetOwner(spell_id) && (caster->IsPet() || caster->IsTempPet())){ //C!Kayen
-		uint16 petid = caster->GetID();
-		caster = caster->GetOwner();
-		if (caster)
-			caster->SetOriginCasterID(petid);
+	if (caster->IsPet() || caster->IsTempPet()){ //C!Kayen
+		if (IsEffectInSpell(spell_id, SE_CastFromPetOwner)){
+			uint16 petid = caster->GetID();
+			caster = caster->GetOwner();
+			if (caster)
+				caster->SetOriginCasterID(petid);
+		}
 	}
 
 	float dist = caster->GetAOERange(spell_id);
@@ -847,7 +849,12 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			dist_targ = DistanceSquared(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetFlingLocation());
 		}//C!Kayen DevNote: Projectile uses the swarmpet as the center when cast from target rings.
 		else if ((IsTargetRingSpell(spell_id) || caster->GetUseTargetRingOverride()) && !IsProjectile(spell_id)){ //C!Kayen pflag = Projectile
-			dist_targ = DistanceSquared(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetTargetRingLocation());
+			//dist_targ = DistanceSquared(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetTargetRingLocation());
+			dist_targ = DistanceSquaredNoZ(static_cast<glm::vec3>(curmob->GetPosition()), caster->GetTargetRingLocation());
+			
+			//Need this because distance alters based on mob size, can stand under size 25 npc with 15 range and not hit. *Need better formula
+			if (!curmob->PassZdiff(caster->GetTargetRingZ(),dist,curmob->GetSize()))
+				continue;
 		}
 		else if (center) {
 			dist_targ = DistanceSquared(curmob->GetPosition(), center->GetPosition());
@@ -863,7 +870,7 @@ void EntityList::AESpell(Mob *caster, Mob *center, uint16 spell_id, bool affect_
 			if (bad) {
 
 				//C!Kayen - Pet Logic and expections
-				if (CanAOEHitNPC(spell_id) || (caster->IsPet() && caster->IsPetOwnerClient() && !curmob->IsPetOwnerClient())){
+				if ((caster->IsPet() || caster->IsTempPet()) && caster->IsPetOwnerClient() && !curmob->IsPetOwnerClient()){
 					//ALLOW
 				}
 				//affect mobs that are on our hate list, or
