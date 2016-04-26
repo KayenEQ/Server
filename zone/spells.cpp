@@ -3373,6 +3373,7 @@ int Mob::AddBuff(Mob *caster, uint16 spell_id, int duration, int32 level_overrid
 	buffs[emptyslot].instrument_mod = caster ? caster->GetInstrumentMod(spell_id) : 10;
 	buffs[emptyslot].focus = 0; //C!Kayen
 	buffs[emptyslot].fastticsremaining = 0; //C!Kayen
+	buffs[emptyslot].resourcetrigger = 0; //C!Kayen
 
 	if (level_override > 0) {
 		buffs[emptyslot].UpdateClient = true;
@@ -4866,7 +4867,7 @@ float Mob::GetAOERange(uint16 spell_id) {
 
 	range = GetActSpellRange(spell_id, range);
 
-	range += range*static_cast<float>(CalcCrouchModFromType(spell_id, 2))/100.0f; //C!Kayen - Mod Range from interval
+	range += range*static_cast<float>(CalcCrouchModFromType(CastCrouchType::SpellRange,spell_id))/100.0f; //C!Kayen - Mod Range from interval
 	range += range*static_cast<float>(CalcSpellPowerFromAEDuration(spell_id, this, 2))/100.0f; //C!Kayen
 
 	return(range);

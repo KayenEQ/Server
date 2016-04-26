@@ -133,6 +133,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		buffs[buffslot].numhits = 0;
 		buffs[buffslot].focus = 0; //C!Kayen
 		buffs[buffslot].fastticsremaining = 0; //C!Kayen
+		buffs[buffslot].resourcetrigger = 0; //C!Kayen
 
 		if (spells[spell_id].EndurUpkeep > 0 || spells[spell_id].EndurDrain > 0)
 			SetEndurUpkeep(true);
@@ -744,7 +745,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						if (caster->IsClient())
 							effect_value += effect_value*caster->GetFocusEffect(focusFcStunTimeMod, spell_id)/100;
 
-						effect_value += CalcCrouchModFromType(spell_id, 3); //C!Kayen - Mod Duration from interval
+						effect_value += CalcCrouchModFromType(CastCrouchType::Stun, spell_id); //C!Kayen - Mod Duration from interval
 
 						//C!Kayen - START :: Stun Resilience
 						if (IsStunned() || GetOpportunityMitigation()){
@@ -3007,7 +3008,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 			case SE_PercentalMana:
 			{
-				SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
+				if (spell.base2[i] == 1)
+					caster->SetMana(caster->GetMana() + (caster->GetMaxMana() * spell.base[i] / 100));
+				else
+					SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
 				break;
 			}
 
@@ -3583,6 +3587,12 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				break;
 			}
 
+			case SE_TriggerOnResourcePct:{
+				trigger_on_resource_timer.Start(100);
+				buffs[buffslot].resourcetrigger = spell.base[i];
+				break;
+			}
+
 			case SE_IncommingMeleeDmgToHPRune:
 			case SE_IncommingMeleeDmgToManaRune:
 			case SE_IncommingMeleeDmgToEndurRune:
@@ -3593,10 +3603,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			}
 
 			case SE_CascadeIncomingSpellDmgPct:
-				Shout("A C: %i %i %i",cascade.IncomingSpellDmgPct, spell.base[i], spell.max[i]);
 				cascade.IncomingSpellDmgPct = GetCascadeValue(cascade.IncomingSpellDmgPct, spell.base[i], spell.max[i]);
-				
-				Shout("B C: %i %i %i",cascade.IncomingSpellDmgPct, spell.base[i], spell.max[i]);
 				break;
 
 			case SE_CascadeSkillDmgTaken:
@@ -4651,7 +4658,10 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 
 			case SE_PercentalMana:
 			{
-				SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
+				if (spell.base2[i] == 1)
+					caster->SetMana(caster->GetMana() + (caster->GetMaxMana() * spell.base[i] / 100));
+				else
+					SetMana(GetMana() + (GetMaxMana() * spell.base[i] / 100));
 				break;
 			}
 
@@ -4751,12 +4761,24 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 				if (caster){
 					
 					if (spells[buff.spellid].base[i] > 0)
-						caster->Message(MT_Spells, "%s is more vulnerability to incoming spell damage. [ %i pct ] (%s)", GetCleanName(), cascade.IncomingSpellDmgPct,spells[buff.spellid].name);
+						caster->Message(MT_Spells, "%s is more vulnerability to incoming spell damage. [%i pct] (%s)", GetCleanName(), cascade.IncomingSpellDmgPct,spells[buff.spellid].name);
 					else
-						caster->Message(MT_Spells, "%s is less vulnerability to incoming spell damage. [ %i pct ] (%s)", GetCleanName(), cascade.IncomingSpellDmgPct,spells[buff.spellid].name);
+						caster->Message(MT_Spells, "%s is less vulnerability to incoming spell damage. [%i pct] (%s)", GetCleanName(), cascade.IncomingSpellDmgPct,spells[buff.spellid].name);
 
 					if (buff.ticsremaining == 1) {
 						cascade.IncomingSpellDmgPct = 0;
+						caster->Message_StringID(MT_WornOff, SPELL_WORN_OFF_OF,spells[buffs[slot].spellid].name, GetCleanName());
+						BuffFadeBySlot(slot);
+					}
+				}
+				break;
+			}
+
+			case SE_CascadeSkillDmgTaken: {
+				//Reset Cascade Count
+				if (caster){
+					if (buff.ticsremaining == 1) {
+						cascade.SkillDmgTaken = 0;
 						caster->Message_StringID(MT_WornOff, SPELL_WORN_OFF_OF,spells[buffs[slot].spellid].name, GetCleanName());
 						BuffFadeBySlot(slot);
 					}

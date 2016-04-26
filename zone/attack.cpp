@@ -2995,9 +2995,16 @@ int32 Mob::ReduceAllDamage(int32 damage)
 		TryTriggerOnValueAmount(false, true);
 	}
 
-	damage += (damage*(GetOpportunityMitigation() + spellbonuses.MitigateAllDamage + itembonuses.MitigateAllDamage))/100; //C!Kayen - Use to mitigate final damage.
-	CheckNumHitsRemaining(NumHit::IncomingDamage);
+	int extra_mitigation = GetOpportunityMitigation() + GetMitigateAllDamageStack();
 
+	if (extra_mitigation < -100)
+		extra_mitigation = -100;
+
+	damage += (damage*(extra_mitigation))/100; //C!Kayen - Use to mitigate final damage.
+
+
+
+	CheckNumHitsRemaining(NumHit::IncomingDamage);
 	return(damage);
 }
 

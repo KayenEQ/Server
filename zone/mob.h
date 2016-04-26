@@ -1118,7 +1118,7 @@ public:
 	//C!CastFromCrouch - Spell Field CastFromCrouch
 	//!// Client::CastFromCrouch(uint16 spell_id)
 	int32 CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid);
-	int32 CalcCrouchModFromType(uint16 spell_id, int type);
+	int32 CalcCrouchModFromType(CastCrouchType type, uint16 spell_id);
 	bool BlockCastFromCrouchProjectileDamage(uint16 spell_id, int16 limit);
 	inline void SetCastFromCrouchInterval(int8 value) { CastFromCrouchInterval = value; }
 	inline int8 GetCastFromCrouchInterval() const { return CastFromCrouchInterval; }
@@ -1396,7 +1396,7 @@ public:
 
 	void CalcSpellBonusesByBuff(StatBonuses* newbon, int buffslot);
 
-	int32 CalcSpellPowerManaModPct(uint16 spell_id);
+	int32 CalcSpellPowerManaModPct(Manaflux type, uint16 spell_id);
 
 	bool PassZdiff(float target_z,float max_zdiff, float target_size=0);
 
@@ -1406,6 +1406,16 @@ public:
 
 	int16 GetCascadeValue(int16 current_value, int16 base, int16 max);
 
+	void TriggerOnResourcePct();
+	void TriggerOnResourcePctEffect(int buffslot, uint16 spell_id, uint16 caster_id);
+
+
+	//Custom Bonuses
+
+	//V1
+	inline int16 GetMitigateAllDamageStack() const { return spellbonuses.MitigateAllDamage + itembonuses.MitigateAllDamage + aabonuses.MitigateAllDamage; }
+
+	//V2
 	inline int32 GetAvoidMeleeChanceStack() const { return spellbonuses.AvoidMeleeChanceStack + itembonuses.AvoidMeleeChanceStack + aabonuses.AvoidMeleeChanceStack; }
 	inline int32 GetHitChanceStack() const { return spellbonuses.HitChanceStack + itembonuses.HitChanceStack + aabonuses.HitChanceStack; }
 	inline int32 GetDamageModifierStack() const { return spellbonuses.DamageModifierStack + itembonuses.DamageModifierStack + aabonuses.DamageModifierStack; }
@@ -1416,6 +1426,7 @@ public:
 	inline int32 GetParryChanceStack() const { return spellbonuses.ParryChanceStack + itembonuses.ParryChanceStack + aabonuses.ParryChanceStack; }
 	inline int32 GetBlockChanceStack() const { return spellbonuses.BlockChanceStack + itembonuses.BlockChanceStack + aabonuses.BlockChanceStack; }
 	inline int32 GetManaAbsorbPercentDamageStack() const { return spellbonuses.ManaAbsorbPercentDamageStack + itembonuses.ManaAbsorbPercentDamageStack + aabonuses.ManaAbsorbPercentDamageStack; }
+	
 	//Old calculations
 	int GetOldProjectileHit(Mob* spell_target, uint16 spell_id); //Not used in game - Keep for calculation refrences.
 	//worldserver.SendEmoteMessage(0,0,0,13, "Variable %i",temp);
@@ -1868,6 +1879,8 @@ protected:
 	int count_total_effect_hits;
 
 	tCascade cascade;
+
+	Timer trigger_on_resource_timer;
 	
 private:
 	void _StopSong(); //this is not what you think it is

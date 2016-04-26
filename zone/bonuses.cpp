@@ -1459,6 +1459,9 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 			newbon->WeaponProcCustom4[1] = base2;
 			break;
 
+		case SE_Manaflux:
+			newbon->Manaflux = base1;
+			break;
 
 		case SE_MeleeManaTap:
 			newbon->MeleeManaTap += base1;
@@ -3587,6 +3590,13 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				new_bonus->WeaponProcCustom4[0] = spells[spell_id].base[i];
 				new_bonus->WeaponProcCustom4[1] = spells[spell_id].base2[i];
 				break;
+
+			case SE_Manaflux:
+				new_bonus->Manaflux = effect_value;
+				break;
+			
+			case SE_TriggerOnResourcePct:
+				new_bonus->TriggerOnResourcePct = true;
 
 			//Special Bonus stacks
 			case SE_AvoidMeleeChanceStack:

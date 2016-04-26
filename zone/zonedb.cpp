@@ -3124,6 +3124,7 @@ void ZoneDatabase::LoadBuffs(Client *client)
 
 		buffs[slot_id].focus = 0; //C!Kayen
 		buffs[slot_id].fastticsremaining = 0; //C!Kayen
+		buffs[slot_id].resourcetrigger = 0; //C!Kayen
 
     }
 

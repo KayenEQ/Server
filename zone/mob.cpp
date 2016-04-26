@@ -541,6 +541,7 @@ Mob::Mob(const char* in_name,
 	charge_effect_timer.Disable();
 	leapSE_timer.Disable();
 	displaycastingtimer_timer.Disable();
+	trigger_on_resource_timer.Disable();
 
 }
 
@@ -7340,11 +7341,7 @@ int32 Mob::GetBaseSpellPower(int32 value, uint16 spell_id, bool IsDamage, bool I
 		if (IsEffectInSpell(spell_id, SE_CastFromPetOwner))
 			value += value*GetSpellPowerModFromPet(spell_id)/100;
 		else
-			value += value*CalcSpellPowerManaMod(spell_id)/100;//Enchanter Special
-
-		Shout("1 ENC F Value %i [%i]", value,CalcSpellPowerManaModPct(spell_id)/100);
-		value += value*CalcSpellPowerManaModPct(spell_id)/100;//Enchanter Special
-		Shout("2 ENC F Value %i", value);
+			value += value*CalcSpellPowerManaModPct(Manaflux::Damage,spell_id)/100;//Enchanter Special
 	}
 
 	mod = spellbonuses.BaseSpellPower + itembonuses.BaseSpellPower + aabonuses.BaseSpellPower; //All effects
@@ -7797,7 +7794,7 @@ int32 Mob::CalcFromCrouchMod(uint16 spell_id, Mob* caster, int effectid){
 
 }
 
-int32 Mob::CalcCrouchModFromType(uint16 spell_id, int type)
+int32 Mob::CalcCrouchModFromType(CastCrouchType type, uint16 spell_id)
 {
 	//Valid spell checked earlier.
 	if (!spells[spell_id].cast_from_crouch)
@@ -7811,7 +7808,7 @@ int32 Mob::CalcCrouchModFromType(uint16 spell_id, int type)
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_SpellPowerCrouchType){
-			if (type == spells[spell_id].base2[i]){
+			if (static_cast<int>(type) == spells[spell_id].base2[i]){
 				return GetCastFromCrouchInterval() * spells[spell_id].base[i];
 			}
 		}
@@ -7893,30 +7890,36 @@ int32 Mob::CalcSpellPowerManaMod(uint16 spell_id)
 	return ((GetMana() * effect_mod)/1000);
 }
 
-int32 Mob::CalcSpellPowerManaModPct(uint16 spell_id)
+int32 Mob::CalcSpellPowerManaModPct(Manaflux type,uint16 spell_id)
 {
-	if (GetClass() != ENCHANTER || !IsValidSpell(spell_id))
+	int16 Manaflux = spellbonuses.Manaflux + itembonuses.Manaflux + aabonuses.Manaflux; //Base 100 from AA
+
+	if (!Manaflux || !IsValidSpell(spell_id))
 		return 0;
 
-	//Returns spell modifer based on amount of mana coverted to focus
-	//Base1: AMOUNT of mana required for 1 percent focus increase
-	//Base2: UNUSED
-	
+	int32 focus_amt = 0;
 	int effect_mod = 0;
-	int limit_mod = 0;
+	int limit_type = 0;
 
 	for(int i = 0; i < EFFECT_COUNT; i++){
 		if (spells[spell_id].effectid[i] == SE_SpellPowerManaModPct){
-			effect_mod = spells[spell_id].base[i]; //Multiple mana ratio by this amount = Base 100
-			limit_mod = spells[spell_id].base2[i]; //UNUSED
+			effect_mod = spells[spell_id].base[i]; //Multiple mana ratio by this amount
+			limit_type = spells[spell_id].base2[i]; //Type
 			break;
 		}
 	}
 
-	if (!effect_mod)
+	if ((static_cast<int>(type) != limit_type) || !effect_mod)
 		return 0;
 
-	return ((GetManaRatio() * effect_mod)/100);
+	effect_mod = effect_mod*Manaflux/100;
+
+	focus_amt = (GetManaRatio() * effect_mod)/100;
+
+	if (type == Manaflux::Duration)
+		focus_amt = (static_cast<float>(focus_amt) / 20.0f) + 0.5f; //100 power adds 1 tic per 20 pct mana
+
+	return (focus_amt);
 }
 
 bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
@@ -7934,6 +7937,7 @@ bool Mob::TryEnchanterCastingConditions(uint16 spell_id)
 
 void Mob::TryEnchanterManaFocusConsume(uint16 spell_id)
 {
+	//DEPRECIATED - No longer used
 	if (IsClient() && GetClass() == ENCHANTER && IsValidSpell(spell_id)) {
 		for(int i = 0; i < EFFECT_COUNT; i++){
 			if (spells[spell_id].effectid[i] == SE_SpellPowerManaMod){
@@ -7974,7 +7978,7 @@ void NPC::ApplyCustomPetBonuses(Mob* owner, uint16 spell_id)
 	std::string WT;
 	int size_divider = 0;
 
-	int mod = owner->CalcSpellPowerManaModPct(spell_id);
+	int mod = owner->CalcSpellPowerManaModPct(Manaflux::Pet,spell_id);
 	int mod_max = GetSpellPowerManaModPctMax(spell_id);
 	//Need to set a stat on NPC that is equal to the spell ID to be cast.
 
@@ -10656,9 +10660,12 @@ bool Mob::MinCastingRange(uint16 spell_id, uint16 target_id)
 
 int Mob::CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration)
 {
-
+	if (!caster)
+		return duration;
 	
-	//res += caster->CalcSpellPowerManaMod(spell_id); //C!Kayen - Add buff ticks
+	Shout("1 Custom Duration: %i", duration);
+	duration += caster->CalcSpellPowerManaModPct(Manaflux::Duration,spell_id); //C!Kayen - Add buff ticks
+	Shout("2 Custom Duration: %i", duration);
 	duration += GetSpellPowerDistanceMod()/100; //C!Kayen - Add buff ticks based on distance modifer
 	return duration;
 }
@@ -12818,6 +12825,73 @@ int16 Mob::GetCascadeValue(int16 current_value, int16 base, int16 max)
 			current_value = max;
 	}
 	return current_value;
+}
+
+void Mob::TriggerOnResourcePct()
+{
+	if (!spellbonuses.TriggerOnResourcePct){
+		trigger_on_resource_timer.Disable();
+		return;
+	}
+	
+	int buff_count = GetMaxTotalSlots();
+	for(int i = 0; i < buff_count; i++) {
+		if(buffs[i].resourcetrigger && buffs[i].spellid != SPELL_UNKNOWN){
+
+			bool trigger = false;
+			int16 t = buffs[i].resourcetrigger;
+			Mob* who = this;
+
+			if (t < 0){
+				t = t * -1;
+				who = entity_list.GetMobID(buffs[i].casterid);
+
+				if (!who)
+					continue;
+			}
+
+			if (t >= 0 && t < 100){
+				if (who->GetHPRatio() <= t)
+					trigger = true;
+			}
+			else if (t >= 100 && t <= 200){
+				t = t - 100;
+				if (who->GetManaRatio() <= t)
+					trigger = true;
+			}
+
+			else if (who->IsClient() && (t >= 200 && t <= 300)){
+				t = t - 200;
+				if (who->CastToClient()->GetEndurancePercent() <= t)
+					trigger = true;
+			}
+
+			if (trigger){
+				TriggerOnResourcePctEffect(i, buffs[i].spellid, buffs[i].casterid);
+			}
+		}
+	}
+}
+
+void Mob::TriggerOnResourcePctEffect(int buffslot, uint16 spell_id, uint16 caster_id)
+{
+
+	uint16 trigger_spell = SPELL_UNKNOWN;
+	for (int i = 0; i < EFFECT_COUNT; ++i){
+		if (spells[spell_id].effectid[i] == SE_TriggerOnResourcePct){
+			if (spells[spell_id].base2[i] && IsValidSpell(spells[spell_id].base2[i])){
+				Mob* on = this;
+				if (spells[spell_id].max[i] == 1){
+					on = entity_list.GetMobID(buffs[i].casterid);
+				}
+				
+				if (on)
+					on->SpellFinished(trigger_spell, this, 10, 0, -1, spells[trigger_spell].ResistDiff);
+			}
+		}
+	}
+
+	BuffFadeBySlot(buffslot);
 }
 
 

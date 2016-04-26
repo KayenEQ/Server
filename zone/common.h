@@ -216,6 +216,7 @@ struct Buffs_Struct {
 	bool	UpdateClient;
 	int16	focus; //C!Kayen - For class specific focuses that are applied when spell is initially cast.
 	int32	fastticsremaining; //C!Kayen - Count fast buff ticks
+	int16	resourcetrigger; //C!Kayen - Count fast buff ticks
 };
 
 struct StatBonuses {
@@ -529,6 +530,8 @@ struct StatBonuses {
 	int16 WeaponProcCustom2[2];					// 0=spell_id, 1=ChanceMod
 	int16 WeaponProcCustom3[2];					// 0=spell_id, 1=ChanceMod
 	int16 WeaponProcCustom4[2];					// 0=spell_id, 1=ChanceMod
+	int16 Manaflux;								// Pct focus
+	bool TriggerOnResourcePct;					//
 
 
 	int32 AvoidMeleeChanceStack;				// implemented
@@ -690,8 +693,14 @@ typedef struct
 	uint16 hit_increment;
 } tProjring; //Target ring projectiles
 
+typedef struct
+{
+	int16 IncomingSpellDmgPct;
+	int16 SkillDmgTaken;
+} tCascade; //Leap spell effect (using modified knockback)
 
-enum class GFX {		  // GFX spell types
+
+enum class GFX {// GFX spell types
 	PBAE_DirAE = 1,
 	Beam = 2,
 	TargetRing = 3,
@@ -699,11 +708,19 @@ enum class GFX {		  // GFX spell types
 	FlingLeap = 5
 };
 
-typedef struct
-{
-	int16 IncomingSpellDmgPct;
-	int16 SkillDmgTaken;
-} tCascade; //Leap spell effect (using modified knockback)
+enum class Manaflux {// Determines how focus is applied.
+	Damage = 1,
+	Duration = 2,
+	Pet = 3
+};
+
+enum class CastCrouchType {// Determines how focus is applied.
+	BLANK = 1,
+	SpellRange = 2,
+	Stun = 3
+};
+
+
 //C!Kayen - STRUCTS END
 
 class ItemInst;

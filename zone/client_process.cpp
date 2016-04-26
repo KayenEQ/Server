@@ -514,6 +514,9 @@ bool Client::Process() {
 		if (spun_timer.Check())
 			SpinAttack();
 
+		if (trigger_on_resource_timer.Check())
+			TriggerOnResourcePct();
+
 		//C!Kayen END
 
 		if(spellbonuses.GravityEffect == 1) {

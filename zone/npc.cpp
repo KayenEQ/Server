@@ -723,6 +723,9 @@ bool NPC::Process()
 	
 	if (stun_resilience_timer.Check())
 		StunResilienceRegen();
+
+	if (trigger_on_resource_timer.Check())
+		TriggerOnResourcePct();
 	//C!Kayen - End Custom Timers
 
 	if(spellbonuses.GravityEffect == 1) {
