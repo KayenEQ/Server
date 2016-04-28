@@ -5030,6 +5030,12 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 					ps->command = 0;
 					entity_list.QueueClients(this, app);
 					safe_delete(app);
+
+					//C!Kayen - Fix for display error for buffs when charm breaks.
+					tempmob->SetTarget(tempmob);
+					tempmob->CastToClient()->SendTargetCommand(tempmob->GetID());
+					tempmob->SetTarget(this);
+					tempmob->CastToClient()->SendTargetCommand(GetID());
 				}
 				if(IsClient())
 				{
@@ -5043,6 +5049,8 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 							CastToClient()->AI_Stop();
 					}
 				}
+
+
 				break;
 			}
 

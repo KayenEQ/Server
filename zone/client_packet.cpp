@@ -9852,6 +9852,8 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 	Mob* mypet = this->GetPet();
 	Mob *target = entity_list.GetMob(pet->target);
 
+	Shout("Client::Handle_OP_PetCommands Pet Command %i [SIT BREAKS CHARM]",pet->command);
+
 	if (!mypet || pet->command == PET_LEADER)
 	{
 		if (pet->command == PET_LEADER)
@@ -10083,6 +10085,11 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 				mypet->SendAppearancePacket(AT_Anim, ANIM_SIT);
 			}
 		}
+
+		if (mypet->Charmed()){//C!Kayen
+			mypet->BuffFadeByEffect(SE_Charm);
+		}
+
 		break;
 	}
 	case PET_STANDUP: {

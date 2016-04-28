@@ -3086,7 +3086,8 @@ int Mob::CheckStackConflict(uint16 spellid1, int caster_level1, uint16 spellid2,
 		if(effect1 == SE_CurrentHPOnce ||
 			effect1 == SE_CurseCounter	||
 			effect1 == SE_DiseaseCounter ||
-			effect1 == SE_PoisonCounter){
+			effect1 == SE_PoisonCounter ||
+			effect1 == SE_SpellPowerManaModPct){//C!Kayen
 			continue;
 			}
 

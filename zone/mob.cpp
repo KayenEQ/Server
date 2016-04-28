@@ -9855,7 +9855,7 @@ int Mob::CalcBaseEffectValueByLevel(float formula_mod, float ubase, float max, f
 	if (spells[spell_id].cast_from_crouch)
 		SetScaledBaseEffectValue(static_cast<int>(ubase + base_mod));
 	
-	Shout("DEBUG: Scaled By Level: %i [spellid %i]",static_cast<int>(ubase + base_mod), spell_id);
+	//Shout("DEBUG: Scaled By Level: %i [spellid %i]",static_cast<int>(ubase + base_mod), spell_id);
 	return static_cast<int>(ubase + base_mod);
 }
 
@@ -10580,7 +10580,7 @@ bool Mob::TryRangerCastingConditions(uint16 spell_id, uint16 target_id)
 
 void Mob::BalanceResourceEffect(uint16 spell_id, int e)
 {
-	if (!IsValidSpell(spell_id))
+	if (!IsValidSpell(spell_id) || !IsClient())
 		return;
 
 	int mod = spells[spell_id].base2[e];
@@ -10589,6 +10589,7 @@ void Mob::BalanceResourceEffect(uint16 spell_id, int e)
 	amt += amt * mod / 100;
 
 	SetMana((GetMaxMana() * amt / 100));
+
 	CastToClient()->SetEndurance((CastToClient()->GetMaxEndurance() * amt / 100));
 }
 
@@ -10663,9 +10664,7 @@ int Mob::CustomBuffDurationMods(Mob *caster, uint16 spell_id, int duration)
 	if (!caster)
 		return duration;
 	
-	Shout("1 Custom Duration: %i", duration);
 	duration += caster->CalcSpellPowerManaModPct(Manaflux::Duration,spell_id); //C!Kayen - Add buff ticks
-	Shout("2 Custom Duration: %i", duration);
 	duration += GetSpellPowerDistanceMod()/100; //C!Kayen - Add buff ticks based on distance modifer
 	return duration;
 }
