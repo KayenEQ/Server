@@ -868,7 +868,7 @@ bool EntityList::MakeDoorSpawnPacket(EQApplicationPacket *app, Client *client)
 	if (door_list.empty())
 		return false;
 
-	uint32 mask_test = client->GetClientVersionBit();
+	uint32 mask_test = client->ClientVersionBit();
 	int count = 0;
 
 	auto it = door_list.begin();
@@ -1476,7 +1476,7 @@ void EntityList::QueueClientsByTarget(Mob *sender, const EQApplicationPacket *ap
 			}
 		}
 
-		if (Send && (c->GetClientVersionBit() & ClientVersionBits))
+		if (Send && (c->ClientVersionBit() & ClientVersionBits))
 			c->QueuePacket(app, ackreq);
 	}
 }
@@ -4408,7 +4408,7 @@ void EntityList::UpdateFindableNPCState(NPC *n, bool Remove)
 	auto it = client_list.begin();
 	while (it != client_list.end()) {
 		Client *c = it->second;
-		if (c && (c->GetClientVersion() >= ClientVersion::SoD))
+		if (c && (c->ClientVersion() >= EQEmu::versions::ClientVersion::SoD))
 			c->QueuePacket(outapp);
 
 		++it;

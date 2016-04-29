@@ -257,7 +257,7 @@ Client::Client(EQStreamInterface* ieqs)
 	GlobalChatLimiterTimer = new Timer(RuleI(Chat, IntervalDurationMS));
 	AttemptedMessages = 0;
 	TotalKarma = 0;
-	m_ClientVersion = ClientVersion::Unknown;
+	m_ClientVersion = EQEmu::versions::ClientVersion::Unknown;
 	m_ClientVersionBit = 0;
 	AggroCount = 0;
 	RestRegenHP = 0;
@@ -1553,7 +1553,7 @@ void Client::UpdateWho(uint8 remove) {
 	else if (m_pp.anon >= 2)
 		scl->anon = 2;
 
-	scl->ClientVersion = static_cast<unsigned int>(GetClientVersion());
+	scl->ClientVersion = static_cast<unsigned int>(ClientVersion());
 	scl->tellsoff = tellsoff;
 	scl->guild_id = guild_id;
 	scl->LFG = LFG;
@@ -1809,7 +1809,7 @@ void Client::SendManaUpdatePacket() {
 	if (!Connected() || IsCasting())
 		return;
 
-	if (GetClientVersion() >= ClientVersion::SoD) {
+	if (ClientVersion() >= EQEmu::versions::ClientVersion::SoD) {
 		SendManaUpdate();
 		SendEnduranceUpdate();
 	}
@@ -1844,7 +1844,7 @@ void Client::SendManaUpdatePacket() {
 
 
 			for(int i = 0; i < MAX_GROUP_MEMBERS; ++i)
-				if(g->members[i] && g->members[i]->IsClient() && (g->members[i] != this) && (g->members[i]->CastToClient()->GetClientVersion() >= ClientVersion::SoD))
+				if (g->members[i] && g->members[i]->IsClient() && (g->members[i] != this) && (g->members[i]->CastToClient()->ClientVersion() >= EQEmu::versions::ClientVersion::SoD))
 				{
 					g->members[i]->CastToClient()->QueuePacket(outapp);
 					g->members[i]->CastToClient()->QueuePacket(outapp2);
@@ -2027,7 +2027,7 @@ void Client::ReadBook(BookRequest_Struct *book) {
 
 		BookText_Struct *out = (BookText_Struct *) outapp->pBuffer;
 		out->window = book->window;
-		if(GetClientVersion() >= ClientVersion::SoF)
+		if (ClientVersion() >= EQEmu::versions::ClientVersion::SoF)
 		{
 			const ItemInst *inst = m_inv[book->invslot];
 			if(inst)
@@ -2384,7 +2384,7 @@ bool Client::HasSkill(SkillUseTypes skill_id) const {
 }
 
 bool Client::CanHaveSkill(SkillUseTypes skill_id) const {
-	if (GetClientVersion() < ClientVersion::RoF2 && class_ == BERSERKER && skill_id == Skill1HPiercing)
+	if (ClientVersion() < EQEmu::versions::ClientVersion::RoF2 && class_ == BERSERKER && skill_id == Skill1HPiercing)
 		skill_id = Skill2HPiercing;
 
 	return(database.GetSkillCap(GetClass(), skill_id, RuleI(Character, MaxLevel)) > 0);
@@ -2392,7 +2392,7 @@ bool Client::CanHaveSkill(SkillUseTypes skill_id) const {
 }
 
 uint16 Client::MaxSkill(SkillUseTypes skillid, uint16 class_, uint16 level) const {
-	if (GetClientVersion() < ClientVersion::RoF2 && class_ == BERSERKER && skillid == Skill1HPiercing)
+	if (ClientVersion() < EQEmu::versions::ClientVersion::RoF2 && class_ == BERSERKER && skillid == Skill1HPiercing)
 		skillid = Skill2HPiercing;
 
 	return(database.GetSkillCap(class_, skillid, level));
@@ -2400,7 +2400,7 @@ uint16 Client::MaxSkill(SkillUseTypes skillid, uint16 class_, uint16 level) cons
 
 uint8 Client::SkillTrainLevel(SkillUseTypes skillid, uint16 class_)
 {
-	if (GetClientVersion() < ClientVersion::RoF2 && class_ == BERSERKER && skillid == Skill1HPiercing)
+	if (ClientVersion() < EQEmu::versions::ClientVersion::RoF2 && class_ == BERSERKER && skillid == Skill1HPiercing)
 		skillid = Skill2HPiercing;
 
 	return(database.GetTrainLevel(class_, skillid, RuleI(Character, MaxLevel)));
@@ -2752,7 +2752,7 @@ void Client::SetMaterial(int16 in_slot, uint32 item_id) {
 	if (item && (item->ItemClass==ItemClassCommon))
 	{
 		uint8 matslot = Inventory::CalcMaterialFromSlot(in_slot);
-		if (matslot != MaterialInvalid)
+		if (matslot != EQEmu::legacy::MaterialInvalid)
 		{
 			m_pp.item_material[matslot] = GetEquipmentMaterial(matslot);
 		}
@@ -2837,7 +2837,7 @@ void Client::ServerFilter(SetServerFilter_Struct* filter){
 	Filter0(FilterMissedMe);
 	Filter1(FilterDamageShields);
 
-	if (GetClientVersionBit() & BIT_SoDAndLater) {
+	if (ClientVersionBit() & EQEmu::versions::bit_SoDAndLater) {
 		if (filter->filters[FilterDOT] == 0)
 			ClientFilters[FilterDOT] = FilterShow;
 		else if (filter->filters[FilterDOT] == 1)
@@ -2858,7 +2858,7 @@ void Client::ServerFilter(SetServerFilter_Struct* filter){
 	Filter1(FilterFocusEffects);
 	Filter1(FilterPetSpells);
 
-	if (GetClientVersionBit() & BIT_SoDAndLater) {
+	if (ClientVersionBit() & EQEmu::versions::bit_SoDAndLater) {
 		if (filter->filters[FilterHealOverTime] == 0)
 			ClientFilters[FilterHealOverTime] = FilterShow;
 		// This is called 'Show Mine Only' in the clients, but functions the same as show
@@ -3094,7 +3094,7 @@ void Client::SetTint(int16 in_slot, uint32 color) {
 void Client::SetTint(int16 in_slot, Color_Struct& color) {
 
 	uint8 matslot = Inventory::CalcMaterialFromSlot(in_slot);
-	if (matslot != MaterialInvalid)
+	if (matslot != EQEmu::legacy::MaterialInvalid)
 	{
 		m_pp.item_tint[matslot].Color = color.Color;
 		database.SaveCharacterMaterialColor(this->CharacterID(), in_slot, color.Color);
@@ -3171,58 +3171,58 @@ void Client::LinkDead()
 uint8 Client::SlotConvert(uint8 slot,bool bracer){
 	uint8 slot2 = 0; // why are we returning MainCharm instead of INVALID_INDEX? (must be a pre-charm segment...)
 	if(bracer)
-		return SlotWrist2;
-	switch(slot){
-		case MaterialHead:
-			slot2 = SlotHead;
-			break;
-		case MaterialChest:
-			slot2 = SlotChest;
-			break;
-		case MaterialArms:
-			slot2 = SlotArms;
-			break;
-		case MaterialWrist:
-			slot2 = SlotWrist1;
-			break;
-		case MaterialHands:
-			slot2 = SlotHands;
-			break;
-		case MaterialLegs:
-			slot2 = SlotLegs;
-			break;
-		case MaterialFeet:
-			slot2 = SlotFeet;
-			break;
-		}
+		return EQEmu::legacy::SlotWrist2;
+	switch(slot) {
+	case EQEmu::legacy::MaterialHead:
+		slot2 = EQEmu::legacy::SlotHead;
+		break;
+	case EQEmu::legacy::MaterialChest:
+		slot2 = EQEmu::legacy::SlotChest;
+		break;
+	case EQEmu::legacy::MaterialArms:
+		slot2 = EQEmu::legacy::SlotArms;
+		break;
+	case EQEmu::legacy::MaterialWrist:
+		slot2 = EQEmu::legacy::SlotWrist1;
+		break;
+	case EQEmu::legacy::MaterialHands:
+		slot2 = EQEmu::legacy::SlotHands;
+		break;
+	case EQEmu::legacy::MaterialLegs:
+		slot2 = EQEmu::legacy::SlotLegs;
+		break;
+	case EQEmu::legacy::MaterialFeet:
+		slot2 = EQEmu::legacy::SlotFeet;
+		break;
+	}
 	return slot2;
 }
 
 uint8 Client::SlotConvert2(uint8 slot){
 	uint8 slot2 = 0; // same as above...
 	switch(slot){
-		case SlotHead:
-			slot2 = MaterialHead;
-			break;
-		case SlotChest:
-			slot2 = MaterialChest;
-			break;
-		case SlotArms:
-			slot2 = MaterialArms;
-			break;
-		case SlotWrist1:
-			slot2 = MaterialWrist;
-			break;
-		case SlotHands:
-			slot2 = MaterialHands;
-			break;
-		case SlotLegs:
-			slot2 = MaterialLegs;
-			break;
-		case SlotFeet:
-			slot2 = MaterialFeet;
-			break;
-		}
+	case EQEmu::legacy::SlotHead:
+		slot2 = EQEmu::legacy::MaterialHead;
+		break;
+	case EQEmu::legacy::SlotChest:
+		slot2 = EQEmu::legacy::MaterialChest;
+		break;
+	case EQEmu::legacy::SlotArms:
+		slot2 = EQEmu::legacy::MaterialArms;
+		break;
+	case EQEmu::legacy::SlotWrist1:
+		slot2 = EQEmu::legacy::MaterialWrist;
+		break;
+	case EQEmu::legacy::SlotHands:
+		slot2 = EQEmu::legacy::MaterialHands;
+		break;
+	case EQEmu::legacy::SlotLegs:
+		slot2 = EQEmu::legacy::MaterialLegs;
+		break;
+	case EQEmu::legacy::SlotFeet:
+		slot2 = EQEmu::legacy::MaterialFeet;
+		break;
+	}
 	return slot2;
 }
 
@@ -4143,7 +4143,7 @@ bool Client::GroupFollow(Client* inviter) {
 			group->UpdateGroupAAs();
 
 			//Invite the inviter into the group first.....dont ask
-			if (inviter->GetClientVersion() < ClientVersion::SoD)
+			if (inviter->ClientVersion() < EQEmu::versions::ClientVersion::SoD)
 			{
 				EQApplicationPacket* outapp = new EQApplicationPacket(OP_GroupUpdate, sizeof(GroupJoin_Struct));
 				GroupJoin_Struct* outgj = (GroupJoin_Struct*)outapp->pBuffer;
@@ -4189,13 +4189,13 @@ bool Client::GroupFollow(Client* inviter) {
 			return false;
 		}
 
-		if (GetClientVersion() >= ClientVersion::SoD)
+		if (ClientVersion() >= EQEmu::versions::ClientVersion::SoD)
 		{
 			SendGroupJoinAcknowledge();
 		}
 
 		// Temporary hack for SoD, as things seem to work quite differently
-		if (inviter->IsClient() && inviter->GetClientVersion() >= ClientVersion::SoD)
+		if (inviter->IsClient() && inviter->ClientVersion() >= EQEmu::versions::ClientVersion::SoD)
 		{
 			database.RefreshGroupFromDB(inviter);
 		}
@@ -4224,14 +4224,14 @@ bool Client::GroupFollow(Client* inviter) {
 uint16 Client::GetPrimarySkillValue()
 {
 	SkillUseTypes skill = HIGHEST_SKILL; //because nullptr == 0, which is 1H Slashing, & we want it to return 0 from GetSkill
-	bool equiped = m_inv.GetItem(SlotPrimary);
+	bool equiped = m_inv.GetItem(EQEmu::legacy::SlotPrimary);
 
 	if (!equiped)
 		skill = SkillHandtoHand;
 
 	else {
 
-		uint8 type = m_inv.GetItem(SlotPrimary)->GetItem()->ItemType; //is this the best way to do this?
+		uint8 type = m_inv.GetItem(EQEmu::legacy::SlotPrimary)->GetItem()->ItemType; //is this the best way to do this?
 
 		switch (type)
 		{
@@ -4262,7 +4262,7 @@ uint16 Client::GetPrimarySkillValue()
 			}
 			case ItemType2HPiercing: // 2H Piercing
 			{
-				if (IsClient() && CastToClient()->GetClientVersion() < ClientVersion::RoF2)
+				if (IsClient() && CastToClient()->ClientVersion() < EQEmu::versions::ClientVersion::RoF2)
 					skill = Skill1HPiercing;
 				else
 					skill = Skill2HPiercing;
@@ -4432,7 +4432,7 @@ void Client::IncrementAggroCount() {
 	if (AggroCount == 1)
 		SavedRaidRestTimer = rest_timer.GetRemainingTime();
 
-	if(GetClientVersion() >= ClientVersion::SoF) {
+	if (ClientVersion() >= EQEmu::versions::ClientVersion::SoF) {
 
 		EQApplicationPacket *outapp = new EQApplicationPacket(OP_RestState, 1);
 		char *Buffer = (char *)outapp->pBuffer;
@@ -4477,7 +4477,7 @@ void Client::DecrementAggroCount() {
 
 	rest_timer.Start(time_until_rest);
 
-	if(GetClientVersion() >= ClientVersion::SoF) {
+	if (ClientVersion() >= EQEmu::versions::ClientVersion::SoF) {
 
 		EQApplicationPacket *outapp = new EQApplicationPacket(OP_RestState, 5);
 		char *Buffer = (char *)outapp->pBuffer;
@@ -4998,12 +4998,12 @@ void Client::ShowSkillsWindow()
 	std::string WindowText;
 	std::map<SkillUseTypes, std::string> Skills = EQEmu::GetSkillUseTypesMap();
 
-	if (GetClientVersion() < ClientVersion::RoF2)
+	if (ClientVersion() < EQEmu::versions::ClientVersion::RoF2)
 		Skills[Skill1HPiercing] = "Piercing";
 
 	// print out all available skills
 	for (auto skills_iter : Skills) {
-		if (skills_iter.first == Skill2HPiercing && GetClientVersion() < ClientVersion::RoF2)
+		if (skills_iter.first == Skill2HPiercing && ClientVersion() < EQEmu::versions::ClientVersion::RoF2)
 			continue;
 		if (!GetSkill(skills_iter.first) && !MaxSkill(skills_iter.first))
 			continue;
@@ -5412,7 +5412,7 @@ bool Client::TryReward(uint32 claim_id)
 	// save
 	uint32 free_slot = 0xFFFFFFFF;
 
-	for (int i = EQEmu::constants::GENERAL_BEGIN; i <= EQEmu::constants::GENERAL_END; ++i) {
+	for (int i = EQEmu::legacy::GENERAL_BEGIN; i <= EQEmu::legacy::GENERAL_END; ++i) {
 		ItemInst *item = GetInv().GetItem(i);
 		if (!item) {
 			free_slot = i;
@@ -5758,7 +5758,7 @@ void Client::ProcessInspectRequest(Client* requestee, Client* requester) {
 			}
 		}
 
-		inst = requestee->GetInv().GetItem(SlotPowerSource);
+		inst = requestee->GetInv().GetItem(EQEmu::legacy::SlotPowerSource);
 
 		if(inst) {
 			item = inst->GetItem();
@@ -5772,7 +5772,7 @@ void Client::ProcessInspectRequest(Client* requestee, Client* requester) {
 				insr->itemicons[SoF::inventory::SlotPowerSource] = 0xFFFFFFFF;
 		}
 
-		inst = requestee->GetInv().GetItem(SlotAmmo);
+		inst = requestee->GetInv().GetItem(EQEmu::legacy::SlotAmmo);
 
 		if(inst) {
 			item = inst->GetItem();
@@ -6135,7 +6135,7 @@ void Client::SendZonePoints()
 	while(iterator.MoreElements())
 	{
 		ZonePoint* data = iterator.GetData();
-		if(GetClientVersionBit() & data->client_version_mask)
+		if(ClientVersionBit() & data->client_version_mask)
 		{
 			count++;
 		}
@@ -6152,7 +6152,7 @@ void Client::SendZonePoints()
 	while(iterator.MoreElements())
 	{
 		ZonePoint* data = iterator.GetData();
-		if(GetClientVersionBit() & data->client_version_mask)
+		if(ClientVersionBit() & data->client_version_mask)
 		{
 			zp->zpe[i].iterator = data->number;
 			zp->zpe[i].x = data->target_x;
@@ -6313,8 +6313,8 @@ void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_overrid
 	made_npc->Corrup = GetCorrup();
 	made_npc->PhR = GetPhR();
 	// looks
-	made_npc->texture = GetEquipmentMaterial(MaterialChest);
-	made_npc->helmtexture = GetEquipmentMaterial(MaterialHead);
+	made_npc->texture = GetEquipmentMaterial(EQEmu::legacy::MaterialChest);
+	made_npc->helmtexture = GetEquipmentMaterial(EQEmu::legacy::MaterialHead);
 	made_npc->haircolor = GetHairColor();
 	made_npc->beardcolor = GetBeardColor();
 	made_npc->eyecolor1 = GetEyeColor1();
@@ -6325,9 +6325,9 @@ void Client::Doppelganger(uint16 spell_id, Mob *target, const char *name_overrid
 	made_npc->drakkin_heritage = GetDrakkinHeritage();
 	made_npc->drakkin_tattoo = GetDrakkinTattoo();
 	made_npc->drakkin_details = GetDrakkinDetails();
-	made_npc->d_melee_texture1 = GetEquipmentMaterial(MaterialPrimary);
-	made_npc->d_melee_texture2 = GetEquipmentMaterial(MaterialSecondary);
-	for (int i = EQEmu::constants::MATERIAL_BEGIN; i <= EQEmu::constants::MATERIAL_END; i++)	{
+	made_npc->d_melee_texture1 = GetEquipmentMaterial(EQEmu::legacy::MaterialPrimary);
+	made_npc->d_melee_texture2 = GetEquipmentMaterial(EQEmu::legacy::MaterialSecondary);
+	for (int i = EQEmu::legacy::MATERIAL_BEGIN; i <= EQEmu::legacy::MATERIAL_END; i++)	{
 		made_npc->armor_tint[i] = GetEquipmentColor(i);
 	}
 	made_npc->loottable_id = 0;
@@ -6872,7 +6872,7 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 	if(use_window) {
 		if(final_stats.size() < 4096)
 		{
-			uint32 Buttons = (client->GetClientVersion() < ClientVersion::SoD) ? 0 : 1;
+			uint32 Buttons = (client->ClientVersion() < EQEmu::versions::ClientVersion::SoD) ? 0 : 1;
 			client->SendWindow(0, POPUPID_UPDATE_SHOWSTATSWINDOW, Buttons, "Cancel", "Update", 0, 1, this, "", "%s", final_stats.c_str());
 			goto Extra_Info;
 		}
@@ -6908,7 +6908,7 @@ void Client::SendStatsWindow(Client* client, bool use_window)
 }
 
 void Client::SendAltCurrencies() {
-	if(GetClientVersion() >= ClientVersion::SoF) {
+	if (ClientVersion() >= EQEmu::versions::ClientVersion::SoF) {
 		uint32 count = zone->AlternateCurrencies.size();
 		if(count == 0) {
 			return;
@@ -7459,7 +7459,7 @@ void Client::SendMercPersonalInfo()
 
 	if(mercData)
 	{
-		if (GetClientVersion() >= ClientVersion::RoF)
+		if (ClientVersion() >= EQEmu::versions::ClientVersion::RoF)
 		{
 			if (mercCount > 0)
 			{
@@ -7570,7 +7570,7 @@ void Client::SendClearMercInfo()
 
 void Client::DuplicateLoreMessage(uint32 ItemID)
 {
-	if (!(m_ClientVersionBit & BIT_RoFAndLater))
+	if (!(m_ClientVersionBit & EQEmu::versions::bit_RoFAndLater))
 	{
 		Message_StringID(0, PICK_LORE);
 		return;
@@ -7603,7 +7603,7 @@ void Client::GarbleMessage(char *message, uint8 variance)
 	for (size_t i = 0; i < strlen(message); i++) {
 		// Client expects hex values inside of a text link body
 		if (message[i] == delimiter) {
-			if (!(delimiter_count & 1)) { i += EQEmu::constants::TEXT_LINK_BODY_LENGTH; }
+			if (!(delimiter_count & 1)) { i += EQEmu::legacy::TEXT_LINK_BODY_LENGTH; }
 			++delimiter_count;
 			continue;
 		}
@@ -8028,17 +8028,17 @@ void Client::TickItemCheck()
 	if(zone->tick_items.empty()) { return; }
 
 	//Scan equip slots for items
-	for (i = EQEmu::constants::EQUIPMENT_BEGIN; i <= EQEmu::constants::EQUIPMENT_END; i++)
+	for (i = EQEmu::legacy::EQUIPMENT_BEGIN; i <= EQEmu::legacy::EQUIPMENT_END; i++)
 	{
 		TryItemTick(i);
 	}
 	//Scan main inventory + cursor
-	for (i = EQEmu::constants::GENERAL_BEGIN; i <= SlotCursor; i++)
+	for (i = EQEmu::legacy::GENERAL_BEGIN; i <= EQEmu::legacy::SlotCursor; i++)
 	{
 		TryItemTick(i);
 	}
 	//Scan bags
-	for (i = EQEmu::constants::GENERAL_BAGS_BEGIN; i <= EQEmu::constants::CURSOR_BAG_END; i++)
+	for (i = EQEmu::legacy::GENERAL_BAGS_BEGIN; i <= EQEmu::legacy::CURSOR_BAG_END; i++)
 	{
 		TryItemTick(i);
 	}
@@ -8054,7 +8054,7 @@ void Client::TryItemTick(int slot)
 
 	if(zone->tick_items.count(iid) > 0)
 	{
-		if (GetLevel() >= zone->tick_items[iid].level && zone->random.Int(0, 100) >= (100 - zone->tick_items[iid].chance) && (zone->tick_items[iid].bagslot || slot <= EQEmu::constants::EQUIPMENT_END))
+		if (GetLevel() >= zone->tick_items[iid].level && zone->random.Int(0, 100) >= (100 - zone->tick_items[iid].chance) && (zone->tick_items[iid].bagslot || slot <= EQEmu::legacy::EQUIPMENT_END))
 		{
 			ItemInst* e_inst = (ItemInst*)inst;
 			parse->EventItem(EVENT_ITEM_TICK, this, e_inst, nullptr, "", slot);
@@ -8062,9 +8062,9 @@ void Client::TryItemTick(int slot)
 	}
 
 	//Only look at augs in main inventory
-	if (slot > EQEmu::constants::EQUIPMENT_END) { return; }
+	if (slot > EQEmu::legacy::EQUIPMENT_END) { return; }
 
-	for (int x = AUG_INDEX_BEGIN; x < EQEmu::constants::ITEM_COMMON_SIZE; ++x)
+	for (int x = AUG_INDEX_BEGIN; x < EQEmu::legacy::ITEM_COMMON_SIZE; ++x)
 	{
 		ItemInst * a_inst = inst->GetAugment(x);
 		if(!a_inst) { continue; }
@@ -8085,17 +8085,17 @@ void Client::TryItemTick(int slot)
 void Client::ItemTimerCheck()
 {
 	int i;
-	for (i = EQEmu::constants::EQUIPMENT_BEGIN; i <= EQEmu::constants::EQUIPMENT_END; i++)
+	for (i = EQEmu::legacy::EQUIPMENT_BEGIN; i <= EQEmu::legacy::EQUIPMENT_END; i++)
 	{
 		TryItemTimer(i);
 	}
 
-	for (i = EQEmu::constants::GENERAL_BEGIN; i <= SlotCursor; i++)
+	for (i = EQEmu::legacy::GENERAL_BEGIN; i <= EQEmu::legacy::SlotCursor; i++)
 	{
 		TryItemTimer(i);
 	}
 
-	for (i = EQEmu::constants::GENERAL_BAGS_BEGIN; i <= EQEmu::constants::CURSOR_BAG_END; i++)
+	for (i = EQEmu::legacy::GENERAL_BAGS_BEGIN; i <= EQEmu::legacy::CURSOR_BAG_END; i++)
 	{
 		TryItemTimer(i);
 	}
@@ -8117,11 +8117,11 @@ void Client::TryItemTimer(int slot)
 		++it_iter;
 	}
 
-	if (slot > EQEmu::constants::EQUIPMENT_END) {
+	if (slot > EQEmu::legacy::EQUIPMENT_END) {
 		return;
 	}
 
-	for (int x = AUG_INDEX_BEGIN; x < EQEmu::constants::ITEM_COMMON_SIZE; ++x)
+	for (int x = AUG_INDEX_BEGIN; x < EQEmu::legacy::ITEM_COMMON_SIZE; ++x)
 	{
 		ItemInst * a_inst = inst->GetAugment(x);
 		if(!a_inst) {
@@ -8409,12 +8409,12 @@ void Client::ShowNumHits()
 int Client::GetQuiverHaste(int delay)
 {
 	const ItemInst *pi = nullptr;
-	for (int r = EQEmu::constants::GENERAL_BEGIN; r <= EQEmu::constants::GENERAL_END; r++) {
+	for (int r = EQEmu::legacy::GENERAL_BEGIN; r <= EQEmu::legacy::GENERAL_END; r++) {
 		pi = GetInv().GetItem(r);
 		if (pi && pi->IsType(ItemClassContainer) && pi->GetItem()->BagType == BagTypeQuiver &&
 		    pi->GetItem()->BagWR > 0)
 			break;
-		if (r == EQEmu::constants::GENERAL_END)
+		if (r == EQEmu::legacy::GENERAL_END)
 			// we will get here if we don't find a valid quiver
 			return 0;
 	}
@@ -8455,7 +8455,7 @@ void Client::QuestReward(Mob* target, uint32 copper, uint32 silver, uint32 gold,
 		AddMoneyToPP(copper, silver, gold, platinum, false);
 
 	if (itemid > 0)
-		SummonItem(itemid, 0, 0, 0, 0, 0, 0, false, SlotPowerSource);
+		SummonItem(itemid, 0, 0, 0, 0, 0, 0, false, EQEmu::legacy::SlotPowerSource);
 
 	if (faction)
 	{

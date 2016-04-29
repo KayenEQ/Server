@@ -73,7 +73,7 @@ Mob::Mob(const char* in_name,
 		uint32		in_drakkin_heritage,
 		uint32		in_drakkin_tattoo,
 		uint32		in_drakkin_details,
-		uint32		in_armor_tint[MaterialCount],
+		uint32		in_armor_tint[EQEmu::legacy::MaterialCount],
 
 		uint8		in_aa_title,
 		uint8		in_see_invis, // see through invis/ivu
@@ -281,7 +281,7 @@ Mob::Mob(const char* in_name,
 		RangedProcs[j].level_override = -1;
 	}
 
-	for (i = 0; i < MaterialCount; i++)
+	for (i = 0; i < EQEmu::legacy::MaterialCount; i++)
 	{
 		if (in_armor_tint)
 		{
@@ -1396,7 +1396,7 @@ void Mob::SendHPUpdate(bool skip_self)
 	CreateHPPacket(&hp_app);
 
 	// send to people who have us targeted
-	entity_list.QueueClientsByTarget(this, &hp_app, false, 0, false, true, BIT_AllClients);
+	entity_list.QueueClientsByTarget(this, &hp_app, false, 0, false, true, EQEmu::versions::bit_AllClients);
 	entity_list.QueueClientsByXTarget(this, &hp_app, false);
 	entity_list.QueueToGroupsForNPCHealthAA(this, &hp_app);
 
@@ -2491,8 +2491,8 @@ bool Mob::CanThisClassDualWield(void) const {
 		return(GetSkill(SkillDualWield) > 0);
 	}
 	else if(CastToClient()->HasSkill(SkillDualWield)) {
-		const ItemInst* pinst = CastToClient()->GetInv().GetItem(SlotPrimary);
-		const ItemInst* sinst = CastToClient()->GetInv().GetItem(SlotSecondary);
+		const ItemInst* pinst = CastToClient()->GetInv().GetItem(EQEmu::legacy::SlotPrimary);
+		const ItemInst* sinst = CastToClient()->GetInv().GetItem(EQEmu::legacy::SlotSecondary);
 
 		// 2HS, 2HB, or 2HP
 		if(pinst && pinst->IsWeapon()) {
@@ -2977,7 +2977,7 @@ int32 Mob::GetEquipmentMaterial(uint8 material_slot) const
 	if (item != 0)
 	{
 		// For primary and secondary we need the model, not the material
-		if (material_slot == MaterialPrimary || material_slot == MaterialSecondary)
+		if (material_slot == EQEmu::legacy::MaterialPrimary || material_slot == EQEmu::legacy::MaterialSecondary)
 		{
 			if (this->IsClient())
 			{
@@ -3021,7 +3021,7 @@ int32 Mob::GetEquipmentMaterial(uint8 material_slot) const
 int32 Mob::GetHerosForgeModel(uint8 material_slot) const
 {
 	uint32 HeroModel = 0;
-	if (material_slot >= 0 && material_slot < MaterialPrimary)
+	if (material_slot >= 0 && material_slot < EQEmu::legacy::MaterialPrimary)
 	{
 		uint32 ornamentationAugtype = RuleI(Character, OrnamentationAugmentType);
 		const Item_Struct *item;
@@ -5184,7 +5184,7 @@ uint16 Mob::GetSkillByItemType(int ItemType)
 		case ItemType2HBlunt:
 			return Skill2HBlunt;
 		case ItemType2HPiercing:
-			if (IsClient() && CastToClient()->GetClientVersion() < ClientVersion::RoF2)
+			if (IsClient() && CastToClient()->ClientVersion() < EQEmu::versions::ClientVersion::RoF2)
 				return Skill1HPiercing;
 			else
 				return Skill2HPiercing;
@@ -7201,7 +7201,7 @@ bool Mob::TrySpellProjectileCustom(Mob* spell_target,  uint16 spell_id){
 	//Coded narrowly for Enchanter effect.
 	if ((strcmp(item_IDFile, "PROJECTILE_WPN")) == 0){
 		if (IsClient() && CastToClient()->IsEnchantedBladeEquiped()) {
-			ItemInst* inst = CastToClient()->m_inv.GetItem(SlotRange);
+			ItemInst* inst = CastToClient()->m_inv.GetItem(EQEmu::legacy::SlotRange);
 			if (inst && inst->GetItem()) 
 				 item_IDFile = inst->GetItem()->IDFile;
 			else 
@@ -8141,7 +8141,7 @@ bool Client::IsEnchantedBladeEquiped()
 	if (GetClass() != ENCHANTER)
 		return false;
 
-	ItemInst* inst = m_inv.GetItem(SlotRange);
+	ItemInst* inst = m_inv.GetItem(EQEmu::legacy::SlotRange);
 	
 	if (inst && inst->GetItem()){
 		uint16 spell_id = inst->GetItem()->Worn.Effect;
@@ -9263,8 +9263,8 @@ void Client::RelequishFlesh(uint16 spell_id, Mob *target, const char *name_overr
 	made_npc->Corrup = GetCorrup();
 	made_npc->max_hp = GetMaxHP();
 	// looks
-	made_npc->texture = GetEquipmentMaterial(MaterialChest);
-	made_npc->helmtexture = GetEquipmentMaterial(MaterialHead);
+	made_npc->texture = GetEquipmentMaterial(EQEmu::legacy::MaterialChest);
+	made_npc->helmtexture = GetEquipmentMaterial(EQEmu::legacy::MaterialHead);
 	made_npc->haircolor = GetHairColor();
 	made_npc->beardcolor = GetBeardColor();
 	made_npc->eyecolor1 = GetEyeColor1();
@@ -9275,9 +9275,9 @@ void Client::RelequishFlesh(uint16 spell_id, Mob *target, const char *name_overr
 	made_npc->drakkin_heritage = GetDrakkinHeritage();
 	made_npc->drakkin_tattoo = GetDrakkinTattoo();
 	made_npc->drakkin_details = GetDrakkinDetails();
-	made_npc->d_melee_texture1 = 0;
-	made_npc->d_melee_texture2 = 0;
-	for (int i = EQEmu::constants::MATERIAL_BEGIN; i <= EQEmu::constants::MATERIAL_END; i++)	{
+	made_npc->d_melee_texture1 = GetEquipmentMaterial(EQEmu::legacy::MaterialPrimary);
+	made_npc->d_melee_texture2 = GetEquipmentMaterial(EQEmu::legacy::MaterialSecondary);
+	for (int i = EQEmu::legacy::MATERIAL_BEGIN; i <= EQEmu::legacy::MATERIAL_END; i++)	{
 		made_npc->armor_tint[i] = GetEquipmentColor(i);
 	}
 	made_npc->loottable_id = 0;
@@ -9620,7 +9620,7 @@ void Mob::BuffFastProcess()
 			if (buffs[buffs_i].fastticsremaining == 0) 
 				BuffFadeBySlot(buffs_i);
 
-			if(IsClient() && !(CastToClient()->GetClientVersionBit() & BIT_SoFAndLater))
+			if(IsClient() && !(CastToClient()->ClientVersionBit() & EQEmu::versions::bit_SoFAndLater))
 				buffs[buffs_i].UpdateClient = true;
 
 			if(IsClient())
@@ -9629,7 +9629,7 @@ void Mob::BuffFastProcess()
 				{
 					CastToClient()->SendBuffDurationPacket(buffs[buffs_i]);
 					// Hack to get UF to play nicer, RoF seems fine without it
-					if (CastToClient()->GetClientVersion() == ClientVersion::UF && buffs[buffs_i].numhits > 0)
+					if (CastToClient()->ClientVersion() == EQEmu::versions::ClientVersion::UF && buffs[buffs_i].numhits > 0)
 						CastToClient()->SendBuffNumHitPacket(buffs[buffs_i], buffs_i);
 					buffs[buffs_i].UpdateClient = false;
 				}
@@ -10100,7 +10100,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 
 	//make sure we have a proper weapon if we are a client.
 	if(IsClient()) {
-		const ItemInst *wpn = CastToClient()->GetInv().GetItem(SlotPrimary);
+		const ItemInst *wpn = CastToClient()->GetInv().GetItem(EQEmu::legacy::SlotPrimary);
 		if(!wpn || (wpn->GetItem()->ItemType != ItemType1HPiercing)){
 			Message_StringID(13, BACKSTAB_WEAPON);
 			return;
@@ -10150,7 +10150,7 @@ void Mob::TryBackstabSpellEffect(Mob *other) {
 		}
 	}
 	else { //We do a single regular attack if we attack from the front without chaotic stab
-		Attack(other, SlotPrimary, false,false,true);
+		Attack(other, EQEmu::legacy::SlotPrimary, false,false,true);
 	}
 }
 
@@ -10169,11 +10169,11 @@ void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
 
 	if(IsClient()){
 		const ItemInst *wpn = nullptr;
-		wpn = CastToClient()->GetInv().GetItem(SlotPrimary);
+		wpn = CastToClient()->GetInv().GetItem(EQEmu::legacy::SlotPrimary);
 		if(wpn) {
 			primaryweapondamage = GetWeaponDamage(other, wpn);
 			backstab_dmg = wpn->GetItem()->BackstabDmg;
-			for (int i = 0; i < EQEmu::constants::ITEM_COMMON_SIZE; ++i)
+			for (int i = 0; i < EQEmu::legacy::ITEM_COMMON_SIZE; ++i)
 			{
 				ItemInst *aug = wpn->GetAugment(i);
 				if(aug)
@@ -10246,7 +10246,7 @@ void Mob::TryBackstabHeal(Mob* other, uint16 spell_id)
 		return;
 
 	if(IsClient()) {
-		const ItemInst *wpn = CastToClient()->GetInv().GetItem(SlotPrimary);
+		const ItemInst *wpn = CastToClient()->GetInv().GetItem(EQEmu::legacy::SlotPrimary);
 		if(!wpn || (wpn->GetItem()->ItemType != ItemType1HPiercing)){
 			Message_StringID(13, BACKSTAB_WEAPON);
 			return;
@@ -10338,8 +10338,8 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	if (!numattacks)
 		return;
 
-	const ItemInst* RangeWeapon = m_inv[SlotRange];
-	const ItemInst* Ammo = m_inv[SlotAmmo];
+	const ItemInst* RangeWeapon = m_inv[EQEmu::legacy::SlotRange];
+	const ItemInst* Ammo = m_inv[EQEmu::legacy::SlotAmmo];
 
 	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)) 
 		return;
@@ -10412,7 +10412,7 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 		speed = zone->random.Real(3.5, 4.5);//So they don't all clump
 	for(int x = 0; x < numattacks; x++){
 		if (!HasDied()){
-			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, SlotAmmo, speed, _spell_id, dmod, dmgpct);
+			DoArcheryAttackDmg(target,  RangeWeapon, Ammo, 0, hit_chance, 0, 0, 0, 0, AmmoItem, EQEmu::legacy::SlotAmmo, speed, _spell_id, dmod, dmgpct);
 		}
 	}
 }
@@ -10500,8 +10500,8 @@ bool Mob::RangeDiscCombatRange(uint32 target_id, uint16 spell_id)
 
 float Client::GetArcheryRange(Mob* other, bool ItemCheck)
 {
-	const ItemInst* RangeWeapon = m_inv[SlotRange];
-	const ItemInst* Ammo = m_inv[SlotAmmo];
+	const ItemInst* RangeWeapon = m_inv[EQEmu::legacy::SlotRange];
+	const ItemInst* Ammo = m_inv[EQEmu::legacy::SlotAmmo];
 
 	if (!RangeWeapon || !RangeWeapon->IsType(ItemClassCommon)){ 
 		Message(13, "You must have a ranged weapon equiped!");
@@ -10534,8 +10534,8 @@ float Client::GetArcheryRange(Mob* other, bool ItemCheck)
 		material = RangeItem->Material;
 
 	if (material){
-		WearChange(MaterialPrimary, 0, 0);
-		WearChange(MaterialSecondary, material, 0);
+		WearChange(EQEmu::legacy::MaterialPrimary, 0, 0);
+		WearChange(EQEmu::legacy::MaterialSecondary, material, 0);
 	}
 
 	if (ItemCheck)
@@ -11620,8 +11620,8 @@ void Mob::SpawnProjectileGraphicArcheryTempPet(GFX type, uint16 spell_id, float 
 
 	uint32 gfx_npctype_id = 1001001;
 
-	int ammo_slot = SlotAmmo;
-	const ItemInst* Ammo = CastToClient()->m_inv[SlotAmmo];
+	int ammo_slot = EQEmu::legacy::SlotAmmo;
+	const ItemInst* Ammo = CastToClient()->m_inv[EQEmu::legacy::SlotAmmo];
 	if (!Ammo || !Ammo->IsType(ItemClassCommon)) 
 		return;
 	const Item_Struct* AmmoItem = Ammo->GetItem();
@@ -12794,7 +12794,7 @@ void Mob::ReverseResourceTap(int32 damage, uint16 spellid)
 
 uint16 Client::GetRangedWeaponGraphic()
 {
-	const ItemInst* RangeWeapon = m_inv[SlotRange];
+	const ItemInst* RangeWeapon = m_inv[EQEmu::legacy::SlotRange];
 	if (!RangeWeapon)
 		return 0;
 
