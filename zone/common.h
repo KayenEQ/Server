@@ -532,6 +532,7 @@ struct StatBonuses {
 	int16 WeaponProcCustom4[2];					// 0=spell_id, 1=ChanceMod
 	int16 Manaflux;								// Pct focus
 	bool TriggerOnResourcePct;					//
+	int16 ArcheryDistanceDmgMod;				//
 
 
 	int32 AvoidMeleeChanceStack;				// implemented
@@ -692,6 +693,13 @@ typedef struct
 	uint16 increment;
 	uint16 hit_increment;
 } tProjring; //Target ring projectiles
+
+typedef struct
+{
+	uint16 increment;
+	uint16 hit_increment;
+	uint16 distance;
+} tWindcall; //Windcall
 
 typedef struct
 {

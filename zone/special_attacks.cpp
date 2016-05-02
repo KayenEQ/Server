@@ -858,8 +858,6 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 				
 				ProjectileImpact = true;
 
-				ProjectileImpact = true;
-
 				if (weapon_damage == 0)
 					ProjectileMiss = true; //This indicates that MISS was originally calculated.
 
@@ -981,13 +979,19 @@ void Mob::DoArcheryAttackDmg(Mob* other,  const ItemInst* RangeWeapon, const Ite
 			if (!HeadShot)
 				other->AvoidDamage(this, TotalDmg, EQEmu::legacy::SlotRange);
 
-			if (dmod)
-				TotalDmg = TotalDmg*dmod/100; //C!Kayen
-
-			TotalDmg += TotalDmg * dmgpct / 100;  //C!Kayen
-
 			other->MeleeMitigation(this, TotalDmg, minDmg);
 			if(TotalDmg > 0){
+
+				Shout("1 DMOD Archery Debug:: Total %i Bonus %i [FIX TRUESHOT]", TotalDmg, dmod);
+				if (dmod)
+					TotalDmg = TotalDmg*dmod/100; //C!Kayen - Distance Modifier [Innate] [Fix for TRUESHOT TO OVERRIDE INNATE]
+
+				Shout("2 DMOD Archery Debug:: Total %i Bonus %i", TotalDmg, dmod);
+
+				Shout("1 DPCT Archery Debug:: Total %i Bonus %i", TotalDmg, dmgpct);
+				TotalDmg += TotalDmg * dmgpct / 100;  //C!Kayen - Damage Modifier from Spell Effect Archery
+				Shout("2 DPCT Archery Debug:: Total %i Bonus %i", TotalDmg, dmgpct);
+
 				CommonOutgoingHitSuccess(other, TotalDmg, SkillArchery);
 				TotalDmg = mod_archery_damage(TotalDmg, dobonus, RangeWeapon);
 			}
@@ -1058,8 +1062,10 @@ bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes
 	float distance = other->CalculateDistance(GetX(), GetY(), GetZ());
 	float hit = 60.0f + (distance / speed_mod); //Calcuation: 60 = Animation Lag, 1.8 = Speed modifier for speed of (4)
 
-	if (dmod == -1)
-		dmod = distance * 0.8f; //C!Kayen - Ranger innate Distance Damage modifier 250 ~= 2x damage (-1 is From Archery Attack)
+	if (dmod == -1){
+		int16 ArcheryDistanceDmgMod = spellbonuses.ArcheryDistanceDmgMod + itembonuses.ArcheryDistanceDmgMod + aabonuses.ArcheryDistanceDmgMod;
+		dmod = (distance * ArcheryDistanceDmgMod)/100; //C!Kayen - Ranger innate Distance Damage modifier 250 ~= 2x damage (-1 is From Archery Attack) [0.8f]
+	}
 
 	ProjectileAtk[slot].increment = 1;
 	ProjectileAtk[slot].hit_increment = static_cast<uint16>(hit); //This projected hit time if target does NOT MOVE
@@ -1079,6 +1085,8 @@ bool Mob::TryProjectileAttack(Mob* other, const Item_Struct *item, SkillUseTypes
 	ProjectileAtk[slot].skill = skillInUse;
 	ProjectileAtk[slot].speed_mod = speed_mod;
 	ProjectileAtk[slot].spell_id = spell_id; //C!Kayen
+
+	other->Shout("DMOD CHECK %i %i [New %i]",dmod, other->GetSpellPowerDistanceMod(),GetArcheryDistanceDmgModStack());
 
 	if (dmod)
 		ProjectileAtk[slot].dmod = dmod; //C!Kayen;
@@ -1142,14 +1150,15 @@ void Mob::ProjectileAttack()
 				else
 				{
 					if (ProjectileAtk[i].skill == SkillArchery)
-						DoArcheryAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0,ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_id, nullptr, ProjectileAtk[i].ammo_slot);
+						DoArcheryAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0,ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_id, nullptr, ProjectileAtk[i].ammo_slot,
+						0,SPELL_UNKNOWN,ProjectileAtk[i].dmod,ProjectileAtk[i].dmgpct); //C!Kayen
 					else if (ProjectileAtk[i].skill == SkillThrowing)
 						DoThrowingAttackDmg(target, nullptr, nullptr,ProjectileAtk[i].wpn_dmg,0,0,0, ProjectileAtk[i].ranged_id, ProjectileAtk[i].ammo_slot);
 					else if (ProjectileAtk[i].skill == SkillConjuration && IsValidSpell(ProjectileAtk[i].wpn_dmg))
 						SpellOnTarget(ProjectileAtk[i].wpn_dmg, target, false, true, spells[ProjectileAtk[i].wpn_dmg].ResistDiff, true);
 				}
 
-				if (ProjectileAtk[i].spell_id != SPELL_UNKNOWN)//C!Kayen
+				if (ProjectileAtk[i].spell_id != SPELL_UNKNOWN)//C!Kayen - This is for firing off a spell projectile from archery mostly
 					TryApplyEffectProjectileHit(ProjectileAtk[i].spell_id, target);
 
 			}

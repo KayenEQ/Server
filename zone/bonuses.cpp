@@ -1461,7 +1461,7 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 			break;
 
 		case SE_Manaflux:
-			newbon->Manaflux = base1;
+			newbon->Manaflux += base1;
 			break;
 
 		case SE_MeleeManaTap:
@@ -1510,6 +1510,10 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 
 		case SE_ManaAbsorbPercentDamageStack:			
 			newbon->ManaAbsorbPercentDamageStack += base1;
+			break;
+
+		case SE_ArcheryDistanceDmgMod:
+			newbon->ArcheryDistanceDmgMod += base1;
 			break;
 
 		//C!Kayen - END
@@ -3593,11 +3597,16 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				break;
 
 			case SE_Manaflux:
-				new_bonus->Manaflux = effect_value;
+				new_bonus->Manaflux += effect_value;
 				break;
 			
 			case SE_TriggerOnResourcePct:
 				new_bonus->TriggerOnResourcePct = true;
+				break;
+
+			case SE_ArcheryDistanceDmgMod:
+				new_bonus->ArcheryDistanceDmgMod += effect_value;
+				break;
 
 			//Special Bonus stacks
 			case SE_AvoidMeleeChanceStack:

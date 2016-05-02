@@ -1409,11 +1409,15 @@ public:
 	void TriggerOnResourcePct();
 	void TriggerOnResourcePctEffect(int buffslot, uint16 spell_id, uint16 caster_id);
 
+	void SetWindcall();
+	void Windcall();
+
 
 	//Custom Bonuses
 
 	//V1
 	inline int16 GetMitigateAllDamageStack() const { return spellbonuses.MitigateAllDamage + itembonuses.MitigateAllDamage + aabonuses.MitigateAllDamage; }
+	inline int16 GetArcheryDistanceDmgModStack() const { return spellbonuses.ArcheryDistanceDmgMod + itembonuses.ArcheryDistanceDmgMod + aabonuses.ArcheryDistanceDmgMod; }
 
 	//V2
 	inline int32 GetAvoidMeleeChanceStack() const { return spellbonuses.AvoidMeleeChanceStack + itembonuses.AvoidMeleeChanceStack + aabonuses.AvoidMeleeChanceStack; }
@@ -1808,6 +1812,7 @@ protected:
 	tLeapSE leapSE;
 	tgflux gflux;
 	tfling fling;
+	tWindcall windcall;
 
 	glm::vec3 m_FlingLocation;
 
@@ -1882,6 +1887,7 @@ protected:
 	tCascade cascade;
 
 	Timer trigger_on_resource_timer;
+	Timer windcall_timer;
 	
 private:
 	void _StopSong(); //this is not what you think it is

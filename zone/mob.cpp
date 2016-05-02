@@ -475,6 +475,10 @@ Mob::Mob(const char* in_name,
 	fling.hit_increment = 0;
 	m_FlingLocation = glm::vec3();
 
+	windcall.increment = 0;
+	windcall.hit_increment = 0;
+	windcall.distance = 0;
+
 	for (int i = 0; i < MAX_SPELL_PROJECTILE; i++)
 	{
 		ProjectileRing[i].increment = 0;
@@ -542,6 +546,7 @@ Mob::Mob(const char* in_name,
 	leapSE_timer.Disable();
 	displaycastingtimer_timer.Disable();
 	trigger_on_resource_timer.Disable();
+	windcall_timer.Disable();
 
 }
 
@@ -10195,7 +10200,7 @@ void Mob::DoBackstabSpellEffect(Mob* other, bool min_damage)
 			hate = 20 * backstab_dmg * GetSkill(Skill1HPiercing) / 355;
 		}
 		else{
-			max_hit = (((2*backstab_dmg) * GetDamageTable(Skill1HPiercing) / 100) * 10 * GetSkill(Skill1HPiercing) / 355) + 1;;
+			max_hit = (((2*backstab_dmg) * GetDamageTable(Skill1HPiercing) / 100) * 10 * GetSkill(Skill1HPiercing) / 355) + 1;
 			hate = 20 * backstab_dmg * GetSkill(Skill1HPiercing) / 355;
 		}
 
@@ -10362,7 +10367,7 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 	int16 dmgpct = spells[spell_id].base2[i];
 	int16 dmod = -1;
 
-	if (GetSpellPowerDistanceMod())
+	if (target->GetSpellPowerDistanceMod())//This is actually set when the struct is filled. If zero will use from spell file.
 		dmod = 0;
 
 	if (IsNoTargetRequiredSpell(spell_id)) {
@@ -10394,13 +10399,11 @@ void Client::ArcheryAttackSpellEffect(Mob* target, uint16 spell_id, int i)
 
 	if (spells[spell_id].MinResist){
 		int ratio_modifier = 0;
-		int dmod = 0;
 
 		if (PassEffectLimitToDirection(target, spell_id)){
 			ratio_modifier = 101 - static_cast<int>(target->GetHPRatio());
 			if (ratio_modifier > 0){
-				dmod = CalcDistributionModifer(ratio_modifier, 1, 100, spells[spell_id].MinResist, spells[spell_id].MaxResist);
-				dmgpct = dmod + 1;
+				dmgpct = CalcDistributionModifer(ratio_modifier, 1, 100, spells[spell_id].MinResist, spells[spell_id].MaxResist) + 1;
 			}
 		}
 	}
@@ -12891,6 +12894,33 @@ void Mob::TriggerOnResourcePctEffect(int buffslot, uint16 spell_id, uint16 caste
 	}
 
 	BuffFadeBySlot(buffslot);
+}
+
+void Mob::SetWindcall()
+{
+	float dX = GetX(); float dY = GetY(); float dZ= GetZ();
+	int dist_los = GetFurthestLocationLOS(GetReverseHeading(GetHeading()), 5, 225, dX, dY, dZ);
+	windcall.increment = 0;
+	windcall.hit_increment = 14; //Keep static for now
+	windcall.distance = dist_los;
+	
+	windcall_timer.Start(100);
+}
+
+void Mob::Windcall()
+{
+	windcall.increment++;
+
+	if (windcall.increment >= windcall.hit_increment){
+		int new_end = 1 + ((windcall.distance * 44)/100); //(44 = 100/MaxDist) //Max = 225
+		new_end = (CastToClient()->GetMaxEndurance() * new_end)/100;
+		CastToClient()->SetEndurance(CastToClient()->GetEndurance() + new_end);
+		windcall.increment = 0;
+		windcall.hit_increment = 0;
+		windcall.distance = 0;
+		windcall_timer.Disable();
+	}
+
 }
 
 

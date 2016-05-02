@@ -34,6 +34,7 @@
 
 //C!Kayen - Custom Defines
 #define SPELL_BRAVERY 105
+#define SPELL_WINDCALL 109
 #define SPELL_FEROCITY 112
 #define SPELL_FAITH 610
 #define SPELL_LOSE_FAITH_1 605
@@ -810,6 +811,7 @@ typedef enum {
 #define SE_CastFromPetOwner				1132 // implemented - Flag to have spell cast from pet be channeled through owner.
 #define SE_Manaflux						1133 // implemented - Bonus to enchanter spell power from mana mod.
 #define SE_TriggerOnResourcePct			1135 // NOT implemented - Base (1/HP :: 2/Mana :: 3/Endur) Limit Spell ID Max: Percent
+#define SE_ArcheryDistanceDmgMod		1136 // Damage modifier based on distance from
 
 #define SE_AvoidMeleeChanceStack		1200 // implemented
 #define SE_HitChanceStack				1201 // implemented

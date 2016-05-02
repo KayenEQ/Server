@@ -517,6 +517,9 @@ bool Client::Process() {
 		if (trigger_on_resource_timer.Check())
 			TriggerOnResourcePct();
 
+		if (windcall_timer.Check())
+			Windcall();
+
 		//C!Kayen END
 
 		if(spellbonuses.GravityEffect == 1) {

@@ -2125,14 +2125,15 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				double new_x = spells[spell_id].pushback * sin(double(look_heading * 3.141592 / 180.0));
 				double new_y = spells[spell_id].pushback * cos(double(look_heading * 3.141592 / 180.0));
 
-
-				//C!Kayen - Foward Leap effect with trigger must have max set.
-				if (spells[spell_id].max[i] == 1)
+								
+				if (spells[spell_id].max[i] == 1)//C!Kayen - Foward Leap effect with trigger must have max set.
 					SetLeapEffect(spell_id);
 
-				//C!Kayen - GFlux Timer power 500
-				if (spells[spell_id].max[i] == 2)
+				if (spells[spell_id].max[i] == 2)//C!Kayen - GFlux Timer power 500
 					SetGFluxEffectVars( spell_id, (spells[spell_id].base[i] * -1));
+
+				if (spell_id == SPELL_WINDCALL)//C!Kayen Ranger AA
+					SetWindcall();
 
 				EQApplicationPacket* outapp_push = new EQApplicationPacket(OP_ClientUpdate, sizeof(PlayerPositionUpdateServer_Struct));
 				PlayerPositionUpdateServer_Struct* spu = (PlayerPositionUpdateServer_Struct*)outapp_push->pBuffer;
