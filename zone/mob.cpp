@@ -3928,7 +3928,7 @@ int32 Mob::GetVulnerability(Mob* caster, uint32 spell_id, uint32 ticsremaining)
 	return value;
 }
 
-int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
+int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used, ExtraAttackOptions *opts)
 {
 	int skilldmg_mod = 0;
 
@@ -3937,6 +3937,9 @@ int16 Mob::GetSkillDmgTaken(const SkillUseTypes skill_used)
 					itembonuses.SkillDmgTaken[skill_used] + spellbonuses.SkillDmgTaken[skill_used];
 
 	skilldmg_mod += SkillDmgTaken_Mod[skill_used] + SkillDmgTaken_Mod[HIGHEST_SKILL+1];
+
+	if (opts)
+		skilldmg_mod += opts->skilldmgtaken_bonus_flat;
 
 	skilldmg_mod += GetWpnSkillDmgBonusAmt(); //C!Kayen
 	skilldmg_mod += GetScaleMitigationNumhits(); //C!Kayen
