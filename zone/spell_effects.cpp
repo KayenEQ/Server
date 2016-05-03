@@ -2853,7 +2853,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				if (caster){
 					bool FromBehind = false;
 					ExtraAttackOptions opts;
-					opts.damage_percent = 1;
+					//opts.damage_percent = 1; //This modified PRE mitigation damage
+					opts.melee_damage_bonus_flat = 0; //This modified POST mitigation damage [Works like "DamageModifier Spell Effect"]
 					opts.hit_chance = spells[spell_id].max[i];
 
 					int rake_mod = 0;
@@ -2873,8 +2874,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					if (GetMinAtks(spell_id)) //Number of attacks MIN for random amount of attacks [LightType].
 						numattacks = zone->random.Int(GetMinAtks(spell_id), spells[spell_id].base[i]);
 	
-					if (spells[spell_id].base2[i])
-						opts.damage_percent = static_cast<float>(spells[spell_id].base2[i] + rake_mod + 100.0f)/100.0f;
+					if (spells[spell_id].base2[i]){
+						//opts.damage_percent = static_cast<float>(spells[spell_id].base2[i] + rake_mod + 100.0f)/100.0f;
+						opts.melee_damage_bonus_flat = spells[spell_id].base2[i] + rake_mod;
+					}
 
 					if (spells[spell_id].HateAdded)
 						opts.hate_percent = static_cast<float>(spells[spell_id].HateAdded + 100.0f)/100.0f;
@@ -2886,10 +2889,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 						if (ratio_modifier > 0){
 							dmod = CalcDistributionModifer(ratio_modifier, 1, 25, spells[spell_id].MinResist, spells[spell_id].MaxResist);
-							opts.damage_percent = static_cast<float>(dmod + 100.0f)/100.0f;
+							//opts.damage_percent = static_cast<float>(dmod + 100.0f)/100.0f;
+							opts.melee_damage_bonus_flat = dmod;
 						}
-						else
-							opts.damage_percent = static_cast<float>(ratio_modifier + 100.0f)/100.0f;
+						else{
+							//opts.damage_percent = static_cast<float>(ratio_modifier + 100.0f)/100.0f;
+							opts.melee_damage_bonus_flat = ratio_modifier;
+						}
 					}
 
 					for(int x = 0; x < numattacks; x++){

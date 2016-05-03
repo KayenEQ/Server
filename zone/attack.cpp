@@ -294,7 +294,7 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 				attacker->itembonuses.HitChanceEffect[HIGHEST_SKILL+1] +
 				attacker->spellbonuses.HitChanceEffect[HIGHEST_SKILL+1] +
 				attacker->aabonuses.HitChanceEffect[HIGHEST_SKILL+1];
-
+	
 	//Accuracy = Spell Effect , HitChance = 'Accuracy' from Item Effect
 	//Only AA derived accuracy can be skill limited. ie (Precision of the Pathfinder, Dead Aim)
 	hitBonus += (attacker->itembonuses.Accuracy[HIGHEST_SKILL+1] +
@@ -344,7 +344,7 @@ bool Mob::CheckHitChance(Mob* other, SkillUseTypes skillinuse, int Hand, int16 c
 
 	float tohit_roll = zone->random.Real(0, 100);
 
-	Log.Out(Logs::Detail, Logs::Attack, "Final hit chance: %.2f%%. Hit roll %.2f", chancetohit, tohit_roll);
+	Log.Out(Logs::Detail, Logs::Attack, "Final hit chance: %.2f. Hit roll %.2f", chancetohit, tohit_roll);
 
 	return(tohit_roll <= chancetohit);
 }

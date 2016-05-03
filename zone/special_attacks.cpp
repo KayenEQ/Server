@@ -140,8 +140,11 @@ void Mob::DoSpecialAttackDamage(Mob *who, SkillUseTypes skill, int32 max_damage,
 		if (max_damage == -3)
 			DoRiposte(who);
 	} else {
+		Shout("DEBUG CHECK HIT CHANCE %i", who->CheckHitChance(this, skill, EQEmu::legacy::SlotPrimary));
 		if (HitChance || who->CheckHitChance(this, skill, EQEmu::legacy::SlotPrimary)) {
+			Shout("1 PASS HIT CHANCE: Damage %i", max_damage);
 			who->MeleeMitigation(this, max_damage, min_damage);
+			Shout("2 PASS HIT CHANCE: Damage %i", max_damage);
 			CommonOutgoingHitSuccess(who, max_damage, skill);
 		} else {
 			max_damage = 0;
