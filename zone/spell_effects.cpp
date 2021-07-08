@@ -3071,6 +3071,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_SkillProc:
 			case SE_SkillProcSuccess:
 			case SE_SpellResistReduction:
+			case SE_Luck_Amount:
+			case SE_Luck_Percent:
 			{
 				break;
 			}

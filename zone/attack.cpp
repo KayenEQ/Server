@@ -4444,7 +4444,10 @@ void Mob::TryCriticalHit(Mob *defender, DamageHitInfo &hit, ExtraAttackOptions *
 			// step 2: calculate damage
 			hit.damage_done = std::max(hit.damage_done, hit.base_damage) + 5;
 			int og_damage = hit.damage_done;
-			int crit_mod = 170 + GetCritDmgMod(hit.skill);
+			
+			bool IsLuckyCritical = TryLuckyCriticalHit();
+
+			int crit_mod = 170 + GetCritDmgMod(hit.skill, IsLuckyCritical);
 			if (crit_mod < 100) {
 				crit_mod = 100;
 			}
@@ -4513,18 +4516,33 @@ void Mob::TryCriticalHit(Mob *defender, DamageHitInfo &hit, ExtraAttackOptions *
 				}
 				return;
 			}
-
-			/* Normal Critical hit message */
-			entity_list.FilteredMessageCloseString(
-				this, /* Sender */
-				false, /* Skip Sender */
-				RuleI(Range, CriticalDamage),
-				Chat::MeleeCrit, /* Type: 301 */
-				FilterMeleeCrits, /* FilterType: 12 */
-				CRITICAL_HIT, /* MessageFormat: %1 scores a critical hit! (%2) */
-				GetCleanName(), /* Message1 */
-				itoa(hit.damage_done + hit.min_damage) /* Message2 */
-			);
+			if (IsLuckyCritical)
+			{
+				/* Lucky Critical hit message */
+				entity_list.FilteredMessageClose(
+					this, /* Sender */
+					false, /* Skip Sender */
+					RuleI(Range, CriticalDamage),
+					Chat::MeleeCrit, /* Type: 301 */
+					FilterMeleeCrits, /* FilterType: 12 */
+					"%s scores a lucky critcal hit!(%s)", GetCleanName(), (itoa(hit.damage_done + hit.min_damage))
+				);
+			}
+			else
+			{
+				/* Normal Critical hit message */
+				entity_list.FilteredMessageCloseString(
+					this, /* Sender */
+					false, /* Skip Sender */
+					RuleI(Range, CriticalDamage),
+					Chat::MeleeCrit, /* Type: 301 */
+					FilterMeleeCrits, /* FilterType: 12 */
+					CRITICAL_HIT, /* MessageFormat: %1 scores a critical hit! (%2) */
+					GetCleanName(), /* Message1 */
+					itoa(hit.damage_done + hit.min_damage) /* Message2 */
+				);
+				
+			}
 		}
 	}
 }

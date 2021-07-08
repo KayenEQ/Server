@@ -812,7 +812,7 @@ public:
 	void CastOnCure(uint32 spell_id);
 	void CastOnNumHitFade(uint32 spell_id);
 	void SlowMitigation(Mob* caster);
-	int16 GetCritDmgMod(uint16 skill);
+	int16 GetCritDmgMod(uint16 skill, bool IsLucky = false);
 	int16 GetMeleeDamageMod_SE(uint16 skill);
 	int16 GetMeleeMinDamageMod_SE(uint16 skill);
 	int16 GetCrippBlowChance();
@@ -834,6 +834,11 @@ public:
 	inline int16 GetSpellPowerDistanceMod() const { return SpellPowerDistanceMod; };
 	inline void SetSpellPowerDistanceMod(int16 value) { SpellPowerDistanceMod = value; };
 	int32 GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot = 0);
+
+	bool TryLuckyCriticalHit();
+	int32 GetLuckyCritDmgMod();
+	bool TryLuckyAvoidDamage();
+	int32 GetLuckyAvoidChanceMod();
 
 	void ModSkillDmgTaken(EQ::skills::SkillType skill_num, int value);
 	int16 GetModSkillDmgTaken(const EQ::skills::SkillType skill_num);

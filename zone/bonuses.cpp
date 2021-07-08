@@ -1487,6 +1487,14 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 			}
 			break;
 
+		case SE_Luck_Amount:
+			newbon->Luck_Amount += base1;
+			break;
+
+		case SE_Luck_Percent:
+			newbon->Luck_Percent += base1;
+			break;
+
 		// to do
 		case SE_PetDiscipline:
 			break;
@@ -3250,6 +3258,14 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 				if (new_bonus->trap_slots < effect_value)
 					new_bonus->trap_slots = effect_value;
 				break;
+
+			case SE_Luck_Amount:
+				new_bonus->Luck_Amount += effect_value;
+				break;
+
+			case SE_Luck_Percent:
+				new_bonus->Luck_Percent += effect_value;
+				break;
 		
 			//Special custom cases for loading effects on to NPC from 'npc_spels_effects' table
 			if (IsAISpellEffect) {
@@ -4768,6 +4784,18 @@ void Mob::NegateSpellsBonuses(uint16 spell_id)
 					spellbonuses.IllusionPersistence = false;
 					itembonuses.IllusionPersistence = false;
 					aabonuses.IllusionPersistence = false;
+					break;
+
+				case SE_Luck_Amount:
+					spellbonuses.Luck_Amount = effect_value;
+					itembonuses.Luck_Amount = effect_value;
+					aabonuses.Luck_Amount = effect_value;
+					break;
+
+				case SE_Luck_Percent:
+					spellbonuses.Luck_Percent = effect_value;
+					itembonuses.Luck_Percent = effect_value;
+					aabonuses.Luck_Percent = effect_value;
 					break;
 
 				case SE_SkillProcSuccess:{

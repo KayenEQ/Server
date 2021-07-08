@@ -49,6 +49,7 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 		value += value*CastToNPC()->GetSpellFocusDMG()/100;
 
 	bool Critical = false;
+	bool IsLuckyCritical = false;
 	int32 value_BaseEffect = 0;
 	int chance = 0;
 
@@ -82,6 +83,11 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 			Critical = true;
 			ratio += itembonuses.SpellCritDmgIncrease + spellbonuses.SpellCritDmgIncrease + aabonuses.SpellCritDmgIncrease;
 			ratio += itembonuses.SpellCritDmgIncNoStack + spellbonuses.SpellCritDmgIncNoStack + aabonuses.SpellCritDmgIncNoStack;
+
+			if (TryLuckyCriticalHit()) {
+				ratio += GetLuckyCritDmgMod();
+				IsLuckyCritical = true;
+			}
 		}
 
 		else if ((IsClient() && GetClass() == WIZARD) || (IsMerc() && GetClass() == CASTERDPS)) {
@@ -123,12 +129,22 @@ int32 Mob::GetActSpellDamage(uint16 spell_id, int32 value, Mob* target) {
 			else if (IsNPC() && CastToNPC()->GetSpellScale())
 				value = int(static_cast<float>(value) * CastToNPC()->GetSpellScale() / 100.0f);
 
-			entity_list.MessageCloseString(
-				this, true, 100, Chat::SpellCrit,
-				OTHER_CRIT_BLAST, GetName(), itoa(-value));
+			if (IsLuckyCritical) {
+				entity_list.MessageClose(
+					this, true, 100, Chat::SpellCrit,
+					"%s delivers a lucky critcal blast!(%s)", GetName(), itoa(-value));
 
-			if (IsClient())
-				MessageString(Chat::SpellCrit, YOU_CRIT_BLAST, itoa(-value));
+				if (IsClient())
+					Message(Chat::SpellCrit, "You deliver a lucky critcal blast!(%s)", itoa(-value));
+			}
+			else {
+				entity_list.MessageCloseString(
+					this, true, 100, Chat::SpellCrit,
+					OTHER_CRIT_BLAST, GetName(), itoa(-value));
+
+				if (IsClient())
+					MessageString(Chat::SpellCrit, YOU_CRIT_BLAST, itoa(-value));
+			}
 
 			return value;
 		}
@@ -174,6 +190,8 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target) {
 	int32 value_BaseEffect = 0;
 	int32 extra_dmg = 0;
 	int16 chance = 0;
+	bool IsLuckyCritical = false;
+
 	chance += itembonuses.CriticalDoTChance + spellbonuses.CriticalDoTChance + aabonuses.CriticalDoTChance;
 
 	if (spellbonuses.CriticalDotDecay)
@@ -187,6 +205,12 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target) {
 	if (chance > 0 && (zone->random.Roll(chance))) {
 		int32 ratio = 200;
 		ratio += itembonuses.DotCritDmgIncrease + spellbonuses.DotCritDmgIncrease + aabonuses.DotCritDmgIncrease;
+		
+		if (TryLuckyCriticalHit()) {
+			ratio += GetLuckyCritDmgMod();
+			IsLuckyCritical = true;
+		}
+
 		value = value_BaseEffect*ratio/100;
 		value += int(value_BaseEffect*GetFocusEffect(focusImprovedDamage, spell_id)/100)*ratio/100;
 		value += int(value_BaseEffect*GetFocusEffect(focusImprovedDamage2, spell_id)/100)*ratio/100;
@@ -267,8 +291,9 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 
 	int32 value_BaseEffect = 0;
 	int16 chance = 0;
-	int8 modifier = 1;
+	int32 ratio = 100;
 	bool Critical = false;
+	bool IsLuckyCritical = false;
 
 	value_BaseEffect = value + (value*GetFocusEffect(focusFcBaseEffects, spell_id)/100);
 
@@ -291,16 +316,20 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 
 		if(chance && (zone->random.Roll(chance))) {
 			Critical = true;
-			modifier = 2; //At present time no critical heal amount modifier SPA exists.
+			ratio = 100; //At present time no critical heal amount modifier SPA exists.
+			if (TryLuckyCriticalHit()) {
+				ratio += GetLuckyCritDmgMod();
+				IsLuckyCritical = true;
+			}
 		}
 
-		value *= modifier;
-		value += GetFocusEffect(focusFcHealAmtCrit, spell_id) * modifier;
+		value *= ratio/100;
+		value += GetFocusEffect(focusFcHealAmtCrit, spell_id) * ratio/100;
 		value += GetFocusEffect(focusFcHealAmt, spell_id);
 		value += target->GetFocusIncoming(focusFcHealAmtIncoming, SE_FcHealAmtIncoming, this, spell_id);
 
 		if(!spells[spell_id].no_heal_damage_item_mod && itembonuses.HealAmt && spells[spell_id].classes[(GetClass()%17) - 1] >= GetLevel() - 5)
-			value += GetExtraSpellAmt(spell_id, itembonuses.HealAmt, value) * modifier;
+			value += GetExtraSpellAmt(spell_id, itembonuses.HealAmt, value) * ratio/100;
 
 		value += value*target->GetHealRate(spell_id, this)/100;
 
@@ -308,12 +337,25 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 			value = int(static_cast<float>(value) * CastToNPC()->GetHealScale() / 100.0f);
 
 		if (Critical) {
-			entity_list.MessageCloseString(
-				this, true, 100, Chat::SpellCrit,
-				OTHER_CRIT_HEAL, GetName(), itoa(value));
+		
+			if (IsLuckyCritical) {
+				entity_list.MessageClose(
+					this, true, 100, Chat::SpellCrit,
+					"%s performs a lucky exceptional heal!(%s)", GetName(), itoa(value));
 
-			if (IsClient())
-				MessageString(Chat::SpellCrit, YOU_CRIT_HEAL, itoa(value));
+				if (IsClient())
+					Message(Chat::SpellCrit, "You perform a lucky exceptional heal!(%s)", itoa(value));
+			}
+
+			else {
+
+				entity_list.MessageCloseString(
+					this, true, 100, Chat::SpellCrit,
+					OTHER_CRIT_HEAL, GetName(), itoa(value));
+
+				if (IsClient())
+					MessageString(Chat::SpellCrit, YOU_CRIT_HEAL, itoa(value));
+			}
 		}
 
 		return value;

@@ -4594,7 +4594,7 @@ bool Mob::TrySpellOnDeath()
 	//in death because the heal will not register before the script kills you.
 }
 
-int16 Mob::GetCritDmgMod(uint16 skill)
+int16 Mob::GetCritDmgMod(uint16 skill, bool IsLucky)
 {
 	int critDmg_mod = 0;
 
@@ -4602,6 +4602,11 @@ int16 Mob::GetCritDmgMod(uint16 skill)
 	critDmg_mod += itembonuses.CritDmgMod[EQ::skills::HIGHEST_SKILL + 1] + spellbonuses.CritDmgMod[EQ::skills::HIGHEST_SKILL + 1] + aabonuses.CritDmgMod[EQ::skills::HIGHEST_SKILL + 1] +
 					itembonuses.CritDmgMod[skill] + spellbonuses.CritDmgMod[skill] + aabonuses.CritDmgMod[skill];
 
+	
+	//Add Luck Modifier
+	if (IsLucky)
+		critDmg_mod += GetLuckyCritDmgMod();
+	
 	return critDmg_mod;
 }
 
@@ -5941,6 +5946,123 @@ void Mob::CommonBreakInvisible()
 
 float Mob::GetDefaultRaceSize() const {
 	return GetRaceGenderDefaultHeight(race, gender);
+}
+
+int32 Mob::GetLuckyCritDmgMod()
+{
+	int32 LuckCritDmgMod = 0;
+	int32 Luck = 0;
+	Luck = spellbonuses.Luck_Amount + itembonuses.Luck_Amount + aabonuses.Luck_Amount;
+
+	if (Luck)
+	{
+		int32 min = 0;
+		int32 max = 0;
+
+		if (Luck > 120)
+		{
+			LuckCritDmgMod = zone->random.Int(34 + (Luck - 120), 37 + (Luck - 120));
+		}
+
+		else if (Luck <= 120)
+		{
+			if (Luck >= 1 && Luck < 10) { min = 5; max = 10; }
+			else if (Luck >= 10 && Luck < 20) { min = 10; max = 15;}
+			else if (Luck >= 20 && Luck < 30) { min = 15; max = 20; }
+			else if (Luck >= 30 && Luck < 40) { min = 20; max = 25; }
+			else if (Luck >= 40 && Luck < 50) { min = 22; max = 27; }
+			else if (Luck >= 50 && Luck < 60) { min = 25; max = 30; }
+			else if (Luck >= 60 && Luck < 70) { min = 27; max = 32; }
+			else if (Luck >= 70 && Luck < 80) { min = 29; max = 32; }
+			else if (Luck >= 80 && Luck < 90) { min = 30; max = 33; }
+			else if (Luck >= 90 && Luck < 100) { min = 31; max = 34; }
+			else if (Luck >= 100 && Luck < 110) { min = 32; max = 35; }
+			else if (Luck >= 110 && Luck < 120) { min = 33; max = 36; }
+			else if (Luck >= 120 && Luck < 130) { min = 34; max = 37; }
+
+			LuckCritDmgMod = zone->random.Int(min, max);
+		}
+
+		return LuckCritDmgMod;
+	}
+}
+//Change to bool and rename it, this will determine if pass critcal damage mod or not
+bool Mob::TryLuckyCriticalHit()
+{
+	int32 LuckChance = 0;
+	int32 Luck = 0;
+	Luck = spellbonuses.Luck_Amount + itembonuses.Luck_Amount + aabonuses.Luck_Amount;
+
+	if (Luck)	{
+		int32 LuckPercentMod = 0;
+		LuckPercentMod = spellbonuses.Luck_Percent + itembonuses.Luck_Percent + aabonuses.Luck_Percent;
+		int32 min = 0;
+		int32 max = 0;
+
+		//Values derived from dev post (Luck value is divided 10 when applied as bonus) 
+		if (Luck >= 1 && Luck < 10){ 
+			min = 40; 
+			max = 50; 
+		}
+		else {
+			min = 45; 
+			max = 55;
+		}
+
+		LuckChance = zone->random.Int(min, max);
+
+		if (LuckPercentMod)		
+			LuckChance += (LuckChance * LuckPercentMod) / 100;
+
+	}
+
+	if (zone->random.Roll(LuckChance))	{
+		return true;
+	}
+
+	return false;
+}
+
+int32 Mob::GetLuckyAvoidChanceMod()
+{
+
+	return 0;
+}
+
+bool Mob::TryLuckyAvoidDamage()
+{
+	int32 LuckChance = 0;
+	int32 Luck = 0;
+	int32 LuckAvoidMod = 0;
+	Luck = spellbonuses.Luck_Amount + itembonuses.Luck_Amount + aabonuses.Luck_Amount;
+
+	if (Luck){
+
+		int32 min_chance = 40;
+		int32 max_chance = 50;
+		int32 max_mod = 4;
+		int32 LuckPercentMod = 0;
+
+		LuckPercentMod = spellbonuses.Luck_Percent + itembonuses.Luck_Percent + aabonuses.Luck_Percent;
+		Luck = Luck / 10;
+		
+		if (Luck >= 1) {
+			min_chance = 45;
+			max_chance = 50;
+		}
+
+		LuckChance = zone->random.Int(min_chance, max_chance);
+
+		if (LuckPercentMod)
+			LuckChance += (LuckChance * LuckPercentMod) / 100;
+		
+		if (zone->random.Roll(LuckChance)) {
+			LuckAvoidMod = zone->random.Int((max_mod / 2), max_mod);
+			return LuckAvoidMod;
+		}
+	}
+
+	return 0;
 }
 
 #ifdef BOTS
