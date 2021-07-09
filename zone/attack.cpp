@@ -407,6 +407,7 @@ bool Mob::AvoidDamage(Mob *other, DamageHitInfo &hit)
 		chance += (chance * (aabonuses.RiposteChance + spellbonuses.RiposteChance + itembonuses.RiposteChance)) / 100;
 		chance /= 50;
 		chance += itembonuses.HeroicDEX / 25; // live has "heroic strickthrough" here to counter
+		chance += (chance * GetLuckyAvoidChanceMod() / 100);
 		if (counter_riposte || counter_all) {
 			float counter = (counter_riposte + counter_all) / 100.0f;
 			chance -= chance * counter;
@@ -446,6 +447,7 @@ bool Mob::AvoidDamage(Mob *other, DamageHitInfo &hit)
 		chance += (chance * (aabonuses.IncreaseBlockChance + spellbonuses.IncreaseBlockChance + itembonuses.IncreaseBlockChance)) / 100;
 		chance /= 25;
 		chance += itembonuses.HeroicDEX / 25; // live has "heroic strickthrough" here to counter
+		chance += (chance * GetLuckyAvoidChanceMod() / 100);
 		if (counter_block || counter_all) {
 			float counter = (counter_block + counter_all) / 100.0f;
 			chance -= chance * counter;
@@ -469,6 +471,7 @@ bool Mob::AvoidDamage(Mob *other, DamageHitInfo &hit)
 		chance += (chance * (aabonuses.ParryChance + spellbonuses.ParryChance + itembonuses.ParryChance)) / 100;
 		chance /= 45;
 		chance += itembonuses.HeroicDEX / 25; // live has "heroic strickthrough" here to counter
+		chance += (chance * GetLuckyAvoidChanceMod() / 100);
 		if (counter_parry || counter_all) {
 			float counter = (counter_parry + counter_all) / 100.0f;
 			chance -= chance * counter;
@@ -492,6 +495,7 @@ bool Mob::AvoidDamage(Mob *other, DamageHitInfo &hit)
 		chance += (chance * (aabonuses.DodgeChance + spellbonuses.DodgeChance + itembonuses.DodgeChance)) / 100;
 		chance /= 45;
 		chance += itembonuses.HeroicAGI / 25; // live has "heroic strickthrough" here to counter
+		chance += (chance * GetLuckyAvoidChanceMod() / 100);
 		if (counter_dodge || counter_all) {
 			float counter = (counter_dodge + counter_all) / 100.0f;
 			chance -= chance * counter;

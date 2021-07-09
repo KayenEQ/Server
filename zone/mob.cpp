@@ -5991,7 +5991,7 @@ bool Mob::TryLuckyCriticalHit()
 {
 	int32 LuckChance = 0;
 	int32 Luck = 0;
-	Luck = spellbonuses.Luck_Amount + itembonuses.Luck_Amount + aabonuses.Luck_Amount;
+	Luck = GetLuck();
 
 	if (Luck)	{
 		int32 LuckPercentMod = 0;
@@ -6025,19 +6025,14 @@ bool Mob::TryLuckyCriticalHit()
 
 int32 Mob::GetLuckyAvoidChanceMod()
 {
-
-	return 0;
-}
-
-bool Mob::TryLuckyAvoidDamage()
-{
-	int32 LuckChance = 0;
+	
 	int32 Luck = 0;
-	int32 LuckAvoidMod = 0;
-	Luck = spellbonuses.Luck_Amount + itembonuses.Luck_Amount + aabonuses.Luck_Amount;
+	Luck = GetLuck();
 
 	if (Luck){
 
+		int32 LuckChance = 0;
+		int32 LuckAvoidMod = 0;
 		int32 min_chance = 40;
 		int32 max_chance = 50;
 		int32 max_mod = 4;

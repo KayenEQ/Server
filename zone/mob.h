@@ -835,9 +835,9 @@ public:
 	inline void SetSpellPowerDistanceMod(int16 value) { SpellPowerDistanceMod = value; };
 	int32 GetSpellStat(uint32 spell_id, const char *identifier, uint8 slot = 0);
 
+	inline int32 GetLuck() { return aabonuses.Luck_Amount + itembonuses.Luck_Amount + spellbonuses.Luck_Amount; }
 	bool TryLuckyCriticalHit();
 	int32 GetLuckyCritDmgMod();
-	bool TryLuckyAvoidDamage();
 	int32 GetLuckyAvoidChanceMod();
 
 	void ModSkillDmgTaken(EQ::skills::SkillType skill_num, int value);
